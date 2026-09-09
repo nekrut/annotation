@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T20:15:00Z
+lease_until: 2026-09-09T21:30:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -658,4 +658,51 @@ one species in a fresh clone.
   extension is still fixture-only; no prediction whose sequence set genuinely
   diverges from the reference's; no evidence-based pipeline end to end. Item
   2's coverage half is closed; what is left is real predictor output.
+  NEXT: address review feedback on PR #5 when it arrives.
+- 2026-09-09T19:25Z (lenin): lease renewed to 21:30Z. Run 10: the 3 Gb genome,
+  and what it found about the section 4.3 stratifications.
+  ITEM 9 CLOSED. `fetch.py --what fasta` had never run above 391 Mb. Human:
+  `GCF_000001405.40_GRCh38.p14_genomic.fna.gz`, 972,898,531 bytes for 3.1 Gb,
+  MD5-verified against the NCBI manifest in 19.6 s. What is left there is
+  eleven more species, not scale.
+  `score.py --genome` AT HUMAN SCALE for the first time -- the case the
+  streaming window reader was written for. Identity 3,101,538,863 scored bp
+  over 102 sequences in 67 s / 1.35 GB; GENCODE 50 (347,110 predicted introns
+  against the reference's 218,446) in 88 s / 2.12 GB, against 43 s / 1.06 GB
+  without it. NOT ONE WINDOW CAME BACK UNSERVED: no `unknown` dinucleotide
+  class and no dropped GC bin in either run, over the FASTA's 705 records.
+  Every GENCODE metric is identical with and without `--genome`; what the
+  genome adds is the two strata and a second reading of the stop-codon
+  convention, which agrees with the file's own `stop_codon` features (349,754
+  chains inside, 579 outside, 18,253 neither). Human reference splice census:
+  215,956 GT-AG, 1,939 GC-AG, 219 AT-AC, 332 other, so 1.14% non-GT-AG.
+  THE FINDING: THE THREE 4.3 STRATIFICATIONS HAVE THREE DENOMINATORS, AND ONE
+  WAS SINGLE-SIDED. `by_dinucleotide` is per intron, the deciles and local GC
+  are per site, and 4.3 read as if all three were per donor and per acceptor.
+  Invisible on S. cerevisiae (281 introns over 281 donors); on human 218,446
+  introns over 188,913 donors and 193,359 acceptors, so the dinucleotide row
+  sums to 15.6% more than the donor total printed beside it. Per-intron is the
+  only defensible unit -- a class is the pair -- and the sites that sit in two
+  classes at once are now counted: 106 donors and 644 acceptors in the human
+  reference, 129 and 2,515 in GENCODE, 185 and 260 in T. rubripes, 47 and 88
+  in A. mellifera. The 6:1 acceptor-to-donor ratio is the mechanism: a shared
+  donor usually keeps its class because both introns end AG, a shared acceptor
+  changes it whenever one intron starts GC. `splice.strata_units` now states
+  each table's unit, `by_local_gc` gains an acceptor table (it was donors
+  only; the old table is `by_local_gc.donor` value for value), and
+  `reference/predicted_sites_multiple_dinuc_classes` report the counts.
+  ALSO: human is the counter-case for open item 11 -- its 188,913 donors
+  spread 7,913 / 50,492 / 43,960 / 45,405 / 41,143 across the five fixed GC
+  bands, so the bands that degenerate on P. falciparum carry signal on a
+  vertebrate.
+  Verified: self-test 135 -> 145 checks under PYTHONHASHSEED 0/1/42/1337, the
+  new fixture confirmed to fail on the pre-change code (`gc acceptor sites:
+  got 0, want 2`); degrade.py 27 checks; leakage_check 0 violations; all nine
+  validation JSONs regenerated from the original prediction files with NO
+  EXISTING FIELD MOVING in any of them.
+  docs/benchmark.md 4.3, 6, 7 items 9 and 11, benchmark/README.md and
+  validation/README.md updated; PR #5 updated (commit 795e0f8).
+  NOT done, unchanged: no BUSCO/OMArk or cost columns; the blind 3 bp
+  extension is still fixture-only; no prediction whose sequence set genuinely
+  diverges from the reference's; no evidence-based pipeline end to end.
   NEXT: address review feedback on PR #5 when it arrives.
