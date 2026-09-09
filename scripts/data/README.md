@@ -94,15 +94,21 @@ only; the `.npz` is written by hand and reads with `numpy.load`.
 and, on Ensembl EPO, the ancestral rows of any clade containing one;
 `--drop-ancestors` removes all ancestral rows; `--transcript-types`
 chooses which transcripts paint labels (default: the benchmark's truth
-rule, no pseudogenes or Ig/TCR segments); `--reference-anchored` declares
+rule, no pseudogenes or Ig/TCR segments); `--isoforms` chooses which
+isoforms of a locus paint (`union`, the default; `longest-cds`, one per
+locus; or `representative` with `--representatives FILE`, for example a
+MANE Select list, falling back to `longest-cds` where a locus has none
+listed; the sidecar records the policy and every isoform dropped, with
+its locus and reason); `--reference-anchored` declares
 a track unknown to the built-in class table to be reference-anchored;
 `--both-strands` adds the reverse-complement example. `--self-test` checks
 labels, frames, boundaries, informant codes, insertions, distances, the
 reverse complement, the transcript filter, the alignment-class table,
 label counts on a padded window, an EPO-shaped two-block window with
 ancestral rows, a gene nested on the opposite strand inside another gene's
-intron (strand and frame follow the nested gene), and byte-identical
-archives from repeated runs (35 checks). The `.npz` members carry a fixed
+intron (strand and frame follow the nested gene), byte-identical
+archives from repeated runs, and the three isoform policies on a locus
+with two isoforms plus an unnamed locus clustered by span (41 checks). The `.npz` members carry a fixed
 timestamp, so an example's checksum depends only on its inputs; the whole
 cutter, the fetcher, `coverage_by_distance.py` and `tree_composition.py`
 were checked to give identical output under `PYTHONHASHSEED` 0, 1, 2 and 42

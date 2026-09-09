@@ -562,19 +562,51 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   spans the whole demonstration window, and before this rule every base of
   the window, including `Adh`'s 3,331 CDS bases across the four examples,
   carried the enclosing gene's strand while its frames and boundary marks
-  were counted on the plus strand. Two caveats for the design task. First,
-  the label is a union over isoforms, so an example's target is not the
-  structure of any one transcript where isoforms differ; a model trained
-  on it learns the union, and the benchmark's transcript-level column then
-  measures the reference's isoform density rather than the model, as lenin
-  observed for Helixer on fugu (note 20260909T133356Z-lenin-0013). Whether
-  the target should instead be one representative isoform per locus is a
-  T-human-011 decision; the cutter can take it as a `--transcript-types`
-  list once the benchmark names the representative. Second, where two
+  were counted on the plus strand.
+  **Isoforms.** By default the label is a union over the isoforms of a
+  locus, so an example's target is not the structure of any one transcript
+  where isoforms differ; a model trained on it learns the union, and the
+  benchmark's transcript-level column then measures the reference's isoform
+  density rather than the model, as lenin observed for Helixer on fugu
+  (note 20260909T133356Z-lenin-0013). The benchmark deliberately does not
+  name a representative isoform: its section 4.4 matches whatever a model
+  emits against the best-fitting annotated isoform, so union, longest CDS
+  and a curated list such as MANE Select are all scoreable, and which one
+  a model trains on is a training decision, not a scoring one (note
+  20260909T141456Z-lenin-0014). The cutter therefore offers the choice as
+  `--isoforms`: `union` (default), `longest-cds` (one transcript per
+  locus, the most CDS bases, ties to the longest exonic span, then
+  annotation order; a locus with no coding transcript keeps its longest
+  exonic span), or `representative` with `--representatives FILE` (ids
+  one per line or the first column of a TSV, compared with and without a
+  version suffix; a locus in which no listed transcript occurs falls back
+  to `longest-cds` and the sidecar names it under
+  `representative_fallback_loci`). A locus is the stated gene (`name2` /
+  `geneName` from UCSC genePred, the parent gene's `external_name` from
+  Ensembl); transcripts with no gene name are clustered by overlapping span
+  on the same strand. The sidecar records `isoform_policy` and every
+  transcript dropped with its locus and reason, so a training set built
+  under one policy cannot be mistaken for another. What the choice does
+  on the fly `Adh` window (chr2L:14615052-14619402, 4,350 bases, 12 RefSeq
+  transcripts at three loci, cut as one example with `apiMel4` dropped,
+  re-fetched 2026-09-09): the six `Adh` isoforms and the three `Adhr`
+  isoforms each share one CDS and differ only in 5' UTR exons, so
+  `longest-cds` decides them on the tie rule (longest exonic span:
+  `NM_001032098.2` for `Adh`, `NM_058147.4` for `Adhr`) and keeps
+  `NM_001169504.2` for the enclosing `osp`. The label counts move from
+  1,590 / 664 / 2,096 (CDS / UTR / intron) to 1,590 / 490 / 2,270: the 174
+  bases that only a dropped isoform's UTR exon covered become intron, one
+  boundary mark of a dropped first exon disappears, and no CDS, strand or
+  frame value changes. That is the general shape of the cost in RefSeq:
+  alternative UTR exons are far more common than alternative CDS, so the
+  policy mostly decides what a model is told about UTRs, which the
+  transcript-level score does not look at. MANE Select exists for human and mouse only
+  (UCSC `mane` track, NCBI RefSeq `MANE` tag); for the other panel species
+  `representative` needs a list the operator supplies, and `longest-cds`
+  is the policy that works everywhere. A second caveat: where two
   transcripts of the same class overlap in different frames (six bases
   between isoforms of the gene enclosing `Adh`, all outside the fetched
-  window), the frame channel
-  records one of them by the same tie rule.
+  window), the frame channel records one of them by the same tie rule.
   Which transcripts paint is `--transcript-types`: the default follows the
   benchmark's truth rule (`docs/benchmark.md` section 4) and excludes
   pseudogenes and immunoglobulin / T-cell receptor segments, recognised only

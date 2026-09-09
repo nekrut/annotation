@@ -17,7 +17,8 @@ Arrays in each ``.npz`` (``L`` = ``--length``, ``K`` = number of informants):
   ``ref``    uint8 [L]     A=0 C=1 G=2 T=3, N or other=4, padding=4
   ``mask``   uint8 [L]     1 where the position is a real reference base, 0 padding
   ``label``  uint8 [L]     0 intergenic, 1 intron, 2 UTR exon, 3 CDS
-                           (union over transcripts, CDS > UTR > intron)
+                           (CDS > UTR > intron over the transcripts that
+                           paint: all isoforms by default, see --isoforms)
   ``frame``  int8  [L]     codon position 0,1,2 of a CDS base counted from the
                            start codon on the transcript's strand; -1 elsewhere
   ``strand`` int8  [L]     +1 / -1 strand of the transcript that owns the
@@ -118,7 +119,7 @@ import struct
 import sys
 import zipfile
 
-TOOL_VERSION = "0.2"
+TOOL_VERSION = "0.3"
 BASE = {"A": 0, "C": 1, "G": 2, "T": 3}
 INF_GAP, INF_UNALIGNED, INF_OTHER = 4, 5, 6
 LABEL = {"intergenic": 0, "intron": 1, "utr": 2, "cds": 3}
@@ -174,6 +175,126 @@ def select_transcripts(transcripts: list[dict], mode: str) -> tuple[list[dict], 
         else:
             keep.append(t)
     return keep, out
+
+
+def _strip_version(tid: str) -> str:
+    return re.sub(r"\.\d+$", "", str(tid))
+
+
+def group_loci(transcripts: list[dict]) -> list[list[int]]:
+    """Group transcript indices into loci.  Transcripts that state a gene
+    share a locus by that name; the rest are clustered by overlapping span
+    on the same strand (single linkage), which is the coverage tables' rule
+    for an annotation that carries no gene names.  Loci keep annotation
+    order of their first member."""
+    named: dict[str, list[int]] = {}
+    unnamed: list[int] = []
+    order: list[tuple[int, str]] = []
+    for i, t in enumerate(transcripts):
+        g = t.get("gene")
+        if g:
+            key = "gene:" + str(g)
+            if key not in named:
+                named[key] = []
+                order.append((i, key))
+            named[key].append(i)
+        else:
+            unnamed.append(i)
+    # single-linkage clustering of the unnamed transcripts by strand and span
+    clusters: list[dict] = []
+    for i in sorted(unnamed, key=lambda j: (transcripts[j].get("strand", "+"), transcripts[j]["start"])):
+        t = transcripts[i]
+        st = t.get("strand", "+")
+        if clusters and clusters[-1]["strand"] == st and t["start"] < clusters[-1]["end"]:
+            clusters[-1]["members"].append(i)
+            clusters[-1]["end"] = max(clusters[-1]["end"], t["end"])
+        else:
+            clusters.append({"strand": st, "start": t["start"], "end": t["end"], "members": [i]})
+    groups = {key: idx for key, idx in named.items()}
+    for c in clusters:
+        key = f"span:{c['strand']}{c['start']}-{c['end']}"
+        groups[key] = sorted(c["members"])
+        order.append((min(c["members"]), key))
+    order.sort()
+    return [groups[key] for _, key in order]
+
+
+def locus_name(transcripts: list[dict], members: list[int]) -> str:
+    g = transcripts[members[0]].get("gene")
+    if g:
+        return str(g)
+    lo = min(transcripts[i]["start"] for i in members)
+    hi = max(transcripts[i]["end"] for i in members)
+    return f"{transcripts[members[0]].get('strand', '+')}{lo}-{hi}"
+
+
+def select_isoforms(transcripts: list[dict], policy: str = "union",
+                    representatives: set[str] | None = None) -> tuple[list[dict], list[dict], list[str]]:
+    """Choose which isoforms of each locus paint labels.
+
+    ``union``: every transcript paints (the label is a union over isoforms).
+    ``longest-cds``: one transcript per locus, the one with the most CDS
+    bases; ties go to the longest exonic span, then annotation order; a
+    locus with no coding transcript keeps its longest exonic span.
+    ``representative``: only the transcripts named in ``representatives``
+    paint (ids compared with and without a trailing version); a locus in
+    which none is named falls back to ``longest-cds`` and is reported.
+
+    Returns (kept, dropped, fallback_loci) with dropped entries of the form
+    {"id", "locus", "reason"}.  The benchmark scores any of these targets
+    (relay note 20260909T141456Z-lenin-0014): the choice is a training
+    decision, and the sidecar records which one was made."""
+    if policy == "union":
+        return list(transcripts), [], []
+    if policy not in ("longest-cds", "representative"):
+        raise SystemExit(f"unknown --isoforms policy {policy!r}")
+    reps: set[str] = set()
+    for r in representatives or ():
+        reps.add(str(r)); reps.add(_strip_version(r))
+    keep_idx: set[int] = set()
+    dropped: list[dict] = []
+    fallback: list[str] = []
+
+    def cds_len(t: dict) -> int:
+        return sum(b - a for a, b in t.get("cds", []))
+
+    def exon_len(t: dict) -> int:
+        return sum(b - a for a, b in t.get("exons", []))
+
+    for members in group_loci(transcripts):
+        name = locus_name(transcripts, members)
+        chosen: list[int] = []
+        reason = "shorter-cds"
+        if policy == "representative":
+            chosen = [i for i in members
+                      if str(transcripts[i].get("id")) in reps or _strip_version(transcripts[i].get("id")) in reps]
+            reason = "not-representative"
+            if not chosen:
+                fallback.append(name)
+        if not chosen:
+            best = max(members, key=lambda i: (cds_len(transcripts[i]), exon_len(transcripts[i]), -i))
+            chosen = [best]
+            if policy == "representative":
+                reason = "shorter-cds"
+        keep_idx.update(chosen)
+        for i in members:
+            if i not in keep_idx:
+                dropped.append({"id": transcripts[i].get("id"), "locus": name, "reason": reason})
+    kept = [t for i, t in enumerate(transcripts) if i in keep_idx]
+    return kept, dropped, fallback
+
+
+def read_id_list(path: str) -> set[str]:
+    """One transcript id per line; blank lines and ``#`` comments ignored;
+    a tab-separated file contributes its first column."""
+    ids: set[str] = set()
+    with open(path) as fh:
+        for ln in fh:
+            ln = ln.strip()
+            if not ln or ln.startswith("#"):
+                continue
+            ids.add(ln.split("\t")[0].split()[0])
+    return ids
 
 
 # --------------------------------------------------------------- npy/npz
@@ -505,7 +626,8 @@ def revcomp_example(ex: dict, L: int, K: int) -> dict:
 
 def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, quiet: bool,
         transcript_types: str = "benchmark", drop_ancestors: bool = False,
-        reference_anchored: bool = False) -> list[str]:
+        reference_anchored: bool = False, isoforms: str = "union",
+        representatives: set[str] | None = None) -> list[str]:
     with open(stem + ".manifest.json") as fh:
         manifest = json.load(fh)
     with open(stem + ".manifest.json", "rb") as fh:
@@ -576,6 +698,7 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
         ann = json.load(fh)
     transcripts = ann.get("transcripts", ann if isinstance(ann, list) else [])
     transcripts, excluded = select_transcripts(transcripts, transcript_types)
+    transcripts, dropped_iso, fallback_loci = select_isoforms(transcripts, isoforms, representatives)
     label, frame, strand, bound = paint_labels(start, end, transcripts)
     cons = [math.nan] * (end - start)
     if os.path.exists(stem + ".conservation.json"):
@@ -658,6 +781,9 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
                 "transcripts": [t.get("id") for t in transcripts],
                 "transcript_types": transcript_types,
                 "transcripts_excluded": excluded,
+                "isoform_policy": isoforms,
+                "transcripts_dropped_isoforms": dropped_iso,
+                "representative_fallback_loci": fallback_loci,
                 "label_counts": {c: sum(1 for v, m in zip(e["label"], e["mask"]) if m and v == i)
                                  for c, i in LABEL.items()},
             }
@@ -860,6 +986,52 @@ def self_test() -> int:
         with open(os.path.join(d, "nest1", nm), "rb") as f1, open(os.path.join(d, "nest2", nm), "rb") as f2:
             assert f1.read() == f2.read(), nm
     checks += 1
+    # 36-41: isoform policy.  Gene G has two + isoforms: ta (9 CDS bases, exons
+    # 2-8 and 12-19) and tb (8 CDS bases, exons 2-8 and 10-19, so bases 10-11
+    # are CDS in tb and intronic in ta, and 14-16 are UTR in tb, CDS in ta).
+    # Two unnamed - transcripts overlap at 0-3 and cluster into one locus by span.
+    iso = os.path.join(d, "iso")
+    for ext in (".fa", ".maf", ".nh", ".manifest.json"):
+        shutil.copyfile(stem + ext, iso + ext)
+    with open(iso + ".annotation.json", "w") as fh:
+        json.dump({"transcripts": [
+            {"id": "ta.1", "gene": "G", "strand": "+", "start": 2, "end": 19, "exons": [[2, 8], [12, 19]], "cds": [[4, 8], [12, 17]]},
+            {"id": "tb.2", "gene": "G", "strand": "+", "start": 2, "end": 19, "exons": [[2, 8], [10, 19]], "cds": [[4, 8], [10, 14]]},
+            {"id": "tc", "strand": "-", "start": 0, "end": 2, "exons": [[0, 2]], "cds": []},
+            {"id": "td", "strand": "-", "start": 0, "end": 3, "exons": [[0, 3]], "cds": [[0, 3]]},
+        ]}, fh)
+    cut(iso, os.path.join(d, "iso_u"), 0, 0, set(), False, True)
+    su = json.load(open(os.path.join(d, "iso_u", "iso.w0.json")))
+    lu = list(npz(os.path.join(d, "iso_u", "iso.w0.npz"))["label"])
+    assert su["isoform_policy"] == "union" and su["transcripts_dropped_isoforms"] == [] \
+        and su["transcripts"] == ["ta.1", "tb.2", "tc", "td"], su
+    assert lu[10:12] == [3, 3] and lu[14:17] == [3, 3, 3] and lu[0:3] == [3, 3, 3], lu  # union: tb's CDS and ta's CDS both paint
+    checks += 1
+    cut(iso, os.path.join(d, "iso_l"), 0, 0, set(), False, True, isoforms="longest-cds")
+    sl = json.load(open(os.path.join(d, "iso_l", "iso.w0.json")))
+    ll = list(npz(os.path.join(d, "iso_l", "iso.w0.npz"))["label"])
+    assert sl["transcripts"] == ["ta.1", "td"] and sl["representative_fallback_loci"] == [], sl["transcripts"]
+    assert sl["transcripts_dropped_isoforms"] == [{"id": "tb.2", "locus": "G", "reason": "shorter-cds"},
+                                                  {"id": "tc", "locus": "-0-3", "reason": "shorter-cds"}], sl["transcripts_dropped_isoforms"]
+    assert ll[10:12] == [1, 1] and ll[14:17] == [3, 3, 3] and ll[0:3] == [3, 3, 3], ll
+    checks += 2
+    # a representative list names tb without its version; the unnamed - locus falls back to longest-cds
+    cut(iso, os.path.join(d, "iso_r"), 0, 0, set(), False, True, isoforms="representative", representatives={"tb"})
+    sr = json.load(open(os.path.join(d, "iso_r", "iso.w0.json")))
+    lr = list(npz(os.path.join(d, "iso_r", "iso.w0.npz"))["label"])
+    assert sr["transcripts"] == ["tb.2", "td"] and sr["representative_fallback_loci"] == ["-0-3"], sr
+    assert sr["transcripts_dropped_isoforms"] == [{"id": "ta.1", "locus": "G", "reason": "not-representative"},
+                                                  {"id": "tc", "locus": "-0-3", "reason": "shorter-cds"}], sr["transcripts_dropped_isoforms"]
+    assert lr[10:12] == [3, 3] and lr[14:17] == [2, 2, 2], lr
+    checks += 2
+    # the id file reader: comments, blank lines, first column of a TSV, versioned ids
+    with open(os.path.join(d, "reps.tsv"), "w") as fh:
+        fh.write("# MANE-like list\n\nta.1\tG\tMANE Select\n")
+    assert read_id_list(os.path.join(d, "reps.tsv")) == {"ta.1"}
+    cut(iso, os.path.join(d, "iso_r2"), 0, 0, set(), False, True, isoforms="representative",
+        representatives=read_id_list(os.path.join(d, "reps.tsv")))
+    assert json.load(open(os.path.join(d, "iso_r2", "iso.w0.json")))["transcripts"] == ["ta.1", "td"]
+    checks += 1
     print(f"self-test passed ({checks} checks)")
     return 0
 
@@ -875,6 +1047,13 @@ def main() -> int:
     ap.add_argument("--transcript-types", default="benchmark",
                     help="which transcripts paint labels: 'benchmark' (default; drops pseudogenes and Ig/TCR "
                          "segments as docs/benchmark.md section 4 does), 'all', or a comma-separated list of types")
+    ap.add_argument("--isoforms", default="union", choices=["union", "longest-cds", "representative"],
+                    help="which isoforms of a locus paint labels: 'union' (default; every transcript), "
+                         "'longest-cds' (one per locus, most CDS bases), or 'representative' (the ids in "
+                         "--representatives, e.g. MANE Select; a locus with none listed falls back to longest-cds "
+                         "and the sidecar names it)")
+    ap.add_argument("--representatives", default=None,
+                    help="file of transcript ids, one per line (first column of a TSV), for --isoforms representative")
     ap.add_argument("--drop-ancestors", action="store_true", help="remove every inferred ancestral row (Ensembl EPO)")
     ap.add_argument("--reference-anchored", action="store_true",
                     help="declare a track the built-in table does not know to be reference-anchored, so dropped "
@@ -887,10 +1066,14 @@ def main() -> int:
     if not args.stem or not args.out:
         ap.error("--stem and --out are required")
     drop = {s.strip() for s in args.drop_species.split(",") if s.strip()}
+    reps = read_id_list(args.representatives) if args.representatives else None
+    if args.isoforms == "representative" and not reps:
+        ap.error("--isoforms representative needs --representatives FILE with at least one id")
     total = 0
     for stem in args.stem:
         total += len(cut(stem, args.out, args.length, args.stride, drop, args.both_strands, args.quiet,
-                         args.transcript_types, args.drop_ancestors, args.reference_anchored))
+                         args.transcript_types, args.drop_ancestors, args.reference_anchored,
+                         args.isoforms, reps))
     print(f"wrote {total} examples to {args.out}")
     return 0
 
