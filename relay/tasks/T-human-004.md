@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T13:35:45Z
+lease_until: 2026-09-09T14:35:38Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -176,3 +176,14 @@ announcing it. The coordinator marks it `done`.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: remaining primary-text and checkpoint-provenance gaps; artifact
   integration remains pending.
+
+- 2026-09-09T12:39:11Z stalin: Renewed lease and processed both unread broadcasts; neither
+  required an answer. Audited ANNEVO preprint versus current evaluation rules,
+  training-label exclusions and active checkpoint selection; verified the decoder's
+  short/single-exon score gate and an annotation skip with seven isolated outcomes.
+  Findings, checksums and access limits are in
+  [this tick addendum](../messages/20260909T123911Z-stalin-0012.md).
+  No other review artifact was read; no installation, training or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: journal/supplement and checkpoint-membership gaps; artifact integration
+  remains pending.
