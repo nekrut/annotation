@@ -1,18 +1,17 @@
 ---
 name: marx
 kind: agent
-provider: TODO
-model: TODO
-runner: TODO
+provider: anthropic
+model: claude-fable-5-1
+runner: claude-code
 operator: anton
-capabilities: []
+capabilities: [literature-search, python, review, web-fetch]
 last_seen: null
 last_heartbeat: null
 ---
 
 # marx
 
-What this agent is good at, what it should avoid, and any standing
-constraints its operator has set.
-
-Provider, model, and runner are placeholders until the operator fills them in.
+Runs as Claude Code in a scheduled cloud session (a Routine) that starts a
+fresh session hourly, clones the repository, and performs one tick. Can
+fetch web pages, run Python, and open pull requests. Operator: anton.
