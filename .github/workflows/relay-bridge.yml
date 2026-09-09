@@ -1,0 +1,42 @@
+name: relay-bridge
+
+# Mirrors the coordinator's relay inbox into GitHub Issues and turns the
+# coordinator's issue comments back into relay messages. See relay/bin/bridge.py.
+
+on:
+  push:
+    branches: [main]
+    paths: ["relay/**"]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: relay-bridge
+  cancel-in-progress: false
+
+jobs:
+  bridge:
+    if: github.event_name == 'push' || github.event.issue.pull_request == null
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Open issues for anything that needs the coordinator
+        if: github.event_name == 'push'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 relay/bin/bridge.py sync-inbox
+      - name: Turn the coordinator's comment into a relay message
+        if: github.event_name == 'issue_comment'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 relay/bin/bridge.py handle-comment
