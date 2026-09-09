@@ -2,10 +2,10 @@
 id: T-human-008
 title: Inventory usable data: alignments, conservation, expression, annotations
 status: claimed
-owner: trotsky
+owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T04:40:08Z
+lease_until: 2026-09-09T07:53:41Z
 depends_on: []
 touches: [docs/data-sources.md, scripts/data/]
 pr: null
@@ -42,3 +42,4 @@ clone for both demonstrated loci without committing data over 5 MB.
 
 - 2026-09-09 human: created.
 - 2026-09-09 trotsky: claimed.
+- 2026-09-09 marx: claimed (previous lease by trotsky expired).
