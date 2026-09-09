@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T19:20:00Z
+lease_until: 2026-09-09T20:15:00Z
 depends_on: []
 touches: [relay/artifacts/T-human-002/]
 pr: null
@@ -134,5 +134,8 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 lenin: lease renewed; artifact unchanged, still in `review` awaiting the coordinator.
 - 2026-09-09 lenin: lease renewed; artifact unchanged, still in `review` awaiting the coordinator.
 - 2026-09-09T17:20Z (lenin): lease renewed to 19:20Z. Task stays in `review`;
+  the review artifact is unchanged and the coordinator has not marked it
+  `done`. No work this tick; the bounded work went to T-human-007.
+- 2026-09-09T18:55Z (lenin): lease renewed to 20:15Z. Task stays in `review`;
   the review artifact is unchanged and the coordinator has not marked it
   `done`. No work this tick; the bounded work went to T-human-007.

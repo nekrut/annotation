@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T19:20:00Z
+lease_until: 2026-09-09T20:15:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -610,4 +610,52 @@ one species in a fresh clone.
   whose sequence set genuinely diverges from the reference's, no
   evidence-based pipeline end to end, degraded-copy runs still cover 2 of 20.
   Open item 13 is closed.
+  NEXT: address review feedback on PR #5 when it arrives.
+- 2026-09-09T18:55Z (lenin): lease renewed to 20:15Z. Run 9: the control run,
+  panel-wide, and a defect it found in itself.
+  ADDED `benchmark/degrade.py` -- a seeded, known-perturbation copy of a
+  reference: delete 10% of transcripts, move the downstream boundary in
+  transcription order of 10% of CDS segments 3 bp further downstream. An
+  identity run makes every metric 1.0 by construction, so it cannot tell a
+  correct scorer from one dropping the same thing from both sides; a degraded
+  copy can. Degraded-copy coverage 2 of 20 species -> 20 of 20. Results in
+  `benchmark/validation/degraded/` (one scored JSON and one degrade summary
+  per species) plus its README and the §3.3 declaration they were run under.
+  THE PERTURBATION IS ASYMMETRIC ON PURPOSE, AND THAT IS THE TEST. Which
+  coordinate a "downstream" shift moves depends on the strand -- `end` on +,
+  `start` on - -- so it lands on stop codons and donors and never on start
+  codons or acceptors. Every species reproduces it: donor F1 0.811-0.870
+  against acceptor F1 0.934-0.989.
+  LOCUS PRECISION AND START-CODON PRECISION ARE EXACTLY 1.0 ON ALL 20, over
+  775,253 scored reference transcripts: zero false-positive loci, zero
+  false-positive start codons. The earlier 2-species run reported human start
+  F1 0.912 *with* false positives, which was correct for the ad-hoc script
+  behind it -- it moved `end` regardless of strand, so on half the annotation
+  it perturbed starts while the text said stops. Hence a reviewable file.
+  FUSION AND SPLIT ARE NOT INVARIANT under a perturbation that is neither.
+  Six species report 1-2 fusions, six report 1-8 splits. Ablating the two
+  perturbations at one seed separates them exactly: every split comes from the
+  deletions (human 8, A. mellifera 2, X. tropicalis 1), every fusion from the
+  3 bp shifts (human 1, A. mellifera 1). Both are §4.4 as specified, but a
+  low-single-digit count is inside the noise a *correct* submission produces.
+  Report it, do not rank on it.
+  DEFECT IN degrade.py, FOUND BY THE ABLATION AND NOT BY THE COMBINED RUN: the
+  shift was drawn only for CDS lines surviving the deletion pass, making the
+  shift stream a function of the drop rate, so the ablation was not a
+  decomposition of the combined run. T. rubripes showed it -- a combined
+  fusion neither single perturbation could produce, which is impossible since
+  combined CDS blocks are a subset of shift-only's. Fixed; the self-test now
+  asserts the invariant over four seeds and fails on the pre-fix code.
+  Verified: degrade.py --self-test 27 checks and score.py --self-test 135
+  checks under PYTHONHASHSEED 0/1/42/1337; all four ablated species reproduce
+  the combined fusion and split counts exactly after the fix; leakage_check
+  still 0 violations. Scoring cost 0.68 s / 44 MB (S. pombe) to 52 s / 1.04 GB
+  (D. rerio); human 43 s / 1.06 GB.
+  docs/benchmark.md §6 rewritten with the 20-row table and the four findings,
+  §7 item 2 updated; benchmark/README.md and validation/README.md updated.
+  PR #5 updated (commit 834a2fa).
+  NOT done, unchanged: no BUSCO/OMArk or cost columns; the blind 3 bp
+  extension is still fixture-only; no prediction whose sequence set genuinely
+  diverges from the reference's; no evidence-based pipeline end to end. Item
+  2's coverage half is closed; what is left is real predictor output.
   NEXT: address review feedback on PR #5 when it arrives.
