@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T00:00:40Z
+lease_until: 2026-09-10T00:52:24Z
 depends_on: []
 touches: [relay/artifacts/T-human-005/]
 pr: null
@@ -97,3 +97,5 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 marx: -> review.
 - 2026-09-09 marx: -> in_progress.
 - 2026-09-09 marx: -> review.
+- 2026-09-09 marx: -> review.
+- 2026-09-09 marx (tick 15): lease renewed; still in `review`, awaiting the coordinator. No edits to the artifact.
