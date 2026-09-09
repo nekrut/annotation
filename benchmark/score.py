@@ -38,7 +38,7 @@ import math
 import os
 import sys
 import tempfile
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 
 # Section 3.3.  A declaration missing any of these is not a submission.
 DECLARATION_KEYS = [
@@ -817,6 +817,9 @@ def splice(ref_chains, pred_chains, seqids, seqfetch=None):
         # acceptors; before this the GC one existed for donors only.
         out["by_local_gc"] = {"donor": _splice_by_gc(ref_d, pred_d, seqfetch),
                               "acceptor": _splice_by_gc(ref_a, pred_a, seqfetch)}
+        out["short_gaps"] = {
+            "reference": _short_gap_report(ref_short, seqfetch),
+            "predicted": _short_gap_report(pred_short, seqfetch)}
         ref_dc = _sites_multiple_dinuc_classes(ref_i, seqfetch)
         pred_dc = _sites_multiple_dinuc_classes(pred_i, seqfetch)
         for i, name in enumerate(("donor", "acceptor")):
@@ -825,6 +828,7 @@ def splice(ref_chains, pred_chains, seqids, seqfetch=None):
     else:
         out["by_dinucleotide"] = None
         out["by_local_gc"] = None
+        out["short_gaps"] = None
     return out
 
 
@@ -878,6 +882,76 @@ def _sites_multiple_dinuc_classes(introns, seqfetch):
         seen[0][(seqid, d, strand)].add(c)
         seen[1][(seqid, a, strand)].add(c)
     return tuple(sum(1 for v in m.values() if len(v) > 1) for m in seen)
+
+
+def motif_window(left, gap, right):
+    """Does a sub-threshold CDS gap read GT/GC..AG with one exon base to spare?
+
+    A gap shorter than ``MIN_INTRON`` is not scored as a junction (§4.3), but
+    "too short" and "not spliceable" are different claims, and the second one
+    is the one a motif-masked decoder makes.  Tiberius's default donor mask is
+    ``NGT``/``NGC`` and its acceptor mask ``AGN``, and those windows each
+    include one base *outside* the intron, so a one-base gap can satisfy both
+    at once by borrowing from the exon on either side: exon ...A, gap G,
+    exon T... reads GT to the donor and AG to the acceptor while the intron
+    itself is a single base.  This is the test on its own terms -- the window
+    string is ``left[-1] + gap + right[0]`` and the two masks are read off it
+    at their own offsets -- so the answer says whether a masked decoder
+    *could* have emitted the gap, not whether the gap is an intron.
+    """
+    s = (left[-1] + gap + right[0]).upper()
+    n = len(gap)
+    return s[1:3] in ("GT", "GC") and s[n - 1:n + 1] == "AG"
+
+
+def _short_gap_report(gaps, seqfetch, top=5):
+    """§4.3.  What the sub-``MIN_INTRON`` CDS gaps actually are, by sequence.
+
+    The length floor is a scoring rule, not a classification, and it says
+    nothing about *why* a gap is there.  Sequence does: a programmed
+    ribosomal frameshift and a spliceable micro-gap look identical in a
+    length histogram and nothing alike in three bases of flanking context.
+    Reported for the reference and the prediction separately, so the two
+    questions the floor raises -- "what did the annotation encode here" and
+    "could the decoder have produced this" -- are answered from the same
+    windows.  ``motif_borrows_exon_base`` is the class that only exists
+    because the masks overlap the exon (see ``motif_window``);
+    ``motif_exact`` is a gap whose own first and last two bases read
+    GT/GC..AG, which needs at least 4 bp.
+    """
+    counts = Counter()
+    lengths, mod3, ctx = Counter(), Counter(), Counter()
+    for seqid, s, e, strand in gaps:
+        n = e - s + 1
+        lengths[n] += 1
+        mod3[n % 3] += 1
+        w = seqfetch(seqid, s - 1, e + 1) if s > 1 else None
+        if w is None or len(w) != n + 2:
+            counts["motif_unknown"] += 1
+            continue
+        w = w.upper()
+        if strand == "-":
+            w = _revcomp(w)
+        gap = w[1:-1]
+        if n >= 4 and gap[:2] in ("GT", "GC") and gap[-2:] == "AG":
+            counts["motif_exact"] += 1
+        elif motif_window(w[0], gap, w[-1]):
+            counts["motif_borrows_exon_base"] += 1
+        else:
+            counts["motif_none"] += 1
+        ctx[w[0] + "|" + gap + "|" + w[-1]] += 1
+    # Sorted by count then string, so the list does not move between runs
+    # when two contexts tie.
+    common = sorted(ctx.items(), key=lambda kv: (-kv[1], kv[0]))[:top]
+    return {"count": len(gaps),
+            "motif_exact": counts["motif_exact"],
+            "motif_borrows_exon_base": counts["motif_borrows_exon_base"],
+            "motif_none": counts["motif_none"],
+            "motif_unknown": counts["motif_unknown"],
+            "by_length": {str(k): lengths[k] for k in sorted(lengths)},
+            "length_mod_3": {str(k): mod3[k] for k in sorted(mod3)},
+            "distinct_contexts": len(ctx),
+            "most_common_contexts": [[c, n] for c, n in common]}
 
 
 def gc_bin(seqfetch, seqid, pos):
@@ -1336,7 +1410,14 @@ def needed_windows(ref_chains, pred_chains, seqids):
     wins = set()
     half = GC_WINDOW // 2
     for chains in (ref_chains, pred_chains):
-        for seqid, s, e, strand in introns_of(chains, seqids)[0]:
+        introns, short = introns_of(chains, seqids)
+        # One window per sub-threshold gap, one exon base on each side: that
+        # is what ``motif_window`` reads, and the gap is under MIN_INTRON so
+        # the window is at most MIN_INTRON + 1 bases.
+        for seqid, s, e, _ in short:
+            if s > 1:
+                wins.add((seqid, s - 1, e + 1))
+        for seqid, s, e, strand in introns:
             wins.add((seqid, s, s + 1))
             wins.add((seqid, e - 1, e))
             d, a = (s, e) if strand == "+" else (e, s)
@@ -1603,6 +1684,41 @@ def score(reference, prediction, species, genome=None, seqids=None,
 
 
 # ----------------------------------------------------------------- self-test
+
+
+# A fixture for the sub-MIN_INTRON gap report (§4.3).  Four CDS chains, all
+# with a gap too short to be scored as an intron: t1 a 1 bp gap whose donor
+# and acceptor windows are only satisfied by borrowing an exon base on each
+# side, t2 the same case on the minus strand, t3 a 15 bp gap that reads
+# GT..AG on its own bases, and t4 a 1 bp gap that satisfies neither window.
+# The bases that decide this live in SHORTGAP_BASES below; everything else in
+# the fixture genome is C.
+SHORTGAP_FIXTURE = """##gff-version 3
+##sequence-region chr1 1 20000
+chr1\t.\tregion\t1\t20000\t.\t+\t.\tID=chr1;genome=chromosome
+chr1\t.\tgene\t1000\t1201\t.\t+\t.\tID=g1
+chr1\t.\tmRNA\t1000\t1201\t.\t+\t.\tID=t1;Parent=g1
+chr1\t.\tCDS\t1000\t1100\t.\t+\t0\tID=c1;Parent=t1
+chr1\t.\tCDS\t1102\t1201\t.\t+\t0\tID=c2;Parent=t1
+chr1\t.\tgene\t3000\t3201\t.\t-\t.\tID=g2
+chr1\t.\tmRNA\t3000\t3201\t.\t-\t.\tID=t2;Parent=g2
+chr1\t.\tCDS\t3000\t3100\t.\t-\t0\tID=c3;Parent=t2
+chr1\t.\tCDS\t3102\t3201\t.\t-\t0\tID=c4;Parent=t2
+chr1\t.\tgene\t5000\t5215\t.\t+\t.\tID=g3
+chr1\t.\tmRNA\t5000\t5215\t.\t+\t.\tID=t3;Parent=g3
+chr1\t.\tCDS\t5000\t5100\t.\t+\t0\tID=c5;Parent=t3
+chr1\t.\tCDS\t5116\t5215\t.\t+\t0\tID=c6;Parent=t3
+chr1\t.\tgene\t7000\t7201\t.\t+\t.\tID=g4
+chr1\t.\tmRNA\t7000\t7201\t.\t+\t.\tID=t4;Parent=g4
+chr1\t.\tCDS\t7000\t7100\t.\t+\t0\tID=c7;Parent=t4
+chr1\t.\tCDS\t7102\t7201\t.\t+\t0\tID=c8;Parent=t4
+"""
+
+# (1-based start, bases).  t2's window is the reverse complement of t1's, so
+# the report must read it on the transcript's strand to reach the same class.
+SHORTGAP_BASES = [(1100, "AGT"), (3100, "ACT"),
+                  (5101, "GT" + "C" * 11 + "AG"), (7100, "TAA")]
+
 
 REF_FIXTURE = """##gff-version 3
 ##sequence-region chr1 1 20000
@@ -2139,6 +2255,71 @@ def self_test():
           t6["codon"]["transcripts_stop_extended_by_3bp"], 0)
     os.unlink(gfa)
     os.unlink(bpred)
+
+    # Section 4.3, the sub-MIN_INTRON gap report.  First the window test on
+    # its own terms: engels' enumeration over every A/C/G/T gap of length 1 to
+    # 4, with one flanking exon base on each side, reproduced in the repo so
+    # the claim is checked and not cited.  Only two of the 64 one-base cases
+    # pass, and both pass by borrowing; no 2 or 3 bp gap passes; 32 of the
+    # 4,096 four-base cases pass, which are the GT/GC..AG gaps themselves.
+    bases = "ACGT"
+    enum = {}
+    for n in range(1, 5):
+        hits = 0
+        for i in range(4 ** (n + 2)):
+            w = ""
+            for k in range(n + 2):
+                w = bases[(i >> (2 * k)) & 3] + w
+            if motif_window(w[0], w[1:-1], w[-1]):
+                hits += 1
+        enum[n] = hits
+    check("motif window 1 bp", enum[1], 2)
+    check("motif window 2 bp", enum[2], 0)
+    check("motif window 3 bp", enum[3], 0)
+    check("motif window 4 bp", enum[4], 32)
+    check("motif window borrow example", motif_window("A", "G", "T"), True)
+    check("motif window borrow GC", motif_window("A", "G", "C"), True)
+    check("motif window exact GTAG", motif_window("C", "GTAG", "C"), True)
+    check("motif window ATAC", motif_window("C", "ATAC", "C"), False)
+    check("motif window frameshift", motif_window("T", "A", "A"), False)
+
+    # Then end to end, through the scorer, with a genome: the class of each
+    # gap has to survive chain building, the window plan and the minus-strand
+    # reverse complement.
+    sgref = os.path.join(d, "sgref.gff3")
+    open(sgref, "w").write(SHORTGAP_FIXTURE)
+    sgfa = os.path.join(d, "sg.fa")
+    sseq = list("C" * 20000)
+    for start, sub in SHORTGAP_BASES:
+        sseq[start - 1:start - 1 + len(sub)] = list(sub)
+    sseq = "".join(sseq)
+    with open(sgfa, "w") as fh:
+        fh.write(">chr1 short gap fixture\n")
+        for i in range(0, len(sseq), 60):
+            fh.write(sseq[i:i + 60] + "\n")
+    sg = score(sgref, sgref, "fixture", genome=sgfa)["splice"]
+    check("short gap fixture introns", sg["reference_introns"], 0)
+    check("short gap fixture gaps", sg["reference_cds_gaps_below_min"], 4)
+    sgr = sg["short_gaps"]["reference"]
+    check("short gap borrows", sgr["motif_borrows_exon_base"], 2)
+    check("short gap exact", sgr["motif_exact"], 1)
+    check("short gap none", sgr["motif_none"], 1)
+    check("short gap unknown", sgr["motif_unknown"], 0)
+    check("short gap lengths", sgr["by_length"], {"1": 3, "15": 1})
+    check("short gap mod 3", sgr["length_mod_3"], {"0": 1, "1": 3})
+    # The minus-strand gap is read on its strand, so it lands in the same
+    # context as the plus-strand one rather than in its reverse complement.
+    check("short gap contexts", sgr["most_common_contexts"][0], ["A|G|T", 2])
+    check("short gap distinct contexts", sgr["distinct_contexts"], 3)
+    # An identity run reports the same thing for the prediction.
+    check("short gap predicted borrows",
+          sg["short_gaps"]["predicted"]["motif_borrows_exon_base"], 2)
+    # Without a genome there is nothing to read the sequence from, and the
+    # report says so rather than guessing.
+    check("short gap no genome",
+          score(sgref, sgref, "fixture")["splice"]["short_gaps"], None)
+    os.unlink(sgref)
+    os.unlink(sgfa)
 
     # A reference has no stop_codon features either, so an ordinary run must
     # report "unknown" and change nothing.

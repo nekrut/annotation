@@ -727,6 +727,69 @@ non-splice-sites into the yeast donor and acceptor counts. Sub-threshold gaps
 are counted and reported (`splice.reference_cds_gaps_below_min`), not dropped
 silently.
 
+**The floor is a scoring rule, so it says nothing about what a sub-threshold
+gap is; sequence does.** With `--genome`, `splice.short_gaps` reports the
+reference's and the prediction's sub-threshold gaps separately, by length, by
+length mod 3, by their most common flank/gap/flank context, and by whether
+they satisfy the splice motifs a masked decoder enforces. The motif test is
+the decoder's own: Tiberius's default donor mask is `NGT`/`NGC` and its
+acceptor mask `AGN`, and each window includes one base *outside* the intron,
+so the string tested is `left[-1] + gap + right[0]` and the two masks are read
+off it at their own offsets. A gap is `motif_exact` if its own first and last
+two bases read GT/GC..AG (which needs at least 4 bp) and
+`motif_borrows_exon_base` if only the overlapping windows are satisfied — the
+class that exists because the masks reach into the exon: an exon ending in A,
+a one-base gap G, and an exon starting T reads GT to the donor and AG to the
+acceptor with a one-base intron. Exhaustively, only 2 of the 64 one-base
+contexts pass that way, no 2 or 3 bp gap passes at all, and 32 of the 4,096
+four-base contexts pass; `score.py --self-test` reproduces that enumeration.
+
+On the panel this separates the two populations cleanly, and they do not
+overlap:
+
+| Sub-floor gaps in | Count | Lengths | exact | borrows | neither |
+|---|---:|---|---:|---:|---:|
+| *S. cerevisiae* RefSeq reference | 47 | 1 bp ×47 | 0 | 0 | 47 |
+| *S. pombe* RefSeq reference | 19 | 1 bp ×12, 2 bp ×6, 11 bp ×1 | 0 | 0 | 19 |
+| *A. mellifera* RefSeq reference | 90 | 1 bp ×46, 2 bp ×44 | 0 | 2 | 88 |
+| *H. sapiens* RefSeq reference | 55 | 1 bp ×37, 2 bp ×17, 19 bp ×1 | 0 | 1 | 54 |
+| *T. rubripes* RefSeq reference | 1,124 | 1 bp ×684, 2 bp ×440 | 0 | 7 | 1,117 |
+| *C. elegans* RefSeq reference | 15 | 1–4 bp | 0 | 0 | 15 |
+| GENCODE 50 scored as a prediction | 24 | 1–5 bp | 0 | 1 | 23 |
+| AUGUSTUS 3.5.0, all five runs | 0 | — | — | — | — |
+| Helixer 0.3.7 on *T. rubripes*, *S. cerevisiae*, *N. crassa* | 0 | — | — | — | — |
+| Tiberius 2.0.7 on *T. rubripes* | 413 | 1 bp ×101, 4–19 bp ×312 | 312 | 101 | 0 |
+
+Every row but the last two comes from a committed run under
+`benchmark/validation/`; the *C. elegans* line is the reference scored against
+itself, which is the same reference-side computation without a prediction to
+go with it. Every fugu reference gap is a frameshift-shaped 1 or 2 bp step,
+never a multiple of three and so never a clean codon deletion, and 1,117 of
+the 1,124 fail the motif test; the 7 that pass are one-base gaps whose flanks
+happen to read `A|G|T`, near the rate the enumeration predicts by chance
+(2 of 64 contexts, 684 one-base gaps). In yeast the single most common context
+is `T|A|G` at 35 of 47, which is the Ty1 `CTT A GGC` +1 programmed frameshift
+site
+([10.1016/0092-8674(90)90371-K](https://doi.org/10.1016/0092-8674%2890%2990371-K)).
+GENCODE 50, a curated annotation scored as a submission, behaves like the
+references rather than like a predictor: 24 gaps, 23 of which no mask admits.
+Every one of Tiberius's 413 passes: 312 on their own bases and 101 by
+borrowing, and those 101 are exactly the two contexts the enumeration allows,
+`A|G|T` (72) and `A|G|C` (29). AUGUSTUS and Helixer produce none at all.
+
+So the floor is doing two different jobs on the two sides, and both are
+needed. On the reference side it keeps 1,335 frameshift and
+assembly-accommodation steps across the seven references measured here out of
+the donor and acceptor denominators. On the prediction it
+absorbs a decoder artefact: a motif mask with no duration constraint admits a
+one-base intron, because the masks overlap the exon, and Tiberius emits that
+path 101 times on one fish genome. Scoring those as junctions would have
+credited or charged the prediction for sites that no annotation encodes; the
+sub-threshold counts and this table are where they stay visible instead. For
+§7 and the design work the reading is narrower than "Tiberius is wrong": a
+zero-probability motif mask constrains *composition* and not *duration*, and
+the two have to be modelled separately.
+
 ### 4.4 Gene and transcript level
 
 Two numbers, because they answer different questions.
@@ -1075,7 +1138,7 @@ non-`protein_coding` biotype and an incomplete end (§4, §4.5).
 Verification so far:
 
 - `python3 benchmark/score.py --self-test` scores built-in fixture pairs and
-  checks 150 expected values — it prints the count it ran, so this sentence
+  checks 171 expected values — it prints the count it ran, so this sentence
   cannot drift from the code again; it said 116 while the code ran 104: a
   prediction with one exact transcript, one
   shifted minus-strand boundary, one overlapping-but-unaligned locus and one

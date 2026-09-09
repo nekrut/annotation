@@ -447,6 +447,58 @@
   "predicted_introns": 4915,
   "reference_cds_gaps_below_min": 19,
   "reference_introns": 5026,
+  "short_gaps": {
+   "predicted": {
+    "by_length": {},
+    "count": 0,
+    "distinct_contexts": 0,
+    "length_mod_3": {},
+    "most_common_contexts": [],
+    "motif_borrows_exon_base": 0,
+    "motif_exact": 0,
+    "motif_none": 0,
+    "motif_unknown": 0
+   },
+   "reference": {
+    "by_length": {
+     "1": 12,
+     "11": 1,
+     "2": 6
+    },
+    "count": 19,
+    "distinct_contexts": 19,
+    "length_mod_3": {
+     "1": 12,
+     "2": 7
+    },
+    "most_common_contexts": [
+     [
+      "A|AA|A",
+      1
+     ],
+     [
+      "A|AG|T",
+      1
+     ],
+     [
+      "A|A|C",
+      1
+     ],
+     [
+      "A|A|G",
+      1
+     ],
+     [
+      "A|TG|A",
+      1
+     ]
+    ],
+    "motif_borrows_exon_base": 0,
+    "motif_exact": 0,
+    "motif_none": 19,
+    "motif_unknown": 0
+   }
+  },
   "strata_units": {
    "by_dinucleotide": "intron",
    "by_intron_length_decile": "site",

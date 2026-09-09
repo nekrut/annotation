@@ -287,6 +287,18 @@ No `--stop-outside-cds`: Tiberius includes the stop codon in the CDS, and the
 scorer confirms it from both routes (the GTF's `stop_codon` features and the
 genome probe, which finds 23,946 of 23,948 chains ending on a stop).
 
+This run is also what `splice.short_gaps` (§4.3) was added for. Tiberius emits
+413 CDS gaps below the 20 bp intron floor on fugu; the reference has 1,124.
+Read against the genome the two sets have nothing in common. All 413 predicted
+gaps satisfy the donor and acceptor motif masks — 312 on their own bases,
+101 by borrowing an exon base at each end, and those 101 are exactly the two
+one-base contexts the masks allow, `A|G|T` (72) and `A|G|C` (29). Of the
+1,124 reference gaps, 1,117 satisfy neither mask, every one is 1 or 2 bp, and
+none is a multiple of three. Helixer on the same genome emits none. The floor
+is therefore not hiding a disagreement about micro-introns: it is separating
+an annotation's frameshift encoding from a decoder that constrains splice-site
+composition without constraining intron duration.
+
 The `heldout_seen_in_pretraining: no` in that declaration is a set operation,
 not a judgement, and it can be rechecked without the container:
 
