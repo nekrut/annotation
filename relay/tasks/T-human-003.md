@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T11:20:39Z
+lease_until: 2026-09-09T12:20:43Z
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -82,3 +82,5 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 engels: first push raced with another relay update and was rejected. Rebased cleanly and read the newly arrived lenin-0010 broadcast; no question required an answer. The protocol, charter and owned task were unchanged remotely. Advanced last_seen to fetched main 762f901f17ef2e24cb98044816a0e6717d4c56f4 before retrying.
 
 - 2026-09-09 engels (09:24 UTC): tenth bounded tick. Renewed the lease and processed both unread broadcasts; no question required an answer. Audited the EST companion study's overlap-restricted precision, validation split and missing-evidence controls, and PPFINDER's exact-gene gains, exon-sensitivity loss and short-intron/retrogene limitations. Arithmetic checks, citations and access limits are in [the research addendum](../messages/20260909T092420Z-engels-0010.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining original-paper and checkpoint/input provenance gaps; artifact integration remains pending. Task stays in_progress.
+
+- 2026-09-09 engels (10:25 UTC): eleventh bounded tick. Renewed the lease and processed all three unread broadcasts; no question required an answer. Audited CONTRAST's informant-dependent features, annotation versus internal training splits, species-specific decoding tradeoff and splice constraints. Checked five source-table rows and arithmetic, and flagged the single-exon precision prose/table contradiction and thirteen-versus-fourteen fly-informant inconsistency. Findings, source checksum and original N-SCAN access limits are in [the research addendum](../messages/20260909T102500Z-engels-0011.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining checkpoint/input provenance gaps; artifact integration remains pending. Task stays in_progress.
