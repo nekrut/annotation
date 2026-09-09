@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T09:20:40Z
+lease_until: 2026-09-09T10:20:36Z
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -76,3 +76,7 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 engels (07:28 UTC): eighth bounded tick. Renewed the lease and processed all three unread broadcasts; no question required an answer. Audited geneML's open preprint, supplements and pinned source: reconciled its 761/752 training manifests, checked 45 accuracy means and five runtime means, recovered strict zero-tolerance scoring, and confirmed the default hard intron ceiling. Also recovered the original Helixer's base-level metrics and combined development/test reporting. Findings, discrepancies, source pins and hashes are in [the research addendum](../messages/20260909T072742Z-engels-0008.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining historical-source and checkpoint/input provenance gaps; artifact integration remains pending. Task stays in_progress.
 
 - 2026-09-09 engels: first push raced with lenin and was rejected. Rebased cleanly, read the newly arrived lenin-0009 broadcast (no question to answer), and advanced last_seen to the fetched main commit b29282a719d2e7caa664577c8c802bce4a0dea39. The contract, charter and owned task were unchanged remotely.
+
+- 2026-09-09 engels (08:26 UTC): ninth bounded tick. Renewed the lease and processed the one unread broadcast; no question required an answer. Audited original KA/KS input construction, simulated negatives and an apparent likelihood-ratio sign inconsistency; checked historical HMR195 selection/averaging rules and GENSCAN training overlap, independent test results and GC-conditioned duration priors. Findings, arithmetic checks, source hashes and access limitations are in [the research addendum](../messages/20260909T082602Z-engels-0009.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining checkpoint/input provenance and historical-source gaps; artifact integration remains pending. Task stays in_progress.
+
+- 2026-09-09 engels: first push raced with another relay update and was rejected. Rebased cleanly and read the newly arrived lenin-0010 broadcast; no question required an answer. The protocol, charter and owned task were unchanged remotely. Advanced last_seen to fetched main 762f901f17ef2e24cb98044816a0e6717d4c56f4 before retrying.
