@@ -16,6 +16,8 @@ outside the repository.
 | `fetch.py` | download and checksum-verify genomes/annotations from the NCBI FTP mirror |
 | `annotation_stats.py` | recompute every statistic in `panel.tsv` from a GFF3 |
 | `leakage_check.py` | enforce the held-out phylogenetic distance rule; check declared informants |
+| `score.py` | score one predicted GFF3 against the reference; emits the `docs/benchmark.md` section 4 metrics as JSON |
+| `report.py` | join scored species into the section 4.8 table and its two aggregates |
 
 Python 3.11, standard library only. Nothing to install.
 
@@ -31,7 +33,23 @@ python3 benchmark/annotation_stats.py /tmp/panel/Saccharomyces_cerevisiae/*_geno
 
 # the held-out rules
 python3 benchmark/leakage_check.py
+
+# the scorer against its fixtures
+python3 benchmark/score.py --self-test
+
+# score a prediction (the declaration is docs/benchmark.md section 3.3)
+python3 benchmark/score.py \
+    --reference /tmp/panel/Saccharomyces_cerevisiae/*_genomic.gff.gz \
+    --prediction predicted.gff3 --species Saccharomyces_cerevisiae \
+    --declaration my-run.yaml --genome /tmp/panel/*/*_genomic.fna.gz \
+    --out results/Saccharomyces_cerevisiae.json
+
+# the section 4.8 table
+python3 benchmark/report.py results/*.json --markdown
 ```
+
+`score.py --genome` is optional and only adds the splice dinucleotide and
+local-GC stratifications; everything else is computed from annotation alone.
 
 `fetch.py --what` accepts `gff`, `fasta`, `protein`, `cds`. The whole panel is
 318 MB of gzipped GFF; the FASTAs are considerably larger.

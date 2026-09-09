@@ -1,0 +1,1043 @@
+#!/usr/bin/env python3
+"""Score a predicted GFF3 against a reference annotation.
+
+Implements section 4 of ``docs/benchmark.md`` for one species and emits one
+JSON object carrying every field section 4.8 asks for that can be computed
+from annotation alone: nucleotide, CDS-exon, splice-site, transcript, locus,
+and start/stop-codon metrics with their stratifications.  BUSCO/OMArk (4.6)
+and cost (4.7) are measured by other tools and merged in by ``report.py``.
+
+Standard library only.  Nothing is written except the JSON on stdout (or
+``--out``).  Reference and prediction may be plain or gzipped GFF3.
+
+Everything is scored on the **CDS**, not the transcript: UTRs are out of
+scope for this charter and a model that does not predict them must not be
+penalized (section 4).  A reference CDS chain is assumed to include its stop
+codon, which is the RefSeq and Ensembl GFF3 convention; pass
+``--stop-outside-cds`` if the prediction follows the other one.
+
+Refuses to run without the submission declaration of section 3.3
+(``--declaration``), because a run without it is not comparable.  The
+exception is ``--self-test``, which scores built-in fixtures and checks the
+answers.
+
+Usage:
+    python3 score.py --reference REF.gff.gz --prediction PRED.gff3 \\
+        --species Homo_sapiens --declaration decl.yaml [--genome REF.fna.gz]
+    python3 score.py --self-test
+"""
+from __future__ import annotations
+
+import argparse
+import bisect
+import gzip
+import hashlib
+import io
+import json
+import math
+import os
+import sys
+import tempfile
+from collections import defaultdict, deque
+
+# Section 3.3.  A declaration missing any of these is not a submission.
+DECLARATION_KEYS = [
+    "model",
+    "training_species",
+    "pretraining_corpus",
+    "heldout_seen_in_pretraining",
+    "protein_db",
+    "alignment",
+    "informants",
+    "rnaseq",
+    "hardware",
+]
+
+# Section 4: "no unplaced scaffolds under 10 kb".
+MIN_SEQ_LEN = 10000
+# Section 4.3: local GC is measured in a 200 bp window centred on the site.
+GC_WINDOW = 200
+# Not every gap between consecutive CDS blocks is an intron.  RefSeq encodes a
+# programmed ribosomal frameshift as two CDS blocks separated by 1 bp, which is
+# 47 of the 343 CDS gaps in the S. cerevisiae reference alone.  The shortest
+# known spliceosomal introns are around 30 nt, so gaps under this threshold are
+# counted and reported separately instead of being scored as splice sites.
+MIN_INTRON = 20
+GC_BINS = [0.30, 0.40, 0.50, 0.60]  # five bins: <30, 30-40, 40-50, 50-60, >=60
+
+TX_TYPES = {"mRNA", "transcript", "CDS_transcript"}
+
+
+# ---------------------------------------------------------------- GFF3 input
+
+
+def _open(path):
+    if path == "-":
+        return sys.stdin
+    if path.endswith(".gz"):
+        return io.TextIOWrapper(gzip.open(path, "rb"), encoding="utf-8", errors="replace")
+    return open(path, "r", encoding="utf-8", errors="replace")
+
+
+def _attr(field, key):
+    # GFF3 attributes: key=value;key=value.
+    for part in field.split(";"):
+        part = part.strip()
+        if part.startswith(key) and part[len(key):len(key) + 1] == "=":
+            return part[len(key) + 1:]
+    return None
+
+
+class Annotation:
+    """CDS chains keyed by transcript, with their loci and sequence lengths."""
+
+    def __init__(self):
+        self.cds = defaultdict(list)      # tid -> [(start, end), ...]
+        self.where = {}                   # tid -> (seqid, strand)
+        self.gene_of = {}                 # tid -> gene id (may be the tid)
+        self.seq_len = {}                 # seqid -> length
+        self.region_attrs = {}            # seqid -> attribute string
+        self.explicit_genes = False
+
+    def chains(self):
+        """tid -> (seqid, strand, ((s, e), ...)) with CDS sorted by position."""
+        out = {}
+        for tid, blocks in self.cds.items():
+            seqid, strand = self.where[tid]
+            out[tid] = (seqid, strand, tuple(sorted(blocks)))
+        return out
+
+
+def load_gff(path):
+    """Parse a GFF3 into CDS chains.
+
+    Tolerant on purpose: predictors emit CDS rows with ``Parent`` pointing at
+    an mRNA that may or may not be declared, or with only ``transcript_id``.
+    A CDS with no usable parent becomes its own transcript.
+    """
+    ann = Annotation()
+    tx_gene = {}
+    max_end = defaultdict(int)
+    with _open(path) as fh:
+        for line in fh:
+            if not line or line[0] == "#":
+                if line.startswith("##sequence-region"):
+                    f = line.split()
+                    if len(f) == 4:
+                        ann.seq_len[f[1]] = int(f[3]) - int(f[2]) + 1
+                continue
+            f = line.rstrip("\n").split("\t")
+            if len(f) < 9:
+                continue
+            seqid, ftype, attrs = f[0], f[2], f[8]
+            if ftype == "region" and f[3] == "1":
+                ann.region_attrs[seqid] = attrs
+                ann.seq_len.setdefault(seqid, int(f[4]))
+                continue
+            try:
+                start, end = int(f[3]), int(f[4])
+            except ValueError:
+                continue
+            if end > max_end[seqid]:
+                max_end[seqid] = end
+            if ftype in TX_TYPES:
+                tid = _attr(attrs, "ID") or _attr(attrs, "transcript_id")
+                gid = _attr(attrs, "Parent") or _attr(attrs, "gene_id")
+                if tid:
+                    tx_gene[tid] = gid or tid
+                    if gid:
+                        ann.explicit_genes = True
+            elif ftype == "CDS":
+                tid = (_attr(attrs, "Parent") or _attr(attrs, "transcript_id")
+                       or _attr(attrs, "ID"))
+                if not tid:
+                    tid = "%s:%d:%s" % (seqid, start, f[6])
+                # A CDS may list several parents; the first is the transcript.
+                tid = tid.split(",")[0]
+                ann.cds[tid].append((start, end))
+                ann.where[tid] = (seqid, f[6])
+    for tid in ann.cds:
+        ann.gene_of[tid] = tx_gene.get(tid, tid)
+    for seqid, end in max_end.items():
+        ann.seq_len.setdefault(seqid, end)
+    return ann
+
+
+def select_seqids(ref, whitelist=None, min_len=MIN_SEQ_LEN):
+    """Sequences the run is scored on (section 4: primary assembly only).
+
+    Without a whitelist: drop sequences shorter than ``min_len``, and drop
+    RefSeq alt loci and patch scaffolds, which are the region features that
+    carry both ``genome=genomic`` and a ``chromosome=`` assignment.  Unplaced
+    scaffolds have ``genome=genomic`` without ``chromosome=`` and are kept.
+    """
+    if whitelist is not None:
+        return set(whitelist) & set(ref.seq_len)
+    keep = set()
+    for seqid, length in ref.seq_len.items():
+        if length < min_len:
+            continue
+        attrs = ref.region_attrs.get(seqid, "")
+        genome = _attr(attrs, "genome")
+        if genome == "genomic" and _attr(attrs, "chromosome"):
+            continue
+        keep.add(seqid)
+    return keep
+
+
+# ------------------------------------------------------------ interval maths
+
+
+def merge(intervals):
+    out = []
+    for s, e in sorted(intervals):
+        if out and s <= out[-1][1] + 1:
+            if e > out[-1][1]:
+                out[-1][1] = e
+        else:
+            out.append([s, e])
+    return [(s, e) for s, e in out]
+
+
+def total(intervals):
+    return sum(e - s + 1 for s, e in intervals)
+
+
+def isect_len(a, b):
+    """Length of the intersection of two merged, sorted interval lists."""
+    i = j = n = 0
+    while i < len(a) and j < len(b):
+        s = max(a[i][0], b[j][0])
+        e = min(a[i][1], b[j][1])
+        if e >= s:
+            n += e - s + 1
+        if a[i][1] < b[j][1]:
+            i += 1
+        else:
+            j += 1
+    return n
+
+
+def prf(tp, fp, fn):
+    sens = tp / (tp + fn) if tp + fn else None
+    prec = tp / (tp + fp) if tp + fp else None
+    if sens and prec:
+        f1 = 2 * sens * prec / (sens + prec)
+    else:
+        f1 = 0.0 if (tp + fp + fn) else None
+    return {"tp": tp, "fp": fp, "fn": fn,
+            "sensitivity": _r(sens), "precision": _r(prec), "f1": _r(f1)}
+
+
+def _r(x, nd=5):
+    return None if x is None else round(x, nd)
+
+
+# ------------------------------------------------------------------- metrics
+
+
+def cds_intervals_by_strand(chains, seqids):
+    by = defaultdict(list)
+    for seqid, strand, blocks in chains.values():
+        if seqid in seqids:
+            by[(seqid, strand)].extend(blocks)
+    return {k: merge(v) for k, v in by.items()}
+
+
+def nucleotide(ref_chains, pred_chains, seqids, scored_bp):
+    """Section 4.1.  Strand-aware; overlapping genes unioned; MCC reported."""
+    r = cds_intervals_by_strand(ref_chains, seqids)
+    p = cds_intervals_by_strand(pred_chains, seqids)
+    tp = 0
+    for key in set(r) & set(p):
+        tp += isect_len(r[key], p[key])
+    ref_bp = sum(total(v) for v in r.values())
+    pred_bp = sum(total(v) for v in p.values())
+    fp, fn = pred_bp - tp, ref_bp - tp
+    out = prf(tp, fp, fn)
+    tn = 2 * scored_bp - tp - fp - fn      # two strands
+    denom = math.sqrt(float(tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
+    out["mcc"] = _r((tp * tn - fp * fn) / denom) if denom > 0 else None
+    out["reference_cds_bp"] = ref_bp
+    out["predicted_cds_bp"] = pred_bp
+    out["scored_bp"] = scored_bp
+    return out
+
+
+def exon_type(i, n):
+    if n == 1:
+        return "single"
+    if i == 0:
+        return "initial"
+    if i == n - 1:
+        return "terminal"
+    return "internal"
+
+
+TYPE_RANK = {"single": 0, "initial": 1, "terminal": 2, "internal": 3}
+
+
+def exon_sets(chains, seqids):
+    """(seqid, start, end, strand) -> exon type, over all transcripts.
+
+    An exon shared by isoforms in different roles is labelled with the
+    highest-priority role it plays (single > initial > terminal > internal),
+    so that stratification is a partition.
+    """
+    out = {}
+    for seqid, strand, blocks in chains.values():
+        if seqid not in seqids:
+            continue
+        n = len(blocks)
+        order = blocks if strand == "+" else tuple(reversed(blocks))
+        for i, (s, e) in enumerate(order):
+            key = (seqid, s, e, strand)
+            t = exon_type(i, n)
+            if key not in out or TYPE_RANK[t] < TYPE_RANK[out[key]]:
+                out[key] = t
+    return out
+
+
+def exons(ref_chains, pred_chains, seqids):
+    """Section 4.2.  Both boundaries exact; stratified by exon type."""
+    ref = exon_sets(ref_chains, seqids)
+    pred = exon_sets(pred_chains, seqids)
+    tp_keys = set(ref) & set(pred)
+    out = {"all": prf(len(tp_keys), len(pred) - len(tp_keys), len(ref) - len(tp_keys))}
+    by_type = {}
+    for t in ("initial", "internal", "terminal", "single"):
+        r = {k for k, v in ref.items() if v == t}
+        p = {k for k, v in pred.items() if v == t}
+        tp = len(r & p)
+        by_type[t] = prf(tp, len(p) - tp, len(r) - tp)
+    out["by_type"] = by_type
+
+    # "Roughly right, structurally wrong": predicted exons that overlap an
+    # annotated exon but match neither boundary (section 4.2).
+    starts = defaultdict(list)
+    for seqid, s, e, strand in ref:
+        starts[(seqid, strand)].append((s, e))
+    for key in starts:
+        starts[key].sort()
+    overlap_only = 0
+    for key in pred:
+        seqid, s, e, strand = key
+        if key in ref:
+            continue
+        arr = starts.get((seqid, strand))
+        if not arr:
+            continue
+        i = bisect.bisect_right(arr, (e, float("inf")))
+        hit = False
+        # Reference exons are short relative to the genome; walking back a
+        # bounded number of entries finds any overlap without an interval tree.
+        j = i - 1
+        while j >= 0 and arr[j][0] >= s - 5_000_000:
+            rs, re_ = arr[j]
+            if re_ >= s and rs <= e and rs != s and re_ != e:
+                hit = True
+                break
+            j -= 1
+        if hit:
+            overlap_only += 1
+    out["predicted_overlap_no_boundary"] = overlap_only
+    out["predicted_overlap_no_boundary_frac"] = _r(
+        overlap_only / len(pred) if pred else None)
+    return out
+
+
+def introns_of(chains, seqids, min_len=MIN_INTRON):
+    """(seqid, start, end, strand) of every CDS-chain intron, de-duplicated.
+
+    Returns ``(introns, short_gaps)``: gaps shorter than ``min_len`` are not
+    splice junctions (see ``MIN_INTRON``) and are returned separately so the
+    count is reported rather than silently dropped.
+    """
+    out, short = set(), set()
+    for seqid, strand, blocks in chains.values():
+        if seqid not in seqids:
+            continue
+        for i in range(len(blocks) - 1):
+            s, e = blocks[i][1] + 1, blocks[i + 1][0] - 1
+            if e < s:
+                continue
+            (out if e - s + 1 >= min_len else short).add((seqid, s, e, strand))
+    return out, short
+
+
+def sites_of(introns):
+    """Donor and acceptor positions, strand-aware, with their intron length."""
+    donors, acceptors = {}, {}
+    for seqid, s, e, strand in introns:
+        length = e - s + 1
+        d, a = (s, e) if strand == "+" else (e, s)
+        donors[(seqid, d, strand)] = length
+        acceptors[(seqid, a, strand)] = length
+    return donors, acceptors
+
+
+def deciles(values):
+    v = sorted(values)
+    if not v:
+        return []
+    return [v[min(len(v) - 1, int(round(q / 10 * (len(v) - 1))))] for q in range(1, 10)]
+
+
+def splice(ref_chains, pred_chains, seqids, seqfetch=None):
+    """Section 4.3.  Donors and acceptors separately, stratified."""
+    ref_i, ref_short = introns_of(ref_chains, seqids)
+    pred_i, pred_short = introns_of(pred_chains, seqids)
+    cuts = deciles([e - s + 1 for _, s, e, _ in ref_i])
+
+    def bucket(length):
+        return bisect.bisect_left(cuts, length) if cuts else 0
+
+    out = {"reference_introns": len(ref_i), "predicted_introns": len(pred_i),
+           "reference_cds_gaps_below_min": len(ref_short),
+           "predicted_cds_gaps_below_min": len(pred_short),
+           "min_intron": MIN_INTRON,
+           "intron_length_decile_cuts": cuts}
+    ref_d, ref_a = sites_of(ref_i)
+    pred_d, pred_a = sites_of(pred_i)
+    for name, r, p in (("donor", ref_d, pred_d), ("acceptor", ref_a, pred_a)):
+        tp = set(r) & set(p)
+        out[name] = prf(len(tp), len(p) - len(tp), len(r) - len(tp))
+        strat = []
+        for b in range(10):
+            rb = {k for k in r if bucket(r[k]) == b}
+            pb = {k for k in p if bucket(p[k]) == b}
+            t = len(rb & pb)
+            strat.append(prf(t, len(pb) - t, len(rb) - t))
+        out[name]["by_intron_length_decile"] = strat
+
+    if seqfetch is not None:
+        out["by_dinucleotide"] = _splice_by_dinuc(ref_i, pred_i, seqfetch)
+        out["by_local_gc"] = _splice_by_gc(ref_d, pred_d, seqfetch)
+    else:
+        out["by_dinucleotide"] = None
+        out["by_local_gc"] = None
+    return out
+
+
+COMP = str.maketrans("ACGTacgtNn", "TGCAtgcaNn")
+
+
+def _revcomp(s):
+    return s.translate(COMP)[::-1]
+
+
+def dinuc_class(seqfetch, seqid, s, e, strand):
+    d = seqfetch(seqid, s, s + 1)
+    a = seqfetch(seqid, e - 1, e)
+    if d is None or a is None:
+        return "unknown"
+    if strand == "-":
+        d, a = _revcomp(a), _revcomp(d)
+    pair = (d + "-" + a).upper()
+    return pair if pair in ("GT-AG", "GC-AG", "AT-AC") else "other"
+
+
+def _splice_by_dinuc(ref_i, pred_i, seqfetch):
+    classes = defaultdict(lambda: [0, 0, 0])  # tp, fp, fn
+    pred = set(pred_i)
+    for iv in ref_i:
+        c = dinuc_class(seqfetch, *iv)
+        if iv in pred:
+            classes[c][0] += 1
+        else:
+            classes[c][2] += 1
+    for iv in pred - ref_i:
+        classes[dinuc_class(seqfetch, *iv)][1] += 1
+    return {c: prf(*v) for c, v in sorted(classes.items())}
+
+
+def gc_bin(seqfetch, seqid, pos):
+    half = GC_WINDOW // 2
+    s = seqfetch(seqid, max(1, pos - half), pos + half - 1)
+    if not s:
+        return None
+    s = s.upper()
+    acgt = sum(s.count(b) for b in "ACGT")
+    if acgt == 0:
+        return None
+    gc = (s.count("G") + s.count("C")) / acgt
+    return bisect.bisect_left(GC_BINS, gc)
+
+
+def _splice_by_gc(ref_d, pred_d, seqfetch):
+    bins = defaultdict(lambda: [0, 0, 0])
+    pred = set(pred_d)
+    for k in ref_d:
+        b = gc_bin(seqfetch, k[0], k[1])
+        if b is None:
+            continue
+        bins[b][0 if k in pred else 2] += 1
+    for k in pred - set(ref_d):
+        b = gc_bin(seqfetch, k[0], k[1])
+        if b is not None:
+            bins[b][1] += 1
+    return {str(b): prf(*v) for b, v in sorted(bins.items())}
+
+
+def loci_of(ann, chains, seqids):
+    """gene id -> (seqid, strand, merged CDS, [transcript ids]).
+
+    Uses the GFF3 gene grouping when the file has one; otherwise clusters
+    transcripts whose CDS overlaps on the same strand, so a predictor that
+    emits no gene features is still scored at the locus level.
+    """
+    groups = defaultdict(list)
+    for tid, (seqid, strand, blocks) in chains.items():
+        if seqid in seqids:
+            groups[ann.gene_of.get(tid, tid)].append(tid)
+    if not ann.explicit_genes:
+        groups = _cluster_by_overlap(chains, seqids)
+    out = {}
+    for gid, tids in groups.items():
+        seqid, strand, _ = chains[tids[0]]
+        blocks = []
+        for tid in tids:
+            blocks.extend(chains[tid][2])
+        out[gid] = (seqid, strand, merge(blocks), tids)
+    return out
+
+
+def _cluster_by_overlap(chains, seqids):
+    by = defaultdict(list)
+    for tid, (seqid, strand, blocks) in chains.items():
+        if seqid in seqids:
+            by[(seqid, strand)].append((blocks[0][0], blocks[-1][1], tid))
+    groups = {}
+    n = 0
+    for key, items in by.items():
+        items.sort()
+        cur, cur_end = [], -1
+        for s, e, tid in items:
+            if cur and s > cur_end:
+                n += 1
+                groups["cluster%d" % n] = cur
+                cur, cur_end = [], -1
+            cur.append(tid)
+            cur_end = max(cur_end, e)
+        if cur:
+            n += 1
+            groups["cluster%d" % n] = cur
+    return groups
+
+
+def _overlap_pairs(ref_loci, pred_loci):
+    """Overlapping (ref, pred) locus pairs with their shared CDS bases."""
+    index = defaultdict(list)
+    for pid, (seqid, strand, blocks, _) in pred_loci.items():
+        index[(seqid, strand)].append((blocks[0][0], blocks[-1][1], pid, blocks))
+    for key in index:
+        index[key].sort()
+    pairs = []
+    for rid, (seqid, strand, rblocks, _) in ref_loci.items():
+        arr = index.get((seqid, strand))
+        if not arr:
+            continue
+        rs, re = rblocks[0][0], rblocks[-1][1]
+        i = bisect.bisect_right(arr, (re, float("inf"), "", ()))
+        j = i - 1
+        while j >= 0:
+            ps, pe, pid, pblocks = arr[j]
+            if pe >= rs:
+                n = isect_len(rblocks, pblocks)
+                if n > 0:
+                    pairs.append((n, rid, pid))
+            if ps < rs - 10_000_000:
+                break
+            j -= 1
+    return pairs
+
+
+def _has_disjoint_pair(ids, loci):
+    """True if any two of these loci have no CDS overlap with each other."""
+    ids = list(ids)
+    if len(ids) < 2:
+        return False
+    for i in range(len(ids)):
+        for j in range(i + 1, len(ids)):
+            if isect_len(loci[ids[i]][2], loci[ids[j]][2]) == 0:
+                return True
+    return False
+
+
+def _overlapping_pairs(loci):
+    """Same-strand CDS-overlapping locus pairs, a property of the reference."""
+    by = defaultdict(list)
+    for lid, (seqid, strand, blocks, _) in loci.items():
+        by[(seqid, strand)].append((blocks[0][0], blocks[-1][1], lid, blocks))
+    n = 0
+    for items in by.values():
+        items.sort()
+        for i, (s, e, lid, blocks) in enumerate(items):
+            for j in range(i + 1, len(items)):
+                if items[j][0] > e:
+                    break
+                if isect_len(blocks, items[j][3]) > 0:
+                    n += 1
+    return n
+
+
+def loci(ref_ann, pred_ann, ref_chains, pred_chains, seqids):
+    """Section 4.4: locus level with fusion and split counts, then transcripts."""
+    ref_loci = loci_of(ref_ann, ref_chains, seqids)
+    pred_loci = loci_of(pred_ann, pred_chains, seqids)
+    pairs = _overlap_pairs(ref_loci, pred_loci)
+
+    per_ref, per_pred = defaultdict(set), defaultdict(set)
+    for _, rid, pid in pairs:
+        per_ref[rid].add(pid)
+        per_pred[pid].add(rid)
+    # A prediction that overlaps two annotated genes is only a fusion if those
+    # two genes do not overlap each other: yeast alone has 137 same-strand
+    # overlapping RefSeq gene pairs, and a correct prediction of one of them
+    # necessarily touches both.  Same, symmetrically, for splits.
+    fusion = sum(1 for pid, rids in per_pred.items()
+                 if _has_disjoint_pair(rids, ref_loci))
+    split = sum(1 for rid, pids in per_ref.items()
+                if _has_disjoint_pair(pids, pred_loci))
+
+    # One-to-one, greedy by shared CDS bases: each reference locus keeps the
+    # prediction that overlaps it best, and no prediction is used twice.
+    matched_r, matched_p, matches = set(), set(), []
+    for n, rid, pid in sorted(pairs, key=lambda x: (-x[0], x[1], x[2])):
+        if rid in matched_r or pid in matched_p:
+            continue
+        matched_r.add(rid)
+        matched_p.add(pid)
+        matches.append((rid, pid))
+    locus = prf(len(matches), len(pred_loci) - len(matches), len(ref_loci) - len(matches))
+    locus["fusion"] = fusion
+    locus["split"] = split
+    locus["reference_loci"] = len(ref_loci)
+    locus["predicted_loci"] = len(pred_loci)
+    locus["reference_overlapping_locus_pairs"] = _overlapping_pairs(ref_loci)
+
+    tx = _transcripts(ref_loci, pred_loci, ref_chains, pred_chains, matches)
+    tx["unmatched_reference_loci"] = len(ref_loci) - len(matches)
+    return locus, tx
+
+
+def _transcripts(ref_loci, pred_loci, ref_chains, pred_chains, matches):
+    """Section 4.4 transcript exact match, under the isoform rule.
+
+    Within a matched locus, predicted transcripts are matched one-to-one to
+    annotated isoforms by shared CDS bases; unmatched annotated isoforms are
+    not counted as false negatives, so deeply annotated species are not
+    penalized against one-transcript-per-gene species.
+    """
+    tp = fp = fn = 0
+    for rid, pid in matches:
+        r_tids = ref_loci[rid][3]
+        p_tids = pred_loci[pid][3]
+        cand = []
+        for pt in p_tids:
+            pb = pred_chains[pt][2]
+            for rt in r_tids:
+                n = isect_len(list(pb), list(ref_chains[rt][2]))
+                if n > 0:
+                    cand.append((n, rt, pt))
+        used_r, used_p = set(), set()
+        for n, rt, pt in sorted(cand, key=lambda x: (-x[0], x[1], x[2])):
+            if rt in used_r or pt in used_p:
+                continue
+            used_r.add(rt)
+            used_p.add(pt)
+            if ref_chains[rt] == pred_chains[pt]:
+                tp += 1
+            else:
+                fp += 1
+                fn += 1
+        fp += len(p_tids) - len(used_p)
+    fn += len(ref_loci) - len(matches)
+    for pid, (_, _, _, p_tids) in pred_loci.items():
+        if pid not in {p for _, p in matches}:
+            fp += len(p_tids)
+    return prf(tp, fp, fn)
+
+
+def codons(ref_chains, pred_chains, seqids, stop_in_cds=True):
+    """Section 4.5.  Start and stop codon positions, reported separately."""
+    def ends(chains):
+        starts, stops = set(), set()
+        for tid, (seqid, strand, blocks) in chains.items():
+            if seqid not in seqids or not blocks:
+                continue
+            if strand == "+":
+                starts.add((seqid, blocks[0][0], strand))
+                stops.add((seqid, blocks[-1][1], strand))
+            else:
+                starts.add((seqid, blocks[-1][1], strand))
+                stops.add((seqid, blocks[0][0], strand))
+        return starts, stops
+
+    r_start, r_stop = ends(ref_chains)
+    p_start, p_stop = ends(pred_chains)
+    out = {}
+    for name, r, p in (("start", r_start, p_start), ("stop", r_stop, p_stop)):
+        tp = len(r & p)
+        out[name] = prf(tp, len(p) - tp, len(r) - tp)
+    out["stop_codon_inside_cds"] = bool(stop_in_cds)
+    return out
+
+
+# ---------------------------------------------------- optional genome access
+
+
+class WindowFetcher:
+    """One streaming pass over a FASTA, serving a fixed set of windows.
+
+    Random access into a 3 Gb gzipped FASTA is not worth an index here: every
+    window the scorer needs is known before the pass starts, so the sequence
+    is streamed once with a rolling buffer no larger than the gap between
+    consecutive requested windows.
+    """
+
+    def __init__(self, path, windows):
+        self.cache = {}
+        want = defaultdict(list)
+        for seqid, s, e in windows:
+            want[seqid].append((s, e))
+        for seqid in want:
+            want[seqid] = sorted(set(want[seqid]))
+        self._fill(path, want)
+
+    def _fill(self, path, want):
+        with _open(path) as fh:
+            seqid = None
+            pending = deque()
+            buf, buf_start, pos = [], 1, 0
+            for line in fh:
+                if line.startswith(">"):
+                    seqid = line[1:].split()[0]
+                    pending = deque(want.get(seqid, []))
+                    buf, buf_start, pos = [], 1, 0
+                    continue
+                if seqid is None or not pending:
+                    continue
+                seq = line.strip()
+                if not seq:
+                    continue
+                buf.append(seq)
+                pos += len(seq)
+                joined = None
+                while pending and pending[0][1] <= pos:
+                    s, e = pending.popleft()
+                    if joined is None:
+                        joined = "".join(buf)
+                    if s >= buf_start:
+                        self.cache[(seqid, s, e)] = joined[s - buf_start:e - buf_start + 1]
+                if pending:
+                    # Never trim past what has actually been read: buf_start
+                    # must stay equal to pos - len(buffer) + 1.
+                    keep = min(pending[0][0], pos + 1)
+                    if keep > buf_start:
+                        if joined is None:
+                            joined = "".join(buf)
+                        buf = [joined[keep - buf_start:]]
+                        buf_start = keep
+
+    def __call__(self, seqid, s, e):
+        return self.cache.get((seqid, s, e))
+
+
+def needed_windows(ref_chains, pred_chains, seqids):
+    """Every window the dinucleotide and GC stratifications will ask for."""
+    wins = set()
+    half = GC_WINDOW // 2
+    for chains in (ref_chains, pred_chains):
+        for seqid, s, e, strand in introns_of(chains, seqids)[0]:
+            wins.add((seqid, s, s + 1))
+            wins.add((seqid, e - 1, e))
+            d = s if strand == "+" else e
+            wins.add((seqid, max(1, d - half), d + half - 1))
+    return wins
+
+
+# ----------------------------------------------------------- the declaration
+
+
+def parse_declaration(path):
+    """Minimal YAML: top-level ``key: value`` lines, ``#`` comments.
+
+    Deliberately not a YAML parser.  It checks that every key section 3.3
+    requires is present and non-empty and records a hash of the file, so the
+    scored run is traceable to the declaration it was scored under.
+    """
+    raw = open(path, "rb").read()
+    seen = {}
+    for line in raw.decode("utf-8", "replace").splitlines():
+        if not line.strip() or line.lstrip().startswith("#") or line[0] in " \t-":
+            continue
+        if ":" not in line:
+            continue
+        k, v = line.split(":", 1)
+        seen[k.strip()] = v.strip()
+    missing = [k for k in DECLARATION_KEYS if not seen.get(k)]
+    return seen, missing, hashlib.sha256(raw).hexdigest()
+
+
+# -------------------------------------------------------------------- driver
+
+
+def score(reference, prediction, species, genome=None, seqids=None,
+          stop_in_cds=True):
+    ref = load_gff(reference)
+    pred = load_gff(prediction)
+    keep = select_seqids(ref, whitelist=seqids)
+    ref_chains = {t: c for t, c in ref.chains().items() if c[0] in keep}
+    pred_chains = {t: c for t, c in pred.chains().items() if c[0] in keep}
+    scored_bp = sum(ref.seq_len[s] for s in keep)
+
+    fetch = None
+    if genome:
+        fetch = WindowFetcher(genome, needed_windows(ref_chains, pred_chains, keep))
+
+    locus, tx = loci(ref, pred, ref_chains, pred_chains, keep)
+    return {
+        "species": species,
+        "reference": os.path.basename(reference),
+        "prediction": os.path.basename(prediction),
+        "scored_sequences": len(keep),
+        "scored_bp": scored_bp,
+        "reference_transcripts": len(ref_chains),
+        "predicted_transcripts": len(pred_chains),
+        "nucleotide": nucleotide(ref_chains, pred_chains, keep, scored_bp),
+        "exon": exons(ref_chains, pred_chains, keep),
+        "splice": splice(ref_chains, pred_chains, keep, fetch),
+        "transcript": tx,
+        "locus": locus,
+        "codon": codons(ref_chains, pred_chains, keep, stop_in_cds),
+    }
+
+
+# ----------------------------------------------------------------- self-test
+
+REF_FIXTURE = """##gff-version 3
+##sequence-region chr1 1 20000
+chr1\t.\tregion\t1\t20000\t.\t+\t.\tID=chr1;genome=chromosome
+chr1\t.\tgene\t1000\t3000\t.\t+\t.\tID=g1
+chr1\t.\tmRNA\t1000\t3000\t.\t+\t.\tID=t1;Parent=g1
+chr1\t.\tCDS\t1000\t1100\t.\t+\t0\tID=c1;Parent=t1
+chr1\t.\tCDS\t2000\t2100\t.\t+\t0\tID=c2;Parent=t1
+chr1\t.\tCDS\t2900\t3000\t.\t+\t0\tID=c3;Parent=t1
+chr1\t.\tgene\t6000\t6500\t.\t-\t.\tID=g2
+chr1\t.\tmRNA\t6000\t6500\t.\t-\t.\tID=t2;Parent=g2
+chr1\t.\tCDS\t6000\t6200\t.\t-\t0\tID=c4;Parent=t2
+chr1\t.\tCDS\t6400\t6500\t.\t-\t0\tID=c5;Parent=t2
+chr1\t.\tgene\t9000\t9300\t.\t+\t.\tID=g3
+chr1\t.\tmRNA\t9000\t9300\t.\t+\t.\tID=t3;Parent=g3
+chr1\t.\tCDS\t9000\t9300\t.\t+\t0\tID=c6;Parent=t3
+"""
+
+# Four predicted loci exercising four outcomes: pg1 reproduces t1 exactly;
+# pg2 shifts one boundary of t2's minus-strand CDS, which moves the acceptor
+# and not the donor; pg4 overlaps g3 sharing neither boundary; pg3 overlaps
+# nothing annotated.
+PRED_FIXTURE = """##gff-version 3
+chr1\t.\tgene\t1000\t3000\t.\t+\t.\tID=pg1
+chr1\t.\tmRNA\t1000\t3000\t.\t+\t.\tID=p1;Parent=pg1
+chr1\t.\tCDS\t1000\t1100\t.\t+\t0\tParent=p1
+chr1\t.\tCDS\t2000\t2100\t.\t+\t0\tParent=p1
+chr1\t.\tCDS\t2900\t3000\t.\t+\t0\tParent=p1
+chr1\t.\tgene\t6000\t6500\t.\t-\t.\tID=pg2
+chr1\t.\tmRNA\t6000\t6500\t.\t-\t.\tID=p2;Parent=pg2
+chr1\t.\tCDS\t6000\t6250\t.\t-\t0\tParent=p2
+chr1\t.\tCDS\t6400\t6500\t.\t-\t0\tParent=p2
+chr1\t.\tgene\t9050\t9250\t.\t+\t.\tID=pg4
+chr1\t.\tmRNA\t9050\t9250\t.\t+\t.\tID=p4;Parent=pg4
+chr1\t.\tCDS\t9050\t9250\t.\t+\t0\tParent=p4
+chr1\t.\tgene\t15000\t15200\t.\t+\t.\tID=pg3
+chr1\t.\tmRNA\t15000\t15200\t.\t+\t.\tID=p3;Parent=pg3
+chr1\t.\tCDS\t15000\t15200\t.\t+\t0\tParent=p3
+"""
+
+
+# Two annotated neighbours predicted as one locus (a fusion), and one
+# annotated gene predicted as two (a split).
+FUSION_REF = """##gff-version 3
+##sequence-region chr1 1 20000
+chr1\t.\tgene\t1000\t1500\t.\t+\t.\tID=g1
+chr1\t.\tmRNA\t1000\t1500\t.\t+\t.\tID=t1;Parent=g1
+chr1\t.\tCDS\t1000\t1500\t.\t+\t0\tParent=t1
+chr1\t.\tgene\t1700\t2200\t.\t+\t.\tID=g2
+chr1\t.\tmRNA\t1700\t2200\t.\t+\t.\tID=t2;Parent=g2
+chr1\t.\tCDS\t1700\t2200\t.\t+\t0\tParent=t2
+chr1\t.\tgene\t5000\t6000\t.\t+\t.\tID=g3
+chr1\t.\tmRNA\t5000\t6000\t.\t+\t.\tID=t3;Parent=g3
+chr1\t.\tCDS\t5000\t6000\t.\t+\t0\tParent=t3
+"""
+
+FUSION_PRED = """##gff-version 3
+chr1\t.\tgene\t1000\t2200\t.\t+\t.\tID=pg1
+chr1\t.\tmRNA\t1000\t2200\t.\t+\t.\tID=p1;Parent=pg1
+chr1\t.\tCDS\t1000\t1500\t.\t+\t0\tParent=p1
+chr1\t.\tCDS\t1700\t2200\t.\t+\t0\tParent=p1
+chr1\t.\tgene\t5000\t5400\t.\t+\t.\tID=pg2
+chr1\t.\tmRNA\t5000\t5400\t.\t+\t.\tID=p2;Parent=pg2
+chr1\t.\tCDS\t5000\t5400\t.\t+\t0\tParent=p2
+chr1\t.\tgene\t5600\t6000\t.\t+\t.\tID=pg3
+chr1\t.\tmRNA\t5600\t6000\t.\t+\t.\tID=p3;Parent=pg3
+chr1\t.\tCDS\t5600\t6000\t.\t+\t0\tParent=p3
+"""
+
+
+def self_test():
+    d = tempfile.mkdtemp(prefix="score-selftest-")
+    ref = os.path.join(d, "ref.gff3")
+    pred = os.path.join(d, "pred.gff3")
+    open(ref, "w").write(REF_FIXTURE)
+    open(pred, "w").write(PRED_FIXTURE)
+    r = score(ref, pred, "fixture")
+
+    fails = []
+
+    def check(name, got, want):
+        if got != want:
+            fails.append("%s: got %r, want %r" % (name, got, want))
+
+    # Nucleotide: reference CDS is 303 + 302 + 301 = 906 bp, prediction is
+    # 303 + 352 + 201 + 201 = 1057 bp.  t1 is exact, all 302 of t2's bases are
+    # covered by a prediction 50 bp too long, and 201 of g3's 301 are hit.
+    check("nt tp", r["nucleotide"]["tp"], 303 + 302 + 201)
+    check("nt fn", r["nucleotide"]["fn"], 50 + 50)
+    check("nt fp", r["nucleotide"]["fp"], 50 + 201)
+    check("scored_bp", r["scored_bp"], 20000)
+    # Exons: 3 of t1 plus the unshifted t2 exon match; 6 reference, 7 predicted.
+    check("exon tp", r["exon"]["all"]["tp"], 4)
+    check("exon fp", r["exon"]["all"]["fp"], 3)
+    check("exon fn", r["exon"]["all"]["fn"], 2)
+    check("single exons", r["exon"]["by_type"]["single"]["fn"], 1)
+    # Only pg4 overlaps a reference exon while matching neither boundary; the
+    # shifted t2 exon still shares its start and does not count here.
+    check("overlap-no-boundary", r["exon"]["predicted_overlap_no_boundary"], 1)
+    # Splice sites: t1's two introns are exact.  t2 is on the minus strand, so
+    # its donor is the intron's high coordinate, which the shift left alone,
+    # and its acceptor is the low one, which the shift moved.
+    check("donor tp", r["splice"]["donor"]["tp"], 3)
+    check("acceptor tp", r["splice"]["acceptor"]["tp"], 2)
+    check("ref introns", r["splice"]["reference_introns"], 3)
+    check("short gaps", r["splice"]["reference_cds_gaps_below_min"], 0)
+    # Loci: all three annotated genes are hit, pg3 is spurious, and a
+    # one-to-one matching means no fusion and no split.
+    check("locus tp", r["locus"]["tp"], 3)
+    check("locus fn", r["locus"]["fn"], 0)
+    check("locus fp", r["locus"]["fp"], 1)
+    check("fusion", r["locus"]["fusion"], 0)
+    check("split", r["locus"]["split"], 0)
+    # Transcripts: only t1 is an exact chain match; the two inexact matches are
+    # each both a false positive and a false negative, and pg3 adds one more FP.
+    check("tx tp", r["transcript"]["tp"], 1)
+    check("tx fp", r["transcript"]["fp"], 3)
+    check("tx fn", r["transcript"]["fn"], 2)
+    # Codons: t1 and t2 have both right; pg4 misplaces g3's start and stop.
+    check("start tp", r["codon"]["start"]["tp"], 2)
+    check("stop tp", r["codon"]["stop"]["tp"], 2)
+
+    # Fusion and split are counted, and neither inflates the locus TP count:
+    # pg1 covers g1 and g2 (one fusion), pg2 and pg3 both sit in g3 (one
+    # split), so three annotated loci get two matches and one FP is left over.
+    fref = os.path.join(d, "fref.gff3")
+    fpred = os.path.join(d, "fpred.gff3")
+    open(fref, "w").write(FUSION_REF)
+    open(fpred, "w").write(FUSION_PRED)
+    fr = score(fref, fpred, "fixture")
+    check("fusion count", fr["locus"]["fusion"], 1)
+    check("split count", fr["locus"]["split"], 1)
+    check("fusion locus tp", fr["locus"]["tp"], 2)
+    check("fusion locus fn", fr["locus"]["fn"], 1)
+    check("fusion locus fp", fr["locus"]["fp"], 1)
+    os.unlink(fref)
+    os.unlink(fpred)
+
+    # A prediction identical to the reference must score 1.0 everywhere.
+    perfect = score(ref, ref, "fixture")
+    for path in (("nucleotide", "f1"), ("exon", "all", "f1"),
+                 ("splice", "donor", "f1"), ("transcript", "f1"),
+                 ("locus", "f1"), ("codon", "start", "f1")):
+        v = perfect
+        for k in path:
+            v = v[k]
+        if v != 1.0:
+            fails.append("self-comparison %s: got %r, want 1.0" % ("/".join(path), v))
+
+    # The window fetcher must return the same bases as a plain read.
+    fa = os.path.join(d, "g.fa")
+    seq = "ACGT" * 500
+    with open(fa, "w") as fh:
+        fh.write(">chr1 test\n")
+        for i in range(0, len(seq), 60):
+            fh.write(seq[i:i + 60] + "\n")
+    wf = WindowFetcher(fa, [("chr1", 1, 4), ("chr1", 100, 103), ("chr1", 1997, 2000)])
+    check("window 1-4", wf("chr1", 1, 4), seq[0:4])
+    check("window 100-103", wf("chr1", 100, 103), seq[99:103])
+    check("window 1997-2000", wf("chr1", 1997, 2000), seq[1996:2000])
+
+    for f in (ref, pred, fa):
+        os.unlink(f)
+    os.rmdir(d)
+    if fails:
+        for f in fails:
+            print("FAIL " + f, file=sys.stderr)
+        return 1
+    print("self-test: all checks passed")
+    return 0
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--reference", help="reference GFF3 (.gz ok)")
+    ap.add_argument("--prediction", help="predicted GFF3 (.gz ok)")
+    ap.add_argument("--species", help="panel species name, e.g. Homo_sapiens")
+    ap.add_argument("--declaration", help="submission declaration, docs/benchmark.md 3.3")
+    ap.add_argument("--genome", help="reference FASTA; enables the splice "
+                                     "dinucleotide and local-GC strata")
+    ap.add_argument("--seqids", help="file of sequence ids to score, one per "
+                                     "line; default is every reference sequence "
+                                     "over 10 kb that is not an alt locus or patch")
+    ap.add_argument("--stop-outside-cds", action="store_true",
+                    help="the prediction excludes the stop codon from its CDS")
+    ap.add_argument("--out", help="write JSON here instead of stdout")
+    ap.add_argument("--self-test", action="store_true",
+                    help="score built-in fixtures and check the answers")
+    args = ap.parse_args()
+
+    if args.self_test:
+        return self_test()
+    for req in ("reference", "prediction", "species"):
+        if not getattr(args, req):
+            ap.error("--%s is required" % req)
+    if not args.declaration:
+        ap.error("--declaration is required: a run without the section 3.3 "
+                 "block is not comparable and is not scored (--self-test is "
+                 "the only exception)")
+    decl, missing, decl_sha = parse_declaration(args.declaration)
+    if missing:
+        print("declaration %s is missing required keys: %s"
+              % (args.declaration, ", ".join(missing)), file=sys.stderr)
+        return 2
+
+    seqids = None
+    if args.seqids:
+        seqids = [l.strip() for l in open(args.seqids) if l.strip()]
+
+    row = score(args.reference, args.prediction, args.species,
+                genome=args.genome, seqids=seqids,
+                stop_in_cds=not args.stop_outside_cds)
+    row["declaration"] = {"path": os.path.basename(args.declaration),
+                          "sha256": decl_sha,
+                          "model": decl.get("model")}
+    text = json.dumps(row, indent=1, sort_keys=True)
+    if args.out:
+        open(args.out, "w").write(text + "\n")
+    else:
+        print(text)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

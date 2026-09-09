@@ -425,13 +425,26 @@ predicted site is a true positive if it is at the exact position and strand.
 Report separately for donors and acceptors, and stratify by:
 
 - **canonical vs non-canonical** dinucleotides (GT-AG, GC-AG, AT-AC, other);
-- **intron length decile**, using the per-species deciles from `panel.tsv`,
-  so that the long-intron tail is visible instead of averaged away;
+- **intron length decile**, computed by the scorer from the reference
+  annotation of the species being scored rather than read from `panel.tsv`,
+  so that the long-intron tail is visible instead of averaged away. The cuts
+  are emitted with the result (`splice.intron_length_decile_cuts`);
+  `panel.tsv` carries only p10/median/p90/p99, which is enough to justify the
+  panel and not enough to bin against.
 - **local GC** in a 200 bp window, in five bins.
 
 The intron-length stratification is the single most informative panel in the
 whole benchmark for the charter's question, because it is where clade-specific
 models are expected to differ from a species-independent one.
+
+A gap between consecutive CDS blocks is only treated as an intron if it is at
+least 20 bp. This is not a tuning knob: RefSeq encodes a programmed ribosomal
+frameshift as two CDS blocks separated by 1 bp, and 47 of the 343 CDS gaps in
+the *S. cerevisiae* reference are Ty retrotransposon frameshifts rather than
+splice junctions. Scoring them as splice sites would have put a 14% floor of
+non-splice-sites into the yeast donor and acceptor counts. Sub-threshold gaps
+are counted and reported (`splice.reference_cds_gaps_below_min`), not dropped
+silently.
 
 ### 4.4 Gene and transcript level
 
@@ -451,7 +464,13 @@ Two numbers, because they answer different questions.
   the two structural errors exact matching cannot distinguish from a plain
   miss: **fusion** (one prediction spanning ≥2 annotated genes) and **split**
   (≥2 predictions inside one annotated gene). Report the fusion and split
-  counts explicitly. Fusions are the failure mode manual curation of
+  counts explicitly. A prediction touching two annotated genes counts as a
+  fusion only when those two genes do not themselves overlap in CDS: the
+  *S. cerevisiae* reference contains 91 same-strand CDS-overlapping gene
+  pairs, and without that condition a perfect prediction of the reference
+  scores 137 fusions and 132 splits. The reference's own overlapping-pair
+  count is reported alongside (`locus.reference_overlapping_locus_pairs`),
+  because it is the ceiling on how well any one-to-one locus matching can do. Fusions are the failure mode manual curation of
   *P. pacificus* found most of ([10.64898/2026.02.18.706511](https://doi.org/10.64898/2026.02.18.706511)).
 
 Isoform rule: a predictor emitting one transcript per locus is scored against
@@ -536,6 +555,8 @@ splice site — are the deliverable; the aggregate is the headline.
 | `benchmark/fetch.py` | downloads genomes/annotations from the NCBI FTP mirror into a directory outside the repository and verifies both NCBI's MD5 and the manifest's; stdlib only |
 | `benchmark/annotation_stats.py` | recomputes every statistic in Tables 1–2 from a GFF3; stdlib only |
 | `benchmark/leakage_check.py` | enforces §3.1 and reports §3.2 informant separation; exits non-zero on violation |
+| `benchmark/score.py` | scores one predicted GFF3 against the reference and emits the §4 metrics as JSON; refuses to run without the §3.3 declaration; `--self-test` checks it against built-in fixtures |
+| `benchmark/report.py` | joins the JSON rows to `panel.tsv` and emits the §4.8 table and the two aggregates |
 
 No genome or annotation data is committed. `panel.tsv` records the MD5 of
 each annotation file so a fetch is verifiable years later, and `ftp_dir`
@@ -546,33 +567,75 @@ FTP site).
 
 ## 6. Scoring implementation
 
-Not written yet, and deliberately not started in this pass: the definitions
-above are the thing that needs review, and a scorer written against
-definitions that change is wasted. §7 carries it.
+`benchmark/score.py`, standard library only, takes a reference GFF3, a
+predicted GFF3 and a species name and emits one JSON object with every
+annotation-derived field in §4.8: §4.1 nucleotide with MCC, §4.2 exon with the
+four-way type stratification and the overlap-but-no-boundary class, §4.3
+donors and acceptors with the intron-length-decile stratification (and, when
+`--genome` is given, the dinucleotide-class and local-GC ones), §4.4
+transcript exact match under the isoform rule and locus matching with fusion
+and split counts, and §4.5 start and stop codons. It refuses to run without a
+§3.3 declaration carrying every required key, and records that file's SHA-256
+in the result. §4.6 (BUSCO/OMArk) and §4.7 (cost) come from other tools;
+`benchmark/report.py` joins them in through `--cost` and emits the §4.8 table
+and the two aggregates. It refuses to print an aggregate over an incomplete
+panel unless `--partial` says so, because an unweighted mean over a subset is
+a different number wearing the same name.
 
-The intended shape is one script, `benchmark/score.py`, stdlib only, taking a
-predicted GFF3 and a species name, emitting one JSON row per species with
-every field in §4.8, plus `benchmark/report.py` to assemble the table. Both
-should refuse to run without the declaration block from §3.3.
+Two decisions the implementation forced, both above: the intron-length
+deciles are computed from the reference at score time (§4.3), and a CDS gap
+under 20 bp is not a splice junction (§4.3).
+
+Verification so far:
+
+- `python3 benchmark/score.py --self-test` scores three built-in fixture
+  pairs and checks 30 expected counts: a prediction with one exact
+  transcript, one shifted minus-strand boundary, one overlapping-but-unaligned
+  locus and one spurious locus; a fusion-and-split pair; and a
+  self-comparison that must score exactly 1.0 on every metric. It also checks
+  the streaming FASTA window reader against a plain read.
+- On the real *S. cerevisiae* reference (17 sequences, 12.16 Mb, 6,027
+  transcripts) the scorer runs in 1.1 s and scores the reference against
+  itself at F1 = 1.0 and MCC = 1.0 on every metric, with 0 fusions and 0
+  splits. Against a synthetically degraded copy of that annotation (10% of
+  transcripts deleted, 10% of CDS 3' boundaries shifted by 3 bp) it returns
+  nucleotide F1 0.947, exon F1 0.856, donor F1 0.892, transcript F1 0.852,
+  locus F1 0.949, and recovers 270 GT-AG, 8 GC-AG and 18 other donor
+  dinucleotides from the genome FASTA.
+- `benchmark/fetch.py --what fasta` is now exercised: it downloads and
+  checksum-verifies the 3.8 MB *S. cerevisiae* FASTA. It is still untested at
+  3 Gb (§7).
 
 ## 7. Open items
 
-1. **No scorer yet** (§6). The largest gap; next in this task.
-2. **No high-confidence subset** (§2.3). Needed before any accuracy above
+1. **The scorer does not compute §4.6 or §4.7.** BUSCO, OMArk, and the cost
+   columns are external and are merged by `report.py --cost`; nothing yet
+   produces that TSV. T-human-009 owns the cost half.
+2. **The scorer has been run on one species, not the panel.** Everything
+   above is exact on *S. cerevisiae* (12 Mb, one FASTA line width, no alt
+   loci). The primary-assembly filter (§4, alt loci and patches excluded by
+   their `genome=genomic` plus `chromosome=` region attributes) is a RefSeq
+   convention and is untested on the human GFF3 that actually has them, and
+   untested on Ensembl-style input.
+3. **No high-confidence subset** (§2.3). Needed before any accuracy above
    roughly the annotation error rate means anything. Candidate construction:
    loci with MANE Select support in human, community-curated loci elsewhere,
    intersected with peptide or RNA-seq support. Possibly its own task.
-3. **Distance rule is taxonomic rank, not distance** (§3.1). Replacing it
+4. **Distance rule is taxonomic rank, not distance** (§3.1). Replacing it
    with substitutions per site from a fixed marker set would make the floor
    comparable across kingdoms. Needs a tree; overlaps T-human-008.
-4. **No RNA-seq accessions chosen** (§3.2 channel 4). Evidence-based tools
+5. **No high-confidence subset** (§2.3). Needed before any accuracy above
+   roughly the annotation error rate means anything. Candidate construction:
+   loci with MANE Select support in human, community-curated loci elsewhere,
+   intersected with peptide or RNA-seq support. Possibly its own task.
+6. **No RNA-seq accessions chosen** (§3.2 channel 4). Evidence-based tools
    cannot be run on the panel until each species has a declared, fixed
    RNA-seq set. Overlaps T-human-008.
-5. **BUSCO and OMArk lineage datasets not pinned** (§4.6), and neither tool
+7. **BUSCO and OMArk lineage datasets not pinned** (§4.6), and neither tool
    is stdlib; they are the only external dependencies the benchmark needs.
-6. ***Tetrahymena* annotation quality** (§2.3) may be poor enough that even
+8. ***Tetrahymena* annotation quality** (§2.3) may be poor enough that even
    "report, never rank" is generous. An alternative code-6 ciliate with a
    better annotation would be preferable if one exists.
-7. **Fetch script tested on 20 of 20 annotations, 0 of 20 genome FASTAs.**
-   The `--what fasta` path uses the same code but has not been exercised at
-   3 Gb scale.
+9. **Fetch script tested on 20 of 20 annotations, 1 of 20 genome FASTAs.**
+   `--what fasta` now works end to end on *S. cerevisiae* (3.8 MB); it has
+   still not been exercised at 3 Gb scale.
