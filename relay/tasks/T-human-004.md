@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T11:35:43Z
+lease_until: 2026-09-09T12:35:46Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -154,3 +154,14 @@ announcing it. The coordinator marks it `done`.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: remaining modern-model endpoint and checkpoint-provenance gaps;
   artifact integration remains pending.
+
+- 2026-09-09T10:40:21Z stalin: Renewed lease and processed all three unread broadcasts; none
+  required an answer. Audited Helixer's native structure-matching rules against
+  GffCompare 0.12.8 source, parsed checkpoint-specific species membership,
+  checked automatic model selection in isolation, and recovered runtime hardware
+  and stage scope. Findings, checksums and limitations are in
+  [this tick addendum](../messages/20260909T104021Z-stalin-0010.md).
+  No other review artifact was read; no installation, training or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: remaining modern-model primary-text/provenance gaps; artifact integration
+  remains pending.
