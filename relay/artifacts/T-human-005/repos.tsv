@@ -1,31 +1,31 @@
 url	last_commit	commits_last_12mo	open_issues	stars	language	licence	head	install_test	notes
-https://github.com/Gaius-Augustus/Tiberius	2026-09-07	174	n/a	n/a	Python, Nextflow	MIT	e73844b	not yet	CNN+biLSTM+differentiable HMM; clade models for Mammalia, Vertebrata, Insecta, Mesangiospermae, Fungi, Chlorophyta, Bacillariophyta; README asks for Python>=3.12, TensorFlow>=2.17, GPU with >=8 GB recommended; web server exists
-https://github.com/ncbi/egapx	2026-09-04	25	n/a	n/a	Nextflow, Python	Public domain (NCBI)	f9a7392	not yet	README: 32 CPUs and 256 GB RAM (r6a.4xlarge) or SLURM/AWS Batch; fungi, protists and nematodes declared out of scope; example small run under 1 h
-https://github.com/Gaius-Augustus/Augustus	2026-05-18	2	n/a	n/a	C++, Perl, Python	Artistic (per repo docs; no top-level LICENSE file)	220e5a6	not yet	GHMM gene finder with hints and comparative (cgp) mode; low commit rate, maintenance mode
-https://github.com/Gaius-Augustus/BRAKER	2026-06-17	11	n/a	n/a	Shell, Perl, Python	Artistic 1.0	8f6a9b8	not yet	Pipeline around GeneMark-ETP and AUGUSTUS with TSEBRA; depends on GeneMark licence
-https://github.com/gatech-genemark/GeneMark-ETP	2025-04-11	0	n/a	n/a	Perl, Python	CC BY-NC-SA 4.0	8b3dbc2	not yet	Non-commercial licence; no commits in last 12 months
-https://github.com/gatech-genemark/GeneMark-EP	2022-11-28	0	n/a	n/a	(empty tree at HEAD)	none in repo	86eb25d	not yet	Appears to be a placeholder; GeneMark-EP+ ships with GeneMark-ES/ET/EP tarball from the Borodovsky lab site
-https://github.com/gatech-genemark/ProtHint	2023-10-26	0	n/a	n/a	Python, Perl	GeneMark family licence	103304c	not yet	Protein-to-genome hint generator used by BRAKER2 and GeneMark-EP+
-https://github.com/Gaius-Augustus/TSEBRA	2026-04-07	3	n/a	n/a	Python	none found at top level	23ef205	not yet	Transcript selector used in BRAKER3
-https://github.com/Gaius-Augustus/GALBA	2026-04-13	1	n/a	n/a	Python, Perl, Shell	Artistic	5729728	not yet	miniprot + AUGUSTUS; for vertebrates with close protein references
-https://github.com/Gaius-Augustus/Vipsania	2026-08-31	11	n/a	n/a	Python	MIT	0c5f84a	not yet	Unsupervised deep gene finder (Aug 2026 preprint); very new
-https://github.com/weberlab-hhu/Helixer	2026-07-01	37	n/a	n/a	Python	GPL-3.0	d17bb49	not yet	Deep learning base-wise labelling plus HMM post-processing; models for fungi, plants, vertebrates, invertebrates; Nature Methods 2026
-https://github.com/KorfLab/SNAP	2022-10-22	0	n/a	n/a	C, Perl	MIT-style	4ad1e95	not yet	Classic HMM gene finder; dormant
-https://github.com/Yandell-Lab/maker	2024-08-20	0	n/a	n/a	Perl	Artistic 2.0 / GPL (academic)	4bf3085	not yet	Evidence-combining pipeline; no commits in last 12 months
-https://github.com/lh3/miniprot	2026-01-05	2	n/a	n/a	C	MIT	81f9b93	not yet	Protein-to-genome spliced aligner used by EGAPx, GALBA, BRAKER3
-https://github.com/ogotoh/spaln	2026-07-10	4	n/a	n/a	C++, Perl	GPL	763d93c	not yet	Spliced aligner; same author as fitild (intron length distributions)
-https://github.com/nextgenusfs/funannotate	2026-08-28	279	n/a	n/a	Python	BSD-2	a3ddd82	not yet	Fungal-focused pipeline wrapping AUGUSTUS, GeneMark, snap, glimmerhmm, EVM; very active
-https://github.com/alekseyzimin/EviAnn	2026-08-11	99	n/a	n/a	Perl, Shell, C++	GPL-3.0	19ddde7	not yet	Evidence-only annotator, Nature Methods 2026; claims mammalian genome under 1 h on one server
-https://github.com/EVidenceModeler/EVidenceModeler	2024-11-29	0	n/a	n/a	Perl	BSD	2d02f3f	not yet	Weighted consensus combiner
-https://github.com/hillerlab/TOGA	2025-11-23	1	n/a	n/a	Python, C	MIT	861a837	not yet	Alignment-based annotation transfer via orthology; needs a whole-genome alignment chain
-https://github.com/hillerlab/CESAR2.0	2026-07-18	14	n/a	n/a	C, Perl	MIT	b56c4c5	not yet	Exon-structure-aware realigner used inside TOGA
-https://github.com/agshumate/Liftoff	2023-08-01	0	n/a	n/a	Python	GPL-3.0	94d6073	not yet	Annotation lift-over with minimap2; same-species or close relatives only
-https://github.com/mlin/PhyloCSF	2023-10-16	0	n/a	n/a	OCaml (shell wrapper)	AGPL	3d29221	not yet	Comparative codon substitution frequency scorer; needs a multiple alignment
-https://github.com/cpockrandt/PhyloCSFpp	2022-01-26	0	n/a	n/a	C++	BSD-style	54efa87	not yet	Fast reimplementation of PhyloCSF with track building
-https://github.com/Illumina/SpliceAI	2026-04-03	2	n/a	n/a	Python	PolyForm Strict 1.0 (non-commercial, no derivatives)	03f4243	not yet	Splice-site CNN; licence forbids reuse in a derived tool
-https://github.com/tkzeng/Pangolin	2023-05-01	0	n/a	n/a	Python	GPL-3.0	5cf94b8	not yet	Multi-species splice model (human, mouse, rat, rhesus)
-https://github.com/Kuanhao-Chao/OpenSpliceAI	2026-07-29	29	n/a	n/a	Python	GPL-3.0	074d3e2	not yet	Retrainable open SpliceAI in PyTorch; eLife 2025
-https://github.com/ComparativeGenomicsToolkit/cactus	2026-09-08	480	n/a	n/a	Python, C	MIT	683b51a	not yet	Whole-genome aligner behind UCSC and Zoonomia HAL alignments
-https://github.com/ArcInstitute/evo2	2026-06-18	7	n/a	n/a	Python	Apache-2.0	53f1959	not yet	Genomic foundation model; 7B and 40B parameters, far outside our compute budget
-https://github.com/instadeepai/nucleotide-transformer	2025-12-27	3	n/a	n/a	Python	CC BY-NC-SA 4.0	2dc37b8	not yet	Includes SegmentNT gene-element segmentation heads; non-commercial licence
-https://github.com/kuleshov-group/caduceus	2025-06-17	0	n/a	n/a	Python	Apache-2.0	0060a6d	not yet	Bidirectional RC-equivariant Mamba DNA model; PlantCaduceus derived from it
+https://github.com/Gaius-Augustus/Tiberius	2026-09-07	174	21	138	Python, Nextflow	MIT	e73844b	partial: pip install from git OK in 7 s on Python 3.12 (refused on 3.11: requires-python >=3.12); installs only the package (rich, pyyaml), no console entry point; running needs the cloned launcher tiberius.py plus either the Singularity/Docker image or a local TensorFlow GPU stack; not run	CNN+biLSTM+differentiable HMM; clade models for Mammalia, Vertebrata, Insecta, Mesangiospermae, Fungi, Chlorophyta, Bacillariophyta; README asks for Python>=3.12, TensorFlow>=2.17, GPU with >=8 GB recommended; web server exists
+https://github.com/ncbi/egapx	2026-09-04	25	17	207	Nextflow, Python	Public domain (NCBI)	f9a7392	not attempted: needs Nextflow 23.10.1 plus Docker/Singularity and 32 CPU / 256 GB for a real run; README example run under 1 h	README: 32 CPUs and 256 GB RAM (r6a.4xlarge) or SLURM/AWS Batch; fungi, protists and nematodes declared out of scope; example small run under 1 h
+https://github.com/Gaius-Augustus/Augustus	2026-05-18	2	166	339	C++, Perl, Python	Artistic (per repo docs; no top-level LICENSE file)	220e5a6	not attempted	GHMM gene finder with hints and comparative (cgp) mode; low commit rate, maintenance mode
+https://github.com/Gaius-Augustus/BRAKER	2026-06-17	11	101	467	Shell, Perl, Python	Artistic 1.0	8f6a9b8	not attempted: Perl/Shell pipeline needing GeneMark-ETP (licence-restricted), AUGUSTUS, ProtHint, TSEBRA; Singularity image is the documented route	Pipeline around GeneMark-ETP and AUGUSTUS with TSEBRA; depends on GeneMark licence
+https://github.com/gatech-genemark/GeneMark-ETP	2025-04-11	0	11	31	Perl, Python	CC BY-NC-SA 4.0	8b3dbc2	not attempted	Non-commercial licence; no commits in last 12 months
+https://github.com/gatech-genemark/GeneMark-EP	2022-11-28	0	7	13	(empty tree at HEAD)	none in repo	86eb25d	not attempted	Appears to be a placeholder; GeneMark-EP+ ships with GeneMark-ES/ET/EP tarball from the Borodovsky lab site
+https://github.com/gatech-genemark/ProtHint	2023-10-26	0	15	62	Python, Perl	GeneMark family licence	103304c	not attempted	Protein-to-genome hint generator used by BRAKER2 and GeneMark-EP+
+https://github.com/Gaius-Augustus/TSEBRA	2026-04-07	3	14	52	Python	none found at top level	23ef205	not attempted	Transcript selector used in BRAKER3
+https://github.com/Gaius-Augustus/GALBA	2026-04-13	1	13	149	Python, Perl, Shell	Artistic	5729728	not attempted	miniprot + AUGUSTUS; for vertebrates with close protein references
+https://github.com/Gaius-Augustus/Vipsania	2026-08-31	11	1	17	Python	MIT	0c5f84a	partial: on PyPI (vipsania 1.0.0); pip dry-run on Python 3.12 resolves to tensorflow 2.19.1 + CUDA 12 wheels + wandb (several GB); refused on 3.11; not installed	Unsupervised deep gene finder (Aug 2026 preprint); very new
+https://github.com/weberlab-hhu/Helixer	2026-07-01	37	28	305	Python	GPL-3.0	d17bb49	partial: pip install from git OK in 56 s on Python 3.11 (tensorflow 2.15.1, setuptools<72 pin, 2.0 GB venv); Helixer.py --help then fails with ModuleNotFoundError: No module named 'yaml' (pyyaml imported by helixer/core/scripts.py but not declared); after pip install pyyaml it fails on missing scikit-learn (also undeclared); stopped there; Docker/Singularity route not tested	Deep learning base-wise labelling plus HMM post-processing; models for fungi, plants, vertebrates, invertebrates; Nature Methods 2026
+https://github.com/KorfLab/SNAP	2022-10-22	0	14	72	C, Perl	MIT-style	4ad1e95	not attempted	Classic HMM gene finder; dormant
+https://github.com/Yandell-Lab/maker	2024-08-20	0	10	47	Perl	Artistic 2.0 / GPL (academic)	4bf3085	not attempted	Evidence-combining pipeline; no commits in last 12 months
+https://github.com/lh3/miniprot	2026-01-05	2	4	418	C	MIT	81f9b93	not attempted	Protein-to-genome spliced aligner used by EGAPx, GALBA, BRAKER3
+https://github.com/ogotoh/spaln	2026-07-10	4	40	114	C++, Perl	GPL	763d93c	not attempted	Spliced aligner; same author as fitild (intron length distributions)
+https://github.com/nextgenusfs/funannotate	2026-08-28	279	300	400	Python	BSD-2	a3ddd82	not attempted	Fungal-focused pipeline wrapping AUGUSTUS, GeneMark, snap, glimmerhmm, EVM; very active
+https://github.com/alekseyzimin/EviAnn	2026-08-11	99	1	9	Perl, Shell, C++	GPL-3.0	19ddde7	not attempted: code lives in alekseyzimin/EviAnn_release (183 stars, 58 open issues on 2026-09-09); bioconda package or install.sh that compiles miniprot and ufasta and bundles TransDecoder and BLAST+	Evidence-only annotator, Nature Methods 2026; claims mammalian genome under 1 h on one server
+https://github.com/EVidenceModeler/EVidenceModeler	2024-11-29	0	77	128	Perl	BSD	2d02f3f	not attempted	Weighted consensus combiner
+https://github.com/hillerlab/TOGA	2025-11-23	1	2	211	Python, C	MIT	861a837	not attempted	Alignment-based annotation transfer via orthology; needs a whole-genome alignment chain
+https://github.com/hillerlab/CESAR2.0	2026-07-18	14	8	28	C, Perl	MIT	b56c4c5	not attempted	Exon-structure-aware realigner used inside TOGA
+https://github.com/agshumate/Liftoff	2023-08-01	0	73	552	Python	GPL-3.0	94d6073	not attempted	Annotation lift-over with minimap2; same-species or close relatives only
+https://github.com/mlin/PhyloCSF	2023-10-16	0	17	73	OCaml (shell wrapper)	AGPL	3d29221	not attempted	Comparative codon substitution frequency scorer; needs a multiple alignment
+https://github.com/cpockrandt/PhyloCSFpp	2022-01-26	0	8	31	C++	BSD-style	54efa87	not attempted	Fast reimplementation of PhyloCSF with track building
+https://github.com/Illumina/SpliceAI	2026-04-03	2	32	507	Python	PolyForm Strict 1.0 (non-commercial, no derivatives)	03f4243	not attempted	Splice-site CNN; licence forbids reuse in a derived tool
+https://github.com/tkzeng/Pangolin	2023-05-01	0	21	96	Python	GPL-3.0	5cf94b8	not attempted	Multi-species splice model (human, mouse, rat, rhesus)
+https://github.com/Kuanhao-Chao/OpenSpliceAI	2026-07-29	29	5	53	Python	GPL-3.0	074d3e2	not attempted	Retrainable open SpliceAI in PyTorch; eLife 2025
+https://github.com/ComparativeGenomicsToolkit/cactus	2026-09-08	480	587	704	Python, C	MIT	683b51a	not attempted	Whole-genome aligner behind UCSC and Zoonomia HAL alignments
+https://github.com/ArcInstitute/evo2	2026-06-18	7	54	4.2k	Python	Apache-2.0	53f1959	not attempted	Genomic foundation model; 7B and 40B parameters, far outside our compute budget
+https://github.com/instadeepai/nucleotide-transformer	2025-12-27	3	13	917	Python	CC BY-NC-SA 4.0	2dc37b8	not attempted	Includes SegmentNT gene-element segmentation heads; non-commercial licence
+https://github.com/kuleshov-group/caduceus	2025-06-17	0	5	252	Python	Apache-2.0	0060a6d	not attempted	Bidirectional RC-equivariant Mamba DNA model; PlantCaduceus derived from it

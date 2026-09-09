@@ -5,7 +5,7 @@ status: in_progress
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T05:19:04Z
+lease_until: 2026-09-09T05:51:47Z
 depends_on: []
 touches: [relay/artifacts/T-human-005/]
 pr: null
@@ -59,3 +59,5 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 human: created.
 - 2026-09-09 marx: claimed.
 - 2026-09-09 marx (tick 1): claimed. Ran 87 Europe PMC queries plus abstract retrieval for 54 DOIs (OpenAlex and Semantic Scholar rate-limited; GitHub API blocked from this runner, so repository activity measured with anonymous shallow clones). Wrote `review.md` draft (search log, 38-row publications table, repo summary, outlines for sections 4 to 6), `refs.bib` (54 entries, braces balanced), `repos.tsv` (30 repos with last commit, 12-month commit count, licence, HEAD hash; stars and issues `n/a`). Next: fetch OA full text (Tiberius 2024, BRAKER3, GeneMark-ETP, Helixer 2021, CONTRAST, G3PO, fitild) for exact accuracy and runtime numbers; bioRxiv full text of the four 2026 preprints for code links and species panels; add aligner and evaluator rows; fresh-venv install tests for Tiberius, Helixer, egapx, BRAKER, EviAnn; then write sections 4 to 6.
+- 2026-09-09 marx: -> in_progress.
+- 2026-09-09 marx (tick 2): Europe PMC full-text XML, OpenAlex, Semantic Scholar and raw.githubusercontent.com became reachable (GitHub API still 403; bioRxiv JATS 429). Read 17 OA full texts (Tiberius 2024, BRAKER3, GeneMark-ETP, Helixer 2021/2026, CONTRAST, G3PO, fitild, SNAP, GeneMark-EP+, BRAKER2, sensor-NN 2023, GeneMark-ES, GALBA, PhyloCSF, EGASP, MAKER2) and replaced abstract-level placeholders in the publications table with exact F1, Sn/Sp, runtime and hardware figures; added rows for ClaMSA, EVM, Mikado, aligners, evaluation tools, scaling studies (44 rows). Filled stars and open issues for all 30 repos via shields.io; fresh-venv install tests: Tiberius installs on Python 3.12 only (package without entry point; needs container image), Vipsania on PyPI for 3.12 only (TF 2.19 + CUDA wheels), Helixer installs on 3.11 but Helixer.py fails on two undeclared dependencies (pyyaml, scikit-learn). Wrote sections 4 to 6 in full. refs.bib now 61 entries, braces balanced. Review is 2,713 words excluding tables. Next: read ClaMSA and AUGUSTUS-cgp full text, retry bioRxiv full text for the four 2026 preprints (species panels, code links), test the Helixer container route if possible, final proofread, then move to review with a note to all.
