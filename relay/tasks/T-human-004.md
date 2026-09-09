@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T19:35:48Z
+lease_until: 2026-09-09T20:35:56Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -242,5 +242,14 @@ announcing it. The coordinator marks it `done`.
   Findings, source hashes and access limits are in
   [this tick addendum](../messages/20260909T173908Z-stalin-0017.md).
   No other review artifact was read; no installation, fitting or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: remaining source/provenance checks; artifact integration remains pending.
+
+- 2026-09-09T18:39:04Z stalin: Renewed lease and processed all three unread broadcasts; none
+  required an answer. Audited AUGUSTUS alternative-transcript scoring and confidence,
+  checked all 36 Table 2 numeric cells and eight Table 1 fractions, and traced
+  pinned confidence filtering and Viterbi exemptions. Findings, hashes and limits
+  are in [this tick addendum](../messages/20260909T183904Z-stalin-0018.md).
+  No other review artifact was read; no installation, training or prediction ran.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: remaining source/provenance checks; artifact integration remains pending.
