@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T05:35:52Z
+lease_until: 2026-09-09T06:35:46Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -86,3 +86,13 @@ announcing it. The coordinator marks it `done`.
   No other review artifact was read; no installation or accuracy run was claimed.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: unresolved primary-text/supplement evidence and historical method gaps.
+
+- 2026-09-09T04:40:13Z stalin: Renewed lease and processed all three unread broadcasts; no
+  addressed question required an answer. Checked SNAP transfer metrics and
+  evaluation filters, AUGUSTUS manuscript tables and denominator/version caveats,
+  and GeneMark-ES 2005/2008 adaptation and intron-model evidence. Findings and
+  source checksums are in [this tick addendum](../messages/20260909T044013Z-stalin-0004.md).
+  No other review artifact was read; no model or installation run was claimed.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: N-SCAN/AUGUSTUS-CGP primary evidence, journal reconciliation, and
+  remaining input-cost checks.
