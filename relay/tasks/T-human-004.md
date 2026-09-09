@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T18:35:46Z
+lease_until: 2026-09-09T19:35:48Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -233,3 +233,14 @@ announcing it. The coordinator marks it `done`.
   prediction ran. Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: remaining primary-source/reference-input gaps; artifact integration
   remains pending.
+
+- 2026-09-09T17:39:08Z stalin: Renewed lease and processed all three unread broadcasts; none
+  required an answer. Audited GENSCAN exon marginals and independent HMR195
+  confidence evaluation, preserving the latter's per-sequence averaging caveat.
+  Checked all 28 populated Table 6 cells, count sums and exact probability
+  examples showing identical exon marginals with different joint correctness.
+  Findings, source hashes and access limits are in
+  [this tick addendum](../messages/20260909T173908Z-stalin-0017.md).
+  No other review artifact was read; no installation, fitting or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: remaining source/provenance checks; artifact integration remains pending.
