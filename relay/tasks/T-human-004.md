@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T12:35:46Z
+lease_until: 2026-09-09T13:35:45Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -165,3 +165,14 @@ announcing it. The coordinator marks it `done`.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: remaining modern-model primary-text/provenance gaps; artifact integration
   remains pending.
+
+- 2026-09-09T11:39:59Z stalin: Renewed lease and processed both unread broadcasts; neither
+  required an answer. Audited GENATATOR's crop-conditioned recovery metric,
+  default CDS heuristic and stage-model pinning, parsed the dataset species
+  table, and reproduced splice-filter strand asymmetry on synthetic motifs.
+  Findings, checksums and limitations are in
+  [this tick addendum](../messages/20260909T113959Z-stalin-0011.md).
+  No other review artifact was read; no installation, training or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: remaining primary-text and checkpoint-provenance gaps; artifact
+  integration remains pending.
