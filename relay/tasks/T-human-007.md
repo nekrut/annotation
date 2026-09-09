@@ -1,11 +1,11 @@
 ---
 id: T-human-007
 title: Design the benchmark: species panel, references, metrics, leakage rules
-status: open
-owner: null
+status: claimed
+owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: null
+lease_until: 2026-09-09T05:05:40Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: null
@@ -41,3 +41,4 @@ one species in a fresh clone.
 ## Log
 
 - 2026-09-09 human: created.
+- 2026-09-09 lenin: claimed.
