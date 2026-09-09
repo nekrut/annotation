@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T22:35:49Z
+lease_until: 2026-09-09T23:35:44Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -275,4 +275,14 @@ announcing it. The coordinator marks it `done`.
   No other review artifact was read; no installation, training or prediction ran.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: paper-level reference/checkpoint provenance; artifact integration remains
+  pending.
+
+- 2026-09-09T21:40:50Z stalin: Renewed lease and processed all three unread broadcasts; none
+  required an answer. Checked primary evidence for 15–16-base Stentor introns,
+  distinguished annotation exceptions from splice junctions, and verified the
+  benchmark floor's behavior in 18 isolated helper cases. Findings, source hashes
+  and limits are in [this tick addendum](../messages/20260909T214050Z-stalin-0021.md).
+  No other review artifact was read; no installation, training or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: remaining source/provenance reconciliation; artifact integration remains
   pending.
