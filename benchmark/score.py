@@ -67,6 +67,27 @@ GC_BINS = [0.30, 0.40, 0.50, 0.60]  # five bins: <30, 30-40, 40-50, 50-60, >=60
 
 TX_TYPES = {"mRNA", "transcript", "CDS_transcript"}
 
+# Section 4 scores the nuclear primary assembly.  Organelle genomes are out of
+# charter scope and use their own genetic codes (human chrM is code 2, which
+# would make every stop-codon check on it wrong), so they are dropped.  RefSeq
+# GFF3 states this in the ``genome=`` attribute of the ``region`` feature; the
+# values below are the ones NCBI uses.
+ORGANELLE_GENOMES = {
+    "mitochondrion", "chloroplast", "plastid", "apicoplast", "kinetoplast",
+    "chromoplast", "cyanelle", "leucoplast", "proplastid",
+}
+# Annotations without RefSeq ``region`` features (Ensembl, and most predictor
+# output) carry no ``genome=``, so organelles there are recognised by the
+# sequence names the major providers use.  Compared case-insensitively after
+# stripping a leading "chr".
+ORGANELLE_SEQIDS = {
+    "m", "mt", "mtdna", "mito", "mitochondrion", "mitochondrion_genome",
+    "pt", "plastid", "chloroplast", "apicoplast", "api",
+}
+# Ensembl names alt loci and patch scaffolds with these suffixes.  Heuristic,
+# unlike the RefSeq attribute rule: use --seqids to override it.
+ALT_SEQID_SUFFIXES = ("_patch", "_alt", "_ctg1", "_hap1")
+
 
 # ---------------------------------------------------------------- GFF3 input
 
@@ -163,24 +184,64 @@ def load_gff(path):
     return ann
 
 
-def select_seqids(ref, whitelist=None, min_len=MIN_SEQ_LEN):
-    """Sequences the run is scored on (section 4: primary assembly only).
+def select_seqids(ref, whitelist=None, min_len=MIN_SEQ_LEN, reasons=None):
+    """Sequences the run is scored on (section 4: nuclear primary assembly).
 
-    Without a whitelist: drop sequences shorter than ``min_len``, and drop
-    RefSeq alt loci and patch scaffolds, which are the region features that
-    carry both ``genome=genomic`` and a ``chromosome=`` assignment.  Unplaced
-    scaffolds have ``genome=genomic`` without ``chromosome=`` and are kept.
+    A whitelist is taken verbatim, intersected with what the reference has.
+
+    Otherwise, in order:
+
+    * drop anything shorter than ``min_len``;
+    * where the reference has RefSeq ``region`` features, drop organelles
+      (``genome=`` in `ORGANELLE_GENOMES`) and drop alt loci and patch
+      scaffolds, which are the ``genome=genomic`` regions that carry a
+      cytogenetic ``map=`` band;
+    * where it does not (Ensembl, predictor output), fall back to the
+      sequence-name heuristics in `ORGANELLE_SEQIDS` and `ALT_SEQID_SUFFIXES`.
+
+    The ``map=`` test, not ``chromosome=``, is what separates an alt locus from
+    an unplaced scaffold.  Unlocalized scaffolds carry ``map=unlocalized``, and
+    unplaced ones carry ``chromosome=Unknown`` with no ``map=`` at all: in
+    GRCh38.p14 all 680 ``genome=genomic`` regions have a ``chromosome=``, and
+    so do all 675 of maize's and all 32 of Nematostella's, so keying on
+    ``chromosome=`` drops every unplaced scaffold in the panel.
+
+    ``reasons``, if given, is a dict that receives ``seqid -> reason`` for
+    every sequence *not* kept.
     """
+    if reasons is None:
+        reasons = {}
     if whitelist is not None:
-        return set(whitelist) & set(ref.seq_len)
+        keep = set(whitelist) & set(ref.seq_len)
+        for seqid in ref.seq_len:
+            if seqid not in keep:
+                reasons[seqid] = "not in --seqids"
+        return keep
     keep = set()
     for seqid, length in ref.seq_len.items():
         if length < min_len:
+            reasons[seqid] = "shorter than %d bp" % min_len
             continue
-        attrs = ref.region_attrs.get(seqid, "")
-        genome = _attr(attrs, "genome")
-        if genome == "genomic" and _attr(attrs, "chromosome"):
-            continue
+        attrs = ref.region_attrs.get(seqid)
+        if attrs is not None:
+            genome = _attr(attrs, "genome")
+            if genome in ORGANELLE_GENOMES:
+                reasons[seqid] = "organelle (genome=%s)" % genome
+                continue
+            band = _attr(attrs, "map")
+            if genome == "genomic" and band and band != "unlocalized":
+                reasons[seqid] = "alt locus or patch (map=%s)" % band
+                continue
+        else:
+            bare = seqid.lower()
+            if bare.startswith("chr"):
+                bare = bare[3:]
+            if bare in ORGANELLE_SEQIDS:
+                reasons[seqid] = "organelle (sequence name)"
+                continue
+            if bare.endswith(ALT_SEQID_SUFFIXES):
+                reasons[seqid] = "alt locus or patch (sequence name)"
+                continue
         keep.add(seqid)
     return keep
 
@@ -552,16 +613,42 @@ def _overlap_pairs(ref_loci, pred_loci):
     return pairs
 
 
-def _has_disjoint_pair(ids, loci):
-    """True if any two of these loci have no CDS overlap with each other."""
-    ids = list(ids)
-    if len(ids) < 2:
-        return False
-    for i in range(len(ids)):
-        for j in range(i + 1, len(ids)):
-            if isect_len(loci[ids[i]][2], loci[ids[j]][2]) == 0:
-                return True
-    return False
+def _components(loci):
+    """locus id -> component id of the same-strand CDS-overlap graph.
+
+    Two annotated genes whose CDS overlap are not separable at CDS level in
+    that annotation, so no prediction should be blamed for touching both.
+    Transitivity matters and pairwise tests are not enough: in GRCh38.p14 there
+    are 82 places where gene B overlaps both A and C while A and C are disjoint,
+    and a pairwise rule scores a *perfect* prediction of B as a fusion of A and
+    C.  Grouping by connected component makes an identity run score exactly
+    zero fusions and zero splits, on every panel species.
+    """
+    parent = {lid: lid for lid in loci}
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    by = defaultdict(list)
+    for lid, (seqid, strand, blocks, _) in loci.items():
+        by[(seqid, strand)].append((blocks[0][0], blocks[-1][1], lid, blocks))
+    for items in by.values():
+        items.sort()
+        for i, (s, e, lid, blocks) in enumerate(items):
+            for j in range(i + 1, len(items)):
+                if items[j][0] > e:
+                    break
+                if isect_len(blocks, items[j][3]) > 0:
+                    union(lid, items[j][2])
+    return {lid: find(lid) for lid in loci}
 
 
 def _overlapping_pairs(loci):
@@ -591,14 +678,19 @@ def loci(ref_ann, pred_ann, ref_chains, pred_chains, seqids):
     for _, rid, pid in pairs:
         per_ref[rid].add(pid)
         per_pred[pid].add(rid)
-    # A prediction that overlaps two annotated genes is only a fusion if those
-    # two genes do not overlap each other: yeast alone has 137 same-strand
-    # overlapping RefSeq gene pairs, and a correct prediction of one of them
-    # necessarily touches both.  Same, symmetrically, for splits.
+    # A prediction that overlaps two annotated genes is only a fusion if the
+    # reference itself keeps those genes apart.  Yeast alone has 91 same-strand
+    # CDS-overlapping RefSeq gene pairs and a correct prediction of one member
+    # necessarily touches the other, so overlap is charged to the annotation,
+    # not to the predictor: fusions are counted across connected components of
+    # the reference's own overlap graph.  Splits are the mirror image, over the
+    # prediction's overlap graph.
+    ref_comp = _components(ref_loci)
+    pred_comp = _components(pred_loci)
     fusion = sum(1 for pid, rids in per_pred.items()
-                 if _has_disjoint_pair(rids, ref_loci))
+                 if len({ref_comp[r] for r in rids}) > 1)
     split = sum(1 for rid, pids in per_ref.items()
-                if _has_disjoint_pair(pids, pred_loci))
+                if len({pred_comp[p] for p in pids}) > 1)
 
     # One-to-one, greedy by shared CDS bases: each reference locus keeps the
     # prediction that overlaps it best, and no prediction is used twice.
@@ -783,11 +875,32 @@ def parse_declaration(path):
 # -------------------------------------------------------------------- driver
 
 
+def selection_summary(ref, keep, dropped):
+    """What section 4's sequence filter did, so a scored run is auditable.
+
+    Reasons are grouped, not listed per sequence: a human run drops 638
+    sequences for one reason and naming them would swamp the report.
+    """
+    by_reason = defaultdict(lambda: [0, 0])
+    for seqid, reason in dropped.items():
+        kind = reason.split(" (")[0]
+        by_reason[kind][0] += 1
+        by_reason[kind][1] += ref.seq_len.get(seqid, 0)
+    return {
+        "kept": len(keep),
+        "dropped": len(dropped),
+        "dropped_by_reason": {k: {"sequences": v[0], "bp": v[1]}
+                              for k, v in sorted(by_reason.items())},
+        "reference_has_region_features": bool(ref.region_attrs),
+    }
+
+
 def score(reference, prediction, species, genome=None, seqids=None,
           stop_in_cds=True):
     ref = load_gff(reference)
     pred = load_gff(prediction)
-    keep = select_seqids(ref, whitelist=seqids)
+    dropped = {}
+    keep = select_seqids(ref, whitelist=seqids, reasons=dropped)
     ref_chains = {t: c for t, c in ref.chains().items() if c[0] in keep}
     pred_chains = {t: c for t, c in pred.chains().items() if c[0] in keep}
     scored_bp = sum(ref.seq_len[s] for s in keep)
@@ -803,8 +916,17 @@ def score(reference, prediction, species, genome=None, seqids=None,
         "prediction": os.path.basename(prediction),
         "scored_sequences": len(keep),
         "scored_bp": scored_bp,
+        "sequence_selection": selection_summary(ref, keep, dropped),
         "reference_transcripts": len(ref_chains),
         "predicted_transcripts": len(pred_chains),
+        # Predictions on sequences the filter excluded, or on sequence names
+        # the reference does not have at all, are not scored.  A large count
+        # here means the prediction was made against a different assembly or
+        # a different naming convention and the run is not comparable.
+        "predicted_transcripts_not_scored":
+            len(pred.chains()) - len(pred_chains),
+        "predicted_sequences_absent_from_reference":
+            len({c[0] for c in pred.chains().values()} - set(ref.seq_len)),
         "nucleotide": nucleotide(ref_chains, pred_chains, keep, scored_bp),
         "exon": exons(ref_chains, pred_chains, keep),
         "splice": splice(ref_chains, pred_chains, keep, fetch),
@@ -883,6 +1005,70 @@ chr1\t.\tgene\t5600\t6000\t.\t+\t.\tID=pg3
 chr1\t.\tmRNA\t5600\t6000\t.\t+\t.\tID=p3;Parent=pg3
 chr1\t.\tCDS\t5600\t6000\t.\t+\t0\tParent=p3
 """
+
+
+# Section 4 sequence selection.  Every line is a shape taken from a real panel
+# reference: a chromosome, an alt locus (map= band), an unlocalized scaffold
+# (map=unlocalized), an unplaced scaffold (chromosome=Unknown, no map=, the
+# shape maize and Nematostella use), a Tetrahymena-style scaffold with neither,
+# a mitochondrion, a chloroplast, and a scaffold under the 10 kb floor.
+SELECT_FIXTURE = """##gff-version 3
+chr1\t.\tregion\t1\t248956422\t.\t+\t.\tID=r1;chromosome=1;genome=chromosome
+alt1\t.\tregion\t1\t200000\t.\t+\t.\tID=r2;chromosome=1;genome=genomic;map=19q13.42
+unloc1\t.\tregion\t1\t175055\t.\t+\t.\tID=r3;chromosome=1;genome=genomic;map=unlocalized
+unplaced1\t.\tregion\t1\t109197\t.\t+\t.\tID=r4;chromosome=Unknown;genome=genomic
+bare1\t.\tregion\t1\t56000\t.\t+\t.\tID=r5;genome=genomic
+chrM\t.\tregion\t1\t16569\t.\t+\t.\tID=r6;genome=mitochondrion
+chrC\t.\tregion\t1\t154478\t.\t+\t.\tID=r7;genome=chloroplast
+tiny1\t.\tregion\t1\t1564\t.\t+\t.\tID=r8;genome=genomic
+"""
+
+# The same assembly as Ensembl writes it: no region features at all, so only
+# the sequence-name fallback can act.
+SELECT_FIXTURE_ENSEMBL = """##gff-version 3
+##sequence-region 1 1 248956422
+##sequence-region MT 1 16569
+##sequence-region MtDNA 1 13794
+##sequence-region Pt 1 154478
+##sequence-region HG1012_PATCH 1 200000
+##sequence-region GL000195.1 1 182896
+##sequence-region KI270713.1 1 40745
+"""
+
+
+def select_test(check):
+    d = tempfile.mkdtemp(prefix="score-select-")
+    try:
+        for name, text, want, want_reasons in (
+            ("refseq", SELECT_FIXTURE,
+             {"chr1", "unloc1", "unplaced1", "bare1"},
+             {"organelle": 2, "alt locus or patch": 1,
+              "shorter than 10000 bp": 1}),
+            ("ensembl", SELECT_FIXTURE_ENSEMBL,
+             {"1", "GL000195.1", "KI270713.1"},
+             {"organelle": 3, "alt locus or patch": 1}),
+        ):
+            path = os.path.join(d, name + ".gff3")
+            open(path, "w").write(text)
+            ann = load_gff(path)
+            reasons = {}
+            got = select_seqids(ann, reasons=reasons)
+            check("select %s kept" % name, got, want)
+            counts = defaultdict(int)
+            for r in reasons.values():
+                counts[r.split(" (")[0]] += 1
+            check("select %s reasons" % name, dict(counts), want_reasons)
+            os.unlink(path)
+        # An explicit whitelist wins over every rule, including the organelle
+        # and length ones: it is the documented escape hatch.
+        path = os.path.join(d, "w.gff3")
+        open(path, "w").write(SELECT_FIXTURE)
+        ann = load_gff(path)
+        check("select whitelist", select_seqids(ann, whitelist=["chrM", "tiny1"]),
+              {"chrM", "tiny1"})
+        os.unlink(path)
+    finally:
+        os.rmdir(d)
 
 
 def self_test():
@@ -964,6 +1150,8 @@ def self_test():
         if v != 1.0:
             fails.append("self-comparison %s: got %r, want 1.0" % ("/".join(path), v))
 
+    select_test(check)
+
     # The window fetcher must return the same bases as a plain read.
     fa = os.path.join(d, "g.fa")
     seq = "ACGT" * 500
@@ -1031,6 +1219,22 @@ def main():
     row["declaration"] = {"path": os.path.basename(args.declaration),
                           "sha256": decl_sha,
                           "model": decl.get("model")}
+    # A prediction in a different sequence naming convention scores 0.0
+    # everywhere and looks exactly like a bad predictor.  Ensembl calls
+    # C. elegans chromosome I "I" and RefSeq calls it NC_003279.8, so this is
+    # one wrong download away at all times.  Say so on stderr; the counts are
+    # in the JSON either way.
+    unscored = row["predicted_transcripts_not_scored"]
+    total_pred = row["predicted_transcripts"] + unscored
+    if total_pred and unscored > total_pred / 2:
+        print("warning: %d of %d predicted transcripts (%.0f%%) are not on a "
+              "scored sequence; %d predicted sequence names are absent from "
+              "the reference. Check that the prediction uses the reference's "
+              "sequence names."
+              % (unscored, total_pred, 100.0 * unscored / total_pred,
+                 row["predicted_sequences_absent_from_reference"]),
+              file=sys.stderr)
+
     text = json.dumps(row, indent=1, sort_keys=True)
     if args.out:
         open(args.out, "w").write(text + "\n")

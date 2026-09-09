@@ -384,14 +384,47 @@ hardware: <CPU model, cores, RAM, GPU model, VRAM>
 ## 4. Metrics
 
 All metrics are computed against the reference annotation of the same
-assembly, on the **primary assembly only** (no alt loci, no patch scaffolds,
-no unplaced scaffolds under 10 kb), and are reported per species. Sensitivity
+assembly, on the **nuclear primary assembly only** (no alt loci, no patch
+scaffolds, no organelle genomes, no unplaced scaffolds under 10 kb), and are
+reported per species. Sensitivity
 is TP/(TP+FN) and precision is TP/(TP+FP) throughout. The word *specificity*
 is deliberately not used anywhere in this benchmark: in the gene prediction
 literature "SP" denotes precision in some papers and the true-negative rate
 in others, and reusing the word guarantees that two correct implementations
 of this spec will disagree. F1 is the harmonic mean of sensitivity and
 precision.
+
+The scored sequence set is derived from the reference and reported in
+`sequence_selection` of every result, with the dropped sequences grouped by
+reason, so no run has to be taken on trust. Where the reference carries RefSeq
+`region` features the rule is exact: drop `genome=mitochondrion`,
+`genome=chloroplast` and the other organelle values, and drop the
+`genome=genomic` regions that carry a cytogenetic `map=` band, which is what
+an alt locus or a patch scaffold is. **The discriminator is `map=`, not
+`chromosome=`.** Unlocalized scaffolds carry `map=unlocalized` and unplaced
+ones carry `chromosome=Unknown` with no `map=` at all: in GRCh38.p14 every one
+of the 680 `genome=genomic` regions has a `chromosome=`, as do all 675 of
+maize's and all 32 of *Nematostella*'s, so a rule keyed on `chromosome=`
+discards every unplaced scaffold in the panel. Where the reference has no
+`region` features — Ensembl output, and most predictor output — organelles and
+alt loci are recognised from the sequence name instead (`MT`, `MtDNA`, `Pt`,
+`chrM`, `*_PATCH`, `*_ALT`); that is a heuristic,
+`reference_has_region_features` in the result says which path was taken, and
+`--seqids` overrides both.
+
+Organelles are dropped because they are out of the charter's scope and because
+they do not use the nuclear genetic code: human chrM is translation table 2,
+so every start and stop codon check on it would be wrong. Before this rule
+existed the scorer silently included the mitochondrion of human, yeast,
+*Arabidopsis* and maize, and the *Arabidopsis* and maize chloroplasts.
+
+Predictions land on sequences that survive this filter or they are not scored.
+The result reports `predicted_transcripts_not_scored` and
+`predicted_sequences_absent_from_reference`, and the scorer warns on stderr
+when more than half the prediction falls outside the scored set, because a
+prediction in the wrong naming convention otherwise scores 0.0 everywhere and
+is indistinguishable from a bad predictor: Ensembl calls *C. elegans*
+chromosome I `I` and RefSeq calls it `NC_003279.8`.
 
 Predictions are compared on the CDS, not the transcript, unless a metric
 says otherwise; UTRs are out of scope for this charter and a model that does
@@ -464,13 +497,22 @@ Two numbers, because they answer different questions.
   the two structural errors exact matching cannot distinguish from a plain
   miss: **fusion** (one prediction spanning ≥2 annotated genes) and **split**
   (≥2 predictions inside one annotated gene). Report the fusion and split
-  counts explicitly. A prediction touching two annotated genes counts as a
-  fusion only when those two genes do not themselves overlap in CDS: the
-  *S. cerevisiae* reference contains 91 same-strand CDS-overlapping gene
-  pairs, and without that condition a perfect prediction of the reference
-  scores 137 fusions and 132 splits. The reference's own overlapping-pair
-  count is reported alongside (`locus.reference_overlapping_locus_pairs`),
-  because it is the ceiling on how well any one-to-one locus matching can do. Fusions are the failure mode manual curation of
+  counts explicitly. Overlap in the *annotation* is charged to the annotation
+  and not to the predictor: build the graph whose nodes are annotated genes
+  and whose edges join genes whose CDS overlap on the same strand, and count a
+  prediction as a fusion only when the annotated genes it touches lie in two
+  or more different **connected components** of that graph. Splits are the
+  mirror image, over the prediction's own overlap graph. A pairwise "do these
+  two genes overlap each other" test is not enough, because overlap chains:
+  GRCh38.p14 has 82 places where gene B overlaps both A and C while A and C
+  are disjoint, and under the pairwise rule a perfect prediction of the human
+  reference scores 82 fusions and 82 splits (and 137 and 132 on
+  *S. cerevisiae*, which has 91 same-strand CDS-overlapping gene pairs).
+  Under the component rule an identity run scores exactly zero of both on
+  every panel species tested. The reference's own overlapping-pair count is
+  reported alongside (`locus.reference_overlapping_locus_pairs`), because it
+  is the ceiling on how well any one-to-one locus matching can do.
+  Fusions are the failure mode manual curation of
   *P. pacificus* found most of ([10.64898/2026.02.18.706511](https://doi.org/10.64898/2026.02.18.706511)).
 
 Isoform rule: a predictor emitting one transcript per locus is scored against
@@ -588,20 +630,45 @@ under 20 bp is not a splice junction (§4.3).
 
 Verification so far:
 
-- `python3 benchmark/score.py --self-test` scores three built-in fixture
-  pairs and checks 30 expected counts: a prediction with one exact
-  transcript, one shifted minus-strand boundary, one overlapping-but-unaligned
-  locus and one spurious locus; a fusion-and-split pair; and a
-  self-comparison that must score exactly 1.0 on every metric. It also checks
-  the streaming FASTA window reader against a plain read.
-- On the real *S. cerevisiae* reference (17 sequences, 12.16 Mb, 6,027
-  transcripts) the scorer runs in 1.1 s and scores the reference against
-  itself at F1 = 1.0 and MCC = 1.0 on every metric, with 0 fusions and 0
-  splits. Against a synthetically degraded copy of that annotation (10% of
-  transcripts deleted, 10% of CDS 3' boundaries shifted by 3 bp) it returns
+- `python3 benchmark/score.py --self-test` scores built-in fixture pairs and
+  checks 35 expected counts: a prediction with one exact transcript, one
+  shifted minus-strand boundary, one overlapping-but-unaligned locus and one
+  spurious locus; a fusion-and-split pair; a self-comparison that must score
+  exactly 1.0 on every metric; two sequence-selection fixtures, one in RefSeq
+  shape and one in Ensembl shape, whose every line is a sequence shape taken
+  from a real panel reference (chromosome, alt locus, unlocalized scaffold,
+  unplaced scaffold, bare scaffold, mitochondrion, chloroplast, sub-10 kb
+  scaffold); and the streaming FASTA window reader against a plain read.
+- **Identity runs on seven real panel references.** *S. cerevisiae*,
+  *A. thaliana*, *C. elegans*, *P. falciparum*, *N. vectensis*,
+  *T. thermophila*, *Z. mays* and *H. sapiens* each score F1 = 1.0 and
+  MCC = 1.0 on every metric against themselves, with **0 fusions and 0
+  splits** everywhere. Human is 102 scored sequences and 3,101,538,863 bp
+  after the filter (24 chromosomes plus 78 scaffolds; 511 alt loci and
+  patches, 91 sub-10 kb scaffolds and the mitochondrion dropped), 132,030
+  transcripts, 20,520 loci, 37 s and 0.93 GB peak resident set on one laptop
+  core.
+- **Ensembl input.** `Caenorhabditis_elegans.WBcel235.gff3.gz` from the
+  Ensembl FTP site — no `region` features at all, `gene:`/`transcript:`
+  ID prefixes — parses and scores: 6 nuclear chromosomes kept, `MtDNA`
+  dropped by the name fallback, `reference_has_region_features: false` in the
+  result, 31,853 transcripts, 19,973 loci, all metrics 1.0 against itself.
+- **Naming-mismatch detection.** Scoring the Ensembl *C. elegans* annotation
+  against the RefSeq one — same assembly, different sequence names — returns
+  F1 0.0 with `predicted_transcripts_not_scored: 31865`,
+  `predicted_sequences_absent_from_reference: 7` and a stderr warning, rather
+  than a silent zero.
+- Against a synthetically degraded copy of a reference (10% of transcripts
+  deleted, 10% of CDS 3' boundaries shifted by 3 bp): on *S. cerevisiae*,
   nucleotide F1 0.947, exon F1 0.856, donor F1 0.892, transcript F1 0.852,
-  locus F1 0.949, and recovers 270 GT-AG, 8 GC-AG and 18 other donor
-  dinucleotides from the genome FASTA.
+  locus F1 0.949, recovering 270 GT-AG, 8 GC-AG and 18 other donor
+  dinucleotides from the genome FASTA; on human, nucleotide F1 0.984, exon F1
+  0.821, donor F1 0.891, acceptor F1 0.895, transcript F1 0.366, locus F1
+  0.986 with 0 fusions and 7 splits, start F1 0.912, stop F1 0.907. Human
+  transcript F1 falls that far because it averages 13.9 CDS exons per
+  transcript, so a 10% per-exon boundary shift breaks about three quarters of
+  the chains; that sensitivity is the point of reporting the transcript level
+  separately from the nucleotide level.
 - `benchmark/fetch.py --what fasta` is now exercised: it downloads and
   checksum-verifies the 3.8 MB *S. cerevisiae* FASTA. It is still untested at
   3 Gb (§7).
@@ -611,12 +678,13 @@ Verification so far:
 1. **The scorer does not compute §4.6 or §4.7.** BUSCO, OMArk, and the cost
    columns are external and are merged by `report.py --cost`; nothing yet
    produces that TSV. T-human-009 owns the cost half.
-2. **The scorer has been run on one species, not the panel.** Everything
-   above is exact on *S. cerevisiae* (12 Mb, one FASTA line width, no alt
-   loci). The primary-assembly filter (§4, alt loci and patches excluded by
-   their `genome=genomic` plus `chromosome=` region attributes) is a RefSeq
-   convention and is untested on the human GFF3 that actually has them, and
-   untested on Ensembl-style input.
+2. **The scorer has been run on eight of twenty species.** *S. cerevisiae*,
+   *A. thaliana*, *C. elegans*, *P. falciparum*, *N. vectensis*,
+   *T. thermophila*, *Z. mays* and *H. sapiens*, plus one Ensembl-formatted
+   annotation, all as identity and degraded-copy runs (§6). Twelve panel
+   species have never been through it, and no run has yet used `--genome` at
+   vertebrate scale, so the §4.3 dinucleotide and GC stratifications are
+   exercised only on yeast.
 3. **No high-confidence subset** (§2.3). Needed before any accuracy above
    roughly the annotation error rate means anything. Candidate construction:
    loci with MANE Select support in human, community-curated loci elsewhere,
@@ -624,10 +692,11 @@ Verification so far:
 4. **Distance rule is taxonomic rank, not distance** (§3.1). Replacing it
    with substitutions per site from a fixed marker set would make the floor
    comparable across kingdoms. Needs a tree; overlaps T-human-008.
-5. **No high-confidence subset** (§2.3). Needed before any accuracy above
-   roughly the annotation error rate means anything. Candidate construction:
-   loci with MANE Select support in human, community-curated loci elsewhere,
-   intersected with peptide or RNA-seq support. Possibly its own task.
+5. **Ensembl and predictor input rely on a name heuristic** (§4). Without
+   RefSeq `region` features the scorer recognises organelles and alt loci from
+   the sequence name, which is verified on Ensembl *C. elegans* and on
+   fixtures but is not a specification. Any submission whose reference lacks
+   `region` features should pass `--seqids` and say so in the declaration.
 6. **No RNA-seq accessions chosen** (§3.2 channel 4). Evidence-based tools
    cannot be run on the panel until each species has a declared, fixed
    RNA-seq set. Overlaps T-human-008.
