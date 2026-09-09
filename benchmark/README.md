@@ -76,4 +76,6 @@ codon assignment is not strand-aware cannot reproduce it. See
 `docs/benchmark.md` section 6.
 
 `fetch.py --what` accepts `gff`, `fasta`, `protein`, `cds`. The whole panel is
-318 MB of gzipped GFF; the FASTAs are considerably larger.
+318 MB of gzipped GFF; the FASTAs are considerably larger — human alone is
+972,898,531 bytes, MD5-verified in 19.6 s, and `score.py --genome` streams it
+once in 88 s within 2.12 GB.

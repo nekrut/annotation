@@ -236,7 +236,9 @@
    "fn": 2503,
    "fp": 2900,
    "precision": 0.82164,
+   "predicted_sites_multiple_dinuc_classes": 0,
    "predicted_sites_multiple_intron_lengths": 0,
+   "reference_sites_multiple_dinuc_classes": 6,
    "reference_sites_multiple_intron_lengths": 53,
    "sensitivity": 0.8422,
    "tp": 13359
@@ -276,45 +278,89 @@
    }
   },
   "by_local_gc": {
-   "0": {
-    "f1": 0.0,
-    "fn": 5,
-    "fp": 29,
-    "precision": 0.0,
-    "sensitivity": 0.0,
-    "tp": 0
+   "acceptor": {
+    "0": {
+     "f1": 0.0,
+     "fn": 11,
+     "fp": 30,
+     "precision": 0.0,
+     "sensitivity": 0.0,
+     "tp": 0
+    },
+    "1": {
+     "f1": 0.56,
+     "fn": 32,
+     "fp": 45,
+     "precision": 0.52128,
+     "sensitivity": 0.60494,
+     "tp": 49
+    },
+    "2": {
+     "f1": 0.82187,
+     "fn": 940,
+     "fp": 1318,
+     "precision": 0.79807,
+     "sensitivity": 0.84713,
+     "tp": 5209
+    },
+    "3": {
+     "f1": 0.84549,
+     "fn": 1439,
+     "fp": 1433,
+     "precision": 0.84576,
+     "sensitivity": 0.84522,
+     "tp": 7858
+    },
+    "4": {
+     "f1": 0.75819,
+     "fn": 81,
+     "fp": 74,
+     "precision": 0.76656,
+     "sensitivity": 0.75,
+     "tp": 243
+    }
    },
-   "1": {
-    "f1": 0.6789,
-    "fn": 22,
-    "fp": 48,
-    "precision": 0.60656,
-    "sensitivity": 0.77083,
-    "tp": 74
-   },
-   "2": {
-    "f1": 0.84859,
-    "fn": 850,
-    "fp": 1254,
-    "precision": 0.82462,
-    "sensitivity": 0.874,
-    "tp": 5896
-   },
-   "3": {
-    "f1": 0.8431,
-    "fn": 1379,
-    "fp": 1364,
-    "precision": 0.84383,
-    "sensitivity": 0.84238,
-    "tp": 7370
-   },
-   "4": {
-    "f1": 0.6723,
-    "fn": 90,
-    "fp": 65,
-    "precision": 0.70982,
-    "sensitivity": 0.63855,
-    "tp": 159
+   "donor": {
+    "0": {
+     "f1": 0.0,
+     "fn": 5,
+     "fp": 29,
+     "precision": 0.0,
+     "sensitivity": 0.0,
+     "tp": 0
+    },
+    "1": {
+     "f1": 0.6789,
+     "fn": 22,
+     "fp": 48,
+     "precision": 0.60656,
+     "sensitivity": 0.77083,
+     "tp": 74
+    },
+    "2": {
+     "f1": 0.84859,
+     "fn": 850,
+     "fp": 1254,
+     "precision": 0.82462,
+     "sensitivity": 0.874,
+     "tp": 5896
+    },
+    "3": {
+     "f1": 0.8431,
+     "fn": 1379,
+     "fp": 1364,
+     "precision": 0.84383,
+     "sensitivity": 0.84238,
+     "tp": 7370
+    },
+    "4": {
+     "f1": 0.6723,
+     "fn": 90,
+     "fp": 65,
+     "precision": 0.70982,
+     "sensitivity": 0.63855,
+     "tp": 159
+    }
    }
   },
   "donor": {
@@ -404,7 +450,9 @@
    "fn": 2346,
    "fp": 2760,
    "precision": 0.83025,
+   "predicted_sites_multiple_dinuc_classes": 0,
    "predicted_sites_multiple_intron_lengths": 0,
+   "reference_sites_multiple_dinuc_classes": 0,
    "reference_sites_multiple_intron_lengths": 73,
    "sensitivity": 0.85194,
    "tp": 13499
@@ -424,7 +472,12 @@
   "predicted_cds_gaps_below_min": 0,
   "predicted_introns": 16259,
   "reference_cds_gaps_below_min": 0,
-  "reference_introns": 15918
+  "reference_introns": 15918,
+  "strata_units": {
+   "by_dinucleotide": "intron",
+   "by_intron_length_decile": "site",
+   "by_local_gc": "site"
+  }
  },
  "transcript": {
   "f1": 0.68947,

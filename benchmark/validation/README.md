@@ -144,12 +144,20 @@ curl -O https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.4
 # RefSeq accessions the reference uses, using columns 5, 7 and 10 of the
 # assembly report; drop rows on names the report does not map (KI270721.1,
 # KI270734.1).  Nothing else about the file is changed.
+python3 benchmark/fetch.py --species Homo_sapiens --what fasta --dest /tmp/panel
 python3 benchmark/score.py \
     --reference /tmp/panel/Homo_sapiens/*_genomic.gff.gz \
     --prediction gencode.v50.refseqnames.gff3.gz --species Homo_sapiens \
     --declaration benchmark/validation/gencode50-Homo_sapiens.yaml \
+    --genome /tmp/panel/Homo_sapiens/*_genomic.fna.gz \
     --out /tmp/gencode.json
 ```
+
+`--genome` here is the scorer's largest input to date: 972,898,531 bytes of
+gzip, 705 FASTA records, 3.1 Gb of sequence streamed once, 88 s and 2.12 GB
+against 43 s and 1.06 GB without it. It changes no metric — it adds the §4.3 dinucleotide and
+local-GC strata and a genome-read second opinion on the stop-codon
+convention.
 
 These are not benchmark results for AUGUSTUS. Both species are in AUGUSTUS's
 own training set — `heldout_seen_in_pretraining: yes` in two of the three
@@ -177,6 +185,18 @@ training set — and they are here for three things they found:
 - *A. mellifera* is the run where `honeybee1` puts the stop outside the CDS,
   so the 3 bp extension runs and the skip for a 3'-partial chain fires on real
   data: 13 chains, 8 false-positive stops and 2 false-positive terminal exons.
+
+All nine JSONs here were regenerated once more on 2026-09-09 after §4.3 made
+its stratification units explicit, added the local-GC table for acceptors and
+started counting the sites that sit in introns of more than one dinucleotide
+class. **No existing field moved in any of them**: the only differences are
+the new `splice.strata_units`, the new `by_local_gc.acceptor` block (the old
+donor-only table is now `by_local_gc.donor`, value for value) and the two new
+`sites_multiple_dinuc_classes` counts. The `gencode50-Homo_sapiens` run is
+the exception, and only because it is the first one given `--genome`: it
+gains the two strata and the genome-read stop-codon convention, which agrees
+with the `stop_codon` features the file already carried. Its metrics are
+identical to five decimals either way.
 
 All eight JSONs here were regenerated with the scorer carrying those changes.
 The three AUGUSTUS and three Helixer results are unchanged in every value

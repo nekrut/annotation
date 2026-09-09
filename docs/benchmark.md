@@ -634,24 +634,43 @@ Each annotated intron contributes a donor and an acceptor position. A
 predicted site is a true positive if it is at the exact position and strand.
 Report separately for donors and acceptors, and stratify by:
 
-- **canonical vs non-canonical** dinucleotides (GT-AG, GC-AG, AT-AC, other);
+- **canonical vs non-canonical** dinucleotides (GT-AG, GC-AG, AT-AC, other),
+  **per intron rather than per site** — see below;
 - **intron length decile**, computed by the scorer from the reference
   annotation of the species being scored rather than read from `panel.tsv`,
   so that the long-intron tail is visible instead of averaged away. The cuts
   are emitted with the result (`splice.intron_length_decile_cuts`);
   `panel.tsv` carries only p10/median/p90/p99, which is enough to justify the
   panel and not enough to bin against.
-- **local GC** in a 200 bp window, in five bins.
+- **local GC** in a 200 bp window, in five bins, centred on the donor and on
+  the acceptor separately.
 
 The intron-length stratification is the single most informative panel in the
 whole benchmark for the charter's question, because it is where clade-specific
 models are expected to differ from a species-independent one.
 
+**The three stratifications do not share a denominator, and the result says
+so** (`splice.strata_units`). The donor and acceptor totals, the
+intron-length deciles and the local-GC bins are all counted per *site*; the
+dinucleotide table is counted per *intron*, and has to be. A dinucleotide
+class is the pair (donor, acceptor), so it is a property of the intron: a
+donor shared by two introns that end `AG` and `AC` is in two classes at once.
+The gap is not cosmetic on a real genome — the human reference's 218,446
+introns carry 188,913 distinct donors and 193,359 distinct acceptors, so
+`by_dinucleotide` sums to 15.6% more than the donor total printed beside it,
+and a reader who adds the row up expecting the donor denominator gets a
+different number. `reference_sites_multiple_dinuc_classes` and its predicted
+counterpart report how many sites are in more than one class, which is the
+count that would have to be resolved before a per-site table could exist. The
+local-GC table is given for donors *and* acceptors; before the human run it
+existed for donors only, which quietly made one of the three strata
+single-sided while this section asked for both.
+
 One position can belong to introns of two different lengths, and then the
 decile is a choice rather than a fact: alternative splicing shares a donor
 between a short and a long intron. That is 0 of 281 *S. cerevisiae* donors,
 73 of 15,845 in *N. crassa*, 8,086 of 220,976 (3.7%) in *T. rubripes* and
-23,387 of 189,329 (**12.4%**) in human, where the shortest and the longest
+23,387 of 188,913 (**12.4%**) in human, where the shortest and the longest
 intron at one site are over 1 Mb apart. The site is scored once — the totals
 never depended on this — and stratified by its **shortest** intron, which is
 arbitrary but fixed; the number of sites the rule was applied to is reported
@@ -1019,7 +1038,7 @@ non-`protein_coding` biotype and an incomplete end (§4, §4.5).
 Verification so far:
 
 - `python3 benchmark/score.py --self-test` scores built-in fixture pairs and
-  checks 135 expected values — it prints the count it ran, so this sentence
+  checks 145 expected values — it prints the count it ran, so this sentence
   cannot drift from the code again; it said 116 while the code ran 104: a
   prediction with one exact transcript, one
   shifted minus-strand boundary, one overlapping-but-unaligned locus and one
@@ -1045,7 +1064,12 @@ Verification so far:
   codons is read as `inside` and left alone, and the same file under
   translation table 6 is called `unknown` rather than extended; a two-isoform
   gene sharing one donor between a 100 bp and a 6,900 bp intron, which must
-  land in the decile of the shorter one and be reported as ambiguous (§4.3);
+  land in the decile of the shorter one and be reported as ambiguous (§4.3),
+  and that same fixture with a genome in which its two introns end `AG` and
+  `AC`, so the one donor is in two dinucleotide classes at once and the
+  intron-level table must count 2 where the site-level total counts 1, while
+  the local-GC table must exist for both sides and count 1 donor against 2
+  acceptors (§4.3);
   a prediction whose `stop_codon` feature sits across an intron from its last
   CDS block, whose merged-in junction must still get a dinucleotide class
   (§4.5); a two-isoform gene in which one isoform is the other plus 51 bases
@@ -1081,10 +1105,22 @@ Verification so far:
   transcripts of 132,030 (198 pseudogene and 390 gene-fragment transcripts
   dropped, §4), 19,932 loci. Every one of the twenty took the RefSeq `region`
   path (`reference_has_region_features: true`).
-- **`--genome` across six species and at vertebrate scale.** The §4.3
-  dinucleotide and local-GC strata now run on *T. rubripes* (384 Mb, 230,048
-  introns, 32 s and 0.69 GB), *D. melanogaster*, *C. elegans*, *S. pombe*,
-  *P. falciparum* and *S. cerevisiae*. Non-GT-AG donor fractions recovered
+- **`--genome` across seven species and at 3 Gb.** The §4.3 dinucleotide and
+  local-GC strata run on *T. rubripes* (384 Mb, 229,939 reference introns,
+  32 s and 0.69 GB), *D. melanogaster*, *C. elegans*, *S. pombe*,
+  *P. falciparum*, *S. cerevisiae* and now **human**, which is the case the
+  streaming window reader was written for and had never been given: the
+  identity run reads 3,101,538,863 scored bp across 102 sequences out of a
+  973 MB gzip in 67 s and 1.35 GB, and the GENCODE 50 run — 347,110 predicted
+  introns against the reference's 218,446 — in 88 s and 2.12 GB. Not one
+  window came back unserved: no `unknown` dinucleotide class and no dropped
+  GC bin in either run, over the 705 records the FASTA carries. Every metric
+  in the GENCODE result is identical to the run without `--genome`; what the
+  genome adds is the two strata and a second, independent reading of the
+  stop-codon convention, which agrees with the file's own `stop_codon`
+  features (349,754 chains `inside`, 579 `outside`, 18,253 neither).
+  The human reference's own splice census: 215,956 GT-AG, 1,939 GC-AG, 219
+  AT-AC and 332 other, so **1.14% non-GT-AG**. Non-GT-AG donor fractions recovered
   from the genome: *T. rubripes* 1.57%, *D. melanogaster* 0.98%,
   *C. elegans* 0.97%, *S. cerevisiae* 3.91%, *P. falciparum* 0.18%,
   *S. pombe* 0.16%.
@@ -1104,12 +1140,35 @@ Verification so far:
   remaining queue against what was read when a record ends, clipping the
   window to the sequence rather than discarding it; the buffer is never
   trimmed past the head window's start, so nothing has been lost by then.
-  Impact here was one intron in 230,048 (*T. rubripes*) and zero elsewhere,
+  Impact here was one intron in 229,939 (*T. rubripes*) and zero elsewhere,
   because the stall only reaches windows *behind* it and these assemblies put
   few splice sites near scaffold ends; on a more fragmented assembly, or with
   a larger `GC_WINDOW`, it would take out the tail of every affected scaffold.
   The regression fixture above fails on the old code with four wrong values
   and passes on the new.
+- **Found by the human run: the three §4.3 strata had three denominators and
+  one of them was single-sided.** `by_dinucleotide` is counted per intron,
+  `by_intron_length_decile` and `by_local_gc` per site, and §4.3 read as
+  though all three were per donor and per acceptor. On a small genome the
+  difference is invisible — *S. cerevisiae* has 281 introns over 281 donors —
+  but human has 218,446 reference introns over 188,913 donors and 193,359
+  acceptors, so the dinucleotide row sums to **15.6% more** than the donor
+  total beside it. Per-intron is the only defensible unit for that table: a
+  class is the pair, and 106 human reference donors and 644 acceptors sit in
+  introns of *two* classes at once — 129 and 2,515 in the GENCODE prediction,
+  185 and 260 in the *T. rubripes* reference — so a per-site table would have
+  to pick one, and the choice would be arbitrary in exactly the way the
+  shortest-intron rule above exists to prevent. The six-to-one acceptor-to-donor
+  ratio is itself the mechanism: a shared *donor* usually keeps its class,
+  because both its introns end `AG`, while a shared *acceptor* changes class
+  whenever one of its introns starts `GC` instead of `GT`. The result
+  now states the units (`splice.strata_units`), reports the two-class site
+  counts (`reference_sites_multiple_dinuc_classes` and its predicted
+  counterpart), and gives the local-GC table for **acceptors as well as
+  donors** — before this it existed for donors only, which quietly delivered
+  one of the three stratifications on one side of the junction. Fixture: the
+  shared-donor gene of the self-test, given a genome in which its two introns
+  end `AG` and `AC`.
 - **Real predictor output, and what it found.** AUGUSTUS 3.5.0 (bioconda
   `augustus-3.5.0-pl5321h5653ebf_10`) was run ab initio on *S. cerevisiae*
   (`--species=saccharomyces_cerevisiae_S288C`, 47 s wall on 17 cores, 237 MB
@@ -1559,11 +1618,14 @@ Locus F1
 8. ***Tetrahymena* annotation quality** (§2.3) may be poor enough that even
    "report, never rank" is generous. An alternative code-6 ciliate with a
    better annotation would be preferable if one exists.
-9. **Fetch script tested on 20 of 20 annotations, 6 of 20 genome FASTAs.**
-   `--what fasta` works end to end on *S. cerevisiae*, *S. pombe*,
-   *P. falciparum*, *C. elegans*, *D. melanogaster* and *T. rubripes*
-   (391 Mb, the largest so far, checksum verified). It has still not been
-   exercised at 3 Gb scale.
+9. **Fetch script tested on 20 of 20 annotations, 9 of 20 genome FASTAs,
+   closed at 3 Gb.** `--what fasta` works end to end on *S. cerevisiae*,
+   *S. pombe*, *P. falciparum*, *C. elegans*, *D. melanogaster*,
+   *T. rubripes*, *N. crassa*, *T. thermophila*, *A. mellifera* and — this is
+   what closes the item — **human**: `GCF_000001405.40_GRCh38.p14_genomic.fna.gz`,
+   972,898,531 bytes for 3.1 Gb of sequence, MD5-verified against the NCBI
+   manifest in 19.6 s. What that leaves untested is not scale but the
+   remaining eleven species, which are the same code path.
 10. **Both tools over-predict introns in *S. cerevisiae*, and the benchmark
    cannot yet say what the right number is.** This item asked for a second
    predictor and now has one (§6): against 281 scored reference introns in a
@@ -1579,9 +1641,12 @@ Locus F1
    The five bins are fixed absolute GC bands, which is what makes the column
    comparable across species, but the panel deliberately spans 19.5% to 48.5%
    GC: 98.9% of *P. falciparum* donors land in the `<30%` bin and 83% of
-   *S. pombe* donors in `30-40%`. Read that column across species, not within
-   one. Per-species GC quantile bins would be the alternative and would not be
-   comparable; this is a documented limitation, not a defect.
+   *S. pombe* donors in `30-40%`. Human is the counter-case that makes the
+   fixed bands worth keeping: its 188,913 donors spread 7,913 / 50,492 /
+   43,960 / 45,405 / 41,143 across the five, so the column carries real
+   signal there. Read it across species, not within one. Per-species GC
+   quantile bins would be the alternative and would not be comparable; this
+   is a documented limitation, not a defect.
 12. **Which non-`protein_coding` biotypes to exclude is a judgement call.**
    §4 drops immunoglobulin and T-cell receptor segments along with
    pseudogenes, because they are gene fragments assembled somatically and

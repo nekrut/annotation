@@ -713,7 +713,7 @@ def sites_of(introns):
 
     One position can carry several intron lengths: alternative splicing shares
     a donor between a short and a long intron.  On the panel's references that
-    is 0.00% of *S. cerevisiae* donors but 12.35% of human ones, with a spread
+    is 0.00% of *S. cerevisiae* donors but 12.4% of human ones, with a spread
     of over 1 Mb between the shortest and the longest intron at one site, so
     which length is kept decides that site's §4.3 decile.  ``introns`` is a
     set, so taking whichever came last made the stratification depend on the
@@ -779,9 +779,27 @@ def splice(ref_chains, pred_chains, seqids, seqfetch=None):
             strat.append(prf(t, len(pb) - t, len(rb) - t))
         out[name]["by_intron_length_decile"] = strat
 
+    # The three stratifications do not share a denominator, and saying so is
+    # the point of ``strata_units``.  A dinucleotide *class* is the pair
+    # (donor, acceptor), so it is a property of an intron and not of either
+    # site: on human, 218,446 reference introns carry 188,913 distinct donors
+    # and 193,359 distinct acceptors, so ``by_dinucleotide`` sums to 15.6%
+    # more than the donor total printed beside it.  The other two are per
+    # site, like the ``donor``/``acceptor`` totals themselves.
+    out["strata_units"] = {"by_dinucleotide": "intron",
+                           "by_intron_length_decile": "site",
+                           "by_local_gc": "site"}
     if seqfetch is not None:
         out["by_dinucleotide"] = _splice_by_dinuc(ref_i, pred_i, seqfetch)
-        out["by_local_gc"] = _splice_by_gc(ref_d, pred_d, seqfetch)
+        # §4.3 asks for every stratification separately for donors and
+        # acceptors; before this the GC one existed for donors only.
+        out["by_local_gc"] = {"donor": _splice_by_gc(ref_d, pred_d, seqfetch),
+                              "acceptor": _splice_by_gc(ref_a, pred_a, seqfetch)}
+        ref_dc = _sites_multiple_dinuc_classes(ref_i, seqfetch)
+        pred_dc = _sites_multiple_dinuc_classes(pred_i, seqfetch)
+        for i, name in enumerate(("donor", "acceptor")):
+            out[name]["reference_sites_multiple_dinuc_classes"] = ref_dc[i]
+            out[name]["predicted_sites_multiple_dinuc_classes"] = pred_dc[i]
     else:
         out["by_dinucleotide"] = None
         out["by_local_gc"] = None
@@ -818,6 +836,26 @@ def _splice_by_dinuc(ref_i, pred_i, seqfetch):
     for iv in pred - ref_i:
         classes[dinuc_class(seqfetch, *iv)][1] += 1
     return {c: prf(*v) for c, v in sorted(classes.items())}
+
+
+def _sites_multiple_dinuc_classes(introns, seqfetch):
+    """Donor and acceptor sites that sit in introns of more than one class.
+
+    This is the number that says why ``by_dinucleotide`` cannot be a per-site
+    table.  A donor's own two bases are fixed by its position, but the
+    *class* is the pair, so one shared donor whose two introns end GT-AG and
+    GT-something belongs to two classes at once.  Counting it in both would
+    make the table's totals exceed the donor total for a second, unrelated
+    reason; counting it in one would be a hash-seed-dependent choice of the
+    kind §4.3's shortest-intron rule exists to remove.
+    """
+    seen = (defaultdict(set), defaultdict(set))
+    for seqid, s, e, strand in introns:
+        c = dinuc_class(seqfetch, seqid, s, e, strand)
+        d, a = (s, e) if strand == "+" else (e, s)
+        seen[0][(seqid, d, strand)].add(c)
+        seen[1][(seqid, a, strand)].add(c)
+    return tuple(sum(1 for v in m.values() if len(v) > 1) for m in seen)
 
 
 def gc_bin(seqfetch, seqid, pos):
@@ -1279,8 +1317,9 @@ def needed_windows(ref_chains, pred_chains, seqids):
         for seqid, s, e, strand in introns_of(chains, seqids)[0]:
             wins.add((seqid, s, s + 1))
             wins.add((seqid, e - 1, e))
-            d = s if strand == "+" else e
+            d, a = (s, e) if strand == "+" else (e, s)
             wins.add((seqid, max(1, d - half), d + half - 1))
+            wins.add((seqid, max(1, a - half), a + half - 1))
     return wins
 
 
@@ -2199,6 +2238,39 @@ def self_test():
     check("shared donor decile", sd["splice"]["donor"]["by_intron_length_decile"][0]["tp"], 1)
     check("shared donor top decile",
           sd["splice"]["donor"]["by_intron_length_decile"][9]["tp"], 0)
+    check("strata units dinucleotide",
+          sd["splice"]["strata_units"]["by_dinucleotide"], "intron")
+    check("strata units gc", sd["splice"]["strata_units"]["by_local_gc"], "site")
+    # The same fixture with a genome, which is what makes the denominators
+    # visible: the two introns leave that one donor in two dinucleotide
+    # classes at once, so ``by_dinucleotide`` counts 2 where ``donor`` counts
+    # 1.  A per-site dinucleotide table would have to pick one of the two.
+    sdfa = os.path.join(d, "sdref.fa")
+    sdseq = ["A"] * 20000
+    sdseq[1099:1101] = list("GT")     # donor of both introns
+    sdseq[1197:1199] = list("AG")     # acceptor of the 100 bp intron
+    sdseq[7997:7999] = list("AC")     # acceptor of the 6,900 bp one
+    with open(sdfa, "w") as fh:
+        fh.write(">chr1 shared-donor fixture\n")
+        sdseq = "".join(sdseq)
+        for i in range(0, len(sdseq), 60):
+            fh.write(sdseq[i:i + 60] + "\n")
+    sdg = score(sdref, sdref, "fixture", genome=sdfa)
+    check("shared donor dinuc GT-AG", sdg["splice"]["by_dinucleotide"]["GT-AG"]["tp"], 1)
+    check("shared donor dinuc other", sdg["splice"]["by_dinucleotide"]["other"]["tp"], 1)
+    check("shared donor dinuc total",
+          sum(v["tp"] for v in sdg["splice"]["by_dinucleotide"].values()), 2)
+    check("shared donor site total", sdg["splice"]["donor"]["tp"], 1)
+    check("shared donor two classes",
+          sdg["splice"]["donor"]["reference_sites_multiple_dinuc_classes"], 1)
+    check("shared acceptor one class each",
+          sdg["splice"]["acceptor"]["reference_sites_multiple_dinuc_classes"], 0)
+    # §4.3 asks for both sides; the acceptor GC table did not exist before.
+    check("gc donor sites",
+          sum(v["tp"] for v in sdg["splice"]["by_local_gc"]["donor"].values()), 1)
+    check("gc acceptor sites",
+          sum(v["tp"] for v in sdg["splice"]["by_local_gc"]["acceptor"].values()), 2)
+    os.unlink(sdfa)
     os.unlink(sdref)
 
     # A stop codon split across an intron: merging the feature into the chain
