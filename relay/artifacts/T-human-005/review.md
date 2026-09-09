@@ -1,14 +1,21 @@
 # Independent review of eukaryotic gene prediction: literature and software (T-human-005, marx)
 
-Status: tick 2 draft, 2026-09-09. Sections 1 to 6 are now populated. Every
-DOI was resolved through the Europe PMC REST API; every accuracy or runtime
-number below is quoted from open-access full text I read this tick (PMC ids
-in the search log) or from a README at the commit hash listed in
-`repos.tsv`. Numbers I could only see in an abstract are marked
-"(abstract)". This review was written blind: I have not opened any other
-agent's `relay/artifacts/T-human-00N/` directory. The one exception to
-"read it myself" is the charter's own EGAPx cost figure, which I cite as
-`relay/TASK.md`.
+Status: submitted for review, tick 3, 2026-09-09. Sections 1 to 6 are
+complete. Every DOI was resolved through the Europe PMC REST API; every
+accuracy or runtime number below is quoted from open-access full text I
+read (PMC ids in the search log) or from a README or documentation file at
+the commit hash listed in `repos.tsv`. Numbers I could only see in an
+abstract are marked "(abstract)". This review was written blind: I have not
+opened any other agent's `relay/artifacts/T-human-00N/` directory. The one
+exception to "read it myself" is the charter's own EGAPx cost figure, which
+I cite as `relay/TASK.md`.
+
+Known gaps, stated up front: ClaMSA and AUGUSTUS-cgp are covered from
+abstracts plus their repository documentation, not full text (the journal
+versions are not in PMC, and the OA preprints sit behind hosts that refused
+this runner, see rows 9 and 10 of the search log); the five 2026 preprints
+are covered from bioRxiv API abstracts and READMEs; no install test was
+possible for the container-only tools.
 
 ## 1. Search log
 
@@ -24,7 +31,14 @@ blocked, and star and issue counts were obtained from shields.io badge
 JSON (`img.shields.io/github/stars/<owner>/<repo>.json`), which reads the
 GitHub API server-side. bioRxiv full-text JATS answered 429 on every
 attempt, so the four 2026 preprints are covered from their API abstracts
-and READMEs only.
+and READMEs only. Tick 3 (04:50 to 05:30 UTC): the bioRxiv HTML, PDF and
+JATS hosts answered HTTP 429 (Cloudflare error 1015) on all seven attempts,
+PeerJ and OUP answered 403, NCBI efetch for PMC5860283 returned only the
+front matter ("the publisher of this article does not allow downloading of
+the full text in XML form"), Europe PMC has no full text for the five
+preprint records (PPR294699, PPR1213068, PPR1213229, PPR1309120,
+PPR1260420), and OpenAlex and Semantic Scholar returned empty records. I
+stopped there rather than work around a rate limit.
 
 | # | date | source | query or action | hits | kept |
 |---|------|--------|-----------------|------|------|
@@ -36,6 +50,10 @@ and READMEs only.
 | 6 | 2026-09-09 | Semantic Scholar | citation counts for five anchor papers | KA/KS 271, Helixer 2021 138, CONTRAST 106, BRAKER3 59, Tiberius 42 | context only |
 | 7 | 2026-09-09 | git (anonymous, shallow) + shields.io | 36 repositories from Gaius-Augustus/Tiberius and ncbi/egapx outward; 6 slugs did not exist (ncbi/gnomon, Jstacs/GeMoMa, LarsGab/Tiberius, three guesses) | 30 cloned; 30/30 stars and issue counts | 30 rows in `repos.tsv` |
 | 8 | 2026-09-09 | fresh `python3 -m venv` | install tests for Tiberius (Python 3.11 and 3.12), Vipsania (3.11, 3.12 dry-run), Helixer (3.11, real install) | see section 3 | 3 |
+| 9 | 2026-09-09 | Europe PMC search + fullTextXML, NCBI efetch, bioRxiv (www), PeerJ, OUP, OpenAlex, Semantic Scholar | full text of ClaMSA (btac028; preprint 10.1101/2021.03.09.434414, CC BY) and AUGUSTUS-cgp (btw494, PMC5860283; PeerJ preprint 10.7287/peerj.preprints.1296, CC BY) | 0/2 full text; 2/2 journal abstracts (Europe PMC, Semantic Scholar) | abstracts + repo docs used |
+| 10 | 2026-09-09 | bioRxiv API `details` | re-check of the 2026 preprints: Tiberius multi-clade has a v2 (2026-07-29) and OrionGeno a v2 (2026-08-24); v2 abstracts read; Vipsania and PlantGeneAnn still v1 | 2 new versions | rows updated |
+| 11 | 2026-09-09 | raw.githubusercontent.com | Gaius-Augustus/clamsa `README.md`, Gaius-Augustus/Augustus `docs/RUNNING-AUGUSTUS-IN-CGP-MODE.md` (inputs, tree requirements), xjtu-omics/ANNEVO `README.md` (lineages, hardware) | 3/3 | 3 |
+| 12 | 2026-09-09 | git (anonymous, shallow) + shields.io | Gaius-Augustus/clamsa and xjtu-omics/ANNEVO (slug found via the abstract's stated availability and the author affiliation) | 2 cloned | 2 rows added to `repos.tsv` (32 total) |
 
 Observation from the search: Europe PMC's title index finds zero 2023 to
 2026 papers combining "gene prediction" with "transformer" or "language
@@ -60,9 +78,9 @@ learning; HYB = hybrid. Sn = sensitivity, Sp = specificity or precision.
 | CONTRAST | 2007 | 10.1186/gb-2007-8-12-r269 | COMP, discriminative, phylogeny-free (SVM boundary classifiers + CRF) | genome + multiple alignment (11 informants) | human ENCODE regions | gene Sn/Sp 58.6/35.5 with 11 informants, 50.8/29.3 with mouse only; exon Sn/Sp 92.8/72.5; "65% increase in gene sensitivity and 46% reduction in exon error rate" over N-SCAN (PMC2246271 Table 1) | CPU | the design choice we should argue against: it threw the tree away and still gained from more informants, which N-SCAN could not | historical |
 | KA/KS test | 2002 | 10.1101/gr.200901 | COMP, one signal | human-mouse aligned windows | human, mouse | exon detection with about 9.5% FN and 2 to 3% FP (charter; PMC155263 abstract: "FN lower than most, FP lower than all current methods") | trivial | pairwise; needs suitable divergence and window length; 271 citations (Semantic Scholar) | none |
 | PhyloCSF | 2011 | 10.1093/bioinformatics/btr209 | COMP, phylogenetic codon model | multiple alignment + tree | 12 flies, 29 mammals | strong coding/non-coding discrimination on fly regions (PMC3117341); clade-specific empirical codon models | CPU heavy per window; PhyloCSF++ (10.1093/bioinformatics/btab756) is the fast C++ port | needs a clade model; not a gene finder | mlin/PhyloCSF (AGPL); cpockrandt/PhyloCSFpp |
-| ClaMSA | 2022 | 10.1093/bioinformatics/btac028 | COMP, end-to-end learned evolutionary models | codon alignment + tree | not read (Europe PMC record only: title and authors) | "End-to-end learning of evolutionary models to find coding regions in genome alignments" (title); used as Tiberius's optional evolutionary input in de novo mode (PMC11645249) | CPU | direct precedent for "learn the substitution model, give it the tree"; full text to read next tick | Gaius-Augustus/clamsa (not cloned) |
+| ClaMSA | 2022 | 10.1093/bioinformatics/btac028 (preprint 10.1101/2021.03.09.434414) | COMP, end-to-end learned evolutionary models: a continuous-time Markov chain (CTMC) layer whose rate matrices are trained discriminatively, followed by (recurrent) neural layers | codon MSA + phylogenetic tree in Newick, scaled to one expected codon substitution per time unit; the README recommends a MrBayes codon-model tree built from positive (coding) alignments only | trained and tested on vertebrate, fly and yeast codon alignments (README data scripts `download_fly_vert_yeast_train.sh`); abstract reports vertebrate and fly | "four times fewer false positives ... than existing methods at the same true positive rate" on the coding vs non-coding candidate-classification task (journal abstract; the preprint abstract is not quoted here because its full text was unreachable). Classifies pre-extracted candidate alignments, so it is a scorer, not a gene finder | CPU (TensorFlow >= 2.0); tree construction is the expensive step | closest published precedent for the charter's "give the network the tree" idea: the tree enters as fixed branch lengths in a learned CTMC, not as a learned embedding; it is used as an optional input by Tiberius de novo mode (PMC11645249) | Gaius-Augustus/clamsa (README at commit in `repos.tsv`; not cloned this tick) |
 | RNAcode | 2011 | 10.1261/rna.2536111 | COMP, one signal | multiple alignment | broad | robust coding detection (abstract) | CPU | designed species-independent | ViennaRNA site |
-| AUGUSTUS | 2003, 2006, 2016 | 10.1093/bioinformatics/btg1080; 10.1093/nar/gkl200; 10.1093/bioinformatics/btw494 | GHMM (+hints; cgp = comparative) | genome; optional hints | many species via training; explicit intron length submodel with GC-dependent parameters (2003) | EGASP 2006: no method exceeded 45% exact transcript Sn (PMC1810551). Tiberius 2024 benchmark, three mammals: exon F1 67.3, gene F1 12.4 with 2010 human parameters (PMC11645249). G3PO: nucleotide F1 0.52, best of five; short exons under 50 nt only 18% correct (PMC7147072) | 2:25 h per mammalian genome on 48 threads (PMC11645249 Table 1) | per-species training; cgp mode predicts jointly over a whole-genome alignment | Gaius-Augustus/Augustus |
+| AUGUSTUS | 2003, 2006, 2016 | 10.1093/bioinformatics/btg1080; 10.1093/nar/gkl200; 10.1093/bioinformatics/btw494 | GHMM (+hints; cgp = comparative) | genome; optional hints | many species via training; explicit intron length submodel with GC-dependent parameters (2003) | EGASP 2006: no method exceeded 45% exact transcript Sn (PMC1810551). Tiberius 2024 benchmark, three mammals: exon F1 67.3, gene F1 12.4 with 2010 human parameters (PMC11645249). G3PO: nucleotide F1 0.52, best of five; short exons under 50 nt only 18% correct (PMC7147072) | 2:25 h per mammalian genome on 48 threads (PMC11645249 Table 1) | per-species training. cgp mode (2016, PMC5860283, abstract + `docs/RUNNING-AUGUSTUS-IN-CGP-MODE.md`): takes a trained species parameter set, one FASTA per genome, a MAF whole-genome alignment and a Newick tree (a star tree with uniform branch lengths is the documented fallback), and predicts all genomes jointly as a binary labelling problem on a graph solved by dual decomposition; tested on 12-vertebrate and 12-Drosophila alignments, evaluated on human, mouse and D. melanogaster; the abstract claims annotation transfer through the alignment beats protein-spliced alignment. This is the direct ancestor of the charter's design: alignment plus tree as fixed inputs, exon gains and losses scored against the species tree | Gaius-Augustus/Augustus |
 | SNAP | 2004 | 10.1186/1471-2105-5-59 | GHMM | genome | A. thaliana, C. elegans, D. melanogaster, O. sativa | own-species nucleotide Sn 93.8 to 98.1; foreign parameters collapse: fly parameters on Arabidopsis Sn 26.0, rice parameters on C. elegans Sn 21.7; bootstrapping recovers Sn 75 to 96 (PMC421630 Table 4) | fast, CPU | the cleanest published negative result on transferring HMM parameters | KorfLab/SNAP |
 | GlimmerHMM | 2004 | 10.1093/bioinformatics/bth315 | GHMM | genome | Arabidopsis, human | G3PO nucleotide F1 0.45, highest Sn (0.74) but lowest Sp (0.43) (PMC10448985 Table 3) | fast, CPU | per-species training | JHU site |
 | GeneID | 2000 | 10.1101/gr.10.4.511 | weighted-signal GHMM-like | genome | Drosophila, many | G3PO nucleotide F1 0.40 | fast, CPU | per-species parameter files | CRG site |
@@ -83,9 +101,9 @@ learning; HYB = hybrid. Sn = sensitivity, Sp = specificity or precision.
 | miniprot / Spaln / Exonerate | 2023 / 2008, 2024 / 2005 | 10.1093/bioinformatics/btad014; 10.1093/nar/gkn105, 10.1093/bioinformatics/btae517; 10.1186/1471-2105-6-31 | spliced aligners inside pipelines | proteins or cDNA + genome | broad | aligner accuracy bounds every EVID pipeline above | CPU; miniprot is the fast one | intron-length priors are species parameters in Spaln | lh3/miniprot (418 stars); ogotoh/spaln |
 | Helixer | 2021, 2026 | 10.1093/bioinformatics/btaa1044; 10.1038/s41592-025-02939-1 | DL (CNN + biLSTM) base labelling + HMM post-processor | genome only | 2021: one vertebrate model over 186 animal genomes, one land-plant model over 51 (PMC8016489). 2026: four lineage models (fungi, land plants, vertebrates, invertebrates) | 2026 (PMC13076211 Tables 1, 2), mean over test species: base-wise phase F1 0.95 fungi, 0.81 plants, 0.88 vertebrates, 0.86 invertebrates; transcript-level F1 0.54 / 0.46 / 0.20 / 0.31 vs GeneMark-ES 0.60 / 0.09 / 0.02 / 0.18 vs AUGUSTUS 0.53 / 0.23 / 0.08 / 0.15. In Tiberius's mammal benchmark: exon/gene F1 72.9/19.3 | 8:54 h per mammal on A100 (PMC11645249); README: GPU with 8 to 11 GB; install "20 to 30 minutes" for experienced users | one model per kingdom-scale lineage; GeneMark-ES still wins fungi at transcript level | weberlab-hhu/Helixer (305 stars) |
 | Tiberius | 2024 | 10.1093/bioinformatics/btae685 | DL (CNN + biLSTM + differentiable HMM, end-to-end, F1 loss) | genome + softmasking (+ optional ClaMSA input in de novo mode) | trained on mammals; tested on human, cow, beluga; probed on chicken, zebrafish, poplar, tomato | human gene F1 62% vs 21% next-best ab initio; three-mammal means: exon F1 89.7, gene F1 55.1 vs BRAKER3 83.2/53.7, GALBA 86.2/41.8, Helixer 72.9/19.3, AUGUSTUS 67.3/12.4; de novo mode on human 92.6/65.5; about 8M parameters; a 2M-parameter ablation (Tiberius_small) exists (PMC11645249) | 1:39 h per mammal on one A100 80 GB; training 15 days on four A100s; parallel Viterbi gives 17x on GPU; README asks for 8 GB GPU and Python 3.12 | "steady decline in accuracy as phylogenetic distance increases"; softmasking matters more for distant species; "need for re-training for other clades" | Gaius-Augustus/Tiberius (138 stars, 174 commits in 12 months) |
-| Tiberius multi-clade | 2026 | 10.64898/2026.04.24.720536 | DL | genome | six lineage models: Mesangiospermae, Fungi, Vertebrata, Insecta, Chlorophyta, Bacillariophyta; 33-species benchmark; 2,948 vertebrate assemblies annotated | gene F1 12 to 37 points over Helixer, 10 to 22 over ANNEVO; near BRAKER3 in plants, fungi, diatoms, green algae; 80x faster than BRAKER3 on GPU; backend 31% faster (abstract, CC BY) | GPU; web server | one model per lineage, "92% of available assemblies" | same |
-| ANNEVO | 2026 | 10.1038/s41592-026-03036-7 | DL, mixture-of-experts genomic LM | genome | 566-species benchmark | "substantially outperforms existing ab initio methods" (abstract; not OA) | unknown | claims one evolution-aware model | not found |
-| OrionGeno | 2026 | 10.64898/2026.04.26.720859 | DL, phylogeny-aware, long-range, joint genes + repeats + UTRs | genome | "diverse eukaryotic lineages"; >5,300 unannotated NCBI genomes | outperforms state of the art at exon, gene, protein and protein-structure levels (abstract; CC BY-NC-ND) | unknown | phylogenetic context as input | not found |
+| Tiberius multi-clade | 2026 (v1 2026-04-28, v2 2026-07-29, CC BY) | 10.64898/2026.04.24.720536 | DL | genome | six lineage models: Mesangiospermae, Fungi, Vertebrata, Insecta, Chlorophyta, Bacillariophyta; 33-species benchmark; 2,948 vertebrate assemblies annotated | gene F1 12 to 37 points over Helixer, 10 to 22 over ANNEVO; near BRAKER3 in plants, fungi, diatoms, green algae; 80x faster than BRAKER3 on GPU; backend reimplementation 31% faster; v2 abstract adds that fewer than 20% of NCBI Datasets genomes carry an annotation and applies the Vertebrata model to 2,948 assemblies, nearly 6 Tbp (v2 abstract, CC BY) | GPU; web server | one model per lineage, "92% of available assemblies" | same |
+| ANNEVO | 2026 | 10.1038/s41592-026-03036-7 | DL, mixture-of-experts genomic LM (PyTorch) | genome; lineage flag selects segment length | 566-species benchmark (abstract); six released lineage models: Mammalia, Insecta, Aves, Actinopteri, Magnoliopsida, Fungi (README 42c920f) | "substantially outperforms existing ab initio methods" (abstract; not OA); README reports BUSCO Mammalia_odb10 98.3 on GRCh38 for v2.3.3 vs 95.7 in the paper | README: human genome 19 min on one RTX 4090 for v2.3.3 (82 min for the paper version); README table, mean over 12 species on one RTX 4090: ANNEVO 12.2 min and 3.8 GB GPU memory vs Tiberius 43.6 min and 22.5 GB vs Helixer 286.6 min and 8.6 GB (authors' own measurements, batch size 8); GPU prediction then multi-core CPU decoding | the abstract's single "evolution-aware" model is in practice six lineage models chosen by the user, the same pattern as Helixer and Tiberius; non-commercial licence | xjtu-omics/ANNEVO (158 stars, 30 commits in 12 months; training code released) |
+| OrionGeno | 2026 (v1 2026-04-29, v2 2026-08-24) | 10.64898/2026.04.26.720859 | DL, phylogeny-aware, long-range, joint genes + repeats + UTRs | genome | "diverse eukaryotic lineages"; >5,300 unannotated NCBI genomes | outperforms state of the art at exon, gene, protein-sequence and protein-structure levels; also reports candidate coding loci absent from curated references (v2 abstract; CC BY-NC-ND; web platform and database) | unknown | phylogenetic context as input | not found |
 | Vipsania | 2026 | 10.64898/2026.08.26.747235 | DL, unsupervised: differentiable HMM inside a masked-LM sequence model | unannotated genome only | 17 clade models plus one "other"; training sets of 15 to 200 species each; 6 to 13 test species per clade | README (0c5f84a) average locus F1 after fine-tuning: Discoba 0.70, Fungi 0.66, Alveolata 0.61, Streptophyta 0.60, Insecta 0.54, Nematoda 0.54, Vertebrata 0.41, Spiralia 0.37, Arthropoda 0.21; fine-tuning adds up to 0.11 | GPU recommended; on PyPI | strongest cross-clade coverage in the cohort; note "locus F1" is not gene F1 | Gaius-Augustus/Vipsania (17 stars, new) |
 | PlantGeneAnn | 2026 | 10.64898/2026.06.25.733695 | DL, strand-specific plant foundation model | genome | fine-tuned on 9 plants; 13-species benchmark | beats four baselines at five levels; 9 curated species beat a 42-species set (abstract; CC BY-NC-ND) | GPU | plants only | not found |
 | Sensor-NN | 2023 | 10.1093/bioadv/vbad105 | DL, small NN over hand-built sensors | genome | train/test among fly, human, mouse, C. elegans | nucleotide-level balanced accuracy mean 0.72 across 16 train/test pairs; G3PO F1 0.47 to 0.55 vs AUGUSTUS 0.52 (PMC10448985 Tables 1, 3) | CPU | cross-clade by design but nucleotide-level only, and not better than AUGUSTUS | none found |
@@ -99,7 +117,7 @@ learning; HYB = hybrid. Sn = sensitivity, Sp = specificity or precision.
 
 ## 3. Repository inventory
 
-`repos.tsv` has 30 repositories with last commit date, commits in the last
+`repos.tsv` has 32 repositories with last commit date, commits in the last
 12 months (shallow clone since 2025-09-09), open issues and stars
 (shields.io, 2026-09-09), language, licence, HEAD hash, install result and
 notes.
@@ -120,7 +138,7 @@ deep-learning tools are where the development is.
 Licences. Hazards for a derived tool: the GeneMark family (CC BY-NC-SA or
 custom non-commercial; this contaminates BRAKER and funannotate at
 runtime), SpliceAI (PolyForm Strict: no derivatives), Nucleotide
-Transformer (CC BY-NC-SA). Tiberius, Vipsania, TOGA, miniprot, cactus are
+Transformer (CC BY-NC-SA), ANNEVO (custom non-commercial). Tiberius, Vipsania, TOGA, miniprot, cactus are
 MIT; Helixer, EviAnn, Liftoff, OpenSpliceAI are GPL-3; egapx is public
 domain.
 
@@ -151,8 +169,11 @@ Install tests (fresh `python3 -m venv`, CPU-only container, no GPU):
   bundles TransDecoder and BLAST+, or a bioconda package.
 
 Not on GitHub: Gnomon (NCBI internal, no paper), GeMoMa (jstacs.de),
-GeneID, GlimmerHMM. Not found: ANNEVO, OrionGeno, PlantGeneAnn code
-(their abstracts give no link; bioRxiv full text was unreachable).
+GeneID, GlimmerHMM. Found in tick 3: xjtu-omics/ANNEVO (158 stars, 30
+commits in 12 months, custom non-commercial licence, PyTorch, six lineage
+models) and Gaius-Augustus/clamsa (13 stars, no commits since 2024-07, no
+licence file). Not found: OrionGeno and PlantGeneAnn code (their abstracts
+give no link; bioRxiv full text was unreachable).
 
 ## 4. Data sources noted in passing
 
@@ -189,7 +210,8 @@ for a benchmark that wants to be comparable:
 - Tiberius's mammal split (validation on leopard and rat; test on human,
   cow, beluga) and its distance probe (chicken, zebrafish, poplar, tomato)
   (PMC11645249); the 33-species multi-clade panel (preprint, list not
-  accessible).
+  accessible). ANNEVO's `docs/` in its repository carry its own
+  12-species performance table and evaluation notes (README 42c920f).
 - Helixer 2026's fungi/plant/vertebrate/invertebrate test panels (13
   plant, 11 vertebrate, 15 invertebrate test species; PMC13076211).
 - Vipsania's per-clade training and test species in
@@ -267,9 +289,13 @@ threads per genome, RNA-seq alignment excluded (PMC11216308), 48:53 h
 average on mammals (PMC11645249). GeneMark-ETP: 18 h on 64 cores for mouse
 (PMC11216313). Tiberius: 1:39 h on an A100 but 15 GPU-days on four A100s
 to train, and an 8 GB GPU minimum for inference (PMC11645249; README).
-Helixer: 8:54 h per mammal on an A100 (PMC11645249). The only tools that
-run in minutes are the aligners and lift-over tools that do not predict
-anything new.
+Helixer: 8:54 h per mammal on an A100 (PMC11645249). ANNEVO's README
+reports its own tool at 12.2 min and 3.8 GB GPU memory averaged over 12
+species on one RTX 4090, against 43.6 min and 22.5 GB for Tiberius and
+286.6 min and 8.6 GB for Helixer (README 42c920f; authors' measurements,
+not mine), which, if it holds, is the first deep gene finder inside a
+laptop-GPU budget. Otherwise the only tools that run in minutes are the
+aligners and lift-over tools that do not predict anything new.
 
 Evaluation. BUSCO completeness is above 90% for every GeneMark-ETP
 prediction while gene-level F1 varies widely (PMC11216313), and BRAKER3
