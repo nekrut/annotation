@@ -2,6 +2,7 @@
  "codon": {
   "predicted_partial_3prime": 0,
   "predicted_partial_5prime": 0,
+  "predicted_partial_source": "none",
   "reference_partial_3prime": 136,
   "reference_partial_5prime": 134,
   "start": {
@@ -32,6 +33,7 @@
   "stop_outside_cds": 0,
   "transcripts_stop_extended_by_3bp": 0,
   "transcripts_stop_merged_from_feature": 0,
+  "transcripts_stop_not_extended_partial": 0,
   "transcripts_with_stop_codon_feature": 0
  },
  "declaration": {

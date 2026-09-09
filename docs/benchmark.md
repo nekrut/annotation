@@ -776,12 +776,74 @@ positive. The counts are reported as `reference_partial_5prime` and
 mRNA: 788 of *S. pombe*'s 5,166 mRNA rows carry `partial=true`, describing
 incomplete UTRs, while only 6 of its CDS rows do.
 
+**A prediction states its own incomplete ends differently, and by omission.**
+`start_range=`/`end_range=` is a *reference* convention; no predictor writes
+it, so a scorer that reads only those attributes leaves
+`predicted_partial_5prime`/`_3prime` structurally at zero — which is what they
+read on the first submission that actually contained partial genes (AUGUSTUS
+`--genemodel=partial` on *T. thermophila*: 250 transcripts with no start
+codon, 69 with no stop). What a GTF-lineage predictor does instead is emit no
+`start_codon` or `stop_codon` feature for the end that ran off the contig, so
+the omission *is* the statement, and it is legible only in a file that uses
+those features at all — Helixer and Tiberius emit neither and must not be read
+as wholly partial. `score.py` infers a predicted partial end that way when the
+file uses codon features, drops that end from the codon denominators exactly
+as it does for the reference, and records which convention the two counts came
+from in `predicted_partial_source` (`range_attribute`,
+`missing_codon_feature` or `none`). Feature omission is the better of the two
+available signals: the first CDS block's `phase` is the other, and it misses
+the 69 of those 250 truncated *T. thermophila* genes that happen to resume in
+frame with phase 0. Left unread, each truncated end is charged as a wrong
+codon the predictor never claimed: 213 of those chains and 30 survive §4
+selection onto a scored sequence, and reading them removes **208
+false-positive starts and 22 false-positive stops** from that run, with no
+true positive touched at either end.
+
+**Worse, an unread 3'-partial end can be handed a stop codon it never
+predicted.** The bare-GTF case and the truncated-gene case both arrive at the
+3 bp extension as a chain with no `stop_codon` feature, and they need opposite
+treatment. Extending a truncated gene does not merely misplace 3 bp: the
+extended position can land on the reference's real stop and be scored a
+**true positive** on a gene the predictor never finished. In the fixture for
+this the pre-fix scorer returns stop `tp` 3 of 3 where 2 of 3 is right.
+`score.py` skips the extension for any chain the file declares 3'-partial and
+counts the skips in `transcripts_stop_not_extended_partial`; a file with no
+`stop_codon` feature anywhere declares nothing, so every chain is still
+extended there. The *T. thermophila* run cannot exercise this, because the
+`tetrahymena` parameter set puts the stop inside the CDS and the extension
+never runs; the *A. mellifera* run in §6 can, because `honeybee1` puts it
+outside, and it is the first real run where the skip fires. 13 chains are
+skipped there: 8 false-positive stop codons and 2 false-positive terminal
+exons go away, and 27 of the 39 invented bases were false-positive nucleotides
+(the other 12 include 3 that had been scored as true positives, which is the
+same mechanism as the fixture's spurious stop, one order of magnitude
+smaller). Reading the 5' omissions on the same run removes 6 false-positive
+starts.
+
 **The stop codon is inside the CDS here, and half the field disagrees.** GFF3
 says a CDS chain includes its stop codon, and every reference in Table 3 does.
 GTF says the opposite, and every tool with a GTF lineage inherits it:
-AUGUSTUS ships `stopCodonExcludedFromCDS true` in its species parameter files
-and emits the stop codon as a separate `stop_codon` feature, and BRAKER,
-GeneMark and SNAP are in the same family. Three base pairs is not a rounding
+AUGUSTUS emits the stop codon as a separate `stop_codon` feature, and BRAKER,
+GeneMark and SNAP are in the same family. It is worth being exact about
+AUGUSTUS, because "AUGUSTUS excludes the stop codon" is not a property of
+AUGUSTUS: `stopCodonExcludedFromCDS` is a line in each *species* parameter
+file, and of the 166 species shipped with AUGUSTUS 3.5.0, **44 set it `true`
+and 122 set it `false`**. The two the benchmark happened to run first,
+`saccharomyces_cerevisiae_S288C` and `schizosaccharomyces_pombe`, are both in
+the 44, together with `ciona`, `honeybee1`, `neurospora_crassa` and
+`zebrafish`; `human`, `fly`, `chicken`, `caenorhabditis`, `arabidopsis`,
+`maize`, `rice`, `nematostella_vectensis`, `toxoplasma` and `tetrahymena` are
+in the 122. The census is one line, and it is worth running before assuming a
+convention:
+
+```
+grep -h stopCodonExcludedFromCDS "$AUGUSTUS_CONFIG_PATH"/species/*/*_parameters.cfg | awk '{print $2}' | sort | uniq -c
+```
+
+Two runs of the same
+binary at the same version, one species apart, therefore need opposite flags,
+which is the strongest argument for the rule below: there is no tool-level
+answer to fall back on. Three base pairs is not a rounding
 error, because those three sit at the 3' end of *every* CDS chain: they are
 every terminal exon, every single-exon gene, every stop codon and every exact
 transcript match. Scoring an AUGUSTUS prediction of *S. cerevisiae* against
@@ -797,10 +859,11 @@ disagrees with the `--stop-outside-cds` flag or when the file mixes the two.
 With the flag, the prediction is brought into the reference's convention
 before anything is scored: where a `stop_codon` feature exists it is unioned
 into the chain, which is right even when the stop is split across an intron
-and right for a 3'-partial gene, which has none and must not be extended;
 where none exists — a bare GTF-derived CDS set — the last block in the
 direction of translation is extended by 3 bp instead and the guess is counted
-in `transcripts_stop_extended_by_3bp` so it is visible. A submission states
+in `transcripts_stop_extended_by_3bp` so it is visible. A gene truncated by
+the end of a contig has no `stop_codon` feature either and must *not* be
+extended; the two absences are told apart below. A submission states
 which convention its output uses.
 
 **Feature-based detection answers nothing for a tool that emits no
@@ -956,7 +1019,7 @@ non-`protein_coding` biotype and an incomplete end (§4, §4.5).
 Verification so far:
 
 - `python3 benchmark/score.py --self-test` scores built-in fixture pairs and
-  checks 118 expected values — it prints the count it ran, so this sentence
+  checks 135 expected values — it prints the count it ran, so this sentence
   cannot drift from the code again; it said 116 while the code ran 104: a
   prediction with one exact transcript, one
   shifted minus-strand boundary, one overlapping-but-unaligned locus and one
@@ -990,15 +1053,23 @@ Verification so far:
   isoform must not take the pairing and the same file against itself must
   still be 1.0 (§4.4); a prediction that declares an immunoglobulin segment
   and a pseudogene the way GENCODE and Ensembl declare them, which must cost
-  it nothing and must not be reported as an off-panel sequence; and a
-  prediction that reuses transcript ids across two sequences.
+  it nothing and must not be reported as an off-panel sequence; a prediction
+  that reuses transcript ids across two sequences, which must score exactly
+  what the same prediction scores after the ids are made unique, block for
+  block; and a `--genemodel=partial`-shaped prediction with one gene truncated
+  at a contig start and one at a contig end, where the omitted codon features
+  must be read as the statement of partiality, the truncated 3' end must not
+  be extended, and the pre-fix code returns stop `tp` 3 of 3 where 2 is
+  right (§4.5).
   The self-test is run under several `PYTHONHASHSEED` values, because two of
   its checks exist to catch results that depended on it.
 - **Identity runs re-verified after the fixes above** on
   *S. cerevisiae*, *N. crassa*, *T. rubripes*, *C. elegans* and human: F1 1.0
   and MCC 1.0 on every metric with 0 fusions and 0 splits, and 0, 73, 8,086,
   2,120 and 23,387 donors respectively whose decile came from the
-  shortest-intron rule.
+  shortest-intron rule. Re-verified again after the id-namespacing and
+  predicted-partial changes, with *T. thermophila* and *A. mellifera* added:
+  all seven still 1.0 and MCC 1.0 everywhere with 0 fusions and 0 splits.
 - **Identity runs on all twenty panel references.** Every species in
   `panel.tsv` scored against its own reference gives F1 = 1.0 and MCC = 1.0 on
   every metric, with **0 fusions and 0 splits** everywhere. Cost on one laptop
@@ -1232,7 +1303,7 @@ Locus F1
 
   | nucleotide F1 | exon F1 | donor F1 | acceptor F1 | transcript F1 | locus F1 | start F1 | stop F1 |
   |---|---|---|---|---|---|---|---|
-  | 0.933 | 0.697 | 0.908 | 0.826 | **0.290** | 0.968 | 0.637 | 0.360 |
+  | 0.933 | 0.697 | 0.908 | 0.826 | **0.290** | 0.968 | 0.750 | 0.408 |
 
   Two defects came out of it, both specific to a submission that is not
   RefSeq-shaped:
@@ -1260,7 +1331,7 @@ Locus F1
   chains match nothing in RefSeq, which is what §4.4 does to a submission that
   offers 2.8 isoforms for every one the reference has. Locus F1 0.968 on the
   same run is the contrast the two levels exist for: the *loci* agree almost
-  perfectly and the *chains* do not. Stop-codon precision 0.231 is the
+  perfectly and the *chains* do not. Stop-codon precision 0.272 is mostly the
   91,818 nonsense-mediated-decay transcripts, each ending at a stop RefSeq
   does not annotate as one; terminal-exon F1 0.340 has the same source. The
   one asymmetry worth recording is that GENCODE states 257,153 distinct CDS
@@ -1270,29 +1341,101 @@ Locus F1
   numbers agree exactly, so this is annotation depth and not a scoring
   artefact; §4.3 reporting donors and acceptors separately is what makes it
   visible.
+- **A prediction that is itself partial: AUGUSTUS `--genemodel=partial` on
+  *T. thermophila* and *A. mellifera*.** Every submission above is
+  `--genemodel=complete` or a curated annotation, so §4.5's predicted-partial
+  handling had only ever run on fixtures — and the fixtures were built around
+  the *reference* convention, `start_range=`/`end_range=`, which no predictor
+  writes. Two runs of AUGUSTUS 3.5.0 with `--genemodel=partial` are the case
+  that was missing: *T. thermophila*, one invocation per scaffold over its
+  **1,158 scaffolds** under translation table 6, and *A. mellifera*
+  (`--species=honeybee1`, 177 sequences, 36.4 min wall on 22 cores, 570 MB
+  peak). Both are in AUGUSTUS's own training set, so neither is a
+  measurement; they are here for the shapes they produce.
+
+  | run | nucleotide F1 | exon F1 | donor F1 | transcript F1 | locus F1 | start F1 | stop F1 |
+  |---|---|---|---|---|---|---|---|
+  | *T. thermophila*, `tetrahymena`, code 6 | 0.420 | 0.328 | 0.392 | 0.208 | 0.536 | 0.310 | 0.434 |
+  | *A. mellifera*, `honeybee1` | 0.891 | 0.693 | 0.811 | 0.225 | 0.793 | 0.402 | 0.618 |
+
+  Three things came out of them.
+  1. **Counting a reused transcript id was not enough; it had to be
+     resolved.** The earlier fix counted ids appearing on more than one
+     sequence and warned, but still welded their chains together. On a
+     1,158-scaffold assembly that is not an edge case: 214 ids collide, and
+     the welding takes the *whole file* down to 218 scored chains from 10,355,
+     nucleotide F1 **0.020** against 0.420, exon 0.007 against 0.328. A CDS
+     chain lies on one sequence and one strand by construction, so the loader
+     now keys every id by `(sequence, strand)` and the collision resolves
+     instead of merging. The control is exact: the same AUGUSTUS run repeated
+     with `--uniqueGeneId=true`, which renames at the source, scores
+     identically to the colliding file in every block. The warning now says
+     the file is not valid GFF3 and what was done about it, rather than that
+     the metrics are meaningless.
+  2. **`predicted_partial_5prime`/`_3prime` could not fire.** They read the
+     reference's range attributes only, so they were structurally zero on
+     every prediction. *T. thermophila* states 250 chains with no
+     `start_codon` feature and 69 with no `stop_codon`; reading that omission
+     as the statement it is drops 213 5' and 30 3' ends from the codon
+     denominators on the scored sequences and removes 208 false-positive
+     starts and 22 false-positive stops. `predicted_partial_source` records
+     which convention the counts came from, and distinguishes a file that
+     uses codon features and declares no partial end (`missing_codon_feature`
+     with both counts zero, as the three complete AUGUSTUS runs read) from
+     one that cannot state it at all (`none`, as all three Helixer runs read).
+  3. **A 3'-partial gene must not be handed a stop codon.** *A. mellifera* is
+     the run that exercises it, because `honeybee1` excludes the stop from the
+     CDS while `tetrahymena` includes it, so the 3 bp extension actually runs.
+     13 chains are declared 3'-partial and skipped; extending them costs 8
+     false-positive stop codons, 2 false-positive terminal exons and 27
+     false-positive bases, and turns 3 true-positive bases into false
+     negatives. The self-test fixture shows the worse form, where the invented
+     3 bp land on the reference's real stop and score a **true positive** on a
+     gene the predictor never finished.
+
+  **The inference was then checked against a file that states partiality
+  both ways.** GENCODE 50 writes `start_codon`/`stop_codon` features *and*
+  tags incomplete CDS ends `cds_start_NF`/`cds_end_NF`, so the two are
+  independent. Read from the omissions: 13,203 5'-partial and 19,535
+  3'-partial. Read from the tags: 13,226 and 19,858. They agree on 13,157 of
+  13,203 (99.7%) and 19,371 of 19,535 (99.2%), with 46 and 164 inferred but
+  untagged and 69 and 487 tagged but not inferred. That is the accuracy of
+  the signal on 370,910 transcripts of a curated human annotation, and it is
+  why the GENCODE row's codon columns moved when the inference went in: start
+  F1 0.637 to 0.750 (precision 0.591 to 0.821) and stop F1 0.360 to 0.408,
+  with every other column identical to five decimals. The tags are not read
+  by the scorer — no predictor writes them — but they are the check that the
+  omission means what §4.5 says it means.
+
+  All eight results in `benchmark/validation/` were regenerated with the
+  scorer that has these three changes. Apart from the two new fields, the
+  three AUGUSTUS and three Helixer runs are unchanged in every value; only
+  GENCODE's start and stop blocks move.
 
 ## 7. Open items
 
 1. **The scorer does not compute §4.6 or §4.7.** BUSCO, OMArk, and the cost
    columns are external and are merged by `report.py --cost`; nothing yet
    produces that TSV. T-human-009 owns the cost half.
-2. **Scored submissions cover five species, three sources and seven runs.**
-   AUGUSTUS on the two yeasts, Helixer on *T. rubripes*, *N. crassa* and
-   *S. cerevisiae*, and GENCODE 50 on human (§6) between them cover both
-   stop-codon conventions, all three detection routes (feature, genome and
-   flag), a prediction with UTRs, a reference with several isoforms per locus,
-   a *prediction* with 2.8 isoforms per locus, a GENCODE-shaped attribute set,
-   and a 384 Mb genome with 105 unplaced scaffolds. Seven defects came out of
-   those runs. What is still not covered: the §4.5 **blind 3 bp extension** —
-   the fallback for a prediction that has no `stop_codon` feature *and* whose
-   genome says `outside` — is still fixture-only, because Helixer's convention
-   is `inside`; a prediction whose sequence set genuinely diverges from the
-   reference's (every submission so far was made against the reference
-   assembly, and the GENCODE run was renamed onto it, so the divergence is
-   zero); an *evidence-based pipeline* run end to end, which is what would
-   make the multi-isoform case a measurement rather than the annotation
-   comparison the GENCODE run is; and any predictor that emits partial genes
-   at contig ends (item 13).
+2. **Scored submissions cover seven species, three sources and nine runs.**
+   AUGUSTUS on the two yeasts, on *T. thermophila* and on *A. mellifera*,
+   Helixer on *T. rubripes*, *N. crassa* and *S. cerevisiae*, and GENCODE 50
+   on human (§6) between them cover both stop-codon conventions, all three
+   detection routes (feature, genome and flag), a prediction with UTRs, a
+   reference with several isoforms per locus, a *prediction* with 2.8 isoforms
+   per locus, a GENCODE-shaped attribute set, a non-standard genetic code, a
+   1,158-scaffold assembly with colliding predicted ids, a prediction that
+   declares its own partial ends, and a 384 Mb genome with 105 unplaced
+   scaffolds. Ten defects came out of those runs. What is still not covered:
+   the §4.5 **blind 3 bp extension** — the fallback for a prediction that has
+   no `stop_codon` feature *and* whose genome says `outside` — is still
+   fixture-only, because Helixer's convention is `inside` and both AUGUSTUS
+   conventions come with the feature; a prediction whose sequence set
+   genuinely diverges from the reference's (every submission so far was made
+   against the reference assembly, and the GENCODE run was renamed onto it, so
+   the divergence is zero); and an *evidence-based pipeline* run end to end,
+   which is what would make the multi-isoform case a measurement rather than
+   the annotation comparison the GENCODE run is.
    Degraded-copy runs still cover only *S. cerevisiae* and *H. sapiens*.
    Tiberius is the obvious next tool: it is the one that would exercise the
    blind extension if its GTF turns out to exclude the stop.
@@ -1352,11 +1495,19 @@ Locus F1
    scoring them and accepting that no predictor can produce them — is one
    `--score-all-transcripts` run away, and because a proteome-completeness
    number (§4.6) may turn out to depend on it.
-13. **Partial-CDS handling is untested against a predictor that emits partial
-   genes.** §4.5 excludes an incomplete reference end from the codon
-   denominators and excludes any predicted codon inside that span. It is
-   covered by a self-test fixture and it changes nothing on the two yeasts
-   (no partial CDS on a scored sequence), but the case that matters — a
-   fragmented assembly where the *prediction* is also truncated at contig
-   ends — has not been run. `predicted_partial_5prime` and
-   `predicted_partial_3prime` are reported for when it is.
+13. **Partial-CDS handling, closed.** §4.5 excludes an incomplete reference
+   end from the codon denominators and excludes any predicted codon inside
+   that span; what had never been run was the case that matters, a fragmented
+   assembly where the *prediction* is also truncated at contig ends. The
+   AUGUSTUS `--genemodel=partial` run on *T. thermophila*'s 1,158 scaffolds
+   (§6) is that case, and it showed that `predicted_partial_5prime` and
+   `predicted_partial_3prime` could not fire at all, because they read a
+   reference attribute no predictor writes. They now read the predictor's own
+   statement — an omitted `start_codon`/`stop_codon` feature — checked
+   against GENCODE's independent `cds_start_NF`/`cds_end_NF` tags at 99.7%
+   and 99.2% agreement over 370,910 transcripts (§6). The extension of §4.5
+   that keeps a truncated gene from being handed a stop codon it never
+   predicted came out of the *A. mellifera* run, which is where the
+   stop-outside convention makes the extension run at all. What is still not
+   covered: a predictor that emits partial genes *and* no codon features at
+   all, which states nothing and for which nothing can be inferred.

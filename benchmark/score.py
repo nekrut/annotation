@@ -144,9 +144,16 @@ class Annotation:
         self.partial3 = set()             # tids whose CDS 3' end is incomplete
         # Transcript ids that appear on more than one sequence or strand.
         # Concatenating per-chromosome predictor output produces exactly this,
-        # because AUGUSTUS restarts its gene numbering at g1 in every run, and
-        # the collision silently welds unrelated chains into one transcript.
+        # because AUGUSTUS restarts its gene numbering at g1 in every run.
+        # ``load_gff`` keys every chain by (sequence, strand, id) so the
+        # collision no longer welds unrelated chains into one transcript; this
+        # set records the raw ids that had to be disambiguated, because a
+        # submission that needs it is not a valid GFF3 and its author should
+        # know.
         self.id_conflicts = set()
+        # True when partial ends were read off missing start_codon/stop_codon
+        # features rather than off reference range attributes.
+        self.partial_from_missing_codon_feature = False
 
     def chains(self):
         """tid -> (seqid, strand, ((s, e), ...)) with CDS sorted by position."""
@@ -201,21 +208,29 @@ class Annotation:
         """Bring a stop-codon-excluding annotation into the GFF3 convention.
 
         Where a ``stop_codon`` feature exists it is unioned into the CDS
-        chain, which is correct even when the stop is split across an intron
-        and correct for a 3'-partial gene, which has no ``stop_codon`` feature
-        and must not be extended.  Where none exists -- a bare GTF-style CDS
-        set -- the last block in the direction of translation is extended by
-        3 bp instead, clipped to the sequence, and counted separately so the
-        guess is visible in the result.
+        chain, which is correct even when the stop is split across an intron.
+        Where none exists -- a bare GTF-style CDS set -- the last block in the
+        direction of translation is extended by 3 bp instead, clipped to the
+        sequence, and counted separately so the guess is visible.
+
+        A 3'-partial gene also has no ``stop_codon`` feature and must *not* be
+        extended: it stops because the contig does.  Those two cases are the
+        same absence and are told apart by the rest of the file -- a
+        prediction that uses ``stop_codon`` features at all is stating, by
+        omitting one, that the gene is incomplete, which is what
+        ``partial3`` holds.  A file with no ``stop_codon`` feature anywhere
+        leaves ``partial3`` empty and every chain is extended, as before.
         """
         seq_len = self.seq_len if seq_len is None else seq_len
-        merged = extended = 0
+        merged = extended = not_extended = 0
         for tid, blocks in list(self.cds.items()):
             stops = self.stops.get(tid)
             if stops and not any(s <= be and bs <= e for (s, e) in stops
                                  for (bs, be) in blocks):
                 self.cds[tid] = merge_intervals(blocks + stops)
                 merged += 1
+            elif not stops and tid in self.partial3:
+                not_extended += 1
             elif not stops:
                 seqid, strand = self.where[tid]
                 limit = seq_len.get(seqid)
@@ -231,7 +246,8 @@ class Annotation:
                 self.cds[tid] = merge_intervals(b)
                 extended += 1
         return {"transcripts_stop_merged_from_feature": merged,
-                "transcripts_stop_extended_by_3bp": extended}
+                "transcripts_stop_extended_by_3bp": extended,
+                "transcripts_stop_not_extended_partial": not_extended}
 
 
 def merge_intervals(blocks):
@@ -257,6 +273,27 @@ def load_gff(path):
     gene_biotype = {}   # gene id -> gene_biotype (or "pseudogene" by feature)
     tx_pseudo = set()   # tids marked pseudo on their own transcript row
     max_end = defaultdict(int)
+    # A GFF3 id is only unique within the file that declared it, and a
+    # prediction assembled by concatenating one AUGUSTUS run per scaffold is
+    # 1,158 files with a ``g1.t1`` in each.  A CDS chain can lie on exactly one
+    # sequence and one strand, so keying every id by (sequence, strand) is
+    # always safe and resolves the collision instead of merging across it.
+    # ``raw_where`` keeps the first place each raw id was seen so the file can
+    # still be told it was not unique.
+    raw_where = {}
+    with_start = set()  # tids carrying a start_codon feature
+    with_stop = set()   # tids carrying a stop_codon feature
+
+    def _ns(seqid, strand, ident, record=True):
+        if ident is None:
+            return None
+        if record:
+            seen = raw_where.get(ident)
+            if seen is None:
+                raw_where[ident] = (seqid, strand)
+            elif seen != (seqid, strand):
+                ann.id_conflicts.add(ident)
+        return "%s\x00%s\x00%s" % (seqid, strand, ident)
     with _open(path) as fh:
         for line in fh:
             if not line or line[0] == "#":
@@ -280,7 +317,8 @@ def load_gff(path):
             if end > max_end[seqid]:
                 max_end[seqid] = end
             if ftype in ("gene", "pseudogene"):
-                gid = _attr(attrs, "ID") or _attr(attrs, "gene_id")
+                gid = _ns(seqid, f[6], _attr(attrs, "ID")
+                          or _attr(attrs, "gene_id"), record=False)
                 if gid:
                     # RefSeq writes ``gene_biotype``, GENCODE ``gene_type``,
                     # Ensembl ``biotype``.  All three name the same thing, and
@@ -295,14 +333,17 @@ def load_gff(path):
                                          or _attr(attrs, "biotype")
                                          or ("pseudogene" if ftype == "pseudogene"
                                              else None))
-            elif ftype not in ("CDS", "stop_codon", "exon"):
+            elif ftype not in ("CDS", "stop_codon", "start_codon", "exon"):
                 # Anything else with an ID may be the parent of a CDS.  Not
                 # only mRNA: RefSeq gives immunoglobulin and T-cell receptor
                 # segments their own feature types (``V_gene_segment``,
                 # ``C_gene_segment``), and their CDS rows would otherwise have
                 # no path to the gene row that says what they are.
-                tid = _attr(attrs, "ID") or _attr(attrs, "transcript_id")
-                gid = _attr(attrs, "Parent") or _attr(attrs, "gene_id")
+                tid = _ns(seqid, f[6], _attr(attrs, "ID")
+                          or _attr(attrs, "transcript_id"))
+                gid = _ns(seqid, f[6], (_attr(attrs, "Parent")
+                                        or _attr(attrs, "gene_id")),
+                          record=False)
                 if tid:
                     tx_gene[tid] = gid or tid
                     if gid and ftype in TX_TYPES:
@@ -315,9 +356,7 @@ def load_gff(path):
                 if not tid:
                     tid = "%s:%d:%s" % (seqid, start, f[6])
                 # A CDS may list several parents; the first is the transcript.
-                tid = tid.split(",")[0]
-                if tid in ann.where and ann.where[tid] != (seqid, f[6]):
-                    ann.id_conflicts.add(tid)
+                tid = _ns(seqid, f[6], tid.split(",")[0])
                 ann.cds[tid].append((start, end))
                 ann.where[tid] = (seqid, f[6])
                 if _attr(attrs, "pseudo") == "true":
@@ -345,7 +384,36 @@ def load_gff(path):
                 tid = (_attr(attrs, "Parent") or _attr(attrs, "transcript_id")
                        or _attr(attrs, "ID"))
                 if tid:
-                    ann.stops[tid.split(",")[0]].append((start, end))
+                    tid = _ns(seqid, f[6], tid.split(",")[0])
+                    ann.stops[tid].append((start, end))
+                    with_stop.add(tid)
+            elif ftype == "start_codon":
+                # Not scored directly -- the start position comes from the CDS
+                # chain -- but its *absence* is how a GTF-lineage predictor
+                # says a gene runs off the end of a contig.
+                tid = (_attr(attrs, "Parent") or _attr(attrs, "transcript_id")
+                       or _attr(attrs, "ID"))
+                if tid:
+                    with_start.add(_ns(seqid, f[6], tid.split(",")[0]))
+    # Section 4.5.  A reference states an incomplete CDS end with
+    # ``start_range=``/``end_range=``; a *predictor* has no such convention and
+    # none writes those attributes, so ``predicted_partial_*`` read 0 on the
+    # first prediction that actually contained partial genes (AUGUSTUS
+    # ``--genemodel=partial`` on the 1,158 scaffolds of *T. thermophila*: 250
+    # transcripts with no start codon, 69 with no stop).  What a GTF-lineage
+    # predictor does instead is emit no ``start_codon``/``stop_codon`` feature
+    # for the end that runs off the contig, so the omission is the statement,
+    # and it is only readable in a file that uses those features at all --
+    # Helixer and Tiberius emit neither and must not be read as all-partial.
+    # The first CDS block's ``phase`` is the other candidate signal and is
+    # weaker: 69 of those 250 truncated genes happen to resume in frame and
+    # carry phase 0.
+    if with_start:
+        ann.partial5.update(tid for tid in ann.cds if tid not in with_start)
+        ann.partial_from_missing_codon_feature = True
+    if with_stop:
+        ann.partial3.update(tid for tid in ann.cds if tid not in with_stop)
+        ann.partial_from_missing_codon_feature = True
     for tid in ann.cds:
         gid = tx_gene.get(tid, tid)
         ann.gene_of[tid] = gid
@@ -1091,6 +1159,17 @@ def codons(ref_chains, pred_chains, seqids, stop_in_cds=True,
     out["reference_partial_3prime"] = len(r3 & set(ref_chains))
     out["predicted_partial_5prime"] = len(p5 & set(pred_chains))
     out["predicted_partial_3prime"] = len(p3 & set(pred_chains))
+    # Where those two numbers came from: ``range_attribute`` is the reference
+    # convention (``start_range=``/``end_range=``), ``missing_codon_feature``
+    # is the predictor one (no ``start_codon``/``stop_codon`` row for the end
+    # that runs off the contig) -- which reads that way with both counts zero
+    # when the file uses codon features and declares every gene complete --
+    # and ``none`` means the file cannot state it at all, so every chain end
+    # was taken as real.
+    out["predicted_partial_source"] = (
+        "missing_codon_feature"
+        if getattr(pred_ann, "partial_from_missing_codon_feature", False)
+        else ("range_attribute" if (p5 or p3) else "none"))
     out["stop_codon_inside_cds"] = bool(stop_in_cds)
     out["stop_codon_convention_detected"] = detected
     # Where the convention actually came from: a stop_codon feature, the
@@ -1373,7 +1452,8 @@ def score(reference, prediction, species, genome=None, seqids=None,
             pred_chains, keep, fetch, STOP_CODONS[genetic_code])
 
     merge_stats = {"transcripts_stop_merged_from_feature": 0,
-                   "transcripts_stop_extended_by_3bp": 0}
+                   "transcripts_stop_extended_by_3bp": 0,
+                   "transcripts_stop_not_extended_partial": 0}
     convention_source = "assumed"
     if not stop_in_cds:
         merge_stats = pred.include_stop_codons(seq_len=ref.seq_len)
@@ -1537,6 +1617,31 @@ chr1\t.\tCDS\t5600\t6000\t.\t+\t0\tParent=p3
 # feature.  On the minus strand the missing 3 bp are at the low coordinate.
 # With --stop-outside-cds this must score exactly 1.0 everywhere; without it,
 # nothing whose 3' end is a stop codon can match.
+# A GTF-lineage predictor run with ``--genemodel=partial`` on a fragmented
+# assembly: complete genes carry both codon features, a gene truncated at the
+# contig start carries no ``start_codon``, and one truncated at the contig end
+# carries no ``stop_codon``.  That omission is the only statement of
+# partiality such a file makes -- no predictor writes RefSeq's
+# ``start_range=``/``end_range=``.
+PARTIAL_PRED = """##gff-version 3
+chr1\t.\tgene\t1000\t3000\t.\t+\t.\tID=pg1
+chr1\t.\ttranscript\t1000\t3000\t.\t+\t.\tID=p1;Parent=pg1
+chr1\t.\tstart_codon\t1000\t1002\t.\t+\t0\tParent=p1
+chr1\t.\tCDS\t1000\t1100\t.\t+\t0\tParent=p1
+chr1\t.\tCDS\t2000\t2100\t.\t+\t0\tParent=p1
+chr1\t.\tCDS\t2900\t2997\t.\t+\t0\tParent=p1
+chr1\t.\tstop_codon\t2998\t3000\t.\t+\t0\tParent=p1
+chr1\t.\tgene\t6000\t6450\t.\t-\t.\tID=pg2
+chr1\t.\ttranscript\t6000\t6450\t.\t-\t.\tID=p2;Parent=pg2
+chr1\t.\tstop_codon\t6000\t6002\t.\t-\t0\tParent=p2
+chr1\t.\tCDS\t6003\t6200\t.\t-\t0\tParent=p2
+chr1\t.\tCDS\t6400\t6450\t.\t-\t0\tParent=p2
+chr1\t.\tgene\t9000\t9297\t.\t+\t.\tID=pg3
+chr1\t.\ttranscript\t9000\t9297\t.\t+\t.\tID=p3;Parent=pg3
+chr1\t.\tstart_codon\t9000\t9002\t.\t+\t0\tParent=p3
+chr1\t.\tCDS\t9000\t9297\t.\t+\t0\tParent=p3
+"""
+
 STOP_PRED = """##gff-version 3
 chr1\t.\tgene\t1000\t3000\t.\t+\t.\tID=pg1
 chr1\t.\ttranscript\t1000\t3000\t.\t+\t.\tID=p1;Parent=pg1
@@ -1936,15 +2041,77 @@ def self_test():
     check("ref convention", r["codon"]["stop_codon_convention_detected"], "unknown")
     check("ref not merged", r["codon"]["transcripts_stop_merged_from_feature"], 0)
 
-    # An id reused across sequences must be counted, not silently merged.
+    # An id reused across sequences must be counted *and* resolved.  This is
+    # not hypothetical: AUGUSTUS restarts its gene numbering at g1 in every
+    # run, so the only way to parallelise it over a fragmented assembly --
+    # one run per scaffold, concatenated -- produces a ``g1.t1`` per scaffold.
+    # Merging those chains does not merely lose the colliding transcripts, it
+    # welds one chain per sequence into a single chain spanning the genome,
+    # and every metric collapses.  The fixture therefore checks the fix, not
+    # the count: the colliding file must score exactly what the same
+    # prediction scores after ``--uniqueGeneId=true`` would have renamed it.
+    cref = os.path.join(d, "cref.gff3")
+    open(cref, "w").write(REF_FIXTURE + REF_FIXTURE
+                          .replace("##gff-version 3\n", "")
+                          .replace("chr1", "chr2")
+                          .replace("=t", "=u").replace("=g", "=h")
+                          .replace("=c", "=d"))
     cpred = os.path.join(d, "cpred.gff3")
-    open(cpred, "w").write(PRED_FIXTURE.replace("chr1", "chr2")
+    open(cpred, "w").write(PRED_FIXTURE + PRED_FIXTURE
                            .replace("##gff-version 3\n", "")
-                           + PRED_FIXTURE)
-    cr = score(ref, cpred, "fixture")
+                           .replace("chr1", "chr2"))
+    upred = os.path.join(d, "upred.gff3")
+    open(upred, "w").write(PRED_FIXTURE + PRED_FIXTURE
+                           .replace("##gff-version 3\n", "")
+                           .replace("chr1", "chr2")
+                           .replace("=p", "=q").replace("=pg", "=qg"))
+    cr = score(cref, cpred, "fixture")
+    ur = score(cref, upred, "fixture")
     check("id conflicts", cr["predicted_conflicting_transcript_ids"], 4)
     check("ref id conflicts", cr["reference_conflicting_transcript_ids"], 0)
+    check("unique-id run has no conflicts",
+          ur["predicted_conflicting_transcript_ids"], 0)
+    check("both sequences scored", cr["scored_sequences"], 2)
+    check("colliding chains not merged", cr["predicted_transcripts"], 8)
+    check("colliding == renamed transcripts",
+          cr["predicted_transcripts"], ur["predicted_transcripts"])
+    for block in ("nucleotide", "exon", "splice", "transcript", "locus",
+                  "codon"):
+        if cr[block] != ur[block]:
+            fails.append("colliding ids change %s: %r != %r"
+                         % (block, cr[block], ur[block]))
+    check("colliding nucleotide f1", cr["nucleotide"]["f1"],
+          ur["nucleotide"]["f1"])
     os.unlink(cpred)
+    os.unlink(upred)
+    os.unlink(cref)
+
+    # Section 4.5, a prediction that is itself partial.  RefSeq's range
+    # attributes are a *reference* convention; a predictor states an
+    # incomplete end by omitting the codon feature, and if that is not read
+    # the truncated end is charged as a wrong codon and, worse, the blind 3 bp
+    # extension puts a stop codon onto a gene that ran off the contig -- which
+    # can turn a miss into a spurious true positive.
+    apred = os.path.join(d, "apred.gff3")
+    open(apred, "w").write(PARTIAL_PRED)
+    ar = score(ref, apred, "fixture", stop_in_cds=False)
+    check("partial pred 5prime", ar["codon"]["predicted_partial_5prime"], 1)
+    check("partial pred 3prime", ar["codon"]["predicted_partial_3prime"], 1)
+    check("partial pred source", ar["codon"]["predicted_partial_source"],
+          "missing_codon_feature")
+    check("partial merged", ar["codon"]["transcripts_stop_merged_from_feature"],
+          2)
+    check("partial not extended",
+          ar["codon"]["transcripts_stop_extended_by_3bp"], 0)
+    check("partial extension skipped",
+          ar["codon"]["transcripts_stop_not_extended_partial"], 1)
+    check("partial start tp", ar["codon"]["start"]["tp"], 2)
+    check("partial start fp", ar["codon"]["start"]["fp"], 0)
+    check("partial start fn", ar["codon"]["start"]["fn"], 1)
+    check("partial stop tp", ar["codon"]["stop"]["tp"], 2)
+    check("partial stop fp", ar["codon"]["stop"]["fp"], 0)
+    check("partial stop fn", ar["codon"]["stop"]["fn"], 1)
+    os.unlink(apred)
 
     # Section 4 transcript selection: pseudogenes and gene fragments are not
     # truth, and the ends of a partial CDS are not scorable at either side.
@@ -2274,11 +2441,11 @@ def main():
               "measured rather than assumed.", file=sys.stderr)
 
     if row["predicted_conflicting_transcript_ids"]:
-        print("warning: %d transcript ids in the prediction appear on more "
-              "than one sequence or strand. Their CDS blocks have been welded "
-              "into one chain and every metric on them is meaningless. This "
-              "is what concatenating per-chromosome predictor output without "
-              "renaming looks like."
+        print("warning: %d ids in the prediction appear on more than one "
+              "sequence or strand, so the file is not valid GFF3. They were "
+              "disambiguated by (sequence, strand) before scoring, which is "
+              "what concatenating one predictor run per scaffold needs; "
+              "AUGUSTUS's --uniqueGeneId=true does it at the source."
               % row["predicted_conflicting_transcript_ids"], file=sys.stderr)
 
     unscored = row["predicted_transcripts_not_scored"]

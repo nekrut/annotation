@@ -18,6 +18,8 @@ SHA-256 of the declaration beside it, so the pairing is checkable.
 | `helixer-Neurospora_crassa.yaml` | `.json` | Helixer 0.3.7 on *N. crassa*, fungi model, GPU |
 | `helixer-Saccharomyces_cerevisiae.yaml` | `.json` | Helixer 0.3.7 on *S. cerevisiae*, fungi model, GPU |
 | `gencode50-Homo_sapiens.yaml` | `.json` | GENCODE 50 scored as a submission against the human RefSeq reference |
+| `augustus-partial-Tetrahymena_thermophila.yaml` | `.json` | AUGUSTUS `--genemodel=partial` over 1,158 scaffolds, ids concatenated without renaming, genetic code 6 |
+| `augustus-partial-Apis_mellifera.yaml` | `.json` | AUGUSTUS `--genemodel=partial` with `honeybee1`, which excludes the stop codon from the CDS |
 
 The three Helixer runs are the second tool and the second output shape: no
 `stop_codon` features at all, UTRs present, and two species (*T. rubripes*,
@@ -152,3 +154,61 @@ own training set — `heldout_seen_in_pretraining: yes` in two of the three
 declarations — so the first two rows are an upper bound, not a measurement.
 They are here to exercise the scorer, and the third row is here because it is
 the one comparison among them that the leakage rules do allow.
+
+The two `augustus-partial-` runs are the only submissions here that declare
+their own incomplete gene ends, and they were added because §4.5's
+predicted-partial handling had until then only ever run on fixtures built
+around the *reference* convention (`start_range=`/`end_range=`), which no
+predictor writes. They are not measurements — both species are in AUGUSTUS's
+training set — and they are here for three things they found:
+
+- *T. thermophila*'s 1,158 scaffolds give 214 colliding gene ids, and merely
+  *counting* them (the earlier fix) still welded their chains: 218 scored
+  chains instead of 10,355 and nucleotide F1 0.020 instead of 0.420. Ids are
+  now keyed by `(sequence, strand)`. The control is the same AUGUSTUS run with
+  `--uniqueGeneId=true`, which scores identically block for block.
+- `predicted_partial_5prime`/`_3prime` could not fire on any prediction, since
+  they read the reference attribute. They now read the predictor's own
+  statement — an omitted `start_codon`/`stop_codon` feature — which on
+  *T. thermophila* removes 208 false-positive starts and 22 false-positive
+  stops.
+- *A. mellifera* is the run where `honeybee1` puts the stop outside the CDS,
+  so the 3 bp extension runs and the skip for a 3'-partial chain fires on real
+  data: 13 chains, 8 false-positive stops and 2 false-positive terminal exons.
+
+All eight JSONs here were regenerated with the scorer carrying those changes.
+The three AUGUSTUS and three Helixer results are unchanged in every value
+apart from the two new `codon` fields; only the GENCODE run's codon blocks
+move, start F1 0.637 to 0.750 and stop F1 0.360 to 0.408, because GENCODE
+marks 13,203 CDS starts and 19,535 CDS ends as incomplete by omitting the
+codon feature — which its own `cds_start_NF`/`cds_end_NF` tags independently
+confirm at 99.7% and 99.2% agreement.
+
+Reproducing the two partial runs (`--uniqueGeneId=true` is what a submission
+should do; the *T. thermophila* file here deliberately omits it):
+
+```
+python3 benchmark/fetch.py --species Tetrahymena_thermophila --what fasta --dest /tmp/panel
+python3 benchmark/fetch.py --species Tetrahymena_thermophila --what gff   --dest /tmp/panel
+zcat /tmp/panel/Tetrahymena_thermophila/*_genomic.fna.gz > /tmp/tt.fna
+mkdir parts && cd parts && awk '/^>/{n=substr($1,2); f=n".fa"} {print > f}' /tmp/tt.fna && cd ..
+ls parts/*.fa | xargs -P 22 -I{} sh -c \
+  '/tmp/aug/bin/augustus --species=tetrahymena --gff3=on --genemodel=partial \
+     --UTR=off --softmasking=0 {} > {}.gff3'
+(echo '##gff-version 3'; cat parts/*.fa.gff3 | grep -v '^#') > /tmp/tt_augustus.gff3
+
+# --genetic-code 6: TAA and TAG are glutamine in the Tetrahymena nucleus, so
+# the genome probe must not read them as stops (docs/benchmark.md 2.1, 4.5).
+# No --stop-outside-cds: the `tetrahymena` parameter set includes the stop.
+python3 benchmark/score.py \
+    --reference /tmp/panel/Tetrahymena_thermophila/*_genomic.gff.gz \
+    --prediction /tmp/tt_augustus.gff3 --species Tetrahymena_thermophila \
+    --declaration benchmark/validation/augustus-partial-Tetrahymena_thermophila.yaml \
+    --genome /tmp/panel/Tetrahymena_thermophila/*_genomic.fna.gz \
+    --genetic-code 6 --out /tmp/tt.json
+```
+
+*A. mellifera* is the same with `--species=honeybee1 --softmasking=1
+--uniqueGeneId=true`, the default genetic code, and `--stop-outside-cds`,
+which AUGUSTUS itself asks for on stderr: `honeybee1` is one of the 44 species
+parameter sets of 166 that set `stopCodonExcludedFromCDS true`.

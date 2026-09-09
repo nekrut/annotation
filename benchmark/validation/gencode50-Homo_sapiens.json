@@ -1,24 +1,25 @@
 {
  "codon": {
-  "predicted_partial_3prime": 0,
-  "predicted_partial_5prime": 0,
+  "predicted_partial_3prime": 19138,
+  "predicted_partial_5prime": 13030,
+  "predicted_partial_source": "missing_codon_feature",
   "reference_partial_3prime": 65,
   "reference_partial_5prime": 70,
   "start": {
-   "f1": 0.63673,
-   "fn": 11485,
-   "fp": 17765,
-   "precision": 0.59066,
-   "sensitivity": 0.69059,
-   "tp": 25634
+   "f1": 0.74996,
+   "fn": 11490,
+   "fp": 5600,
+   "precision": 0.82068,
+   "sensitivity": 0.69046,
+   "tp": 25629
   },
   "stop": {
-   "f1": 0.35985,
-   "fn": 6383,
-   "fp": 93970,
-   "precision": 0.23086,
-   "sensitivity": 0.81546,
-   "tp": 28206
+   "f1": 0.40788,
+   "fn": 6386,
+   "fp": 75499,
+   "precision": 0.27196,
+   "sensitivity": 0.81537,
+   "tp": 28203
   },
   "stop_codon_convention_detected": "inside",
   "stop_codon_convention_from_genome": "unknown",
@@ -28,6 +29,7 @@
   "stop_outside_cds": 0,
   "transcripts_stop_extended_by_3bp": 0,
   "transcripts_stop_merged_from_feature": 0,
+  "transcripts_stop_not_extended_partial": 0,
   "transcripts_with_stop_codon_feature": 351375
  },
  "declaration": {
