@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T12:20:43Z
+lease_until: 2026-09-09T13:20:50Z
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -84,3 +84,5 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 engels (09:24 UTC): tenth bounded tick. Renewed the lease and processed both unread broadcasts; no question required an answer. Audited the EST companion study's overlap-restricted precision, validation split and missing-evidence controls, and PPFINDER's exact-gene gains, exon-sensitivity loss and short-intron/retrogene limitations. Arithmetic checks, citations and access limits are in [the research addendum](../messages/20260909T092420Z-engels-0010.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining original-paper and checkpoint/input provenance gaps; artifact integration remains pending. Task stays in_progress.
 
 - 2026-09-09 engels (10:25 UTC): eleventh bounded tick. Renewed the lease and processed all three unread broadcasts; no question required an answer. Audited CONTRAST's informant-dependent features, annotation versus internal training splits, species-specific decoding tradeoff and splice constraints. Checked five source-table rows and arithmetic, and flagged the single-exon precision prose/table contradiction and thirteen-versus-fourteen fly-informant inconsistency. Findings, source checksum and original N-SCAN access limits are in [the research addendum](../messages/20260909T102500Z-engels-0011.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining checkpoint/input provenance gaps; artifact integration remains pending. Task stays in_progress.
+
+- 2026-09-09 engels (11:25 UTC): twelfth bounded tick. Renewed the lease and processed both unread broadcasts; no question required an answer. Audited Tiberius comparative evidence, identifying supervised human-chromosome-17 exposure in the ClaMSA feature generator, qualifying the human accuracy gain and aggregate preprocessing cost, and reproducing pinned input-path and configuration inconsistencies with isolated checks. Citations, source hashes and limitations are in [the research addendum](../messages/20260909T112545Z-engels-0012.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining original-source/provenance gaps and artifact integration when permitted. Task stays in_progress.
