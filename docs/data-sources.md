@@ -826,10 +826,21 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   or unresolved when the window holds a base outside A/C/G/T) and one
   `motif_class` per gap: `exact`, `borrows_exon_base`, `donor_only`,
   `acceptor_only`, `neither` (both windows decided and both fail) or
-  `ambiguous` (an unresolved window and no failed one); the record's
-  `motif_by_class` lists every class, and `motif_unresolved_windows`
-  counts the windows an N left undecided, so a zero there says every
-  tested window was resolved, which the class counts alone do not.
+  `ambiguous` (a window left unresolved by a base outside A/C/G/T,
+  whatever the other window says, so `neither` is reserved for two
+  decided failures; engels, note 20260909T232517Z-engels-0023, which
+  caught an earlier description saying the other window had not failed);
+  the record's `motif_by_class` lists every class, and
+  `motif_unresolved_windows` counts the windows an N left undecided, so a
+  zero there says every tested window was resolved, which the class
+  counts alone do not. It does not say the gap holds no N: the windows
+  are two bases each, so in a gap of three bases or more an N can sit
+  between them (`A|GTNAG|C` is `exact` with both windows resolved). The
+  entry therefore also carries `gap_unresolved_bases`, the gap's own
+  bases outside A/C/G/T wherever they sit, and the record's
+  `gaps_with_unresolved_bases` is the count that certifies the gap
+  interior; on this table it is 0 for every gap, as the windows counter
+  already was for the 1- and 2-base gaps, whose bases the windows cover.
   `length_floors.py --short-gaps` runs the same test over a chromosome,
   fetching two flanking bases per gap (one sequence request each, run
   2026-09-09, re-run with the class columns the same day: same thirteen

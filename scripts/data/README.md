@@ -160,8 +160,10 @@ row and two copies of one species under both policies, and the
 clipped intron, and the intron floor (stalin's length sweep of 1 to 30
 bases on both strands, the floor at 15 and 0, engels' borrowed-base
 motif windows on both strands, the donor, acceptor, neither and
-ambiguous classes on both strands, class precedence over a short gap, and
-the toy window's sidecar under the floor; 69 checks). The `.npz` members carry a fixed
+ambiguous classes on both strands, an N inside a gap but outside both
+windows (`gap_unresolved_bases`) and beside a failed window (`ambiguous`,
+not `neither`), class precedence over a short gap, and
+the toy window's sidecar under the floor; 70 checks). The `.npz` members carry a fixed
 timestamp, so an example's checksum depends only on its inputs; the whole
 cutter, the fetcher, `coverage_by_distance.py` and `tree_composition.py`
 were checked to give identical output under `PYTHONHASHSEED` 0, 1, 2 and 42

@@ -146,7 +146,7 @@ import struct
 import sys
 import zipfile
 
-TOOL_VERSION = "0.10"
+TOOL_VERSION = "0.11"
 
 # Length floors the sidecar counts features under (``feature_lengths``).
 # They are the ones engels measured in Helixer's decoder (relay note
@@ -1029,9 +1029,18 @@ def motif_windows(left: str, gap: str, right: str) -> dict:
     needs 4), ``borrows_exon_base`` (both pass, a window reached into an
     exon, which is the 1-base case), ``donor_only``, ``acceptor_only``,
     ``neither`` (both decided and both fail), ``ambiguous`` (a window is
-    unresolved and the other did not fail).  ``both`` is the conjunction
-    with an unresolved window counted as not passing, which is what
-    ``motif_window`` returned before 0.10."""
+    unresolved, whatever the other window says: an unresolved window next
+    to a failed one is ``ambiguous``, not ``neither``, which is reserved
+    for two decided failures; engels, note 20260909T232517Z-engels-0023).
+    ``both`` is the conjunction with an unresolved window counted as not
+    passing, which is what ``motif_window`` returned before 0.10.
+
+    The windows are two bases each, so an N inside a gap of three bases or
+    more can sit outside both and leave every window resolved (A|GTNAG|C is
+    ``exact``); ``motif_fields`` therefore also counts the gap's own bases
+    outside A/C/G/T as ``gap_unresolved_bases``, and a record's
+    ``gaps_with_unresolved_bases`` is what certifies the gap interior,
+    which ``motif_unresolved_windows`` does not."""
     L = len(gap)
     if L < 1 or not left or not right:
         return {"donor": None, "acceptor": None, "both": False, "borrows": False, "class": "ambiguous"}
@@ -1067,17 +1076,19 @@ def motif_fields(left: str, gap: str, right: str) -> dict:
     g = gap.upper()
     return {"motif_exact": len(g) >= 4 and g[:2] in DONORS and g[-2:] == "AG",
             "motif_window": m["both"], "motif_borrows_exon_base": m["borrows"],
-            "motif_donor": m["donor"], "motif_acceptor": m["acceptor"], "motif_class": m["class"]}
+            "motif_donor": m["donor"], "motif_acceptor": m["acceptor"], "motif_class": m["class"],
+            "gap_unresolved_bases": sum(1 for c in g if c not in "ACGT")}
 
 
 MOTIF_FIELDS_NONE = {"motif_exact": None, "motif_window": None, "motif_borrows_exon_base": None,
-                     "motif_donor": None, "motif_acceptor": None, "motif_class": None}
+                     "motif_donor": None, "motif_acceptor": None, "motif_class": None,
+                     "gap_unresolved_bases": None}
 
 
 def motif_summary(gaps: list[dict]) -> dict:
     """Counts over ``short_gaps`` entries: the three pre-0.10 counters, the
-    class table (every class listed, zero when absent), and the unresolved
-    windows."""
+    class table (every class listed, zero when absent), the unresolved
+    windows, and the gaps holding a base outside A/C/G/T anywhere (0.11)."""
     return {
         "motif_exact": sum(1 for g in gaps if g["motif_exact"]),
         "motif_window": sum(1 for g in gaps if g["motif_window"]),
@@ -1085,6 +1096,7 @@ def motif_summary(gaps: list[dict]) -> dict:
         "motif_by_class": {c: sum(1 for g in gaps if g["motif_class"] == c) for c in MOTIF_CLASSES},
         "motif_unresolved_windows": sum((g["motif_donor"] is None) + (g["motif_acceptor"] is None)
                                         for g in gaps if g["motif_class"] is not None),
+        "gaps_with_unresolved_bases": sum(1 for g in gaps if g["gap_unresolved_bases"]),
     }
 
 
@@ -1143,7 +1155,10 @@ def short_gaps(transcripts: list[dict], seq: str, start: int, end: int,
                   "motif_window": "engels' overlapping-window test, one exon base borrowed each side; "
                                   "the conjunction of motif_donor and motif_acceptor, an unresolved window not passing",
                   "motif_class": "exact | borrows_exon_base | donor_only | acceptor_only | neither | ambiguous "
-                                 "(a window holds a base outside ACGT and the other did not fail)"},
+                                 "(a window holds a base outside ACGT, whatever the other window says; "
+                                 "neither means two decided failures)",
+                  "gap_unresolved_bases": "bases of the gap itself outside ACGT, inside or outside the two-base windows; "
+                                          "gaps_with_unresolved_bases counts the gaps where it is nonzero"},
         "min_intron": min_intron, "n": len(out),
         "in_cds": sum(1 for g in out if g["in_cds"]),
         "by_length": lengths,
@@ -1917,7 +1932,7 @@ def self_test() -> int:
     assert mw("CN", "G", "TC") == (True, None, "ambiguous")      # N|G|T: donor reads GT, the acceptor window is N,G
     assert mw("CA", "N", "TC") == (None, None, "ambiguous")
     assert mw("CA", "GTAN", "CC") == (True, None, "ambiguous")
-    assert mw("CA", "ATAN", "CC") == (False, None, "ambiguous")  # one side undecided, the other did not fail
+    assert mw("CA", "ATAN", "CC") == (False, None, "ambiguous")  # one side undecided, the other failed: still ambiguous, not neither
     assert mw("CN", "GTAA", "CC") == (True, False, "donor_only")  # the N sits outside both windows
     assert motif_window("CN", "G", "TC") == (False, False)       # the conjunction counts unresolved as not passing
     assert mw("ca", "g", "tc") == (True, True, "borrows_exon_base")
@@ -1970,6 +1985,38 @@ def self_test() -> int:
     assert sorted(g["motif_class"] for g in sm9["gaps"]) == sorted(g["motif_class"] for g in s9["gaps"]), sm9["gaps"]
     assert sm9["motif_by_class"] == s9["motif_by_class"] and sm9["motif_unresolved_windows"] == 2
     assert {g["gap"] for g in sm9["gaps"]} == {"GTAA", "AAAG", "A", "N"}, sm9["gaps"]
+    checks += 1
+    # 70: engels' three fixtures (note 20260909T232517Z-engels-0023): an N
+    #     inside the gap but outside both two-base windows leaves the class
+    #     exact and the windows resolved, so only gap_unresolved_bases sees
+    #     it; an unresolved window beside a failed one is ambiguous on
+    #     either side; the counters agree through short_gaps on both strands
+    assert mw("A", "GTNAG", "C") == (True, True, "exact")
+    assert mw("A", "AANA", "C") == (False, None, "ambiguous")
+    assert mw("A", "NTAA", "C") == (None, False, "ambiguous")
+    assert motif_fields("A", "GTNAG", "C")["gap_unresolved_bases"] == 1
+    assert motif_fields("A", "GTAG", "C")["gap_unresolved_bases"] == 0
+    assert motif_fields("CA", "N", "TC")["gap_unresolved_bases"] == 1
+    assert motif_fields("a", "gtnag", "c")["gap_unresolved_bases"] == 1
+    seq10 = "CCCCCCCCA" + "GTNAG" + "CCCCCCCCA" + "AANA" + "CCCCCCCA" + "NTAA" + "CCCCCCC"  # 46 bases
+    tx10 = [{"id": "r", "strand": "+", "start": 0, "end": 46,
+             "exons": [[0, 9], [14, 23], [27, 35], [39, 46]],
+             "cds": [[0, 9], [14, 23], [27, 35], [39, 46]]}]
+    s10 = short_gaps(tx10, seq10, 0, 46)
+    assert [g["gap"] for g in s10["gaps"]] == ["GTNAG", "AANA", "NTAA"], s10["gaps"]
+    assert [g["motif_class"] for g in s10["gaps"]] == ["exact", "ambiguous", "ambiguous"], s10["gaps"]
+    assert [g["gap_unresolved_bases"] for g in s10["gaps"]] == [1, 1, 1], s10["gaps"]
+    assert s10["motif_unresolved_windows"] == 2 and s10["gaps_with_unresolved_bases"] == 3, s10
+    assert s10["motif_by_class"]["neither"] == 0 and s10["motif_exact"] == 1, s10
+    rc10 = seq10.translate(COMP)[::-1]
+    txm10 = [{"id": "rm", "strand": "-", "start": 0, "end": 46,
+              "exons": [[46 - b, 46 - a] for a, b in reversed(tx10[0]["exons"])],
+              "cds": [[46 - b, 46 - a] for a, b in reversed(tx10[0]["cds"])]}]
+    sm10 = short_gaps(txm10, rc10, 0, 46)
+    assert {g["gap"] for g in sm10["gaps"]} == {"GTNAG", "AANA", "NTAA"}, sm10["gaps"]
+    assert sm10["motif_unresolved_windows"] == 2 and sm10["gaps_with_unresolved_bases"] == 3, sm10
+    assert s9["gaps_with_unresolved_bases"] == 1 and sg["gaps_with_unresolved_bases"] == 0
+    assert s5["gaps_with_unresolved_bases"] == 0, s5
     checks += 1
     # 67: precedence: a CDS in another isoform over a short gap paints CDS; a short gap
     #     over another transcript's intron paints short_gap

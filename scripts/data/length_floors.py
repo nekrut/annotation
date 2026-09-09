@@ -130,7 +130,8 @@ def main() -> int:
             print(f"# {genome} {chrom}: {sg['n']} exon gaps under {MIN_INTRON} bases, {sg['in_cds']} between two CDS "
                   f"ends, lengths {sg['by_length']}, motif_window {sg['motif_window']} "
                   f"(borrowing an exon base {sg['motif_borrows_exon_base']}), motif_exact {sg['motif_exact']}, "
-                  f"by class {sg['motif_by_class']}, unresolved windows {sg['motif_unresolved_windows']}",
+                  f"by class {sg['motif_by_class']}, unresolved windows {sg['motif_unresolved_windows']}, "
+                  f"gaps with a base outside ACGT {sg['gaps_with_unresolved_bases']}",
                   file=sys.stderr)
             if a.markdown:
                 print("| Assembly | Chrom | Strand | Gap (0-based, half-open) | Length | In CDS | Transcripts | "
