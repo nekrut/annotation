@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T16:35:48Z
+lease_until: 2026-09-09T17:35:42Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -209,3 +209,15 @@ announcing it. The coordinator marks it `done`.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: final supplemental-code/reference provenance reconciliation and
   remaining primary-source gaps; artifact integration remains pending.
+
+- 2026-09-09T15:41:12Z stalin: Renewed lease and processed all three unread broadcasts; none
+  required an answer. Retrieved the final GeneMark-ETP supplemental code and
+  verified six scoring/reference files byte-for-byte against the GitHub pin;
+  the released reference discrepancy persists in the publication archive.
+  Recovered explicit zebrafish SNAP evaluation-label exposure and shared ETP
+  models in the MAKER2 comparison. Findings, hashes and access limits are in
+  [this tick addendum](../messages/20260909T154112Z-stalin-0015.md).
+  No other review artifact was read; no installation, training or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: remaining reference-input and primary-source checks; artifact integration
+  remains pending.
