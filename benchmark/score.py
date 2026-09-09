@@ -804,6 +804,7 @@ class WindowFetcher:
             buf, buf_start, pos = [], 1, 0
             for line in fh:
                 if line.startswith(">"):
+                    self._flush(seqid, pending, buf, buf_start, pos)
                     seqid = line[1:].split()[0]
                     pending = deque(want.get(seqid, []))
                     buf, buf_start, pos = [], 1, 0
@@ -831,6 +832,32 @@ class WindowFetcher:
                             joined = "".join(buf)
                         buf = [joined[keep - buf_start:]]
                         buf_start = keep
+            self._flush(seqid, pending, buf, buf_start, pos)
+
+    def _flush(self, seqid, pending, buf, buf_start, pos):
+        """Serve the windows still queued when a FASTA record ends.
+
+        A window whose end runs past the end of the sequence -- a local-GC
+        window on a splice site within ``GC_WINDOW // 2`` of a scaffold end --
+        is never satisfied by the ``pending[0][1] <= pos`` test above.  Because
+        ``pending`` is ordered by window *start*, that unsatisfiable window
+        also sits in front of every later window on the same sequence and
+        blocks all of them: before this flush, one such intron on a 43 kb
+        *T. rubripes* scaffold silently cost both its acceptor dinucleotide and
+        its GC bin, and on a more fragmented assembly it would cost every
+        window behind it too.  Windows are dropped, not clipped, at the *start*
+        of a sequence by ``max(1, ...)`` in ``needed_windows``; the end needs
+        this.  The buffer is never trimmed past ``pending[0][0]``, so every
+        queued window is still fully in ``buf`` here, and the sequence is
+        truncated rather than the window discarded.
+        """
+        if seqid is None or not pending:
+            return
+        joined = "".join(buf)
+        while pending:
+            s, e = pending.popleft()
+            if s >= buf_start and s <= pos:
+                self.cache[(seqid, s, e)] = joined[s - buf_start:e - buf_start + 1]
 
     def __call__(self, seqid, s, e):
         return self.cache.get((seqid, s, e))
@@ -1164,7 +1191,29 @@ def self_test():
     check("window 100-103", wf("chr1", 100, 103), seq[99:103])
     check("window 1997-2000", wf("chr1", 1997, 2000), seq[1996:2000])
 
-    for f in (ref, pred, fa):
+    # A window running past the end of a record must be clipped, and must not
+    # block the windows queued behind it -- ``pending`` is ordered by window
+    # start, so an unsatisfiable window with an early start hides every later
+    # one on the same sequence.  A splice site within GC_WINDOW // 2 of a
+    # scaffold end produces exactly this, on chr1 and again on the last record
+    # in the file.
+    fa2 = os.path.join(d, "g2.fa")
+    s1, s2 = "ACGT" * 25, "GGCC" * 25  # 100 bp each
+    with open(fa2, "w") as fh:
+        for name, s in (("chr1", s1), ("chr2", s2)):
+            fh.write(">%s test\n" % name)
+            for i in range(0, len(s), 30):
+                fh.write(s[i:i + 30] + "\n")
+    wf2 = WindowFetcher(fa2, [("chr1", 90, 150), ("chr1", 95, 96),
+                              ("chr2", 90, 150), ("chr2", 95, 96),
+                              ("chr3", 1, 4)])
+    check("overrun clipped chr1", wf2("chr1", 90, 150), s1[89:100])
+    check("behind overrun chr1", wf2("chr1", 95, 96), s1[94:96])
+    check("overrun clipped last record", wf2("chr2", 90, 150), s2[89:100])
+    check("behind overrun last record", wf2("chr2", 95, 96), s2[94:96])
+    check("absent sequence", wf2("chr3", 1, 4), None)
+
+    for f in (ref, pred, fa, fa2):
         os.unlink(f)
     os.rmdir(d)
     if fails:

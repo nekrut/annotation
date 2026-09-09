@@ -631,23 +631,56 @@ under 20 bp is not a splice junction (§4.3).
 Verification so far:
 
 - `python3 benchmark/score.py --self-test` scores built-in fixture pairs and
-  checks 35 expected counts: a prediction with one exact transcript, one
+  checks 41 expected counts: a prediction with one exact transcript, one
   shifted minus-strand boundary, one overlapping-but-unaligned locus and one
   spurious locus; a fusion-and-split pair; a self-comparison that must score
   exactly 1.0 on every metric; two sequence-selection fixtures, one in RefSeq
   shape and one in Ensembl shape, whose every line is a sequence shape taken
   from a real panel reference (chromosome, alt locus, unlocalized scaffold,
   unplaced scaffold, bare scaffold, mitochondrion, chloroplast, sub-10 kb
-  scaffold); and the streaming FASTA window reader against a plain read.
-- **Identity runs on seven real panel references.** *S. cerevisiae*,
-  *A. thaliana*, *C. elegans*, *P. falciparum*, *N. vectensis*,
-  *T. thermophila*, *Z. mays* and *H. sapiens* each score F1 = 1.0 and
-  MCC = 1.0 on every metric against themselves, with **0 fusions and 0
-  splits** everywhere. Human is 102 scored sequences and 3,101,538,863 bp
-  after the filter (24 chromosomes plus 78 scaffolds; 511 alt loci and
+  scaffold); the streaming FASTA window reader against a plain read; and a
+  two-record FASTA in which a window overruns the end of a record, on the
+  first record and on the last, checking that it is clipped and that the
+  windows queued behind it are still served.
+- **Identity runs on all twenty panel references.** Every species in
+  `panel.tsv` scored against its own reference gives F1 = 1.0 and MCC = 1.0 on
+  every metric, with **0 fusions and 0 splits** everywhere. Cost on one laptop
+  core ranges from 1.0 s / 43 MB (*P. falciparum*, 23 Mb) to 52 s / 335 MB
+  (*Z. mays*, 2.18 Gb); human is 38 s / 0.92 GB over 3.10 Gb. The filter keeps
+  3 sequences (*S. pombe*) to 685 (*Z. mays*); human is 102 scored sequences
+  and 3,101,538,863 bp (24 chromosomes plus 78 scaffolds; 511 alt loci and
   patches, 91 sub-10 kb scaffolds and the mitochondrion dropped), 132,030
-  transcripts, 20,520 loci, 37 s and 0.93 GB peak resident set on one laptop
-  core.
+  transcripts, 20,520 loci. Every one of the twenty took the RefSeq `region`
+  path (`reference_has_region_features: true`).
+- **`--genome` across six species and at vertebrate scale.** The §4.3
+  dinucleotide and local-GC strata now run on *T. rubripes* (384 Mb, 230,048
+  introns, 32 s and 0.69 GB), *D. melanogaster*, *C. elegans*, *S. pombe*,
+  *P. falciparum* and *S. cerevisiae*. Non-GT-AG donor fractions recovered
+  from the genome: *T. rubripes* 1.57%, *D. melanogaster* 0.98%,
+  *C. elegans* 0.97%, *S. cerevisiae* 3.91%, *P. falciparum* 0.18%,
+  *S. pombe* 0.16%.
+  **This is what found the window-fetcher defect below**, and it is the
+  argument for reporting the strata at all: one *T. rubripes* intron ending
+  52 bp from the end of a 43 kb scaffold was being counted in an `unknown`
+  dinucleotide class rather than as the GT-AG it is.
+- **Defect found and fixed by that run: the window fetcher silently dropped
+  windows near the end of a sequence, and everything queued behind them.**
+  `WindowFetcher` serves a sorted queue of windows and pops one when its *end*
+  has been read, but the queue is ordered by window *start*. A local-GC window
+  centred on a splice site within `GC_WINDOW // 2` (100 bp) of the end of a
+  sequence can never satisfy that test, so it stalled at the head of the queue
+  and hid every later window on the same sequence. The fetcher returned `None`
+  for all of them, which `dinuc_class` reports as `unknown` and `gc_bin` drops
+  from the denominator — a silent loss, not an error. The fix serves the
+  remaining queue against what was read when a record ends, clipping the
+  window to the sequence rather than discarding it; the buffer is never
+  trimmed past the head window's start, so nothing has been lost by then.
+  Impact here was one intron in 230,048 (*T. rubripes*) and zero elsewhere,
+  because the stall only reaches windows *behind* it and these assemblies put
+  few splice sites near scaffold ends; on a more fragmented assembly, or with
+  a larger `GC_WINDOW`, it would take out the tail of every affected scaffold.
+  The regression fixture above fails on the old code with four wrong values
+  and passes on the new.
 - **Ensembl input.** `Caenorhabditis_elegans.WBcel235.gff3.gz` from the
   Ensembl FTP site — no `region` features at all, `gene:`/`transcript:`
   ID prefixes — parses and scores: 6 nuclear chromosomes kept, `MtDNA`
@@ -678,13 +711,17 @@ Verification so far:
 1. **The scorer does not compute §4.6 or §4.7.** BUSCO, OMArk, and the cost
    columns are external and are merged by `report.py --cost`; nothing yet
    produces that TSV. T-human-009 owns the cost half.
-2. **The scorer has been run on eight of twenty species.** *S. cerevisiae*,
-   *A. thaliana*, *C. elegans*, *P. falciparum*, *N. vectensis*,
-   *T. thermophila*, *Z. mays* and *H. sapiens*, plus one Ensembl-formatted
-   annotation, all as identity and degraded-copy runs (§6). Twelve panel
-   species have never been through it, and no run has yet used `--genome` at
-   vertebrate scale, so the §4.3 dinucleotide and GC stratifications are
-   exercised only on yeast.
+2. **Degraded-copy runs cover two of twenty species.** Identity runs now
+   cover all twenty and `--genome` covers six including a vertebrate (§6), so
+   what is left untested is behaviour under *wrong* input: only
+   *S. cerevisiae* and *H. sapiens* have been scored against a degraded copy,
+   and no real predictor output has ever been scored. An identity run
+   exercises every code path but pins only the fixed points; the degraded runs
+   are what show the metrics move in the right direction and by how much.
+   The 14 remaining species need one each, and the first real GFF3 out of
+   AUGUSTUS or Helixer will exercise the §4 conventions (stop codon in or out
+   of the CDS, `Parent` shapes, missing `region` features) that no
+   RefSeq-versus-RefSeq run can reach.
 3. **No high-confidence subset** (§2.3). Needed before any accuracy above
    roughly the annotation error rate means anything. Candidate construction:
    loci with MANE Select support in human, community-curated loci elsewhere,
@@ -705,6 +742,15 @@ Verification so far:
 8. ***Tetrahymena* annotation quality** (§2.3) may be poor enough that even
    "report, never rank" is generous. An alternative code-6 ciliate with a
    better annotation would be preferable if one exists.
-9. **Fetch script tested on 20 of 20 annotations, 1 of 20 genome FASTAs.**
-   `--what fasta` now works end to end on *S. cerevisiae* (3.8 MB); it has
-   still not been exercised at 3 Gb scale.
+9. **Fetch script tested on 20 of 20 annotations, 6 of 20 genome FASTAs.**
+   `--what fasta` works end to end on *S. cerevisiae*, *S. pombe*,
+   *P. falciparum*, *C. elegans*, *D. melanogaster* and *T. rubripes*
+   (391 Mb, the largest so far, checksum verified). It has still not been
+   exercised at 3 Gb scale.
+10. **The local-GC stratification (§4.3) degenerates on AT-rich genomes.**
+   The five bins are fixed absolute GC bands, which is what makes the column
+   comparable across species, but the panel deliberately spans 19.5% to 48.5%
+   GC: 98.9% of *P. falciparum* donors land in the `<30%` bin and 83% of
+   *S. pombe* donors in `30-40%`. Read that column across species, not within
+   one. Per-species GC quantile bins would be the alternative and would not be
+   comparable; this is a documented limitation, not a defect.
