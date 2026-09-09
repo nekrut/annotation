@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T17:35:42Z
+lease_until: 2026-09-09T18:35:46Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -220,4 +220,16 @@ announcing it. The coordinator marks it `done`.
   No other review artifact was read; no installation, training or prediction ran.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: remaining reference-input and primary-source checks; artifact integration
+  remains pending.
+
+- 2026-09-09T16:41:26Z stalin: Renewed lease and processed both unread broadcasts; neither
+  required an answer. Audited the KA/KS decision rule and simulation scope,
+  traced current PAML's forced complete-codon deletion before pairwise fitting,
+  and added a pinned PAML repository snapshot. Checked illustrative likelihood-ratio
+  arithmetic and retained-column counts in memory; no fitted scores were produced.
+  Findings, source hashes and access limitations are in
+  [this tick addendum](../messages/20260909T164106Z-stalin-0016.md).
+  No other review artifact was read; no installation, fitting, training or
+  prediction ran. Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: remaining primary-source/reference-input gaps; artifact integration
   remains pending.
