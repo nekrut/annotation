@@ -1,0 +1,485 @@
+{
+ "codon": {
+  "predicted_partial_3prime": 0,
+  "predicted_partial_5prime": 0,
+  "predicted_partial_source": "missing_codon_feature",
+  "reference_partial_3prime": 136,
+  "reference_partial_5prime": 134,
+  "start": {
+   "f1": 0.74733,
+   "fn": 7579,
+   "fp": 5114,
+   "precision": 0.78589,
+   "sensitivity": 0.71237,
+   "tp": 18771
+  },
+  "stop": {
+   "f1": 0.82337,
+   "fn": 4518,
+   "fp": 4006,
+   "precision": 0.8322,
+   "sensitivity": 0.81473,
+   "tp": 19868
+  },
+  "stop_codon_convention_detected": "inside",
+  "stop_codon_convention_from_genome": "inside",
+  "stop_codon_convention_source": "genome",
+  "stop_codon_inside_cds": true,
+  "stop_convention_genome_chains": 23948,
+  "stop_convention_genome_inside": 23946,
+  "stop_convention_genome_neither": 2,
+  "stop_convention_genome_outside": 0,
+  "stop_inside_cds": 23948,
+  "stop_outside_cds": 0,
+  "transcripts_stop_extended_by_3bp": 0,
+  "transcripts_stop_merged_from_feature": 0,
+  "transcripts_stop_not_extended_partial": 0,
+  "transcripts_with_stop_codon_feature": 23948
+ },
+ "declaration": {
+  "model": "Tiberius 2.0.7 (docker larsgabriel23/tiberius@sha256:2c3bddda32cc621b805de40dc0395942cb5dd8a5766b1fe6c98fba845740f9bd, /opt/Tiberius at c6d92f2fa15cee0bc845141395216cea89ec89ec, TensorFlow 2.17.0), --model_cfg vertebrates, --out tiberius.gtf tiberius.gff3 (both dialects from one invocation), weights /opt/Tiberius/model_weights/vertebrates_weights/weights.h5 (sha256 f80833ebc615c534e897a45a824dca1e148c4834b48720cada7001225c1a1545, dated 2025-11-10, 39,203,472 bytes), chunk length 400050, batch size 4, softmasking off, HMM parallel factor 630, all other defaults",
+  "path": "tiberius-Takifugu_rubripes.yaml",
+  "sha256": "d73ab2e2d01a2590fbe275785f269e0678c587ee70cc2a3650c792c87c7497ff"
+ },
+ "exon": {
+  "all": {
+   "f1": 0.8911,
+   "fn": 32983,
+   "fp": 20897,
+   "precision": 0.91341,
+   "sensitivity": 0.86985,
+   "tp": 220436
+  },
+  "by_type": {
+   "initial": {
+    "f1": 0.7343,
+    "fn": 7924,
+    "fp": 4787,
+    "precision": 0.78583,
+    "sensitivity": 0.68911,
+    "tp": 17564
+   },
+   "internal": {
+    "f1": 0.9211,
+    "fn": 19578,
+    "fp": 11811,
+    "precision": 0.93944,
+    "sensitivity": 0.90346,
+    "tp": 183223
+   },
+   "single": {
+    "f1": 0.67757,
+    "fn": 343,
+    "fp": 603,
+    "precision": 0.62242,
+    "sensitivity": 0.74346,
+    "tp": 994
+   },
+   "terminal": {
+    "f1": 0.80418,
+    "fn": 5239,
+    "fp": 3797,
+    "precision": 0.83012,
+    "sensitivity": 0.77981,
+    "tp": 18554
+   }
+  },
+  "predicted_overlap_no_boundary": 1072,
+  "predicted_overlap_no_boundary_frac": 0.00444
+ },
+ "locus": {
+  "f1": 0.91789,
+  "fn": 961,
+  "fp": 2819,
+  "fusion": 241,
+  "precision": 0.88229,
+  "predicted_loci": 23948,
+  "reference_loci": 22090,
+  "reference_overlapping_locus_pairs": 7,
+  "sensitivity": 0.9565,
+  "split": 706,
+  "tp": 21129
+ },
+ "nucleotide": {
+  "f1": 0.93801,
+  "fn": 2113764,
+  "fp": 2947202,
+  "mcc": 0.93459,
+  "precision": 0.92854,
+  "predicted_cds_bp": 41240085,
+  "reference_cds_bp": 40406647,
+  "scored_bp": 384110215,
+  "sensitivity": 0.94769,
+  "tp": 38292883
+ },
+ "predicted_conflicting_transcript_ids": 0,
+ "predicted_sequences_absent_from_reference": 0,
+ "predicted_transcript_selection": {
+  "dropped": 0,
+  "dropped_by_reason": {},
+  "kept": 23948
+ },
+ "predicted_transcripts": 23948,
+ "predicted_transcripts_not_scored": 0,
+ "prediction": "tiberius_fugu.gtf",
+ "reference": "GCF_901000725.3_fTakRub1.3_genomic.gff.gz",
+ "reference_conflicting_transcript_ids": 0,
+ "reference_transcript_selection": {
+  "dropped": 71,
+  "dropped_by_reason": {
+   "biotype=C_region": 18,
+   "biotype=V_segment": 53
+  },
+  "kept": 46771
+ },
+ "reference_transcripts": 46771,
+ "scored_bp": 384110215,
+ "scored_sequences": 127,
+ "sequence_selection": {
+  "dropped": 0,
+  "dropped_by_reason": {},
+  "kept": 127,
+  "reference_has_region_features": true
+ },
+ "species": "Takifugu_rubripes",
+ "splice": {
+  "acceptor": {
+   "by_intron_length_decile": [
+    {
+     "f1": 0.92081,
+     "fn": 2487,
+     "fp": 1492,
+     "precision": 0.93941,
+     "sensitivity": 0.90293,
+     "tp": 23134
+    },
+    {
+     "f1": 0.94465,
+     "fn": 1578,
+     "fp": 781,
+     "precision": 0.96265,
+     "sensitivity": 0.92731,
+     "tp": 20132
+    },
+    {
+     "f1": 0.93696,
+     "fn": 1651,
+     "fp": 1136,
+     "precision": 0.94801,
+     "sensitivity": 0.92618,
+     "tp": 20713
+    },
+    {
+     "f1": 0.92969,
+     "fn": 1716,
+     "fp": 1380,
+     "precision": 0.93684,
+     "sensitivity": 0.92265,
+     "tp": 20470
+    },
+    {
+     "f1": 0.92614,
+     "fn": 1798,
+     "fp": 1514,
+     "precision": 0.93205,
+     "sensitivity": 0.92032,
+     "tp": 20766
+    },
+    {
+     "f1": 0.91639,
+     "fn": 1976,
+     "fp": 1804,
+     "precision": 0.91989,
+     "sensitivity": 0.91292,
+     "tp": 20716
+    },
+    {
+     "f1": 0.90771,
+     "fn": 2206,
+     "fp": 1938,
+     "precision": 0.91316,
+     "sensitivity": 0.90232,
+     "tp": 20378
+    },
+    {
+     "f1": 0.90048,
+     "fn": 2383,
+     "fp": 1989,
+     "precision": 0.90863,
+     "sensitivity": 0.89247,
+     "tp": 19779
+    },
+    {
+     "f1": 0.89059,
+     "fn": 2617,
+     "fp": 1935,
+     "precision": 0.90543,
+     "sensitivity": 0.87623,
+     "tp": 18527
+    },
+    {
+     "f1": 0.87272,
+     "fn": 2815,
+     "fp": 1973,
+     "precision": 0.8927,
+     "sensitivity": 0.85361,
+     "tp": 16415
+    }
+   ],
+   "f1": 0.93223,
+   "fn": 17525,
+   "fp": 12240,
+   "precision": 0.94359,
+   "predicted_sites_multiple_dinuc_classes": 0,
+   "predicted_sites_multiple_intron_lengths": 0,
+   "reference_sites_multiple_dinuc_classes": 260,
+   "reference_sites_multiple_intron_lengths": 6694,
+   "sensitivity": 0.92115,
+   "tp": 204732
+  },
+  "by_dinucleotide": {
+   "AT-AC": {
+    "f1": 0.0,
+    "fn": 235,
+    "fp": 0,
+    "precision": null,
+    "sensitivity": 0.0,
+    "tp": 0
+   },
+   "GC-AG": {
+    "f1": 0.81493,
+    "fn": 522,
+    "fp": 306,
+    "precision": 0.85627,
+    "sensitivity": 0.7774,
+    "tp": 1823
+   },
+   "GT-AG": {
+    "f1": 0.90476,
+    "fn": 26769,
+    "fp": 15251,
+    "precision": 0.92901,
+    "sensitivity": 0.88174,
+    "tp": 199591
+   },
+   "other": {
+    "f1": 0.0,
+    "fn": 999,
+    "fp": 1,
+    "precision": 0.0,
+    "sensitivity": 0.0,
+    "tp": 0
+   }
+  },
+  "by_local_gc": {
+   "acceptor": {
+    "0": {
+     "f1": 0.81356,
+     "fn": 64,
+     "fp": 101,
+     "precision": 0.78091,
+     "sensitivity": 0.84906,
+     "tp": 360
+    },
+    "1": {
+     "f1": 0.90992,
+     "fn": 2329,
+     "fp": 2472,
+     "precision": 0.90748,
+     "sensitivity": 0.91236,
+     "tp": 24247
+    },
+    "2": {
+     "f1": 0.93328,
+     "fn": 8879,
+     "fp": 6288,
+     "precision": 0.94404,
+     "sensitivity": 0.92276,
+     "tp": 106075
+    },
+    "3": {
+     "f1": 0.94084,
+     "fn": 5447,
+     "fp": 2882,
+     "precision": 0.9583,
+     "sensitivity": 0.924,
+     "tp": 66224
+    },
+    "4": {
+     "f1": 0.92315,
+     "fn": 806,
+     "fp": 497,
+     "precision": 0.94029,
+     "sensitivity": 0.90663,
+     "tp": 7826
+    }
+   },
+   "donor": {
+    "0": {
+     "f1": 0.8071,
+     "fn": 75,
+     "fp": 88,
+     "precision": 0.79487,
+     "sensitivity": 0.81971,
+     "tp": 341
+    },
+    "1": {
+     "f1": 0.91266,
+     "fn": 2384,
+     "fp": 2279,
+     "precision": 0.91446,
+     "sensitivity": 0.91087,
+     "tp": 24363
+    },
+    "2": {
+     "f1": 0.93799,
+     "fn": 7828,
+     "fp": 6065,
+     "precision": 0.94543,
+     "sensitivity": 0.93067,
+     "tp": 105075
+    },
+    "3": {
+     "f1": 0.94152,
+     "fn": 5027,
+     "fp": 3262,
+     "precision": 0.95339,
+     "sensitivity": 0.92994,
+     "tp": 66727
+    },
+    "4": {
+     "f1": 0.92239,
+     "fn": 829,
+     "fp": 554,
+     "precision": 0.93684,
+     "sensitivity": 0.90837,
+     "tp": 8218
+    }
+   }
+  },
+  "donor": {
+   "by_intron_length_decile": [
+    {
+     "f1": 0.92488,
+     "fn": 2302,
+     "fp": 1461,
+     "precision": 0.94067,
+     "sensitivity": 0.90961,
+     "tp": 23165
+    },
+    {
+     "f1": 0.94794,
+     "fn": 1429,
+     "fp": 782,
+     "precision": 0.96261,
+     "sensitivity": 0.93372,
+     "tp": 20131
+    },
+    {
+     "f1": 0.94005,
+     "fn": 1499,
+     "fp": 1142,
+     "precision": 0.94773,
+     "sensitivity": 0.9325,
+     "tp": 20707
+    },
+    {
+     "f1": 0.9326,
+     "fn": 1540,
+     "fp": 1414,
+     "precision": 0.93529,
+     "sensitivity": 0.92992,
+     "tp": 20436
+    },
+    {
+     "f1": 0.93196,
+     "fn": 1539,
+     "fp": 1496,
+     "precision": 0.93285,
+     "sensitivity": 0.93106,
+     "tp": 20784
+    },
+    {
+     "f1": 0.92178,
+     "fn": 1721,
+     "fp": 1796,
+     "precision": 0.92025,
+     "sensitivity": 0.92332,
+     "tp": 20724
+    },
+    {
+     "f1": 0.91313,
+     "fn": 1932,
+     "fp": 1944,
+     "precision": 0.91289,
+     "sensitivity": 0.91338,
+     "tp": 20372
+    },
+    {
+     "f1": 0.90521,
+     "fn": 2129,
+     "fp": 2009,
+     "precision": 0.90771,
+     "sensitivity": 0.90273,
+     "tp": 19759
+    },
+    {
+     "f1": 0.89082,
+     "fn": 2502,
+     "fp": 2019,
+     "precision": 0.90133,
+     "sensitivity": 0.88054,
+     "tp": 18443
+    },
+    {
+     "f1": 0.86164,
+     "fn": 3321,
+     "fp": 1956,
+     "precision": 0.89363,
+     "sensitivity": 0.83187,
+     "tp": 16432
+    }
+   ],
+   "f1": 0.93516,
+   "fn": 16143,
+   "fp": 12248,
+   "precision": 0.94355,
+   "predicted_sites_multiple_dinuc_classes": 0,
+   "predicted_sites_multiple_intron_lengths": 0,
+   "reference_sites_multiple_dinuc_classes": 185,
+   "reference_sites_multiple_intron_lengths": 8086,
+   "sensitivity": 0.92691,
+   "tp": 204724
+  },
+  "intron_length_decile_cuts": [
+   76,
+   83,
+   93,
+   113,
+   155,
+   239,
+   398,
+   702,
+   1509
+  ],
+  "min_intron": 20,
+  "predicted_cds_gaps_below_min": 413,
+  "predicted_introns": 216972,
+  "reference_cds_gaps_below_min": 1124,
+  "reference_introns": 229939,
+  "strata_units": {
+   "by_dinucleotide": "intron",
+   "by_intron_length_decile": "site",
+   "by_local_gc": "site"
+  }
+ },
+ "transcript": {
+  "f1": 0.64064,
+  "fn": 7343,
+  "fp": 9201,
+  "precision": 0.61579,
+  "sensitivity": 0.66759,
+  "tp": 14747,
+  "unmatched_reference_loci": 961
+ }
+}

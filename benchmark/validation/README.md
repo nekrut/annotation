@@ -21,6 +21,8 @@ SHA-256 of the declaration beside it, so the pairing is checkable.
 | `gencode50-Homo_sapiens.yaml` | `.json` | GENCODE 50 scored as a submission against the human RefSeq reference |
 | `augustus-partial-Tetrahymena_thermophila.yaml` | `.json` | AUGUSTUS `--genemodel=partial` over 1,158 scaffolds, ids concatenated without renaming, genetic code 6 |
 | `augustus-partial-Apis_mellifera.yaml` | `.json` | AUGUSTUS `--genemodel=partial` with `honeybee1`, which excludes the stop codon from the CDS |
+| `tiberius-Takifugu_rubripes.yaml` | `.json` | Tiberius 2.0.7 on *T. rubripes*, `vertebrates` model, GPU — the GFF3 of the run |
+| `tiberius-Takifugu_rubripes.yaml` | `-gtf.json` | the **GTF** of the same invocation, scored separately; every metric equals the GFF3 result |
 | `degraded/` | the panel-wide control: all 20 references scored against a known degraded copy of themselves ([README](degraded/README.md)) |
 
 The three Helixer runs are the second tool and the second output shape: no
@@ -33,6 +35,21 @@ settles §7 item 10: two unrelated tools over-predict yeast introns by 2 to
 current scorer, so all five carry `stop_codon_convention_from_genome` and
 `stop_codon_convention_source`; the AUGUSTUS numbers are unchanged to five
 decimals by that regeneration.
+
+The two Tiberius results are one prediction in two dialects. Tiberius writes
+GTF and GFF3 from one invocation (`--out tiberius.gtf tiberius.gff3`), so the
+pair is a regression on the scorer itself: the two JSONs differ in exactly
+five fields, all of which report what the *file* states about itself — the
+input filename, `transcripts_with_stop_codon_feature`, `stop_inside_cds`,
+`stop_codon_convention_detected` and `predicted_partial_source`. Every scored
+metric is identical. They are kept as a pair because the GTF is what found
+the `_attr` defect in §6: before the fix the scorer read that file as 241,333
+single-exon transcripts and still reported nucleotide F1 0.93801 and exon F1
+0.89110, the same two values the correct parse gives.
+*T. rubripes* is also the one vertebrate on this panel that is genuinely held
+out of a shipped checkpoint — `model_cfg/vertebrates.yaml`'s own training list
+does not contain it and its test set names it — so this is the only §6
+vertebrate row that is a measurement rather than an upper bound.
 
 The third AUGUSTUS run is the ablation: the same genome and the same tool, one parameter
 set away. Exon F1 falls from 0.774 to 0.296 and donor F1 from 0.854 to 0.175
@@ -234,3 +251,53 @@ python3 benchmark/score.py \
 --uniqueGeneId=true`, the default genetic code, and `--stop-outside-cds`,
 which AUGUSTUS itself asks for on stderr: `honeybee1` is one of the 44 species
 parameter sets of 166 that set `stopCodonExcludedFromCDS true`.
+
+Reproducing the Tiberius run. Tiberius is not a dependency of this benchmark
+either; the run used the published container, so nothing is installed on the
+host:
+
+```
+python3 benchmark/fetch.py --species Takifugu_rubripes --what fasta --dest /tmp/panel
+python3 benchmark/fetch.py --species Takifugu_rubripes --what gff   --dest /tmp/panel
+zcat /tmp/panel/Takifugu_rubripes/*_genomic.fna.gz > /tmp/tibrun/fugu.fa
+
+# --out takes both dialects; writing both is what makes the GTF/GFF3
+# equality in docs/benchmark.md 6 checkable on real output.
+# batch_size is auto-computed from VRAM (4 on a 16 GB card); the model_cfg
+# fixes seq_len at 400,050.
+docker run --gpus all --rm -v /tmp/tibrun:/data \
+  larsgabriel23/tiberius@sha256:2c3bddda32cc621b805de40dc0395942cb5dd8a5766b1fe6c98fba845740f9bd \
+  tiberius --genome /data/fugu.fa --model_cfg vertebrates \
+           --out /data/tiberius_fugu.gtf /data/tiberius_fugu.gff3
+
+# score each dialect separately; the two results must agree everywhere except
+# the fields that report what the file states about its own convention.
+for d in gtf gff3; do
+  out=benchmark/validation/tiberius-Takifugu_rubripes.json
+  [ $d = gtf ] && out=benchmark/validation/tiberius-Takifugu_rubripes-gtf.json
+  python3 benchmark/score.py \
+      --reference /tmp/panel/Takifugu_rubripes/*_genomic.gff.gz \
+      --prediction /tmp/tibrun/tiberius_fugu.$d --species Takifugu_rubripes \
+      --declaration benchmark/validation/tiberius-Takifugu_rubripes.yaml \
+      --genome /tmp/panel/Takifugu_rubripes/*_genomic.fna.gz --out $out
+done
+```
+
+No `--stop-outside-cds`: Tiberius includes the stop codon in the CDS, and the
+scorer confirms it from both routes (the GTF's `stop_codon` features and the
+genome probe, which finds 23,946 of 23,948 chains ending on a stop).
+
+The `heldout_seen_in_pretraining: no` in that declaration is a set operation,
+not a judgement, and it can be rechecked without the container:
+
+```
+git clone --filter=blob:none --no-checkout https://github.com/Gaius-Augustus/Tiberius /tmp/tib
+git -C /tmp/tib checkout c6d92f2fa15cee0bc845141395216cea89ec89ec -- model_cfg
+```
+
+`training_species` is a bracketed whitespace-separated bare sequence in
+`fungi.yaml`, `insecta.yaml` and the plant/algal configs and a `-` list with
+trailing accession comments in `vertebrates.yaml`, so a parser written for one
+shape returns nothing useful on the other. Across all nine configs, five panel
+species appear in some training list (*M. musculus*, *A. mellifera*,
+*S. cerevisiae*, *S. pombe*, *N. crassa*) and fifteen appear in none.

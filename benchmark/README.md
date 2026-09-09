@@ -59,6 +59,15 @@ python3 benchmark/degrade.py \
 `score.py --genome` is optional and only adds the splice dinucleotide and
 local-GC stratifications; everything else is computed from annotation alone.
 
+**A prediction may be GFF3 or GTF.** Column 9 is read in both dialects
+(`key=value` and `key "value"`), because the tools that matter here write
+GTF natively — AUGUSTUS, Tiberius, BRAKER, GeneMark and StringTie — and
+Tiberius writes both from one invocation. This is not cosmetic: reading a GTF
+with a GFF3-only parser does not fail, it turns every CDS row into its own
+transcript and still reports a healthy nucleotide and exon score. On the
+Tiberius *T. rubripes* run that was 241,333 "transcripts" from 23,948 real
+ones at an unchanged nucleotide F1 of 0.93801 (`docs/benchmark.md` section 6).
+
 `score.py --stop-outside-cds` is needed for AUGUSTUS, BRAKER, GeneMark and
 SNAP output, whose CDS excludes the stop codon while every panel reference
 includes it. The scorer detects the convention from the prediction's

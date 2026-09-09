@@ -115,11 +115,33 @@ def _open(path):
 
 
 def _attr(field, key):
-    # GFF3 attributes: key=value;key=value.
+    """Read one attribute, in either column-9 dialect.
+
+    GFF3 writes ``key=value;key=value``.  GTF writes ``key "value";`` --
+    same column, same separator, a space and quotes instead of ``=``.  Both
+    are read here because the two are not a choice a submitter makes
+    independently of the tool: AUGUSTUS, Tiberius, BRAKER, GeneMark and
+    StringTie all emit GTF natively, and Tiberius emits *both* from one run.
+    Reading only ``=`` does not reject a GTF, it silently turns every CDS row
+    into its own transcript, because ``transcript_id "x"`` never matches and
+    the CDS branch falls back to a synthesized per-row id.  On the Tiberius
+    *T. rubripes* run that produced 241,333 single-exon "transcripts" from
+    23,948 real ones and a full set of plausible-looking numbers (locus
+    sensitivity 0.966, precision 0.088).
+    """
     for part in field.split(";"):
         part = part.strip()
-        if part.startswith(key) and part[len(key):len(key) + 1] == "=":
+        if not part.startswith(key):
+            continue
+        sep = part[len(key):len(key) + 1]
+        if sep == "=":
             return part[len(key) + 1:]
+        if sep == " ":
+            # GTF: the value is normally double-quoted; accept it bare too.
+            val = part[len(key) + 1:].strip()
+            if len(val) >= 2 and val[0] == '"' and val[-1] == '"':
+                return val[1:-1]
+            return val or None
     return None
 
 
@@ -1681,6 +1703,49 @@ chr1\t.\tstart_codon\t9000\t9002\t.\t+\t0\tParent=p3
 chr1\t.\tCDS\t9000\t9297\t.\t+\t0\tParent=p3
 """
 
+# ``PRED_FIXTURE`` written the way a GTF-lineage predictor writes it: the
+# same four loci, the same coordinates, column 9 in GTF's ``key "value";``
+# dialect, plus the ``exon``, ``intron``, ``start_codon`` and ``stop_codon``
+# rows a GTF carries and a GFF3 of the same prediction does not.  Tiberius
+# 2.0.7 emits exactly this pair from one invocation (``--out x.gtf x.gff3``),
+# which is what makes the two-dialect equality testable on real output as
+# well as here.  Every scored metric must be identical to the GFF3 run; only
+# the fields that report what the file *states* about its own convention may
+# differ.
+PRED_FIXTURE_GTF = """chr1\t.\tgene\t1000\t3000\t.\t+\t.\tgene_id "pg1";
+chr1\t.\ttranscript\t1000\t3000\t.\t+\t.\tgene_id "pg1"; transcript_id "p1";
+chr1\t.\tstart_codon\t1000\t1002\t.\t+\t0\tgene_id "pg1"; transcript_id "p1";
+chr1\t.\tCDS\t1000\t1100\t.\t+\t0\tgene_id "pg1"; transcript_id "p1";
+chr1\t.\texon\t1000\t1100\t.\t+\t0\tgene_id "pg1"; transcript_id "p1";
+chr1\t.\tintron\t1101\t1999\t.\t+\t.\tgene_id "pg1"; transcript_id "p1";
+chr1\t.\tCDS\t2000\t2100\t.\t+\t0\tgene_id "pg1"; transcript_id "p1";
+chr1\t.\texon\t2000\t2100\t.\t+\t0\tgene_id "pg1"; transcript_id "p1";
+chr1\t.\tCDS\t2900\t3000\t.\t+\t0\tgene_id "pg1"; transcript_id "p1";
+chr1\t.\texon\t2900\t3000\t.\t+\t0\tgene_id "pg1"; transcript_id "p1";
+chr1\t.\tstop_codon\t2998\t3000\t.\t+\t0\tgene_id "pg1"; transcript_id "p1";
+chr1\t.\tgene\t6000\t6500\t.\t-\t.\tgene_id "pg2";
+chr1\t.\ttranscript\t6000\t6500\t.\t-\t.\tgene_id "pg2"; transcript_id "p2";
+chr1\t.\tstart_codon\t6498\t6500\t.\t-\t0\tgene_id "pg2"; transcript_id "p2";
+chr1\t.\tCDS\t6000\t6250\t.\t-\t0\tgene_id "pg2"; transcript_id "p2";
+chr1\t.\texon\t6000\t6250\t.\t-\t0\tgene_id "pg2"; transcript_id "p2";
+chr1\t.\tCDS\t6400\t6500\t.\t-\t0\tgene_id "pg2"; transcript_id "p2";
+chr1\t.\texon\t6400\t6500\t.\t-\t0\tgene_id "pg2"; transcript_id "p2";
+chr1\t.\tstop_codon\t6000\t6002\t.\t-\t0\tgene_id "pg2"; transcript_id "p2";
+chr1\t.\tgene\t9050\t9250\t.\t+\t.\tgene_id "pg4";
+chr1\t.\ttranscript\t9050\t9250\t.\t+\t.\tgene_id "pg4"; transcript_id "p4";
+chr1\t.\tstart_codon\t9050\t9052\t.\t+\t0\tgene_id "pg4"; transcript_id "p4";
+chr1\t.\tCDS\t9050\t9250\t.\t+\t0\tgene_id "pg4"; transcript_id "p4";
+chr1\t.\texon\t9050\t9250\t.\t+\t0\tgene_id "pg4"; transcript_id "p4";
+chr1\t.\tstop_codon\t9248\t9250\t.\t+\t0\tgene_id "pg4"; transcript_id "p4";
+chr1\t.\tgene\t15000\t15200\t.\t+\t.\tgene_id "pg3";
+chr1\t.\ttranscript\t15000\t15200\t.\t+\t.\tgene_id "pg3"; transcript_id "p3";
+chr1\t.\tstart_codon\t15000\t15002\t.\t+\t0\tgene_id "pg3"; transcript_id "p3";
+chr1\t.\tCDS\t15000\t15200\t.\t+\t0\tgene_id "pg3"; transcript_id "p3";
+chr1\t.\texon\t15000\t15200\t.\t+\t0\tgene_id "pg3"; transcript_id "p3";
+chr1\t.\tstop_codon\t15198\t15200\t.\t+\t0\tgene_id "pg3"; transcript_id "p3";
+"""
+
+
 STOP_PRED = """##gff-version 3
 chr1\t.\tgene\t1000\t3000\t.\t+\t.\tID=pg1
 chr1\t.\ttranscript\t1000\t3000\t.\t+\t.\tID=p1;Parent=pg1
@@ -2325,6 +2390,48 @@ def self_test():
     check("contained isoform identity tx tp", ciid["transcript"]["tp"], 2)
     os.unlink(ciref)
     os.unlink(cipred)
+
+    # A GTF and a GFF3 of the *same* prediction must score the same.
+    # ``_attr`` read only GFF3's ``key=value`` until run 11, which did not
+    # reject a GTF -- it turned every CDS row into its own transcript,
+    # because ``transcript_id "p1"`` never matched and the CDS branch fell
+    # back to a synthesized per-row id.  Nothing errored: the Tiberius
+    # *T. rubripes* GTF scored as 241,333 single-exon transcripts against
+    # 23,948 real ones and still reported locus sensitivity 0.966.
+    gtfp = os.path.join(d, "pred.gtf")
+    open(gtfp, "w").write(PRED_FIXTURE_GTF)
+    rg = score(ref, gtfp, "fixture")
+    STATED = {"prediction", "stop_codon_convention_detected", "stop_inside_cds",
+              "transcripts_with_stop_codon_feature", "predicted_partial_source",
+              "stop_codon_convention_source", "stop_codon_convention_from_genome",
+              "transcripts_stop_merged_from_feature"}
+
+    def _flat(obj, prefix=""):
+        flat = {}
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                flat.update(_flat(v, prefix + "." + str(k) if prefix else str(k)))
+        elif isinstance(obj, list):
+            for i, v in enumerate(obj):
+                flat.update(_flat(v, "%s[%d]" % (prefix, i)))
+        else:
+            flat[prefix] = obj
+        return flat
+
+    fa_, fb_ = _flat(r), _flat(rg)
+    moved = sorted(k for k in set(fa_) | set(fb_)
+                   if fa_.get(k) != fb_.get(k)
+                   and k.split(".")[-1].split("[")[0] not in STATED)
+    check("gtf scores identically to gff3", moved, [])
+    check("gtf transcripts", rg["predicted_transcripts"], 4)
+    check("gtf locus tp", rg["locus"]["tp"], r["locus"]["tp"])
+    # The GTF states its convention with a feature; the GFF3 of the same
+    # prediction cannot state it at all.  Both must still score the same.
+    check("gtf reads the stop feature",
+          rg["codon"]["transcripts_with_stop_codon_feature"], 4)
+    check("gff3 has no stop feature",
+          r["codon"]["transcripts_with_stop_codon_feature"], 0)
+    os.unlink(gtfp)
 
     select_test(check)
 

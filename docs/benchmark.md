@@ -528,6 +528,43 @@ rnaseq: {species: [accessions]}    # or "none"
 hardware: <CPU model, cores, RAM, GPU model, VRAM>
 ```
 
+`training_species` is the field a submitter is most likely to fill in with a
+gesture, and for most tools that is all that can be done: AUGUSTUS states its
+training set only as a species parameter name, and Helixer's is a table in a
+document in its repository. Tiberius is the exception, and it is worth naming
+as the standard the other declarations should be read against: every
+`model_cfg/*.yaml` carries a literal `training_species:` list beside the
+weights URL, so the intersection with the panel is a set operation rather
+than a judgement. Taking the configs at commit
+`c6d92f2fa15cee0bc845141395216cea89ec89ec`, exactly five panel species appear
+in some training list, and the declaration of any run using the corresponding
+model must say `yes` for them: *Mus musculus* in all three `mammalia_*` sets
+and in `vertebrates`, *Apis mellifera* in `insecta`, and *Saccharomyces
+cerevisiae*, *Schizosaccharomyces pombe* and *Neurospora crassa* in `fungi`.
+The other fifteen appear in none of the nine, and the `vertebrates` model's target clade
+covers five of them: *Takifugu rubripes*, *Danio rerio*, *Gallus gallus*,
+*Xenopus tropicalis* and *Homo sapiens*. Those five can be run with
+`heldout_seen_in_pretraining: no` and a file to cite for it, which is what
+makes the §6 Tiberius row a measurement. The lists were parsed, not read:
+`training_species` is a bracketed, whitespace-separated bare sequence in some
+files and a `-` list with trailing accession comments in others, and a parser
+for one shape silently returns nothing useful on the other -- the first
+version of this count read 306 fungal species as one. Reading is not safer
+than parsing here either: `vertebrates.yaml`'s own comment announces "35
+vertebrate, non-mammalian species" above a list of **34**, so its 65 entries
+are one short of the 66 the file claims. The count in the §6 declaration is
+the list's, with the discrepancy recorded.
+
+Those same files also state something about a *different* tool, which is why
+they are cited here and not only in §6: the `vertebrates` and
+`mammalia_nosofttmasking_v2` comments record that *Gallus gallus*, *Takifugu
+rubripes*, *Homo sapiens*, *Archocentrus centrarchus*, *Betta splendens*,
+*Pristiophorus japonicus* and *Delphinapterus leucas* "were used during
+training or validation of Helixer". That is third-party confirmation of the
+`heldout_seen_in_pretraining: {Takifugu_rubripes: yes}` line in this
+benchmark's own Helixer declaration, and it is the reason the Helixer fugu row
+in §6 is an upper bound while the Tiberius one beside it is a measurement.
+
 ## 4. Metrics
 
 All metrics are computed against the reference annotation of the same
@@ -1038,7 +1075,7 @@ non-`protein_coding` biotype and an incomplete end (§4, §4.5).
 Verification so far:
 
 - `python3 benchmark/score.py --self-test` scores built-in fixture pairs and
-  checks 145 expected values — it prints the count it ran, so this sentence
+  checks 150 expected values — it prints the count it ran, so this sentence
   cannot drift from the code again; it said 116 while the code ran 104: a
   prediction with one exact transcript, one
   shifted minus-strand boundary, one overlapping-but-unaligned locus and one
@@ -1084,7 +1121,13 @@ Verification so far:
   at a contig start and one at a contig end, where the omitted codon features
   must be read as the statement of partiality, the truncated 3' end must not
   be extended, and the pre-fix code returns stop `tp` 3 of 3 where 2 is
-  right (§4.5).
+  right (§4.5); and the four-locus prediction fixture written a second time
+  in **GTF** — `key "value"` attributes plus the `exon`, `intron`,
+  `start_codon` and `stop_codon` rows a GTF carries — which must produce a
+  result equal to the GFF3 one in *every* field except a named allowlist of
+  fields reporting what the file states about itself, a check that fails on
+  the pre-fix code, which reads the fixture's four transcripts as seven and
+  its locus F1 as 0.600 rather than 0.857.
   The self-test is run under several `PYTHONHASHSEED` values, because two of
   its checks exist to catch results that depended on it.
 - **Identity runs re-verified after the fixes above** on
@@ -1562,22 +1605,126 @@ Locus F1
   scorer that has these three changes. Apart from the two new fields, the
   three AUGUSTUS and three Helixer runs are unchanged in every value; only
   GENCODE's start and stop blocks move.
+- **A third tool, a second dialect, and the first fugu row that is a
+  measurement: Tiberius 2.0.7 on *T. rubripes*.** Run from the published
+  container (`larsgabriel23/tiberius@sha256:2c3bddda…`, `/opt/Tiberius` at
+  `c6d92f2f`, TF 2.17.0) with `--model_cfg vertebrates` on one consumer GPU:
+  384 Mb in **23.1 min** wall against Helixer's 91.6 min on the same genome
+  and the same card, a 4.0x difference at the whole-tool level (peak memory
+  is not reported here — `/usr/bin/time` was measuring the docker client,
+  which is why the declaration states the hardware and not an RSS).
+  Tiberius is invoked as `--out tiberius.gtf tiberius.gff3` and writes **both
+  dialects of the same prediction from one invocation**, which is what made
+  the dialect defect below testable on real output rather than on a fixture.
+
+  *T. rubripes* is not in `model_cfg/vertebrates.yaml`'s 65 training species
+  and is named in that file's own test set (§3.3), so this is the first row in
+  this section on a vertebrate that is a measurement rather than an upper
+  bound. The Helixer fugu row above it is an upper bound, and the citation for
+  that is now third-party: the same Tiberius config records that fugu "was
+  used during training or validation of Helixer".
+
+  | run | nucleotide F1 | exon F1 | donor F1 | acceptor F1 | transcript F1 | locus F1 | start F1 | stop F1 |
+  |---|---|---|---|---|---|---|---|---|
+  | Helixer 0.3.7, vertebrate model (upper bound) | 0.919 | 0.776 | 0.853 | 0.856 | 0.252 | 0.887 | 0.499 | 0.742 |
+  | **Tiberius 2.0.7, `vertebrates` (held out)** | **0.938** | **0.891** | **0.935** | 0.932 | **0.641** | **0.918** | **0.747** | **0.823** |
+
+  Tiberius is ahead on every column, and the two tools emit **one transcript
+  per locus** in both cases (23,948 and 24,701 predicted transcripts over the
+  same number of loci), so the isoform handicap §6 blamed for Helixer's 0.252
+  is shared and cannot be the explanation: the gap is 706 splits against
+  1,154, and 14,747 loci whose single predicted chain is exactly one of the
+  reference's isoforms against 5,907.
+
+  **The §4.3 dinucleotide stratification separates the two decoders in a way
+  no headline number does.** Counted per intron:
+
+  | class | reference introns | Tiberius tp / fp | Helixer tp / fp |
+  |---|---:|---|---|
+  | GT-AG | 226,360 | 199,591 / 15,251 | 181,605 / 51,175 |
+  | GC-AG | 2,345 | 1,823 / 306 | 1,531 / 4,721 |
+  | AT-AC | 235 | **0 / 0** | 27 / 95 |
+  | other | 999 | **0 / 1** | 12 / 5,115 |
+
+  Tiberius recovers **none** of the 235 U12 AT-AC introns and none of the 999
+  non-canonical ones, and produces almost no false positives in either class —
+  a decoder that does not emit those classes at all, not one that emits them
+  badly. Helixer recovers 27 and 12 while paying 95 and 5,115 false positives
+  for the attempt. That is a design difference of the kind §4.3 exists to
+  expose, it is invisible in the donor F1 column (0.935 against 0.853, which
+  reads as "somewhat better"), and it is the concrete version of the question
+  T-human-011 has to answer: 1.14% of human reference introns are non-GT-AG
+  (§6), and a model that cannot represent them has a hard ceiling there
+  whatever its network does.
+
+- **Defect found by that run, and it is the worst class of defect this
+  benchmark has produced: the scorer read a GTF without complaining and
+  returned a full set of plausible numbers.** `_attr` matched only GFF3's
+  `key=value`. A GTF writes `key "value"`, so `transcript_id "g1.t1"` never
+  matched, and the CDS branch fell back to synthesizing one transcript id per
+  row. Scoring `tiberius_fugu.gtf` that way reports **241,333 transcripts**
+  from a file containing 23,948, every one of them single-exon — and then:
+
+  | | correct | GTF misread as GFF3 |
+  |---|---|---|
+  | nucleotide F1 | 0.93801 | **0.93801** |
+  | exon F1 (all) | 0.89110 | **0.89110** |
+  | locus sensitivity | 0.9565 | **0.9665** |
+  | donor F1 | 0.935 | 0.000 |
+  | transcript F1 | 0.641 | 0.008 |
+  | locus precision | 0.882 | 0.088 |
+  | predicted introns | 216,972 | 0 |
+  | splits | 706 | 20,057 |
+
+  **Nucleotide and exon F1 are identical to five decimals and locus
+  sensitivity is higher**, because chopping a chain into its blocks changes
+  neither the bases nor the exon boundaries, and every reference locus still
+  has something overlapping it. A reader checking a submission against a
+  headline nucleotide number would have accepted this file. The three columns
+  that collapse are exactly the chain-dependent ones — which is the §4.8
+  argument arriving as a defect rather than as an assertion.
+
+  `_attr` now reads both dialects, and the fix is pinned by the strongest
+  regression this scorer has: the self-test carries the four-locus prediction
+  fixture written a second time in GTF, with the `exon`, `intron`,
+  `start_codon` and `stop_codon` rows a GTF carries, and asserts that **every
+  field of the two results is equal** except a named allowlist of fields that
+  report what the file states about itself. On the real 74 MB fugu GTF against
+  the 44 MB GFF3 of the same run, the two results differ in exactly five
+  fields: the input filename, `transcripts_with_stop_codon_feature` (23,948
+  against 0), `stop_inside_cds` (the same), `stop_codon_convention_detected`
+  (`inside` against `unknown`) and `predicted_partial_source`
+  (`missing_codon_feature` against `none`). Every scored metric is identical.
+  Scoring cost is the same for both: 36.5 s and 1.04 GB on one laptop core
+  with `--genome`.
+
+  Two things follow for §3.3 and §4.5. First, the GTF is the better submission
+  of the two for this tool, not merely an equal one: it *states* its
+  stop-codon convention with a feature, where the GFF3 of the identical
+  prediction cannot state it at all and the convention has to be recovered
+  from the genome. Second, Tiberius does **not** exercise §7 item 2's blind
+  3 bp extension after all: both routes agree the stop is `inside`
+  (23,946 of 23,948 chains end on a stop in the genome), so that path is still
+  fixture-only.
 
 ## 7. Open items
 
 1. **The scorer does not compute §4.6 or §4.7.** BUSCO, OMArk, and the cost
    columns are external and are merged by `report.py --cost`; nothing yet
    produces that TSV. T-human-009 owns the cost half.
-2. **Scored submissions cover seven species, three sources and nine runs.**
-   AUGUSTUS on the two yeasts, on *T. thermophila* and on *A. mellifera*,
-   Helixer on *T. rubripes*, *N. crassa* and *S. cerevisiae*, and GENCODE 50
+2. **Scored submissions cover seven species, four sources, eleven runs and
+   two column-9 dialects.** AUGUSTUS on the two yeasts, on *T. thermophila*
+   and on *A. mellifera*, Helixer on *T. rubripes*, *N. crassa* and
+   *S. cerevisiae*, Tiberius on *T. rubripes* in both GTF and GFF3, and
+   GENCODE 50
    on human (§6) between them cover both stop-codon conventions, all three
-   detection routes (feature, genome and flag), a prediction with UTRs, a
+   detection routes (feature, genome and flag), both attribute dialects, a
+   prediction with UTRs, a
    reference with several isoforms per locus, a *prediction* with 2.8 isoforms
    per locus, a GENCODE-shaped attribute set, a non-standard genetic code, a
    1,158-scaffold assembly with colliding predicted ids, a prediction that
    declares its own partial ends, and a 384 Mb genome with 105 unplaced
-   scaffolds. Ten defects came out of those runs. What is still not covered:
+   scaffolds. Eleven defects came out of those runs. What is still not covered:
    the §4.5 **blind 3 bp extension** — the fallback for a prediction that has
    no `stop_codon` feature *and* whose genome says `outside` — is still
    fixture-only, because Helixer's convention is `inside` and both AUGUSTUS
@@ -1592,8 +1739,11 @@ Locus F1
    against a known perturbation on every panel genome, and the scorer's
    strand-awareness is pinned by the donor/acceptor and start/stop asymmetry
    that control produces. What remains open is real predictor output, not
-   coverage. Tiberius is the obvious next tool: it is the one that would
-   exercise the blind extension if its GTF turns out to exclude the stop.
+   coverage. Tiberius has now been run (§6), and it settles the blind-extension
+   question negatively: its GTF states the stop with a `stop_codon` feature
+   and the genome probe agrees the stop is *inside* the CDS, so that fallback
+   is still fixture-only and needs a tool that has neither the feature nor an
+   inside convention.
 3. **No high-confidence subset** (§2.3). Needed before any accuracy above
    roughly the annotation error rate means anything. Candidate construction:
    loci with MANE Select support in human, community-curated loci elsewhere,
