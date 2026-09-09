@@ -20,6 +20,14 @@ transcript.  ``--markdown`` prints one table row per chromosome::
         GCF_000002765.6:NC_037283.1:ncbiRefSeq
 
 Each argument is ``genome:chrom[:track]`` (track default ``ncbiRefSeqCurated``).
+
+``--short-gaps`` also lists every exon gap shorter than the cutter's
+``MIN_INTRON`` (20, the benchmark scorer's floor) with two flanking exon
+bases fetched from the API's sequence endpoint (one request per gap), the
+transcripts stating it, whether both flanks are CDS ends, and engels'
+overlapping motif-window test (``cut_windows.motif_window``): whether a
+motif-masked decoder could read GT/GC..AG across the gap by borrowing an
+exon base on each side.
 """
 from __future__ import annotations
 
@@ -31,7 +39,7 @@ import time
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cut_windows import LENGTH_FLOORS, feature_lengths  # noqa: E402
+from cut_windows import LENGTH_FLOORS, MIN_INTRON, feature_lengths, short_gaps  # noqa: E402
 from fetch_window import ucsc_item_to_transcript  # noqa: E402
 
 API = "https://api.genome.ucsc.edu"
@@ -53,6 +61,36 @@ def fetch_track(genome: str, chrom: str, track: str, max_items: int, timeout: fl
     return items, meta
 
 
+def fetch_sequence(genome: str, chrom: str, start: int, end: int, timeout: float) -> str:
+    """Reference bases of [start, end) (0-based half-open), upper case."""
+    url = f"{API}/getData/sequence?genome={genome};chrom={chrom};start={start};end={end}"
+    with urllib.request.urlopen(url, timeout=timeout) as r:
+        d = json.loads(r.read())
+    return str(d["dna"]).upper()
+
+
+def short_gap_table(genome: str, chrom: str, txs: list[dict], flank: int, pause: float, timeout: float) -> dict:
+    """``cut_windows.short_gaps`` over a chromosome, with the flanks of every
+    gap fetched separately so no chromosome sequence is downloaded."""
+    rec = short_gaps(txs, "", 0, 0, MIN_INTRON, flank)  # no sequence yet: every gap outside_window
+    from cut_windows import COMP, DONORS, motif_window
+    for g in rec["gaps"]:
+        time.sleep(pause)
+        seq = fetch_sequence(genome, chrom, g["start"] - flank, g["end"] + flank, timeout)
+        left, gap, right = seq[:flank], seq[flank:flank + g["length"]], seq[flank + g["length"]:]
+        if g["strand"] == "-":
+            left, gap, right = right.translate(COMP)[::-1], gap.translate(COMP)[::-1], left.translate(COMP)[::-1]
+        ok, borrowed = motif_window(left, gap, right)
+        g.update({"left": left, "gap": gap, "right": right,
+                  "motif_exact": len(gap) >= 4 and gap[:2] in DONORS and gap[-2:] == "AG",
+                  "motif_window": ok, "motif_borrows_exon_base": borrowed})
+    for k in ("motif_exact", "motif_window", "motif_borrows_exon_base"):
+        rec[k] = sum(1 for g in rec["gaps"] if g[k])
+    rec["outside_window"] = 0
+    rec["sequence_requests"] = len(rec["gaps"])
+    return rec
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("targets", nargs="+", help="genome:chrom[:track]")
@@ -62,6 +100,9 @@ def main() -> int:
     ap.add_argument("--pause", type=float, default=1.0, help="seconds between requests")
     ap.add_argument("--markdown", action="store_true")
     ap.add_argument("--json", default=None, help="also write every record here")
+    ap.add_argument("--short-gaps", action="store_true",
+                    help=f"list every exon gap shorter than {MIN_INTRON} with its flanks (one sequence request each)")
+    ap.add_argument("--flank", type=int, default=2, help="exon bases on each side of a short gap to fetch")
     a = ap.parse_args()
     fi, fc, fs = LENGTH_FLOORS["intron"], LENGTH_FLOORS["cds"], LENGTH_FLOORS["span"]
     if a.markdown:
@@ -87,6 +128,21 @@ def main() -> int:
         rec = {"genome": genome, "chrom": chrom, "track": track, "fetch": meta, "items_skipped": skipped,
                "transcripts": len(txs), "single_exon": single, "floors": {k: list(v) for k, v in LENGTH_FLOORS.items()},
                "lengths": fl}
+        if a.short_gaps:
+            rec["short_gaps"] = sg = short_gap_table(genome, chrom, txs, a.flank, a.pause, a.timeout)
+            print(f"# {genome} {chrom}: {sg['n']} exon gaps under {MIN_INTRON} bases, {sg['in_cds']} between two CDS "
+                  f"ends, lengths {sg['by_length']}, motif_window {sg['motif_window']} "
+                  f"(borrowing an exon base {sg['motif_borrows_exon_base']}), motif_exact {sg['motif_exact']}",
+                  file=sys.stderr)
+            if a.markdown:
+                print("| Assembly | Chrom | Strand | Gap (0-based, half-open) | Length | In CDS | Transcripts | "
+                      "Flank / gap / flank | Motif window | Borrows exon base |")
+                print("|---|---|---|---|---|---|---|---|---|---|")
+                for g in sg["gaps"]:
+                    print(f"| {genome} | {chrom} | {g['strand']} | {g['start']}-{g['end']} | {g['length']} | "
+                          f"{'yes' if g['in_cds'] else 'no'} | {', '.join(str(t) for t in g['transcripts'])} | "
+                          f"`{g['left']} {g['gap']} {g['right']}` | {'yes' if g['motif_window'] else 'no'} | "
+                          f"{'yes' if g['motif_borrows_exon_base'] else 'no'} |")
         records.append(rec)
         if a.markdown:
             i, c, s = fl["introns"], fl["cds"], fl["span"]

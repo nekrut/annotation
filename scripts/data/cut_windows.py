@@ -146,7 +146,7 @@ import struct
 import sys
 import zipfile
 
-TOOL_VERSION = "0.8"
+TOOL_VERSION = "0.9"
 
 # Length floors the sidecar counts features under (``feature_lengths``).
 # They are the ones engels measured in Helixer's decoder (relay note
@@ -158,6 +158,22 @@ TOOL_VERSION = "0.8"
 # decoder with hard minimum durations has floors of this kind, and the
 # labels below them are the ones such a model can never reproduce.
 LENGTH_FLOORS = {"intron": (30, 50), "cds": (60,), "span": (81,)}
+# The scorer's floor: benchmark/score.py ``MIN_INTRON`` treats a gap between
+# consecutive CDS blocks as an intron only if it is at least 20 bases and
+# counts the shorter ones apart (``reference_cds_gaps_below_min``; lenin,
+# relay note 20260909T211910Z-lenin-0019).  The cutter follows the same
+# floor: an exon gap shorter than ``--min-intron`` is painted ``short_gap``,
+# gets no donor or acceptor mark, and is listed in the sidecar's
+# ``short_gaps`` record with its flanking sequence, so what the scorer
+# leaves out of its splice denominator is not a splice site in the labels
+# either.  Twenty is a policy, not a biological fact: RefSeq encodes a
+# programmed ribosomal frameshift as a 1-base gap between two CDS blocks
+# (the Ty ORFs on sacCer3 chrIV, ``cdh-4`` on ce11 chrIII), and Stentor
+# coeruleus has 15- and 16-base spliceosomal introns (stalin, relay note
+# 20260909T214050Z-stalin-0021: 8,806 of them in one annotation), which
+# this floor would file under short_gap; ``--min-intron 15`` restores them
+# and 0 turns the floor off (the pre-0.9 behaviour).
+MIN_INTRON = 20
 BASE = {"A": 0, "C": 1, "G": 2, "T": 3}
 # Stop codons by NCBI genetic code table number, for the sequence check of
 # CDS ends.  1 standard; 4 mold/protozoan mitochondrial and Mycoplasma; 6
@@ -175,7 +191,11 @@ GENETIC_CODE_STOPS = {1: {"TAA", "TAG", "TGA"}, 4: {"TAA", "TAG"}, 6: {"TGA"}, 1
 NEAR_COGNATE_STARTS = {"CTG", "GTG", "TTG", "ACG", "ATA", "ATC", "ATT", "AAG", "AGG"}
 PARTIAL_END_MODES = ("both", "declared", "sequence", "none")
 INF_GAP, INF_UNALIGNED, INF_OTHER = 4, 5, 6
-LABEL = {"intergenic": 0, "intron": 1, "utr": 2, "cds": 3}
+LABEL = {"intergenic": 0, "intron": 1, "utr": 2, "cds": 3, "short_gap": 4}
+# precedence when transcripts overlap: a base takes its highest-ranked
+# class; short_gap (an exon gap under the intron floor) ranks above intron
+# and below UTR, so an isoform that reads through the gap owns it
+LABEL_RANK = {"intergenic": 0, "intron": 1, "short_gap": 2, "utr": 3, "cds": 4}
 COMP = str.maketrans("ACGTNacgtn", "TGCANtgcan")
 
 # Alignment classes for the benchmark leakage rule (docs/benchmark.md 3.2).
@@ -794,11 +814,13 @@ def cds_end_status(transcripts: list[dict], seq: str, start: int, end: int,
             "frame_offsets": frames, "disagreements": disagreements}
 
 
-def paint_labels(start: int, end: int, transcripts: list[dict]):
+def paint_labels(start: int, end: int, transcripts: list[dict], min_intron: int = MIN_INTRON):
     """Per-base label, CDS frame, strand and boundary marks.
 
     A base belongs to the transcript that gives it the highest label class
-    (CDS > UTR > intron); among transcripts tied at that class the one with
+    (CDS > UTR > short_gap > intron, ``LABEL_RANK``); an exon gap shorter
+    than ``min_intron`` is a short_gap, not an intron, and gets no donor or
+    acceptor mark (``MIN_INTRON``).  Among transcripts tied at that class the one with
     the shortest span owns it, then annotation order.  Strand and frame are
     the owner's.  The tie rule is what makes a gene nested in another gene's
     intron (fly Adh inside the minus-strand gene that spans it, and the
@@ -808,6 +830,7 @@ def paint_labels(start: int, end: int, transcripts: list[dict]):
     strand, agree with the strand channel.  Boundary marks are the union
     over transcripts; a position marked by two transcripts keeps the first."""
     n = end - start
+    RANK = {LABEL[k]: LABEL_RANK[k] for k in LABEL}
     label = bytearray(n)
     frame = bytearray(b"\xff" * n)      # -1 as int8
     strand = bytearray(n)                # 0, 1 (+), 255 (-) as int8
@@ -832,6 +855,11 @@ def paint_labels(start: int, end: int, transcripts: list[dict]):
         fr = bytearray(b"\xff" * n)
         for i in range(lo, hi):
             cls[i - start] = LABEL["intron"]
+        ex = sorted(t.get("exons", []))
+        for (a1, b1), (a2, b2) in zip(ex, ex[1:]):
+            if 0 < a2 - b1 < min_intron:
+                for i in range(max(b1, start), min(a2, end)):
+                    cls[i - start] = LABEL["short_gap"]
         for a, b in t.get("exons", []):
             for i in range(max(a, start), min(b, end)):
                 cls[i - start] = LABEL["utr"]
@@ -850,7 +878,7 @@ def paint_labels(start: int, end: int, transcripts: list[dict]):
                     k += 1
         for i in range(lo - start, hi - start):
             c = cls[i]
-            if c and c >= label[i]:
+            if c and RANK[c] >= RANK[label[i]]:
                 label[i] = c
                 strand[i] = s
                 frame[i] = fr[i]
@@ -867,9 +895,8 @@ def paint_labels(start: int, end: int, transcripts: list[dict]):
                     put(bound, cds[-1][1] - 1, 1)
                 if mark_stop:
                     put(bound, cds[0][0], 2)
-        ex = sorted(t.get("exons", []))
         for (a1, b1), (a2, b2) in zip(ex, ex[1:]):
-            if b1 >= a2:
+            if b1 >= a2 or a2 - b1 < min_intron:
                 continue
             if s == 1:
                 put(bound, b1, 3); put(bound, a2 - 1, 4)
@@ -878,10 +905,10 @@ def paint_labels(start: int, end: int, transcripts: list[dict]):
     return label, frame, strand, bound
 
 
-SITE_KINDS = ("start", "stop", "donor", "acceptor", "cds_donor", "cds_acceptor")
+SITE_KINDS = ("start", "stop", "donor", "acceptor", "cds_donor", "cds_acceptor", "short_gap")
 
 
-def distinct_sites(transcripts: list[dict]) -> set[tuple[str, int, int]]:
+def distinct_sites(transcripts: list[dict], min_intron: int = MIN_INTRON) -> set[tuple[str, int, int]]:
     """Every distinct (kind, strand, position) the transcripts state, with
     the positions and kinds of the ``bound`` channel: start is the first
     base of the start codon, stop the last base of the stop codon, donor
@@ -891,7 +918,8 @@ def distinct_sites(transcripts: list[dict]) -> set[tuple[str, int, int]]:
     is the count a transcript-level CDS score sees.  Two isoforms sharing a
     site contribute it once, so the difference between the set over all
     isoforms and the set over the painted ones is what an isoform policy
-    discards."""
+    discards.  An exon gap shorter than ``min_intron`` contributes one
+    ``short_gap`` at its first base and no donor or acceptor."""
     sites: set[tuple[str, int, int]] = set()
     for t in transcripts:
         s = 1 if t.get("strand", "+") == "+" else -1
@@ -909,6 +937,9 @@ def distinct_sites(transcripts: list[dict]) -> set[tuple[str, int, int]]:
         for (a1, b1), (a2, b2) in zip(ex, ex[1:]):
             if b1 >= a2:
                 continue
+            if a2 - b1 < min_intron:
+                sites.add(("short_gap", s, b1))
+                continue
             donor, acceptor = (b1, a2 - 1) if s == 1 else (a2 - 1, b1)
             sites.add(("donor", s, donor)); sites.add(("acceptor", s, acceptor))
             if b1 in cds_ends and a2 in cds_starts:
@@ -920,7 +951,7 @@ def site_counts(sites: set[tuple[str, int, int]], lo: int, hi: int) -> dict[str,
     return {k: sum(1 for kind, _, pos in sites if kind == k and lo <= pos < hi) for k in SITE_KINDS}
 
 
-def feature_lengths(transcripts: list[dict], lo: int, hi: int) -> dict:
+def feature_lengths(transcripts: list[dict], lo: int, hi: int, min_intron: int = MIN_INTRON) -> dict:
     """Lengths of the introns, CDSs and transcript spans the transcripts
     state, with counts under ``LENGTH_FLOORS``.  Introns are distinct
     (strand, start, end) intervals between consecutive exons and are
@@ -930,7 +961,10 @@ def feature_lengths(transcripts: list[dict], lo: int, hi: int) -> dict:
     record, which the fetcher carries complete even where the window
     cuts it (``outside_window`` counts the transcripts whose CDS reaches
     past the edge); a span is txStart to txEnd the same way.  Two isoforms
-    sharing an intron contribute it once; CDS and span are per transcript."""
+    sharing an intron contribute it once; CDS and span are per transcript.
+    ``introns`` counts every exon gap the annotation states, the ones under
+    ``min_intron`` included (``below_min_intron``), so the distribution is
+    the annotation's and the floor is applied on top of it."""
     introns: set[tuple[int, int, int]] = set()
     clipped = 0
     cds_len, spans, cds_out, span_out = [], [], 0, 0
@@ -961,11 +995,101 @@ def feature_lengths(transcripts: list[dict], lo: int, hi: int) -> dict:
             out[f"below_{f}"] = sum(1 for v in vals if v < f)
         return out
 
+    ilen = [b - a for _, a, b in introns]
     return {
-        "units": {"lengths": "bases", "n": "distinct introns / transcripts", "below_F": "count with length < F"},
-        "introns": {**summary([b - a for _, a, b in introns], "intron"), "clipped": clipped},
+        "units": {"lengths": "bases", "n": "distinct introns / transcripts", "below_F": "count with length < F",
+                  "below_min_intron": "exon gaps shorter than min_intron, painted short_gap not intron"},
+        "min_intron": min_intron,
+        "introns": {**summary(ilen, "intron"), "clipped": clipped,
+                    "below_min_intron": sum(1 for v in ilen if v < min_intron)},
         "cds": {**summary(cds_len, "cds"), "outside_window": cds_out},
         "span": {**summary(spans, "span"), "outside_window": span_out},
+    }
+
+
+DONORS = ("GT", "GC")
+
+
+def motif_window(left: str, gap: str, right: str) -> tuple[bool, bool]:
+    """engels' overlapping-window test (relay note 20260909T212826Z-engels-0021):
+    with one exonic base on each side, ``s = left[-1] + gap + right[0]``, a
+    GT/GC donor window ``s[1:3]`` and an AG acceptor window ``s[L-1:L+1]``
+    can both be satisfied by a 1-base gap that borrows a base from each
+    exon (A|G|T reads GT and AG), which is how bricks2marble's default
+    motif mask admits an ``EI -> I -> IE`` path of one intron base.
+    Returns (both windows satisfied, a window borrowed an exon base)."""
+    L = len(gap)
+    if L < 1 or not left or not right:
+        return False, False
+    s = (left[-1] + gap + right[0]).upper()
+    ok = s[1:3] in DONORS and s[L - 1:L + 1] == "AG"
+    return ok, ok and L < 2
+
+
+def short_gaps(transcripts: list[dict], seq: str, start: int, end: int,
+               min_intron: int = MIN_INTRON, flank: int = 2) -> dict:
+    """Every distinct exon gap shorter than ``min_intron`` the transcripts
+    state, with what a decoder or a scorer would need to classify it: its
+    length and length mod 3, whether both flanking exon ends are CDS ends
+    (``in_cds``: the shape of a RefSeq programmed frameshift, two CDS
+    blocks and a gap, as against a short intron on the UTR side), the
+    transcripts stating it, and, where the gap lies inside the window,
+    ``flank`` exon bases on each side and the gap itself in transcript
+    orientation, whether the gap's own ends read GT/GC..AG (``motif_exact``,
+    needs 4 bases) and whether the overlapping windows of ``motif_window``
+    do.  Coordinates are + strand, 0-based half-open.  ``exception`` is
+    carried when the fetcher recorded one (NCBI GFF3 ``exception=ribosomal
+    slippage``, stalin's note 20260909T214050Z-stalin-0021); the UCSC
+    genePred sources carry none, so ``in_cds`` and the flanks are what the
+    record can say."""
+    gaps: dict[tuple[int, int, int], dict] = {}
+    for t in transcripts:
+        s = 1 if t.get("strand", "+") == "+" else -1
+        ex = sorted(t.get("exons", []))
+        cds_ends = {b for _, b in t.get("cds", [])}
+        cds_starts = {a for a, _ in t.get("cds", [])}
+        for (a1, b1), (a2, b2) in zip(ex, ex[1:]):
+            if not 0 < a2 - b1 < min_intron:
+                continue
+            g = gaps.setdefault((s, b1, a2), {
+                "strand": "+" if s == 1 else "-", "start": b1, "end": a2, "length": a2 - b1,
+                "length_mod_3": (a2 - b1) % 3, "in_cds": False, "transcripts": [], "exception": None})
+            g["in_cds"] = g["in_cds"] or (b1 in cds_ends and a2 in cds_starts)
+            if t.get("id") not in g["transcripts"]:
+                g["transcripts"].append(t.get("id"))
+            if t.get("exception") and not g["exception"]:
+                g["exception"] = t["exception"]
+    out = []
+    for key in sorted(gaps):
+        g = gaps[key]
+        b1, a2 = g["start"], g["end"]
+        if start <= b1 - flank and a2 + flank <= end:
+            left, gap, right = seq[b1 - flank - start:b1 - start], seq[b1 - start:a2 - start], seq[a2 - start:a2 + flank - start]
+            if g["strand"] == "-":
+                left, gap, right = right.translate(COMP)[::-1], gap.translate(COMP)[::-1], left.translate(COMP)[::-1]
+            ok, borrowed = motif_window(left, gap, right)
+            g.update({"left": left, "gap": gap, "right": right,
+                      "motif_exact": len(gap) >= 4 and gap[:2] in DONORS and gap[-2:] == "AG",
+                      "motif_window": ok, "motif_borrows_exon_base": borrowed})
+        else:
+            g.update({"left": None, "gap": None, "right": None, "motif_exact": None,
+                      "motif_window": None, "motif_borrows_exon_base": None})
+        out.append(g)
+    lengths: dict[str, int] = {}
+    for g in out:
+        lengths[str(g["length"])] = lengths.get(str(g["length"]), 0) + 1
+    return {
+        "units": {"n": "distinct (strand, start, end) exon gaps shorter than min_intron",
+                  "flanks": f"{flank} exon bases each side, transcript orientation",
+                  "motif_window": "engels' overlapping-window test, one exon base borrowed each side"},
+        "min_intron": min_intron, "n": len(out),
+        "in_cds": sum(1 for g in out if g["in_cds"]),
+        "by_length": lengths,
+        "motif_exact": sum(1 for g in out if g["motif_exact"]),
+        "motif_window": sum(1 for g in out if g["motif_window"]),
+        "motif_borrows_exon_base": sum(1 for g in out if g["motif_borrows_exon_base"]),
+        "outside_window": sum(1 for g in out if g["gap"] is None),
+        "gaps": out,
     }
 
 
@@ -1003,7 +1127,7 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
         reference_anchored: bool = False, isoforms: str = "union",
         representatives: set[str] | None = None, partial_ends: str = "both",
         genetic_code: int = 1, stop_codons: set[str] | None = None,
-        duplicate_rows: str = "identity") -> list[str]:
+        duplicate_rows: str = "identity", min_intron: int = MIN_INTRON) -> list[str]:
     stops = set(stop_codons) if stop_codons else GENETIC_CODE_STOPS.get(genetic_code)
     if stops is None:
         raise SystemExit(f"genetic code {genetic_code} is not in the table; pass --stop-codons")
@@ -1078,12 +1202,14 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
     transcripts = ann.get("transcripts", ann if isinstance(ann, list) else [])
     transcripts, excluded = select_transcripts(transcripts, transcript_types)
     cds_ends = cds_end_status(transcripts, seq, start, end, stops, partial_ends)
-    sites_all = distinct_sites(transcripts)
-    lengths_all = feature_lengths(transcripts, start, end)
+    sites_all = distinct_sites(transcripts, min_intron)
+    lengths_all = feature_lengths(transcripts, start, end, min_intron)
+    gaps_all = short_gaps(transcripts, seq, start, end, min_intron)
     transcripts, dropped_iso, fallback_loci = select_isoforms(transcripts, isoforms, representatives)
-    sites_kept = distinct_sites(transcripts)
-    lengths_kept = feature_lengths(transcripts, start, end)
-    label, frame, strand, bound = paint_labels(start, end, transcripts)
+    sites_kept = distinct_sites(transcripts, min_intron)
+    lengths_kept = feature_lengths(transcripts, start, end, min_intron)
+    gaps_kept = short_gaps(transcripts, seq, start, end, min_intron)
+    label, frame, strand, bound = paint_labels(start, end, transcripts, min_intron)
     cons = [math.nan] * (end - start)
     if os.path.exists(stem + ".conservation.json"):
         with open(stem + ".conservation.json") as fh:
@@ -1177,6 +1303,8 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
                     "all_isoforms": lengths_all,
                     "painted": lengths_kept,
                 },
+                "min_intron": min_intron,
+                "short_gaps": {"all_isoforms": gaps_all, "painted": gaps_kept},
                 "genetic_code": genetic_code if not stop_codons else None,
                 "stop_codons": sorted(stops),
                 "cds_ends": cds_ends,
@@ -1206,6 +1334,7 @@ def self_test() -> int:
 
     def cut(*a, **k):
         k.setdefault("partial_ends", "none")
+        k.setdefault("min_intron", 0)  # the toy introns are 4 bases; checks 64+ pass the floor
         return cut_full(*a, **k)
 
     stem = os.path.join(d, "toy")
@@ -1300,7 +1429,7 @@ def self_test() -> int:
     fwd = json.load(open(os.path.join(d, "pad", "toy.w0.json")))
     rcs = json.load(open(os.path.join(d, "pad", "toy.w0.rc.json")))
     assert fwd["padding"] == 12 and fwd["label_counts"] == rcs["label_counts"], (fwd["label_counts"], rcs["label_counts"])
-    assert fwd["label_counts"] == {"intergenic": 1, "intron": 4, "utr": 6, "cds": 9}, fwd["label_counts"]
+    assert fwd["label_counts"] == {"intergenic": 1, "intron": 4, "utr": 6, "cds": 9, "short_gap": 0}, fwd["label_counts"]
     pf, pr = npz(os.path.join(d, "pad", "toy.w0.npz")), npz(os.path.join(d, "pad", "toy.w0.rc.npz"))
     assert pr["mask"] == pf["mask"][::-1] and pr["label"] == pf["label"][::-1] and pf["mask"][20:] == b"\x00" * 12
     checks += 3
@@ -1416,7 +1545,7 @@ def self_test() -> int:
     # distinct sites over all isoforms: one shared start (4) and donor (8), two
     # acceptors (11 and 9) and two + stops (16, 13), both introns CDS-flanked;
     # td adds a - start at 2 and stop at 0; tc has no CDS and no intron
-    all_sites = {"start": 2, "stop": 3, "donor": 1, "acceptor": 2, "cds_donor": 1, "cds_acceptor": 2}
+    all_sites = {"start": 2, "stop": 3, "donor": 1, "acceptor": 2, "cds_donor": 1, "cds_acceptor": 2, "short_gap": 0}
     assert su["distinct_sites"] == {"all_isoforms": all_sites, "painted": all_sites,
                                     "dropped": dict.fromkeys(SITE_KINDS, 0)}, su["distinct_sites"]
     checks += 1
@@ -1430,13 +1559,13 @@ def self_test() -> int:
     checks += 2
     # longest-cds keeps ta: tb's acceptor at 9 and stop at 13 are the loss, the shared start and donor are not
     assert sl["distinct_sites"]["all_isoforms"] == all_sites and sl["distinct_sites"]["painted"] == \
-        {"start": 2, "stop": 2, "donor": 1, "acceptor": 1, "cds_donor": 1, "cds_acceptor": 1} and \
+        {"start": 2, "stop": 2, "donor": 1, "acceptor": 1, "cds_donor": 1, "cds_acceptor": 1, "short_gap": 0} and \
         sl["distinct_sites"]["dropped"] == {"start": 0, "stop": 1, "donor": 0, "acceptor": 1,
-                                            "cds_donor": 0, "cds_acceptor": 1}, sl["distinct_sites"]
+                                            "cds_donor": 0, "cds_acceptor": 1, "short_gap": 0}, sl["distinct_sites"]
     checks += 1
     # a UTR-only alternative intron is a donor/acceptor but not a cds_donor/cds_acceptor
-    assert site_counts(distinct_sites([{"strand": "+", "start": 0, "end": 20, "exons": [[0, 4], [8, 20]], "cds": [[10, 16]]}]), 0, 20) == \
-        {"start": 1, "stop": 1, "donor": 1, "acceptor": 1, "cds_donor": 0, "cds_acceptor": 0}
+    assert site_counts(distinct_sites([{"strand": "+", "start": 0, "end": 20, "exons": [[0, 4], [8, 20]], "cds": [[10, 16]]}], min_intron=0), 0, 20) == \
+        {"start": 1, "stop": 1, "donor": 1, "acceptor": 1, "cds_donor": 0, "cds_acceptor": 0, "short_gap": 0}
     checks += 1
     # a representative list names tb without its version; the unnamed - locus falls back to longest-cds
     cut(iso, os.path.join(d, "iso_r"), 0, 0, set(), False, True, isoforms="representative", representatives={"tb"})
@@ -1448,7 +1577,7 @@ def self_test() -> int:
     assert lr[10:12] == [3, 3] and lr[14:17] == [2, 2, 2], lr
     checks += 2
     assert sr["distinct_sites"]["dropped"] == {"start": 0, "stop": 1, "donor": 0, "acceptor": 1,
-                                               "cds_donor": 0, "cds_acceptor": 1}, sr["distinct_sites"]
+                                               "cds_donor": 0, "cds_acceptor": 1, "short_gap": 0}, sr["distinct_sites"]
     checks += 1
     # the id file reader: comments, blank lines, first column of a TSV, versioned ids
     with open(os.path.join(d, "reps.tsv"), "w") as fh:
@@ -1661,18 +1790,107 @@ def self_test() -> int:
         {"strand": "-", "exons": [[50, 60]], "cds": []},
     ], 0, 150)
     assert fl["introns"] == {"n": 2, "min": 20, "median": 32.5, "max": 45, "below_30": 1, "below_50": 2,
-                             "clipped": 1}, fl["introns"]
+                             "clipped": 1, "below_min_intron": 0} and fl["min_intron"] == 20, fl["introns"]
     checks += 1
     assert fl["cds"] == {"n": 2, "min": 15, "median": 17.5, "max": 20, "below_60": 2, "outside_window": 0}, fl["cds"]
     checks += 1
     assert fl["span"] == {"n": 3, "min": 10, "median": 100, "max": 210, "below_81": 1, "outside_window": 1} \
-        and set(fl["units"]) == {"lengths", "n", "below_F"}, fl["span"]
+        and set(fl["units"]) == {"lengths", "n", "below_F", "below_min_intron"}, fl["span"]
     checks += 1
     # 63: the toy window's sidecar carries the record for all and painted isoforms
     st = json.load(open(os.path.join(d, "out", "toy.w0.json")))["feature_lengths"]
     assert st["floors"] == {"intron": [30, 50], "cds": [60], "span": [81]} \
         and st["all_isoforms"]["introns"]["n"] == 1 and st["painted"]["introns"]["below_30"] == 1 \
         and st["painted"]["span"]["below_81"] == 2, st
+    checks += 1
+    # 64-65: the intron floor.  stalin's length sweep (relay note
+    # 20260909T214050Z-stalin-0021): two exons with gaps of 1, 15, 16, 19, 20
+    # and 30 bases on both strands; under MIN_INTRON 20 the first four are
+    # short_gap with no donor or acceptor and one short_gap site, the last
+    # two are introns with both marks.
+    for strand in ("+", "-"):
+        for g in (1, 15, 16, 19, 20, 30):
+            tx = [{"id": "t", "strand": strand, "start": 100, "end": 400 + g,
+                   "exons": [[100, 200], [200 + g, 400 + g]], "cds": [[100, 200], [200 + g, 400 + g]]}]
+            lab, _, _, bnd = paint_labels(0, 500, tx)
+            kinds = {k for k, _, _ in distinct_sites(tx)}
+            gap = set(lab[200:200 + g])
+            marks = {v for v in bnd[200:200 + g] if v}
+            if g < 20:
+                assert gap == {LABEL["short_gap"]} and not marks and kinds == {"start", "stop", "short_gap"}, (strand, g, gap, marks, kinds)
+            else:
+                assert gap == {LABEL["intron"]} and marks == {3, 4} \
+                    and kinds == {"start", "stop", "donor", "acceptor", "cds_donor", "cds_acceptor"}, (strand, g, gap, marks, kinds)
+            fl = feature_lengths(tx, 0, 500)
+            assert fl["introns"]["n"] == 1 and fl["introns"]["below_min_intron"] == int(g < 20), (g, fl["introns"])
+    checks += 1
+    # 65: the floor is a policy: --min-intron 15 makes a 15-base gap an intron
+    #     (Stentor's 15- and 16-base introns) and 0 turns the floor off for a 1-base gap
+    tx = [{"id": "t", "strand": "+", "start": 100, "end": 415, "exons": [[100, 200], [215, 415]], "cds": [[100, 200], [215, 415]]}]
+    lab, _, _, bnd = paint_labels(0, 500, tx, min_intron=15)
+    assert set(lab[200:215]) == {LABEL["intron"]} and bnd[200] == 3 and bnd[214] == 4
+    assert {k for k, _, _ in distinct_sites(tx, min_intron=15)} >= {"donor", "acceptor"}
+    tx1 = [{"id": "t", "strand": "+", "start": 100, "end": 401, "exons": [[100, 200], [201, 401]], "cds": [[100, 200], [201, 401]]}]
+    lab, _, _, bnd = paint_labels(0, 500, tx1, min_intron=0)
+    assert lab[200] == LABEL["intron"] and bnd[200] == 3, (lab[200], bnd[200])  # a 1-base intron: donor and acceptor at one base, the donor is put first and wins
+    checks += 1
+    # 66: engels' overlapping motif windows (relay note 20260909T212826Z-engels-0021):
+    #     exon ending in A, gap G, exon starting T reads GT and AG by borrowing a base
+    #     from each exon; GTAG satisfies both windows on its own bases; GT, GTA and
+    #     ATAC do not; the same on the minus strand through the reverse complement.
+    assert motif_window("CA", "G", "TC") == (True, True)
+    assert motif_window("CA", "G", "CC") == (True, True)   # A|G|C: GC donor, AG acceptor
+    assert motif_window("CC", "G", "TC") == (False, False)  # no A before the gap
+    assert motif_window("CA", "GTAG", "TC") == (True, False)
+    assert motif_window("CA", "GT", "TC") == (False, False)
+    assert motif_window("CA", "GTA", "TC") == (False, False)
+    assert motif_window("CA", "ATAC", "TC") == (False, False)
+    seq = "CCCCCCCCAGTCCCCCCCCCCCCC"  # + strand: exon ..CA | G | TC.. with the gap at 9
+    tx = [{"id": "p", "strand": "+", "start": 0, "end": 24, "exons": [[0, 9], [10, 24]], "cds": [[0, 9], [10, 24]]}]
+    sg = short_gaps(tx, seq, 0, 24)
+    assert sg["n"] == 1 and sg["in_cds"] == 1 and sg["by_length"] == {"1": 1} and sg["motif_window"] == 1 \
+        and sg["motif_borrows_exon_base"] == 1 and sg["motif_exact"] == 0, sg
+    g = sg["gaps"][0]
+    assert (g["left"], g["gap"], g["right"], g["length_mod_3"], g["transcripts"]) == ("CA", "G", "TC", 1, ["p"]), g
+    rc = seq.translate(COMP)[::-1]  # minus strand: the same gap at 24-10=14
+    txm = [{"id": "m", "strand": "-", "start": 0, "end": 24, "exons": [[0, 14], [15, 24]], "cds": [[0, 14], [15, 24]]}]
+    gm = short_gaps(txm, rc, 0, 24)["gaps"][0]
+    assert (gm["left"], gm["gap"], gm["right"], gm["motif_window"], gm["start"]) == ("CA", "G", "TC", True, 14), gm
+    # a gap on the UTR side of the CDS is not in_cds; a 4-base GTAG gap is motif_exact
+    seq4 = "CCCCCCCCAGTAGTCCCCCCCCCCCC"
+    tx4 = [{"id": "u", "strand": "+", "start": 0, "end": 26, "exons": [[0, 9], [13, 26]], "cds": [[15, 26]]}]
+    s4 = short_gaps(tx4, seq4, 0, 26)
+    assert s4["in_cds"] == 0 and s4["motif_exact"] == 1 and s4["motif_window"] == 1 \
+        and s4["motif_borrows_exon_base"] == 0 and s4["gaps"][0]["gap"] == "GTAG", s4
+    # a gap whose flanks reach past the window edge is listed without sequence
+    s5 = short_gaps(tx, seq, 8, 24)
+    assert s5["outside_window"] == 1 and s5["gaps"][0]["motif_window"] is None, s5
+    checks += 1
+    # 67: precedence: a CDS in another isoform over a short gap paints CDS; a short gap
+    #     over another transcript's intron paints short_gap
+    two = [{"id": "a", "strand": "+", "start": 100, "end": 401, "exons": [[100, 200], [201, 401]], "cds": [[100, 200], [201, 401]]},
+           {"id": "b", "strand": "+", "start": 100, "end": 401, "exons": [[100, 401]], "cds": [[100, 401]]}]
+    lab, _, _, _ = paint_labels(0, 500, two)
+    assert lab[200] == LABEL["cds"], lab[200]
+    two[1] = {"id": "c", "strand": "-", "start": 0, "end": 500, "exons": [[0, 10], [490, 500]], "cds": []}
+    lab, _, _, _ = paint_labels(0, 500, two)
+    assert lab[200] == LABEL["short_gap"] and lab[50] == LABEL["intron"], (lab[200], lab[50])
+    checks += 1
+    # 68: the toy window under the default floor: its 4-base gap is short_gap in the
+    #     sidecar counts and in both orientations, with no donor or acceptor mark and
+    #     the short_gaps record carrying the flanks; under min_intron 0 nothing changes
+    cut(stem, os.path.join(d, "floor"), 0, 0, {"spC"}, True, True, min_intron=20)
+    sf = json.load(open(os.path.join(d, "floor", "toy.w0.json")))
+    zf = npz(os.path.join(d, "floor", "toy.w0.npz"))
+    assert sf["min_intron"] == 20 and sf["label_counts"]["short_gap"] == 4 and sf["label_counts"]["intron"] == 0, sf["label_counts"]
+    assert list(zf["label"])[8:12] == [4, 4, 4, 4] and 3 not in zf["bound"] and 4 not in zf["bound"], list(zf["label"])
+    assert sf["distinct_sites"]["painted"]["short_gap"] == 1 and sf["distinct_sites"]["painted"]["donor"] == 0
+    assert sf["feature_lengths"]["painted"]["introns"]["below_min_intron"] == 1
+    sgf = sf["short_gaps"]["painted"]
+    assert sgf["n"] == 1 and sgf["gaps"][0]["gap"] == ref[8:12] and sgf["gaps"][0]["in_cds"] and sgf["gaps"][0]["length"] == 4, sgf
+    zr = npz(os.path.join(d, "floor", "toy.w0.rc.npz"))
+    assert list(zr["label"])[8:12] == [4, 4, 4, 4], list(zr["label"])
+    assert side["label_counts"].get("short_gap", 0) == 0 and side["min_intron"] == 0
     checks += 1
     print(f"self-test passed ({checks} checks)")
     return 0
@@ -1712,6 +1930,9 @@ def main() -> int:
                     help="NCBI genetic code table for the stop-codon check (1 standard, 6 ciliate, ...)")
     ap.add_argument("--stop-codons", default=None,
                     help="comma-separated stop codons, overriding --genetic-code")
+    ap.add_argument("--min-intron", type=int, default=MIN_INTRON,
+                    help="an exon gap shorter than this is painted short_gap, not intron, and gets no donor "
+                         "or acceptor mark (default 20, the benchmark scorer's MIN_INTRON; 0 turns the floor off)")
     ap.add_argument("--quiet", action="store_true")
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
@@ -1729,7 +1950,7 @@ def main() -> int:
         total += len(cut(stem, args.out, args.length, args.stride, drop, args.both_strands, args.quiet,
                          args.transcript_types, args.drop_ancestors, args.reference_anchored,
                          args.isoforms, reps, args.partial_ends, args.genetic_code, stop_codons,
-                         args.duplicate_rows))
+                         args.duplicate_rows, args.min_intron))
     print(f"wrote {total} examples to {args.out}")
     return 0
 

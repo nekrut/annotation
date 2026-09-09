@@ -748,7 +748,7 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   | hg38 | chr21 | ncbiRefSeqCurated | 726 | 56 (7.7%) | 2,382 | 74 | 2,248 | 0 | 0 | 0 | 0 |
   | mm39 | chr19 | ncbiRefSeqCurated | 1,435 | 81 (5.6%) | 6,940 | 65 | 1,175 | 0 | 0 | 0 | 0 |
   | dm6 | chr2L | ncbiRefSeqCurated | 5,707 | 677 (11.9%) | 10,204 | 43 | 92 | 0 | 48 (0.47%) | 1 | 0 |
-  | ce11 | chrIII | ncbiRefSeqCurated | 3,657 | 84 (2.3%) | 15,468 | 1 | 110 | 12 (0.08%) | 3,940 (25.5%) | 9 (0.25%) | 12 (0.33%) |
+  | ce11 | chrIII | ncbiRefSeqCurated | 3,657 | 84 (2.3%) | 15,468 | 1 | 110.5 | 12 (0.08%) | 3,940 (25.5%) | 9 (0.25%) | 12 (0.33%) |
   | sacCer3 | chrIV | ncbiRefSeq | 766 | 726 (94.8%) | 41 | 1 | 101 | 8 (19.5%) | 8 (19.5%) | 0 | 2 (0.26%) |
   | GCF_000002765.6 (*P. falciparum*) | NC_037283.1 | ncbiRefSeq | 773 | 364 (47.1%) | 1,294 | 65 | 142 | 0 | 0 | 0 | 0 |
 
@@ -764,10 +764,10 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   not introns: the 1-base gaps are how RefSeq encodes a programmed
   ribosomal frameshift inside a CDS (all eight on sacCer3 chrIV are Ty
   retrotransposon gag-pol ORFs, `YDR034C-D`, `YDR098C-B`, `YDR210W-B` and
-  their kind; the two on ce11 chrIII sit in `cdh-4`), and the cutter
-  currently paints them as a 1-base intron with a donor and an acceptor
-  mark, which no splice model should be asked to learn (section 9 item
-  12). The ten worm introns of 15 to 29 bases all lie on the UTR side of a
+  their kind; the two on ce11 chrIII sit in `cdh-4`), and until version
+  0.8 the cutter painted them as a 1-base intron with a donor and an
+  acceptor mark, which no splice model should be asked to learn. The ten
+  worm introns of 15 to 29 bases all lie on the UTR side of a
   CDS end, where an annotation is least checked. Third, the single-exon
   fraction runs from 2% (worm) to 95% (yeast) with *Plasmodium* at 47%,
   so a candidate gate tuned on a spliced vertebrate genome sees a very
@@ -776,6 +776,84 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   engels' gate is a corner case in these annotations rather than a
   stratum. The floors are constants in `cut_windows.py` (`LENGTH_FLOORS`);
   a different decoder's floors are one edit and a rerun.
+  **The intron floor** (version 0.9). The benchmark had already drawn the
+  line the frameshift gaps ask for: its scorer treats a gap between
+  consecutive CDS blocks as an intron only if it is at least 20 bases
+  (`benchmark/score.py` `MIN_INTRON`, commit `dbe9ffb`) and counts the
+  shorter ones apart as `reference_cds_gaps_below_min` /
+  `predicted_cds_gaps_below_min`, with the floor written into every
+  result (lenin, note 20260909T211910Z-lenin-0019: 47 of the 343 CDS gaps
+  in the *S. cerevisiae* reference are Ty frameshifts, and on fugu
+  Tiberius itself emits 413 such gaps against 1,124 in the reference). The
+  cutter now applies the same floor, `--min-intron` (default
+  `MIN_INTRON = 20`): an exon gap shorter than it is painted with a fifth
+  label class, `short_gap` (code 4, ranked above intron and below UTR when
+  isoforms overlap), gets no donor or acceptor mark and no frame, and
+  contributes a `short_gap` entry to `distinct_sites` instead of a donor
+  and an acceptor; `feature_lengths.introns` still describes every exon
+  gap the annotation states, with `below_min_intron` saying how many the
+  floor removed, and a new sidecar record `short_gaps` lists each one
+  (strand, coordinates, length and length mod 3, whether both flanks are
+  CDS ends, the transcripts stating it, two exon bases on each side and
+  the gap itself in transcript orientation) so that what the scorer leaves
+  out of its splice denominator is not a splice site in the labels
+  either, and is on record rather than dropped. Two things keep the floor
+  a policy rather than a fact. stalin (note 20260909T214050Z-stalin-0021)
+  found the counterexample: *Stentor coeruleus* has 15- and 16-base
+  spliceosomal introns, 8,806 of them in one annotation (Nuadthaisong et
+  al. 2022, doi:10.3390/ijms231810973; Slabodnick et al. 2017,
+  doi:10.1016/j.cub.2016.12.057), which a floor of 20 files under
+  `short_gap` wholesale; `--min-intron 15` restores them and 0 turns the
+  floor off, and the sidecar carries the value used. And length does not
+  name the event: NCBI's GFF3 marks a ribosomal-slippage CDS with
+  `exception=ribosomal slippage` while its mRNA exon stays unsplit,
+  but the UCSC genePred sources this fetcher reads split the exon and
+  carry no exception, so `in_cds` and the flanks are what the record can
+  say; the `short_gaps` entry has an `exception` field for a source that
+  states one (Ensembl and NCBI GFF3 would; open item, section 9 item 12).
+  engels (note 20260909T212826Z-engels-0021) showed that a motif-masked
+  HMM decoder (bricks2marble's defaults under Tiberius: donor `NGT` or
+  `NGC`, acceptor `AGN`, one intron state per frame with no self-loop
+  required) admits a 1-base intron whose GT and AG windows each borrow a
+  base from the flanking exon, `A|G|T`, so a strict motif mask by itself
+  does not enforce an intron duration. The sidecar tests every short gap
+  with that overlapping-window rule (`motif_window`, and
+  `motif_borrows_exon_base` when a window reached into an exon) and with
+  the gap's own ends (`motif_exact`, four bases or more), and
+  `length_floors.py --short-gaps` runs the same test over a chromosome,
+  fetching two flanking bases per gap (one sequence request each, run
+  2026-09-09):
+
+  | Assembly | Chrom | Strand | Gap (0-based, half-open) | Length | In CDS | Transcript | Flank / gap / flank | Motif window |
+  |---|---|---|---|---|---|---|---|---|
+  | sacCer3 | chrIV | - | 518062-518063 | 1 | yes | NM_001184379.4 | `TT A GG` | no |
+  | sacCer3 | chrIV | - | 649820-649821 | 1 | yes | NM_001184417.2 | `TT A GG` | no |
+  | sacCer3 | chrIV | - | 882621-882622 | 1 | yes | NM_001184436.2 | `TT A GG` | no |
+  | sacCer3 | chrIV | - | 991043-991044 | 1 | yes | NM_001184421.2 | `TT A GG` | no |
+  | sacCer3 | chrIV | + | 873404-873405 | 1 | yes | NM_001184419.4 | `TT A GG` | no |
+  | sacCer3 | chrIV | + | 982754-982755 | 1 | yes | NM_001184423.4 | `TT A GG` | no |
+  | sacCer3 | chrIV | + | 1097368-1097369 | 1 | yes | NM_001184425.2 | `TT A GG` | no |
+  | sacCer3 | chrIV | + | 1208301-1208302 | 1 | yes | NM_001184427.2 | `TT A GG` | no |
+  | ce11 | chrIII | - | 13377845-13377860 | 15 | no | NM_001268269.2 | `TA TCTTTGAATAAAAAC AA` | no |
+  | ce11 | chrIII | + | 1879047-1879062 | 15 | no | NM_001027675.5 | `CG ATGATTTTCTCAAAA AT` | no |
+  | ce11 | chrIII | + | 4530490-4530491 | 1 | yes | NM_001330837.3 | `AA A CT` | no |
+  | ce11 | chrIII | + | 4530511-4530512 | 1 | yes | NM_001330837.3 | `AG G AA` | no |
+  | ce11 | chrIII | + | 13344922-13344940 | 18 | no | NM_001383022.1 | `AC GTTTTTATTTACAGAACC AC` | no |
+
+  All eight yeast gaps are the same seven bases, `CTT A GGC` read across
+  the gap: the Ty1 +1 programmed frameshift site, at which the ribosome
+  slips from the CTT codon to the AGG (Belcourt and Farabaugh 1990,
+  doi:10.1016/0092-8674(90)90371-K), so the "intron" is the skipped A.
+  The two worm gaps lie 21 bases apart in one `cdh-4` transcript, and the
+  three 15- to 18-base gaps are on the UTR side of a CDS with no GT or AG
+  at their ends. None of the thirteen passes the overlapping-window test,
+  so a motif-masked decoder could not emit any of them as an intron even
+  without a duration floor, and none is a splice site under the scorer's
+  rule or in these labels; a predictor that joins the two CDS blocks
+  through the gap is scored as right about the protein and, since the
+  scorer drops the gap from both sides, not charged for the "intron".
+  The ce11 count here is five, not the twelve of the table above, because
+  that column counts introns under 30 and this one gaps under 20.
 - **Informants**: one row per informant, in an order fixed per source so
   that examples stack into batches. For a UCSC track (multiz, Cactus) that
   is the track tree's depth-first leaf order minus the reference, and `K`
@@ -1151,20 +1229,27 @@ informants) is the design-level answer.
     ignores, or the UCSC `--noDupes` style export if the track offers
     one. Until then, Cactus examples carry `duplicate_row_policy` and
     the per-informant counts so a result can say which copies it saw.
-12. New, from engels' Helixer audit (relay note
-    20260909T202745Z-engels-0020) and stalin's converter audit (relay
-    note 20260909T204115Z-stalin-0020): the sidecar's `feature_lengths`
-    and `scripts/data/length_floors.py` count what lies under a decoder's
-    minimum durations (section 6.3). Two things are open. For T-human-007:
-    RefSeq encodes a programmed ribosomal frameshift as a 1-base gap
-    between two CDS exons (the Ty ORFs on sacCer3 chrIV, `cdh-4` on ce11
-    chrIII), which the fetcher carries faithfully and the cutter paints as
-    an intron with a donor and an acceptor; the truth rule should say
-    whether such a gap is a splice site for scoring (a predictor that
-    joins the two exons through the gap is right about the protein and
-    wrong about the "intron"), and the cutter will follow. For
-    T-human-011: a quarter of worm introns and half a percent of fly
-    introns lie under the 50-base floor a U2 duration model imposes, so
-    whatever replaces the HMM decoder must either have no minimum
-    duration or have one below 30 bases; the counts above are the
-    price of each choice on one chromosome per clade.
+12. From engels' Helixer audit (relay note 20260909T202745Z-engels-0020)
+    and stalin's converter audit (relay note 20260909T204115Z-stalin-0020):
+    the sidecar's `feature_lengths` and `scripts/data/length_floors.py`
+    count what lies under a decoder's minimum durations (section 6.3).
+    The T-human-007 half is settled: lenin answered (note
+    20260909T211910Z-lenin-0019) that the scorer has counted CDS gaps
+    under 20 bases apart from splice sites since its run 2, and the
+    cutter follows that floor as `--min-intron` from version 0.9
+    (section 6.3, "the intron floor"), so a frameshift gap is neither a
+    scored junction nor a labelled one. Still open, for whoever reads a
+    GFF3 source into the fetcher: carry NCBI's `exception=ribosomal
+    slippage` and Ensembl's equivalent into the transcript record so a
+    short gap's `exception` field is filled from provenance rather than
+    inferred from length (stalin, note 20260909T214050Z-stalin-0021), and
+    keep an eye on *Stentor*-like clades where the floor must be lowered
+    to 15. For T-human-011, two hard ceilings now have numbers: a quarter
+    of worm introns and half a percent of fly introns lie under the
+    50-base floor a U2 duration model imposes, and a fixed motif alphabet
+    excludes 1.1 to 1.6% of human and fugu reference introns (lenin's
+    fugu strata, same note, where Tiberius emits no AT-AC or non-canonical
+    intron at all); whatever replaces the HMM decoder should have neither
+    a minimum intron duration above the clade's shortest real introns nor
+    a fixed motif set, and the counts above are the price of each choice
+    on one chromosome per clade.

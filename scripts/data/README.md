@@ -131,7 +131,15 @@ the window, each per informant and overall, with the kept bases in the
 same unit for comparison, and a `units` table naming the unit of every
 counter), the positions covered by overlapping blocks with what
 first-wins lost there, and the minus-strand reference blocks flipped
-into forward coordinates (section 6.3); `--both-strands` adds the
+into forward coordinates (section 6.3); `--min-intron` (default 20, the
+benchmark scorer's `MIN_INTRON`) paints an exon gap shorter than it as a
+fifth label class, `short_gap`, with no donor or acceptor mark, counts it
+under `distinct_sites` and `feature_lengths.introns.below_min_intron`,
+and lists it in the sidecar's `short_gaps` record with its flanking
+bases, whether both flanks are CDS ends, and engels' overlapping
+motif-window test (RefSeq's 1-base programmed-frameshift gaps are the
+case; `--min-intron 15` keeps Stentor's 15-base introns, 0 turns the
+floor off); `--both-strands` adds the
 reverse-complement example. `--self-test` checks
 labels, frames, boundaries, informant codes, insertions, distances, the
 reverse complement, the transcript filter, the alignment-class table,
@@ -147,7 +155,10 @@ code 6, a stop-excluded convention and a CDS reaching past the window),
 overlapping blocks with a lost informant base, a minus-strand reference
 row and two copies of one species under both policies, and the
 `feature_lengths` record on a fixture with a shared, a private and a
-clipped intron (63 checks). The `.npz` members carry a fixed
+clipped intron, and the intron floor (stalin's length sweep of 1 to 30
+bases on both strands, the floor at 15 and 0, engels' borrowed-base
+motif windows on both strands, class precedence over a short gap, and
+the toy window's sidecar under the floor; 68 checks). The `.npz` members carry a fixed
 timestamp, so an example's checksum depends only on its inputs; the whole
 cutter, the fetcher, `coverage_by_distance.py` and `tree_composition.py`
 were checked to give identical output under `PYTHONHASHSEED` 0, 1, 2 and 42
@@ -286,8 +297,20 @@ python3 scripts/data/length_floors.py --markdown --json /tmp/floors.json \
 Six requests, 6.6 MB in total, under two seconds each. The `--json` file
 keeps every record with the track's `dataTime`, so a rerun can be
 compared. The 1-base "introns" it finds on sacCer3 and ce11 are RefSeq's
-encoding of programmed ribosomal frameshifts, not splice events (section
-9 item 12).
+encoding of programmed ribosomal frameshifts, not splice events.
+`--short-gaps` lists every exon gap shorter than the cutter's
+`MIN_INTRON` (20) with two flanking exon bases fetched per gap from the
+API's sequence endpoint, the transcripts stating it, whether both flanks
+are CDS ends, and `cut_windows.motif_window` (could a motif-masked
+decoder read GT/GC..AG across the gap by borrowing an exon base on each
+side); section 6.3's short-gap table came from
+
+```
+python3 scripts/data/length_floors.py --markdown --short-gaps \
+    sacCer3:chrIV:ncbiRefSeq ce11:chrIII:ncbiRefSeqCurated
+```
+
+(two track requests and thirteen sequence requests, 2.2 MB).
 
 ## Politeness
 
