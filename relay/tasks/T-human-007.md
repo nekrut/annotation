@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T06:15:11Z
+lease_until: 2026-09-09T07:15:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -108,3 +108,48 @@ one species in a fresh clone.
   Task stays in `review`; PR #5 updated. NEXT: run the scorer on human and one
   Ensembl-annotated species to test the primary-assembly filter, and address
   review feedback when it arrives.
+- 2026-09-09 lenin: run 3. Closed run 2's open item 2: ran `benchmark/score.py`
+  on real references beyond yeast for the first time -- human, Arabidopsis,
+  C. elegans, maize, Nematostella, Plasmodium, Tetrahymena, and the Ensembl
+  (not RefSeq) C. elegans annotation. It found three defects, all now fixed and
+  all invisible on yeast.
+  (1) Organelles were being scored. `genome=mitochondrion` and
+  `genome=chloroplast` regions passed the filter, so the human, yeast,
+  Arabidopsis and maize mitochondria and the Arabidopsis and maize chloroplasts
+  were scored against the nuclear genetic code; human chrM is translation
+  table 2, so every start/stop check on it was wrong, and organelles are out of
+  charter scope anyway.
+  (2) The alt-locus rule discarded every unplaced scaffold in the panel. It
+  keyed on `genome=genomic` plus `chromosome=`, but all 680 human, all 675
+  maize and all 32 Nematostella genomic regions carry a `chromosome=` (unplaced
+  ones say `chromosome=Unknown`). The real discriminator is `map=`: a
+  cytogenetic band means alt locus or patch, `map=unlocalized` or no `map=`
+  means scaffold. Human goes from 25 scored sequences to 102, +13.3 Mb and
+  +179 transcripts.
+  (3) A *perfect* human prediction scored 82 fusions and 82 splits. Run 2's
+  pairwise "do the two annotated genes overlap each other" guard does not
+  survive overlap chains: 82 human loci have a gene B overlapping both A and C
+  while A and C are disjoint. Fusions are now counted across connected
+  components of the reference's own same-strand CDS-overlap graph, which makes
+  an identity run score exactly 0 fusions and 0 splits on all eight species and
+  subsumes the yeast fix.
+  Added, because two of the three were silent: every result now carries
+  `sequence_selection` (kept, and dropped grouped by reason) and
+  `predicted_transcripts_not_scored` /
+  `predicted_sequences_absent_from_reference`, with a stderr warning when more
+  than half the prediction is off-panel -- scoring the Ensembl C. elegans
+  annotation against the RefSeq one returns F1 0.0 everywhere purely because
+  Ensembl calls chromosome I `I` and RefSeq calls it `NC_003279.8`.
+  Verified: `--self-test` now checks 35 counts including two sequence-selection
+  fixtures (RefSeq-shaped and Ensembl-shaped); eight identity runs at F1 1.0 /
+  MCC 1.0 with 0 fusions and 0 splits; human 37 s and 0.93 GB peak on one
+  laptop core over 3.10 Gb and 132,030 transcripts; degraded human (10%
+  transcripts dropped, 10% of CDS 3' ends shifted 3 bp) returns nucleotide F1
+  0.984, exon 0.821, donor 0.891, transcript 0.366, locus 0.986 with 0 fusions
+  and 7 splits; `report.py` unchanged and still assembles the table.
+  docs/benchmark.md sections 4, 4.4, 6 and 7 rewritten to match.
+  Task stays in `review`; PR #5 updated.
+  NOT done: 12 panel species still unscored; `--genome` never exercised at
+  vertebrate scale, so the section 4.3 dinucleotide and GC stratifications are
+  yeast-only; the no-`region`-features path is a name heuristic, now open
+  item 5. NEXT: address review feedback on PR #5 when it arrives.
