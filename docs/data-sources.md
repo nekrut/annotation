@@ -819,37 +819,51 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   does not enforce an intron duration. The sidecar tests every short gap
   with that overlapping-window rule (`motif_window`, and
   `motif_borrows_exon_base` when a window reached into an exon) and with
-  the gap's own ends (`motif_exact`, four bases or more), and
+  the gap's own ends (`motif_exact`, four bases or more). Because the
+  combined verdict alone cannot say which window failed (engels, note
+  20260909T222452Z-engels-0022), the entry also carries the donor and
+  acceptor windows apart (`motif_donor`, `motif_acceptor`, each yes, no,
+  or unresolved when the window holds a base outside A/C/G/T) and one
+  `motif_class` per gap: `exact`, `borrows_exon_base`, `donor_only`,
+  `acceptor_only`, `neither` (both windows decided and both fail) or
+  `ambiguous` (an unresolved window and no failed one); the record's
+  `motif_by_class` lists every class, and `motif_unresolved_windows`
+  counts the windows an N left undecided, so a zero there says every
+  tested window was resolved, which the class counts alone do not.
   `length_floors.py --short-gaps` runs the same test over a chromosome,
   fetching two flanking bases per gap (one sequence request each, run
-  2026-09-09):
+  2026-09-09, re-run with the class columns the same day: same thirteen
+  gaps, same flanks):
 
-  | Assembly | Chrom | Strand | Gap (0-based, half-open) | Length | In CDS | Transcript | Flank / gap / flank | Motif window |
-  |---|---|---|---|---|---|---|---|---|
-  | sacCer3 | chrIV | - | 518062-518063 | 1 | yes | NM_001184379.4 | `TT A GG` | no |
-  | sacCer3 | chrIV | - | 649820-649821 | 1 | yes | NM_001184417.2 | `TT A GG` | no |
-  | sacCer3 | chrIV | - | 882621-882622 | 1 | yes | NM_001184436.2 | `TT A GG` | no |
-  | sacCer3 | chrIV | - | 991043-991044 | 1 | yes | NM_001184421.2 | `TT A GG` | no |
-  | sacCer3 | chrIV | + | 873404-873405 | 1 | yes | NM_001184419.4 | `TT A GG` | no |
-  | sacCer3 | chrIV | + | 982754-982755 | 1 | yes | NM_001184423.4 | `TT A GG` | no |
-  | sacCer3 | chrIV | + | 1097368-1097369 | 1 | yes | NM_001184425.2 | `TT A GG` | no |
-  | sacCer3 | chrIV | + | 1208301-1208302 | 1 | yes | NM_001184427.2 | `TT A GG` | no |
-  | ce11 | chrIII | - | 13377845-13377860 | 15 | no | NM_001268269.2 | `TA TCTTTGAATAAAAAC AA` | no |
-  | ce11 | chrIII | + | 1879047-1879062 | 15 | no | NM_001027675.5 | `CG ATGATTTTCTCAAAA AT` | no |
-  | ce11 | chrIII | + | 4530490-4530491 | 1 | yes | NM_001330837.3 | `AA A CT` | no |
-  | ce11 | chrIII | + | 4530511-4530512 | 1 | yes | NM_001330837.3 | `AG G AA` | no |
-  | ce11 | chrIII | + | 13344922-13344940 | 18 | no | NM_001383022.1 | `AC GTTTTTATTTACAGAACC AC` | no |
+  | Assembly | Chrom | Strand | Gap (0-based, half-open) | Length | In CDS | Transcript | Flank / gap / flank | Donor window | Acceptor window | Class |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | sacCer3 | chrIV | - | 518062-518063 | 1 | yes | NM_001184379.4 | `TT A GG` | no | no | neither |
+  | sacCer3 | chrIV | - | 649820-649821 | 1 | yes | NM_001184417.2 | `TT A GG` | no | no | neither |
+  | sacCer3 | chrIV | - | 882621-882622 | 1 | yes | NM_001184436.2 | `TT A GG` | no | no | neither |
+  | sacCer3 | chrIV | - | 991043-991044 | 1 | yes | NM_001184421.2 | `TT A GG` | no | no | neither |
+  | sacCer3 | chrIV | + | 873404-873405 | 1 | yes | NM_001184419.4 | `TT A GG` | no | no | neither |
+  | sacCer3 | chrIV | + | 982754-982755 | 1 | yes | NM_001184423.4 | `TT A GG` | no | no | neither |
+  | sacCer3 | chrIV | + | 1097368-1097369 | 1 | yes | NM_001184425.2 | `TT A GG` | no | no | neither |
+  | sacCer3 | chrIV | + | 1208301-1208302 | 1 | yes | NM_001184427.2 | `TT A GG` | no | no | neither |
+  | ce11 | chrIII | - | 13377845-13377860 | 15 | no | NM_001268269.2 | `TA TCTTTGAATAAAAAC AA` | no | no | neither |
+  | ce11 | chrIII | + | 1879047-1879062 | 15 | no | NM_001027675.5 | `CG ATGATTTTCTCAAAA AT` | no | no | neither |
+  | ce11 | chrIII | + | 4530490-4530491 | 1 | yes | NM_001330837.3 | `AA A CT` | no | no | neither |
+  | ce11 | chrIII | + | 4530511-4530512 | 1 | yes | NM_001330837.3 | `AG G AA` | no | no | neither |
+  | ce11 | chrIII | + | 13344922-13344940 | 18 | no | NM_001383022.1 | `AC GTTTTTATTTACAGAACC AC` | yes | no | donor only |
 
   All eight yeast gaps are the same seven bases, `CTT A GGC` read across
   the gap: the Ty1 +1 programmed frameshift site, at which the ribosome
   slips from the CTT codon to the AGG (Belcourt and Farabaugh 1990,
   doi:10.1016/0092-8674(90)90371-K), so the "intron" is the skipped A.
   The two worm gaps lie 21 bases apart in one `cdh-4` transcript, and the
-  three 15- to 18-base gaps are on the UTR side of a CDS with no GT or AG
-  at their ends. None of the thirteen passes the overlapping-window test,
-  so a motif-masked decoder could not emit any of them as an intron even
-  without a duration floor, and none is a splice site under the scorer's
-  rule or in these labels; a predictor that joins the two CDS blocks
+  three 15- to 18-base gaps are on the UTR side of a CDS. None of the
+  thirteen passes the overlapping-window test, and the class column says
+  how each fails: twelve fail both windows, and the 18-base UTR-side gap
+  in NM_001383022.1 reads GT at its donor end but CC where AG would be,
+  so it is `donor_only`, the one gap here a donor-only mask would let
+  through. No window was unresolved. So a motif-masked decoder could not
+  emit any of them as an intron even without a duration floor, and none
+  is a splice site under the scorer's rule or in these labels; a predictor that joins the two CDS blocks
   through the gap is scored as right about the protein and, since the
   scorer drops the gap from both sides, not charged for the "intron".
   The ce11 count here is five, not the twelve of the table above, because

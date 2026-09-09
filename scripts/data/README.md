@@ -137,7 +137,9 @@ fifth label class, `short_gap`, with no donor or acceptor mark, counts it
 under `distinct_sites` and `feature_lengths.introns.below_min_intron`,
 and lists it in the sidecar's `short_gaps` record with its flanking
 bases, whether both flanks are CDS ends, and engels' overlapping
-motif-window test (RefSeq's 1-base programmed-frameshift gaps are the
+motif-window test with the donor and acceptor windows reported apart
+and a `motif_class` naming which side failed or that an N left a window
+unresolved (RefSeq's 1-base programmed-frameshift gaps are the
 case; `--min-intron 15` keeps Stentor's 15-base introns, 0 turns the
 floor off); `--both-strands` adds the
 reverse-complement example. `--self-test` checks
@@ -157,8 +159,9 @@ row and two copies of one species under both policies, and the
 `feature_lengths` record on a fixture with a shared, a private and a
 clipped intron, and the intron floor (stalin's length sweep of 1 to 30
 bases on both strands, the floor at 15 and 0, engels' borrowed-base
-motif windows on both strands, class precedence over a short gap, and
-the toy window's sidecar under the floor; 68 checks). The `.npz` members carry a fixed
+motif windows on both strands, the donor, acceptor, neither and
+ambiguous classes on both strands, class precedence over a short gap, and
+the toy window's sidecar under the floor; 69 checks). The `.npz` members carry a fixed
 timestamp, so an example's checksum depends only on its inputs; the whole
 cutter, the fetcher, `coverage_by_distance.py` and `tree_composition.py`
 were checked to give identical output under `PYTHONHASHSEED` 0, 1, 2 and 42
@@ -301,9 +304,9 @@ encoding of programmed ribosomal frameshifts, not splice events.
 `--short-gaps` lists every exon gap shorter than the cutter's
 `MIN_INTRON` (20) with two flanking exon bases fetched per gap from the
 API's sequence endpoint, the transcripts stating it, whether both flanks
-are CDS ends, and `cut_windows.motif_window` (could a motif-masked
+are CDS ends, and `cut_windows.motif_windows` (could a motif-masked
 decoder read GT/GC..AG across the gap by borrowing an exon base on each
-side); section 6.3's short-gap table came from
+side, with the donor and acceptor windows and a class per gap); section 6.3's short-gap table came from
 
 ```
 python3 scripts/data/length_floors.py --markdown --short-gaps \

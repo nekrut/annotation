@@ -25,9 +25,10 @@ Each argument is ``genome:chrom[:track]`` (track default ``ncbiRefSeqCurated``).
 ``MIN_INTRON`` (20, the benchmark scorer's floor) with two flanking exon
 bases fetched from the API's sequence endpoint (one request per gap), the
 transcripts stating it, whether both flanks are CDS ends, and engels'
-overlapping motif-window test (``cut_windows.motif_window``): whether a
+overlapping motif-window test (``cut_windows.motif_windows``): whether a
 motif-masked decoder could read GT/GC..AG across the gap by borrowing an
-exon base on each side.
+exon base on each side, with the donor and acceptor windows reported
+apart and a class naming which side failed.
 """
 from __future__ import annotations
 
@@ -73,19 +74,15 @@ def short_gap_table(genome: str, chrom: str, txs: list[dict], flank: int, pause:
     """``cut_windows.short_gaps`` over a chromosome, with the flanks of every
     gap fetched separately so no chromosome sequence is downloaded."""
     rec = short_gaps(txs, "", 0, 0, MIN_INTRON, flank)  # no sequence yet: every gap outside_window
-    from cut_windows import COMP, DONORS, motif_window
+    from cut_windows import COMP, motif_fields, motif_summary
     for g in rec["gaps"]:
         time.sleep(pause)
         seq = fetch_sequence(genome, chrom, g["start"] - flank, g["end"] + flank, timeout)
         left, gap, right = seq[:flank], seq[flank:flank + g["length"]], seq[flank + g["length"]:]
         if g["strand"] == "-":
             left, gap, right = right.translate(COMP)[::-1], gap.translate(COMP)[::-1], left.translate(COMP)[::-1]
-        ok, borrowed = motif_window(left, gap, right)
-        g.update({"left": left, "gap": gap, "right": right,
-                  "motif_exact": len(gap) >= 4 and gap[:2] in DONORS and gap[-2:] == "AG",
-                  "motif_window": ok, "motif_borrows_exon_base": borrowed})
-    for k in ("motif_exact", "motif_window", "motif_borrows_exon_base"):
-        rec[k] = sum(1 for g in rec["gaps"] if g[k])
+        g.update({"left": left, "gap": gap, "right": right, **motif_fields(left, gap, right)})
+    rec.update(motif_summary(rec["gaps"]))
     rec["outside_window"] = 0
     rec["sequence_requests"] = len(rec["gaps"])
     return rec
@@ -132,17 +129,20 @@ def main() -> int:
             rec["short_gaps"] = sg = short_gap_table(genome, chrom, txs, a.flank, a.pause, a.timeout)
             print(f"# {genome} {chrom}: {sg['n']} exon gaps under {MIN_INTRON} bases, {sg['in_cds']} between two CDS "
                   f"ends, lengths {sg['by_length']}, motif_window {sg['motif_window']} "
-                  f"(borrowing an exon base {sg['motif_borrows_exon_base']}), motif_exact {sg['motif_exact']}",
+                  f"(borrowing an exon base {sg['motif_borrows_exon_base']}), motif_exact {sg['motif_exact']}, "
+                  f"by class {sg['motif_by_class']}, unresolved windows {sg['motif_unresolved_windows']}",
                   file=sys.stderr)
             if a.markdown:
                 print("| Assembly | Chrom | Strand | Gap (0-based, half-open) | Length | In CDS | Transcripts | "
-                      "Flank / gap / flank | Motif window | Borrows exon base |")
-                print("|---|---|---|---|---|---|---|---|---|---|")
+                      "Flank / gap / flank | Donor window | Acceptor window | Class |")
+                print("|---|---|---|---|---|---|---|---|---|---|---|")
                 for g in sg["gaps"]:
                     print(f"| {genome} | {chrom} | {g['strand']} | {g['start']}-{g['end']} | {g['length']} | "
                           f"{'yes' if g['in_cds'] else 'no'} | {', '.join(str(t) for t in g['transcripts'])} | "
-                          f"`{g['left']} {g['gap']} {g['right']}` | {'yes' if g['motif_window'] else 'no'} | "
-                          f"{'yes' if g['motif_borrows_exon_base'] else 'no'} |")
+                          f"`{g['left']} {g['gap']} {g['right']}` | "
+                          f"{ {True: 'yes', False: 'no', None: 'unresolved'}[g['motif_donor']] } | "
+                          f"{ {True: 'yes', False: 'no', None: 'unresolved'}[g['motif_acceptor']] } | "
+                          f"{g['motif_class'].replace('_', ' ')} |")
         records.append(rec)
         if a.markdown:
             i, c, s = fl["introns"], fl["cds"], fl["span"]

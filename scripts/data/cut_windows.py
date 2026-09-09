@@ -146,7 +146,7 @@ import struct
 import sys
 import zipfile
 
-TOOL_VERSION = "0.9"
+TOOL_VERSION = "0.10"
 
 # Length floors the sidecar counts features under (``feature_lengths``).
 # They are the ones engels measured in Helixer's decoder (relay note
@@ -1010,20 +1010,82 @@ def feature_lengths(transcripts: list[dict], lo: int, hi: int, min_intron: int =
 DONORS = ("GT", "GC")
 
 
-def motif_window(left: str, gap: str, right: str) -> tuple[bool, bool]:
+MOTIF_CLASSES = ("exact", "borrows_exon_base", "donor_only", "acceptor_only", "neither", "ambiguous")
+
+
+def motif_windows(left: str, gap: str, right: str) -> dict:
     """engels' overlapping-window test (relay note 20260909T212826Z-engels-0021):
     with one exonic base on each side, ``s = left[-1] + gap + right[0]``, a
     GT/GC donor window ``s[1:3]`` and an AG acceptor window ``s[L-1:L+1]``
     can both be satisfied by a 1-base gap that borrows a base from each
     exon (A|G|T reads GT and AG), which is how bricks2marble's default
     motif mask admits an ``EI -> I -> IE`` path of one intron base.
-    Returns (both windows satisfied, a window borrowed an exon base)."""
+
+    The two windows are reported apart, because their conjunction alone
+    cannot say which side failed (engels, note 20260909T222452Z-engels-0022):
+    ``donor`` and ``acceptor`` are True, False, or None when the window
+    holds a base outside A/C/G/T (an N in the assembly), and ``class`` is
+    one of ``MOTIF_CLASSES``: ``exact`` (both pass on the gap's own bases,
+    needs 4), ``borrows_exon_base`` (both pass, a window reached into an
+    exon, which is the 1-base case), ``donor_only``, ``acceptor_only``,
+    ``neither`` (both decided and both fail), ``ambiguous`` (a window is
+    unresolved and the other did not fail).  ``both`` is the conjunction
+    with an unresolved window counted as not passing, which is what
+    ``motif_window`` returned before 0.10."""
     L = len(gap)
     if L < 1 or not left or not right:
-        return False, False
+        return {"donor": None, "acceptor": None, "both": False, "borrows": False, "class": "ambiguous"}
     s = (left[-1] + gap + right[0]).upper()
-    ok = s[1:3] in DONORS and s[L - 1:L + 1] == "AG"
-    return ok, ok and L < 2
+    dw, aw = s[1:3], s[L - 1:L + 1]
+    donor = (dw in DONORS) if set(dw) <= set("ACGT") else None
+    acceptor = (aw == "AG") if set(aw) <= set("ACGT") else None
+    both = donor is True and acceptor is True
+    borrows = both and L < 2
+    if both:
+        cls = "borrows_exon_base" if borrows else "exact"
+    elif donor is False and acceptor is False:
+        cls = "neither"
+    elif donor is True and acceptor is False:
+        cls = "donor_only"
+    elif donor is False and acceptor is True:
+        cls = "acceptor_only"
+    else:
+        cls = "ambiguous"
+    return {"donor": donor, "acceptor": acceptor, "both": both, "borrows": borrows, "class": cls}
+
+
+def motif_window(left: str, gap: str, right: str) -> tuple[bool, bool]:
+    """(both windows satisfied, a window borrowed an exon base): the pre-0.10
+    conjunction, kept for callers that only need the combined verdict."""
+    m = motif_windows(left, gap, right)
+    return m["both"], m["borrows"]
+
+
+def motif_fields(left: str, gap: str, right: str) -> dict:
+    """The per-gap motif fields of a ``short_gaps`` entry from its flanks."""
+    m = motif_windows(left, gap, right)
+    g = gap.upper()
+    return {"motif_exact": len(g) >= 4 and g[:2] in DONORS and g[-2:] == "AG",
+            "motif_window": m["both"], "motif_borrows_exon_base": m["borrows"],
+            "motif_donor": m["donor"], "motif_acceptor": m["acceptor"], "motif_class": m["class"]}
+
+
+MOTIF_FIELDS_NONE = {"motif_exact": None, "motif_window": None, "motif_borrows_exon_base": None,
+                     "motif_donor": None, "motif_acceptor": None, "motif_class": None}
+
+
+def motif_summary(gaps: list[dict]) -> dict:
+    """Counts over ``short_gaps`` entries: the three pre-0.10 counters, the
+    class table (every class listed, zero when absent), and the unresolved
+    windows."""
+    return {
+        "motif_exact": sum(1 for g in gaps if g["motif_exact"]),
+        "motif_window": sum(1 for g in gaps if g["motif_window"]),
+        "motif_borrows_exon_base": sum(1 for g in gaps if g["motif_borrows_exon_base"]),
+        "motif_by_class": {c: sum(1 for g in gaps if g["motif_class"] == c) for c in MOTIF_CLASSES},
+        "motif_unresolved_windows": sum((g["motif_donor"] is None) + (g["motif_acceptor"] is None)
+                                        for g in gaps if g["motif_class"] is not None),
+    }
 
 
 def short_gaps(transcripts: list[dict], seq: str, start: int, end: int,
@@ -1036,8 +1098,9 @@ def short_gaps(transcripts: list[dict], seq: str, start: int, end: int,
     transcripts stating it, and, where the gap lies inside the window,
     ``flank`` exon bases on each side and the gap itself in transcript
     orientation, whether the gap's own ends read GT/GC..AG (``motif_exact``,
-    needs 4 bases) and whether the overlapping windows of ``motif_window``
-    do.  Coordinates are + strand, 0-based half-open.  ``exception`` is
+    needs 4 bases) and what the overlapping windows of ``motif_windows`` say,
+    donor and acceptor apart, with ``motif_class`` naming the failing side
+    or an unresolved base.  Coordinates are + strand, 0-based half-open.  ``exception`` is
     carried when the fetcher recorded one (NCBI GFF3 ``exception=ribosomal
     slippage``, stalin's note 20260909T214050Z-stalin-0021); the UCSC
     genePred sources carry none, so ``in_cds`` and the flanks are what the
@@ -1067,13 +1130,9 @@ def short_gaps(transcripts: list[dict], seq: str, start: int, end: int,
             left, gap, right = seq[b1 - flank - start:b1 - start], seq[b1 - start:a2 - start], seq[a2 - start:a2 + flank - start]
             if g["strand"] == "-":
                 left, gap, right = right.translate(COMP)[::-1], gap.translate(COMP)[::-1], left.translate(COMP)[::-1]
-            ok, borrowed = motif_window(left, gap, right)
-            g.update({"left": left, "gap": gap, "right": right,
-                      "motif_exact": len(gap) >= 4 and gap[:2] in DONORS and gap[-2:] == "AG",
-                      "motif_window": ok, "motif_borrows_exon_base": borrowed})
+            g.update({"left": left, "gap": gap, "right": right, **motif_fields(left, gap, right)})
         else:
-            g.update({"left": None, "gap": None, "right": None, "motif_exact": None,
-                      "motif_window": None, "motif_borrows_exon_base": None})
+            g.update({"left": None, "gap": None, "right": None, **MOTIF_FIELDS_NONE})
         out.append(g)
     lengths: dict[str, int] = {}
     for g in out:
@@ -1081,13 +1140,14 @@ def short_gaps(transcripts: list[dict], seq: str, start: int, end: int,
     return {
         "units": {"n": "distinct (strand, start, end) exon gaps shorter than min_intron",
                   "flanks": f"{flank} exon bases each side, transcript orientation",
-                  "motif_window": "engels' overlapping-window test, one exon base borrowed each side"},
+                  "motif_window": "engels' overlapping-window test, one exon base borrowed each side; "
+                                  "the conjunction of motif_donor and motif_acceptor, an unresolved window not passing",
+                  "motif_class": "exact | borrows_exon_base | donor_only | acceptor_only | neither | ambiguous "
+                                 "(a window holds a base outside ACGT and the other did not fail)"},
         "min_intron": min_intron, "n": len(out),
         "in_cds": sum(1 for g in out if g["in_cds"]),
         "by_length": lengths,
-        "motif_exact": sum(1 for g in out if g["motif_exact"]),
-        "motif_window": sum(1 for g in out if g["motif_window"]),
-        "motif_borrows_exon_base": sum(1 for g in out if g["motif_borrows_exon_base"]),
+        **motif_summary(out),
         "outside_window": sum(1 for g in out if g["gap"] is None),
         "gaps": out,
     }
@@ -1845,11 +1905,30 @@ def self_test() -> int:
     assert motif_window("CA", "GT", "TC") == (False, False)
     assert motif_window("CA", "GTA", "TC") == (False, False)
     assert motif_window("CA", "ATAC", "TC") == (False, False)
+    # 0.10: the two windows apart, and the class names which side failed (engels,
+    #       note 20260909T222452Z-engels-0022): a GT donor with no AG, an AG with no
+    #       donor, neither, and an N in a window leaves it unresolved rather than failed
+    mw = lambda l, g, r: (motif_windows(l, g, r)["donor"], motif_windows(l, g, r)["acceptor"], motif_windows(l, g, r)["class"])
+    assert mw("CA", "G", "TC") == (True, True, "borrows_exon_base")
+    assert mw("CA", "GTAG", "TC") == (True, True, "exact")
+    assert mw("CA", "GTAA", "CC") == (True, False, "donor_only")
+    assert mw("CA", "AAAG", "CC") == (False, True, "acceptor_only")
+    assert mw("CA", "ATAC", "CC") == (False, False, "neither")
+    assert mw("CN", "G", "TC") == (True, None, "ambiguous")      # N|G|T: donor reads GT, the acceptor window is N,G
+    assert mw("CA", "N", "TC") == (None, None, "ambiguous")
+    assert mw("CA", "GTAN", "CC") == (True, None, "ambiguous")
+    assert mw("CA", "ATAN", "CC") == (False, None, "ambiguous")  # one side undecided, the other did not fail
+    assert mw("CN", "GTAA", "CC") == (True, False, "donor_only")  # the N sits outside both windows
+    assert motif_window("CN", "G", "TC") == (False, False)       # the conjunction counts unresolved as not passing
+    assert mw("ca", "g", "tc") == (True, True, "borrows_exon_base")
     seq = "CCCCCCCCAGTCCCCCCCCCCCCC"  # + strand: exon ..CA | G | TC.. with the gap at 9
     tx = [{"id": "p", "strand": "+", "start": 0, "end": 24, "exons": [[0, 9], [10, 24]], "cds": [[0, 9], [10, 24]]}]
     sg = short_gaps(tx, seq, 0, 24)
     assert sg["n"] == 1 and sg["in_cds"] == 1 and sg["by_length"] == {"1": 1} and sg["motif_window"] == 1 \
         and sg["motif_borrows_exon_base"] == 1 and sg["motif_exact"] == 0, sg
+    assert sg["motif_by_class"] == {"exact": 0, "borrows_exon_base": 1, "donor_only": 0, "acceptor_only": 0,
+                                    "neither": 0, "ambiguous": 0} and sg["motif_unresolved_windows"] == 0, sg
+    assert (sg["gaps"][0]["motif_donor"], sg["gaps"][0]["motif_acceptor"], sg["gaps"][0]["motif_class"]) == (True, True, "borrows_exon_base")
     g = sg["gaps"][0]
     assert (g["left"], g["gap"], g["right"], g["length_mod_3"], g["transcripts"]) == ("CA", "G", "TC", 1, ["p"]), g
     rc = seq.translate(COMP)[::-1]  # minus strand: the same gap at 24-10=14
@@ -1862,9 +1941,35 @@ def self_test() -> int:
     s4 = short_gaps(tx4, seq4, 0, 26)
     assert s4["in_cds"] == 0 and s4["motif_exact"] == 1 and s4["motif_window"] == 1 \
         and s4["motif_borrows_exon_base"] == 0 and s4["gaps"][0]["gap"] == "GTAG", s4
+    assert s4["gaps"][0]["motif_class"] == "exact" and s4["motif_by_class"]["exact"] == 1
     # a gap whose flanks reach past the window edge is listed without sequence
     s5 = short_gaps(tx, seq, 8, 24)
-    assert s5["outside_window"] == 1 and s5["gaps"][0]["motif_window"] is None, s5
+    assert s5["outside_window"] == 1 and s5["gaps"][0]["motif_window"] is None and s5["gaps"][0]["motif_class"] is None, s5
+    assert s5["motif_by_class"] == {c: 0 for c in MOTIF_CLASSES} and s5["motif_unresolved_windows"] == 0, s5
+    checks += 1
+    # 69: the classes on real-shaped gaps through short_gaps, both strands: a
+    #     donor-only 4-base gap, an acceptor-only one, the Ty1 site TT|A|GG (neither),
+    #     and a minus-strand gap over an N, whose class is ambiguous and whose
+    #     unresolved window is counted once
+    seq9 = "CCCCCCCCAGTAACCCCCCCCAAAAGCCCCCCTTAGGCCCCCCCNGTCCCC"
+    tx9 = [{"id": "q", "strand": "+", "start": 0, "end": 51,
+            "exons": [[0, 9], [13, 22], [26, 34], [35, 44], [45, 51]],
+            "cds": [[0, 9], [13, 22], [26, 34], [35, 44], [45, 51]]}]
+    s9 = short_gaps(tx9, seq9, 0, 51)
+    assert [g["gap"] for g in s9["gaps"]] == ["GTAA", "AAAG", "A", "N"], s9["gaps"]
+    assert [g["motif_class"] for g in s9["gaps"]] == ["donor_only", "acceptor_only", "neither", "ambiguous"], s9["gaps"]
+    assert s9["gaps"][2]["left"] == "TT" and s9["gaps"][2]["right"] == "GG"
+    assert s9["motif_by_class"] == {"exact": 0, "borrows_exon_base": 0, "donor_only": 1, "acceptor_only": 1,
+                                    "neither": 1, "ambiguous": 1} and s9["motif_window"] == 0, s9
+    assert s9["motif_unresolved_windows"] == 2, s9["motif_unresolved_windows"]  # the N sits in both windows of a 1-base gap
+    rc9 = seq9.translate(COMP)[::-1]
+    txm9 = [{"id": "qm", "strand": "-", "start": 0, "end": 51,
+             "exons": [[51 - b, 51 - a] for a, b in reversed(tx9[0]["exons"])],
+             "cds": [[51 - b, 51 - a] for a, b in reversed(tx9[0]["cds"])]}]
+    sm9 = short_gaps(txm9, rc9, 0, 51)
+    assert sorted(g["motif_class"] for g in sm9["gaps"]) == sorted(g["motif_class"] for g in s9["gaps"]), sm9["gaps"]
+    assert sm9["motif_by_class"] == s9["motif_by_class"] and sm9["motif_unresolved_windows"] == 2
+    assert {g["gap"] for g in sm9["gaps"]} == {"GTAA", "AAAG", "A", "N"}, sm9["gaps"]
     checks += 1
     # 67: precedence: a CDS in another isoform over a short gap paints CDS; a short gap
     #     over another transcript's intron paints short_gap
