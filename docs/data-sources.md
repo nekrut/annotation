@@ -748,20 +748,53 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   duplicated region, and the old cutter let the last copy overwrite the
   earlier ones column by column. `--duplicate-rows identity` (default)
   keeps the copy with the most bases identical to the reference in that
-  block, ties to the first; `first` keeps the first row; the discarded
-  copies are counted in total, in aligned bases inside the window and
-  per informant. Measured on 2026-09-09: the human HBB window on the
+  block, ties to the first; `first` keeps the first row. The discarded
+  copies are counted in three units that do not agree with each other,
+  and the sidecar names the unit of every counter in
+  `block_selection.units` (lenin's point in relay note
+  20260909T191730Z-lenin-0018: a per-informant table must say whether
+  it counts rows, copies or bases): *rows* are MAF rows discarded
+  (`duplicate_rows_discarded`, and `rows` per informant); *copies* are
+  how many rows one informant had in one block (`max_copies` per
+  informant, `duplicate_max_copies` overall) and in how many blocks it
+  had more than one (`blocks` per informant, `duplicate_row_blocks`
+  overall, `duplicate_informants` for the number of informants
+  affected); *bases* are aligned informant bases inside the window that
+  the discarded rows carried (`duplicate_rows_discarded_bases_in_window`,
+  `bases` per informant), which is the one unit comparable with the
+  example itself, so the sidecar also reports
+  `kept_informant_bases_in_window`, the cells of the example that hold a
+  base. Measured on 2026-09-09: the human HBB window on the
   Cactus 241-way (4,931 bp, 2,517 blocks, 240 informants) has **no**
   overlapping blocks and no minus-strand reference rows, but 2,513 of
   its 2,517 blocks carry a duplicated species, up to 17 copies of one
   species in one block, 322,650 extra rows in all, holding 529,613
-  aligned bases inside the window against 899,732 aligned cells in the
-  example that keeps one copy each. 189 of the 240 informants have a
+  aligned bases inside the window against 863,014 base cells in the
+  example that keeps one copy each, so the discarded copies hold 61% of
+  what the example keeps. (The first version of this paragraph compared
+  against 899,732, a count of every cell that was aligned in any state,
+  gap columns included: 900,643 on the re-fetch of 2026-09-09; that is
+  not the unit the discarded-bases counter uses, and the sidecar now
+  reports both sides in one unit.) 189 of the 240 informants have a
   discarded copy; the 51 that do not are the primates, the caviomorph
   rodents and a few others whose beta-globin cluster is single-copy
-  against human, and the largest counts are ruminants, cetaceans and
-  bats (giraffe 9,945 extra rows, Sowerby's beaked whale 8,441, goat
-  7,353). The two policies differ on 1.5% of the example's cells
+  against human. The three units rank the affected informants
+  differently, which is why each is stated: by discarded *rows* and by
+  discarded *bases* the top ten are the same ten (giraffe 9,945 rows and
+  16,772 bases, Sowerby's beaked whale 8,441 and 14,678, goat 7,353 and
+  12,434; the median discarded row carries 1.6 bases inside the window
+  because Cactus blocks here are about 2 bp long, and one primate row
+  carries 15), but by *blocks affected* only four of those ten remain
+  (giraffe again at 2,207 of 2,517 blocks, then okapi 2,197, white-tailed
+  deer 2,196 and Père David's deer 2,194, the cervids and giraffids
+  having a few copies in nearly every block), and by *copies in one
+  block* the order is different again (Asian palm civet 17, Gambian
+  pouched rat 16, Sowerby's beaked whale 15, Chinese hamster 14, so
+  rodents and a carnivoran that were far down the rows list). A reader
+  who takes "189 informants affected" as one number will be wrong by
+  more than a rounding whichever unit they had in mind: per informant
+  the blocks affected run from 1 to 2,207 (median 676) and the rows per
+  affected block from 1 to 4.9. The two policies differ on 1.5% of the example's cells
   (18,329 of 1,183,440); `identity` leaves 655,643 cells identical to
   the reference against 638,479 for `first`, so `first` picks a paralog
   where a closer copy exists in about one column in sixty. The fly Adh
@@ -1041,7 +1074,9 @@ informants) is the design-level answer.
     two hazards engels tested (the HBB Cactus window has no overlapping
     blocks and no minus-strand reference rows) but a third: nearly every
     Cactus block carries several rows for one species, and those extra
-    copies hold 59% as many aligned bases as the example keeps. Open for
+    copies hold 61% as many aligned bases as the example keeps, in the
+    one unit both sides now share (the earlier 59% divided by a count
+    that included gap cells). Open for
     T-human-011: whether the model should see the copies (a paralog
     channel, or several rows per species) or one chosen copy, and if one,
     chosen how. `identity` is a stand-in; the defensible rule is synteny

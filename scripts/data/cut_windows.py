@@ -146,7 +146,7 @@ import struct
 import sys
 import zipfile
 
-TOOL_VERSION = "0.6"
+TOOL_VERSION = "0.7"
 BASE = {"A": 0, "C": 1, "G": 2, "T": 3}
 # Stop codons by NCBI genetic code table number, for the sequence check of
 # CDS ends.  1 standard; 4 mold/protozoan mitochondrial and Mycoplasma; 6
@@ -549,7 +549,11 @@ def paint_informants(blocks, ref: str, start: int, end: int, rows: list[str],
     dup_blocks = 0
     dup_rows = 0
     dup_bases = 0
-    dup_by: dict[str, int] = {}
+    dup_max = 0
+    # per informant, each in its own unit: MAF rows discarded, blocks in which
+    # the informant had several rows, the most rows it had in one block, and
+    # aligned bases inside the window that the discarded rows carried
+    dup_by: dict[str, dict[str, int]] = {}
     ref_dups = 0
     for block in blocks:
         rref = next((r for r in block if maf_source(r[1]) == ref), None)
@@ -590,12 +594,18 @@ def paint_informants(blocks, ref: str, start: int, end: int, rows: list[str],
                     best = max(range(len(cands)), key=lambda i: (ident(cands[i]), -i))
                 else:
                     best = 0
+                d = dup_by.setdefault(src, {"rows": 0, "blocks": 0, "max_copies": 0, "bases": 0})
+                d["blocks"] += 1
+                d["max_copies"] = max(d["max_copies"], len(cands))
+                dup_max = max(dup_max, len(cands))
                 for i, r in enumerate(cands):
                     if i != best:
                         dup_rows += 1
-                        dup_by[src] = dup_by.get(src, 0) + 1
-                        dup_bases += sum(1 for col, ch in enumerate(r[6])
-                                         if ch != "-" and start <= col_ref[col] < end)
+                        d["rows"] += 1
+                        b = sum(1 for col, ch in enumerate(r[6])
+                                if ch != "-" and start <= col_ref[col] < end)
+                        d["bases"] += b
+                        dup_bases += b
                 chosen.append(cands[best])
             else:
                 chosen.append(cands[0])
@@ -629,7 +639,29 @@ def paint_informants(blocks, ref: str, start: int, end: int, rows: list[str],
             if seen[q - start]:
                 twice[q - start] = 1
             seen[q - start] = 1
+    kept = sum(1 for k in range(K) for v in inf[k] if v not in (INF_UNALIGNED, INF_GAP))
     stats = {
+        "units": {
+            "overlapping_blocks": "MAF blocks",
+            "overlap_positions": "reference positions in the window",
+            "overlap_informant_bases_discarded": "aligned informant bases in the window (one per row and position)",
+            "overlap_informant_bases_lost": "aligned informant bases in the window",
+            "overlap_lost_by_informant": "aligned informant bases in the window",
+            "reference_minus_strand_blocks_flipped": "MAF blocks",
+            "reference_duplicate_rows": "MAF rows",
+            "duplicate_row_policy": "policy name (identity or first), not a count",
+            "duplicate_row_blocks": "MAF blocks with several rows for at least one informant",
+            "duplicate_informants": "informants with at least one discarded row",
+            "duplicate_max_copies": "rows of one informant in one block",
+            "duplicate_rows_discarded": "MAF rows",
+            "duplicate_rows_discarded_bases_in_window": "aligned informant bases in the window",
+            "kept_informant_bases_in_window": "aligned informant bases in the window (cells of the example that are a base)",
+            "duplicates_by_informant": "one record per informant with a discarded row; fields below",
+            "duplicates_by_informant.rows": "MAF rows discarded",
+            "duplicates_by_informant.blocks": "MAF blocks in which the informant had several rows",
+            "duplicates_by_informant.max_copies": "rows of the informant in one block",
+            "duplicates_by_informant.bases": "aligned bases in the window carried by the discarded rows",
+        },
         "overlapping_blocks": overlaps,
         "overlap_positions": sum(twice),
         "overlap_informant_bases_discarded": discarded,
@@ -639,9 +671,12 @@ def paint_informants(blocks, ref: str, start: int, end: int, rows: list[str],
         "reference_duplicate_rows": ref_dups,
         "duplicate_row_policy": duplicate_rows,
         "duplicate_row_blocks": dup_blocks,
+        "duplicate_informants": len(dup_by),
+        "duplicate_max_copies": dup_max,
         "duplicate_rows_discarded": dup_rows,
         "duplicate_rows_discarded_bases_in_window": dup_bases,
-        "duplicate_rows_by_informant": dict(sorted(dup_by.items(), key=lambda kv: (-kv[1], kv[0]))),
+        "kept_informant_bases_in_window": kept,
+        "duplicates_by_informant": dict(sorted(dup_by.items(), key=lambda kv: (-kv[1]["rows"], kv[0]))),
     }
     return inf, ins, stats
 
@@ -1515,11 +1550,39 @@ def self_test() -> int:
     bi = si["block_selection"]
     assert bi["duplicate_row_policy"] == "identity" and bi["duplicate_row_blocks"] == 1 \
         and bi["duplicate_rows_discarded"] == 1 and bi["duplicate_rows_discarded_bases_in_window"] == 4 \
-        and bi["duplicate_rows_by_informant"] == {"spA": 1} and bi["reference_duplicate_rows"] == 0, bi
+        and bi["duplicates_by_informant"] == {"spA": {"rows": 1, "blocks": 1, "max_copies": 2, "bases": 4}} \
+        and bi["duplicate_informants"] == 1 and bi["duplicate_max_copies"] == 2 \
+        and bi["reference_duplicate_rows"] == 0, bi
+    # kept bases: spA keeps CGT (3), spB keeps CGTT (4): the unit the discarded count compares against
+    assert bi["kept_informant_bases_in_window"] == 7, bi
+    assert set(bi["units"]) >= {k for k in bi if k != "units"}, "every counter has a stated unit"
     assert list(npz(os.path.join(d, "dup_i", "ov.w0.npz"))["inf"])[0:8] == [U, 1, 2, 3, G, U, U, U]
     cut(ov, os.path.join(d, "dup_f"), 0, 0, set(), False, True, duplicate_rows="first")
     sf = json.load(open(os.path.join(d, "dup_f", "ov.w0.json")))
     assert sf["block_selection"]["duplicate_rows_discarded_bases_in_window"] == 3
+    assert sf["block_selection"]["duplicates_by_informant"]["spA"]["bases"] == 3 \
+        and sf["block_selection"]["duplicates_by_informant"]["spA"]["rows"] == 1
+    assert sf["block_selection"]["kept_informant_bases_in_window"] == 8
+    checks += 1
+    # 59: the same informant duplicated in two blocks: rows and blocks are counted separately,
+    #     max_copies is per block, and a third row in one block counts two discarded rows
+    with open(ov + ".maf", "w") as fh:
+        fh.write("##maf version=1\n"
+                 "a score=0\n"
+                 "s ov.chr1 0 3 + 8 ACG\n"
+                 "s spA.c   0 3 + 8 ACG\n"
+                 "s spA.d   0 3 + 8 AAA\n"
+                 "s spA.e   0 3 + 8 CCC\n\n"
+                 "a score=0\n"
+                 "s ov.chr1 3 3 + 8 TTG\n"
+                 "s spA.c   0 3 + 8 TTG\n"
+                 "s spA.d   0 2 + 8 T-G\n\n")
+    cut(ov, os.path.join(d, "dup_2"), 0, 0, set(), False, True)
+    b2 = json.load(open(os.path.join(d, "dup_2", "ov.w0.json")))["block_selection"]
+    assert b2["duplicates_by_informant"] == {"spA": {"rows": 3, "blocks": 2, "max_copies": 3, "bases": 8}}, b2
+    assert b2["duplicate_row_blocks"] == 2 and b2["duplicate_rows_discarded"] == 3 \
+        and b2["duplicate_max_copies"] == 3 and b2["duplicate_informants"] == 1 \
+        and b2["kept_informant_bases_in_window"] == 6, b2
     assert list(npz(os.path.join(d, "dup_f", "ov.w0.npz"))["inf"])[0:8] == [U, 1, 0, 0, 3, U, U, U]
     checks += 1
     print(f"self-test passed ({checks} checks)")

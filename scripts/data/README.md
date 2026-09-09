@@ -118,10 +118,14 @@ a track unknown to the built-in class table to be reference-anchored;
 `--duplicate-rows` chooses the copy when one species has several rows in
 one block, as Cactus exports (`identity`, the default: the copy with most
 bases identical to the reference in that block; or `first`), and the
-sidecar's `block_selection` counts the discarded copies, the positions
-covered by overlapping blocks with what first-wins lost there, and the
-minus-strand reference blocks flipped into forward coordinates (section
-6.3); `--both-strands` adds the reverse-complement example. `--self-test` checks
+sidecar's `block_selection` counts the discarded copies in three stated
+units (MAF rows, copies per block and blocks affected, aligned bases in
+the window, each per informant and overall, with the kept bases in the
+same unit for comparison, and a `units` table naming the unit of every
+counter), the positions covered by overlapping blocks with what
+first-wins lost there, and the minus-strand reference blocks flipped
+into forward coordinates (section 6.3); `--both-strands` adds the
+reverse-complement example. `--self-test` checks
 labels, frames, boundaries, informant codes, insertions, distances, the
 reverse complement, the transcript filter, the alignment-class table,
 label counts on a padded window, an EPO-shaped two-block window with
