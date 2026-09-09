@@ -532,6 +532,33 @@ is the diagnostic — under genetic code 6 a model that has hard-coded TAA/TAG
 as terminators will show near-zero stop-codon precision there and normal
 numbers everywhere else, which is a signature no aggregate score would show.
 
+**The stop codon is inside the CDS here, and half the field disagrees.** GFF3
+says a CDS chain includes its stop codon, and every reference in Table 3 does.
+GTF says the opposite, and every tool with a GTF lineage inherits it:
+AUGUSTUS ships `stopCodonExcludedFromCDS true` in its species parameter files
+and emits the stop codon as a separate `stop_codon` feature, and BRAKER,
+GeneMark and SNAP are in the same family. Three base pairs is not a rounding
+error, because those three sit at the 3' end of *every* CDS chain: they are
+every terminal exon, every single-exon gene, every stop codon and every exact
+transcript match. Scoring an AUGUSTUS prediction of *S. cerevisiae* against
+the RefSeq annotation without correcting for this gives **exon F1 0.03 and
+stop-codon F1 0.00 while nucleotide F1 stays at 0.96** — a result that reads
+like a real one, not like a bug.
+
+So the convention is **detected from the prediction, not taken on trust**.
+`score.py` compares each transcript's `stop_codon` features against its CDS
+blocks and reports `stop_codon_convention_detected` as `inside`, `outside`,
+`mixed` or `unknown` in every result, and warns on stderr when the detection
+disagrees with the `--stop-outside-cds` flag or when the file mixes the two.
+With the flag, the prediction is brought into the reference's convention
+before anything is scored: where a `stop_codon` feature exists it is unioned
+into the chain, which is right even when the stop is split across an intron
+and right for a 3'-partial gene, which has none and must not be extended;
+where none exists — a bare GTF-derived CDS set — the last block in the
+direction of translation is extended by 3 bp instead and the guess is counted
+in `transcripts_stop_extended_by_3bp` so it is visible. A submission states
+which convention its output uses.
+
 ### 4.6 Proteome completeness
 
 Translate the predicted CDS and run BUSCO in protein mode
@@ -624,14 +651,15 @@ and the two aggregates. It refuses to print an aggregate over an incomplete
 panel unless `--partial` says so, because an unweighted mean over a subset is
 a different number wearing the same name.
 
-Two decisions the implementation forced, both above: the intron-length
-deciles are computed from the reference at score time (§4.3), and a CDS gap
-under 20 bp is not a splice junction (§4.3).
+Three decisions the implementation forced, all above: the intron-length
+deciles are computed from the reference at score time (§4.3), a CDS gap under
+20 bp is not a splice junction (§4.3), and the stop-codon convention is
+detected from the prediction rather than trusted to a flag (§4.5).
 
 Verification so far:
 
 - `python3 benchmark/score.py --self-test` scores built-in fixture pairs and
-  checks 41 expected counts: a prediction with one exact transcript, one
+  checks 69 expected values: a prediction with one exact transcript, one
   shifted minus-strand boundary, one overlapping-but-unaligned locus and one
   spurious locus; a fusion-and-split pair; a self-comparison that must score
   exactly 1.0 on every metric; two sequence-selection fixtures, one in RefSeq
@@ -641,7 +669,14 @@ Verification so far:
   scaffold); the streaming FASTA window reader against a plain read; and a
   two-record FASTA in which a window overruns the end of a record, on the
   first record and on the last, checking that it is clipped and that the
-  windows queued behind it are still served.
+  windows queued behind it are still served; an AUGUSTUS-shaped prediction
+  (CDS 3 bp short, separate `stop_codon` features, on both strands) which must
+  score exactly 1.0 everywhere with `--stop-outside-cds`, be *detected* as
+  `outside` with or without the flag, and lose exactly its terminal exons,
+  single-exon genes, stop codons and transcript matches without it; the same
+  file with the `stop_codon` rows stripped, where the convention is
+  undetectable and the 3 bp are guessed back; and a prediction that reuses
+  transcript ids across two sequences.
 - **Identity runs on all twenty panel references.** Every species in
   `panel.tsv` scored against its own reference gives F1 = 1.0 and MCC = 1.0 on
   every metric, with **0 fusions and 0 splits** everywhere. Cost on one laptop
@@ -681,6 +716,51 @@ Verification so far:
   a larger `GC_WINDOW`, it would take out the tail of every affected scaffold.
   The regression fixture above fails on the old code with four wrong values
   and passes on the new.
+- **Real predictor output, and what it found.** AUGUSTUS 3.5.0 (bioconda
+  `augustus-3.5.0-pl5321h5653ebf_10`) was run ab initio on *S. cerevisiae*
+  (`--species=saccharomyces_cerevisiae_S288C`, 47 s wall on 17 cores, 237 MB
+  peak) and on *S. pombe* twice, once with its own parameters and once with
+  the *S. cerevisiae* ones. Its GFF3 is the shape no RefSeq-versus-RefSeq run
+  can reach: `transcript` rather than `mRNA`, no `exon` features, no `region`
+  features, no UTR, and the stop codon *outside* the CDS. Three defects
+  followed, all fixed and all invisible on a reference:
+  1. **`--stop-outside-cds` was a no-op.** The flag was recorded in the result
+     and never applied, so the 3 bp were never restored. On *S. cerevisiae*
+     that is exon F1 **0.027**, terminal-exon F1 0.000, single-exon F1 0.000
+     and stop-codon F1 0.000, against nucleotide F1 0.959 and locus F1 0.919 —
+     the healthy-looking numbers are exactly the ones a 3 bp 3' shift does not
+     move. Corrected, the same prediction scores exon F1 0.757 and stop-codon
+     F1 0.912. The flag now merges `stop_codon` features into the chain, and
+     the convention is detected and cross-checked against the flag (§4.5).
+  2. **A reused transcript id silently welded chains together.** AUGUSTUS
+     restarts its gene numbering at `g1` in every invocation, so concatenating
+     per-chromosome output without renaming gives one `g1.t1` per chromosome.
+     The loader keyed on the id alone, so 5,154 predicted transcripts became
+     663 chimaeras spanning chromosomes, scoring nucleotide F1 0.198 with no
+     complaint. Ids that appear on more than one sequence or strand are now
+     counted in `predicted_conflicting_transcript_ids` and warned about; the
+     naive concatenation reports 466 of them.
+  3. **`report.py` dropped a duplicate species without a word.** Two results
+     for the same species — a run and its ablation, which is exactly what the
+     two *S. pombe* runs are — silently kept the last and printed
+     "1 of 20 species scored". It now names both files and exits 2.
+  With those fixed, the numbers are the first real ones this benchmark has
+  produced, and they say something the design intended:
+
+  | run | nucleotide F1 | exon F1 | donor F1 | transcript F1 | locus F1 |
+  |---|---|---|---|---|---|
+  | *S. cerevisiae*, own parameters | 0.959 | 0.757 | 0.394 | 0.780 | 0.919 |
+  | *S. pombe*, own parameters | 0.955 | 0.773 | 0.853 | 0.700 | 0.924 |
+  | *S. pombe*, *S. cerevisiae* parameters | 0.867 | **0.294** | **0.174** | 0.391 | 0.826 |
+
+  Swapping the parameter set between two ascomycete yeasts of nearly the same
+  size and GC costs **62% of exon F1 and 80% of donor F1 while nucleotide F1
+  falls by 9%**. That is the whole argument for §4.8 reporting a vector rather
+  than a headline number: a nucleotide-level score would have called this a
+  small degradation. It is also a floor for the charter's clade-independence
+  claim — any model claiming it has to beat a parameter swap between two
+  yeasts before a mammal-to-fungus claim means anything. The declarations and
+  full results are in `benchmark/validation/`.
 - **Ensembl input.** `Caenorhabditis_elegans.WBcel235.gff3.gz` from the
   Ensembl FTP site — no `region` features at all, `gene:`/`transcript:`
   ID prefixes — parses and scores: 6 nuclear chromosomes kept, `MtDNA`
@@ -711,17 +791,16 @@ Verification so far:
 1. **The scorer does not compute §4.6 or §4.7.** BUSCO, OMArk, and the cost
    columns are external and are merged by `report.py --cost`; nothing yet
    produces that TSV. T-human-009 owns the cost half.
-2. **Degraded-copy runs cover two of twenty species.** Identity runs now
-   cover all twenty and `--genome` covers six including a vertebrate (§6), so
-   what is left untested is behaviour under *wrong* input: only
-   *S. cerevisiae* and *H. sapiens* have been scored against a degraded copy,
-   and no real predictor output has ever been scored. An identity run
-   exercises every code path but pins only the fixed points; the degraded runs
-   are what show the metrics move in the right direction and by how much.
-   The 14 remaining species need one each, and the first real GFF3 out of
-   AUGUSTUS or Helixer will exercise the §4 conventions (stop codon in or out
-   of the CDS, `Parent` shapes, missing `region` features) that no
-   RefSeq-versus-RefSeq run can reach.
+2. **Real predictor output covers two species and one tool.** AUGUSTUS has
+   now been scored on *S. cerevisiae* and *S. pombe* (§6), which is what
+   found the three defects listed there. What that does *not* cover: a tool
+   with a different output shape — Helixer and Tiberius emit no `stop_codon`
+   features at all, so the §4.5 blind 3 bp extension is exercised only by a
+   fixture; a genome with alt loci or many scaffolds, where the prediction's
+   sequence set and the reference's diverge; and any evidence-based pipeline,
+   whose GFF3 carries UTRs and alternative isoforms. Degraded-copy runs still
+   cover only *S. cerevisiae* and *H. sapiens*. The next run should be
+   Helixer or Tiberius on one vertebrate.
 3. **No high-confidence subset** (§2.3). Needed before any accuracy above
    roughly the annotation error rate means anything. Candidate construction:
    loci with MANE Select support in human, community-curated loci elsewhere,
@@ -731,8 +810,12 @@ Verification so far:
    comparable across kingdoms. Needs a tree; overlaps T-human-008.
 5. **Ensembl and predictor input rely on a name heuristic** (§4). Without
    RefSeq `region` features the scorer recognises organelles and alt loci from
-   the sequence name, which is verified on Ensembl *C. elegans* and on
-   fixtures but is not a specification. Any submission whose reference lacks
+   the sequence name, which is verified on Ensembl *C. elegans*, on the
+   AUGUSTUS runs and on fixtures, but is not a specification. Note that the
+   heuristic never had to act on the AUGUSTUS runs: the *sequence selection is
+   derived from the reference*, so a prediction naming the mitochondrion
+   `NC_001224.1` is dropped because the reference calls it an organelle, not
+   because the name looked like one. Any submission whose *reference* lacks
    `region` features should pass `--seqids` and say so in the declaration.
 6. **No RNA-seq accessions chosen** (§3.2 channel 4). Evidence-based tools
    cannot be run on the panel until each species has a declared, fixed
@@ -747,7 +830,14 @@ Verification so far:
    *P. falciparum*, *C. elegans*, *D. melanogaster* and *T. rubripes*
    (391 Mb, the largest so far, checksum verified). It has still not been
    exercised at 3 Gb scale.
-10. **The local-GC stratification (§4.3) degenerates on AT-rich genomes.**
+10. **AUGUSTUS over-predicts introns in *S. cerevisiae* and the benchmark
+   cannot yet say by how much it should.** Donor F1 is 0.394 there against
+   0.853 on *S. pombe*, from 571 predicted introns against 281 scored
+   reference ones in a genome that is 95.3% single-exon (Table 2). Whether
+   that is a real weakness or an artefact of scoring a near-intronless genome
+   at splice-site level is not decidable from one tool; it needs the second
+   predictor from item 2. Recorded so the number is not read as settled.
+11. **The local-GC stratification (§4.3) degenerates on AT-rich genomes.**
    The five bins are fixed absolute GC bands, which is what makes the column
    comparable across species, but the panel deliberately spans 19.5% to 48.5%
    GC: 98.9% of *P. falciparum* donors land in the `<30%` bin and 83% of

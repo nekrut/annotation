@@ -81,9 +81,25 @@ def main():
 
     meta = load_panel()
     rows = {}
+    seen = {}
+    dupes = []
     for path in args.results:
         r = json.load(open(path))
-        rows[r["species"]] = r
+        sp = r["species"]
+        if sp in seen:
+            dupes.append((sp, seen[sp], path))
+        seen[sp] = path
+        rows[sp] = r
+    # Two results for one species is a submission with two runs in it, and
+    # keeping the last silently reports one of them: an ablation scored
+    # alongside the real run would vanish here without a word.
+    if dupes:
+        for sp, first, second in dupes:
+            print("%s appears twice: %s and %s" % (sp, first, second),
+                  file=sys.stderr)
+        print("one result per species; drop or merge the duplicates",
+              file=sys.stderr)
+        return 2
     cost = {}
     cost_cols = []
     if args.cost:

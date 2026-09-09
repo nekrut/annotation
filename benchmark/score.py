@@ -114,11 +114,17 @@ class Annotation:
 
     def __init__(self):
         self.cds = defaultdict(list)      # tid -> [(start, end), ...]
+        self.stops = defaultdict(list)    # tid -> [(start, end), ...] stop_codon
         self.where = {}                   # tid -> (seqid, strand)
         self.gene_of = {}                 # tid -> gene id (may be the tid)
         self.seq_len = {}                 # seqid -> length
         self.region_attrs = {}            # seqid -> attribute string
         self.explicit_genes = False
+        # Transcript ids that appear on more than one sequence or strand.
+        # Concatenating per-chromosome predictor output produces exactly this,
+        # because AUGUSTUS restarts its gene numbering at g1 in every run, and
+        # the collision silently welds unrelated chains into one transcript.
+        self.id_conflicts = set()
 
     def chains(self):
         """tid -> (seqid, strand, ((s, e), ...)) with CDS sorted by position."""
@@ -127,6 +133,94 @@ class Annotation:
             seqid, strand = self.where[tid]
             out[tid] = (seqid, strand, tuple(sorted(blocks)))
         return out
+
+    def stop_codon_convention(self):
+        """Which stop-codon convention this file actually uses.
+
+        GFF3 says the CDS includes the stop codon and that is what RefSeq,
+        Ensembl and the panel references do.  GTF says the opposite, and every
+        tool with a GTF lineage inherits it: AUGUSTUS ships
+        ``stopCodonExcludedFromCDS true`` in its species parameter files and
+        warns about it on stderr, and BRAKER, GeneMark and SNAP output is in
+        the same family.  Getting this wrong is not a rounding error -- it
+        moves the 3' end of every CDS chain by 3 bp, which is every terminal
+        exon, every single-exon gene, every stop codon and every exact
+        transcript match -- so it is detected from the file rather than
+        trusted to a flag.
+
+        Returns ``(verdict, counts)`` where verdict is ``inside``, ``outside``,
+        ``mixed`` or ``unknown``.  ``unknown`` means there were no
+        ``stop_codon`` features to judge by, which is the normal case for a
+        reference.
+        """
+        inside = outside = 0
+        for tid, stops in self.stops.items():
+            blocks = self.cds.get(tid)
+            if not blocks or not stops:
+                continue
+            hit = any(s <= be and bs <= e for (s, e) in stops
+                      for (bs, be) in blocks)
+            if hit:
+                inside += 1
+            else:
+                outside += 1
+        total = inside + outside
+        counts = {"transcripts_with_stop_codon_feature": total,
+                  "stop_inside_cds": inside, "stop_outside_cds": outside}
+        if not total:
+            return "unknown", counts
+        if outside >= 0.9 * total:
+            return "outside", counts
+        if inside >= 0.9 * total:
+            return "inside", counts
+        return "mixed", counts
+
+    def include_stop_codons(self, seq_len=None):
+        """Bring a stop-codon-excluding annotation into the GFF3 convention.
+
+        Where a ``stop_codon`` feature exists it is unioned into the CDS
+        chain, which is correct even when the stop is split across an intron
+        and correct for a 3'-partial gene, which has no ``stop_codon`` feature
+        and must not be extended.  Where none exists -- a bare GTF-style CDS
+        set -- the last block in the direction of translation is extended by
+        3 bp instead, clipped to the sequence, and counted separately so the
+        guess is visible in the result.
+        """
+        seq_len = self.seq_len if seq_len is None else seq_len
+        merged = extended = 0
+        for tid, blocks in list(self.cds.items()):
+            stops = self.stops.get(tid)
+            if stops and not any(s <= be and bs <= e for (s, e) in stops
+                                 for (bs, be) in blocks):
+                self.cds[tid] = merge_intervals(blocks + stops)
+                merged += 1
+            elif not stops:
+                seqid, strand = self.where[tid]
+                limit = seq_len.get(seqid)
+                b = sorted(blocks)
+                if strand == "-":
+                    new = (max(1, b[0][0] - 3), b[0][1])
+                    b[0] = new
+                else:
+                    end = b[-1][1] + 3
+                    if limit:
+                        end = min(end, limit)
+                    b[-1] = (b[-1][0], end)
+                self.cds[tid] = merge_intervals(b)
+                extended += 1
+        return {"transcripts_stop_merged_from_feature": merged,
+                "transcripts_stop_extended_by_3bp": extended}
+
+
+def merge_intervals(blocks):
+    """Sorted, non-overlapping, adjacency-joined 1-based inclusive blocks."""
+    out = []
+    for s, e in sorted(blocks):
+        if out and s <= out[-1][1] + 1:
+            out[-1] = (out[-1][0], max(out[-1][1], e))
+        else:
+            out.append((s, e))
+    return [tuple(b) for b in out]
 
 
 def load_gff(path):
@@ -175,8 +269,15 @@ def load_gff(path):
                     tid = "%s:%d:%s" % (seqid, start, f[6])
                 # A CDS may list several parents; the first is the transcript.
                 tid = tid.split(",")[0]
+                if tid in ann.where and ann.where[tid] != (seqid, f[6]):
+                    ann.id_conflicts.add(tid)
                 ann.cds[tid].append((start, end))
                 ann.where[tid] = (seqid, f[6])
+            elif ftype == "stop_codon":
+                tid = (_attr(attrs, "Parent") or _attr(attrs, "transcript_id")
+                       or _attr(attrs, "ID"))
+                if tid:
+                    ann.stops[tid.split(",")[0]].append((start, end))
     for tid in ann.cds:
         ann.gene_of[tid] = tx_gene.get(tid, tid)
     for seqid, end in max_end.items():
@@ -751,7 +852,8 @@ def _transcripts(ref_loci, pred_loci, ref_chains, pred_chains, matches):
     return prf(tp, fp, fn)
 
 
-def codons(ref_chains, pred_chains, seqids, stop_in_cds=True):
+def codons(ref_chains, pred_chains, seqids, stop_in_cds=True,
+           detected="unknown", detected_counts=None, merge_stats=None):
     """Section 4.5.  Start and stop codon positions, reported separately."""
     def ends(chains):
         starts, stops = set(), set()
@@ -772,7 +874,12 @@ def codons(ref_chains, pred_chains, seqids, stop_in_cds=True):
     for name, r, p in (("start", r_start, p_start), ("stop", r_stop, p_stop)):
         tp = len(r & p)
         out[name] = prf(tp, len(p) - tp, len(r) - tp)
+    # What the run was told, what the prediction file actually shows, and
+    # what was done about it.
     out["stop_codon_inside_cds"] = bool(stop_in_cds)
+    out["stop_codon_convention_detected"] = detected
+    out.update(detected_counts or {})
+    out.update(merge_stats or {})
     return out
 
 
@@ -926,6 +1033,16 @@ def score(reference, prediction, species, genome=None, seqids=None,
           stop_in_cds=True):
     ref = load_gff(reference)
     pred = load_gff(prediction)
+    # Section 4.5.  Detected from the file, not taken on trust: a prediction
+    # whose CDS excludes the stop codon is 3 bp short at the 3' end of every
+    # chain, which silently zeroes terminal exons, single-exon genes, stop
+    # codons and exact transcript matches while leaving the nucleotide and
+    # locus numbers looking healthy.
+    pred_convention, convention_counts = pred.stop_codon_convention()
+    merge_stats = {"transcripts_stop_merged_from_feature": 0,
+                   "transcripts_stop_extended_by_3bp": 0}
+    if not stop_in_cds:
+        merge_stats = pred.include_stop_codons(seq_len=ref.seq_len)
     dropped = {}
     keep = select_seqids(ref, whitelist=seqids, reasons=dropped)
     ref_chains = {t: c for t, c in ref.chains().items() if c[0] in keep}
@@ -954,12 +1071,18 @@ def score(reference, prediction, species, genome=None, seqids=None,
             len(pred.chains()) - len(pred_chains),
         "predicted_sequences_absent_from_reference":
             len({c[0] for c in pred.chains().values()} - set(ref.seq_len)),
+        # Non-zero means the prediction reuses a transcript id across
+        # sequences or strands, so those chains are a merge of unrelated
+        # genes and nothing downstream of here is meaningful for them.
+        "predicted_conflicting_transcript_ids": len(pred.id_conflicts),
+        "reference_conflicting_transcript_ids": len(ref.id_conflicts),
         "nucleotide": nucleotide(ref_chains, pred_chains, keep, scored_bp),
         "exon": exons(ref_chains, pred_chains, keep),
         "splice": splice(ref_chains, pred_chains, keep, fetch),
         "transcript": tx,
         "locus": locus,
-        "codon": codons(ref_chains, pred_chains, keep, stop_in_cds),
+        "codon": codons(ref_chains, pred_chains, keep, stop_in_cds,
+                        pred_convention, convention_counts, merge_stats),
     }
 
 
@@ -1032,6 +1155,36 @@ chr1\t.\tgene\t5600\t6000\t.\t+\t.\tID=pg3
 chr1\t.\tmRNA\t5600\t6000\t.\t+\t.\tID=p3;Parent=pg3
 chr1\t.\tCDS\t5600\t6000\t.\t+\t0\tParent=p3
 """
+
+
+# The same three transcripts as REF_FIXTURE, written the way AUGUSTUS writes
+# them: every CDS chain stops 3 bp short and the stop codon is its own
+# feature.  On the minus strand the missing 3 bp are at the low coordinate.
+# With --stop-outside-cds this must score exactly 1.0 everywhere; without it,
+# nothing whose 3' end is a stop codon can match.
+STOP_PRED = """##gff-version 3
+chr1\t.\tgene\t1000\t3000\t.\t+\t.\tID=pg1
+chr1\t.\ttranscript\t1000\t3000\t.\t+\t.\tID=p1;Parent=pg1
+chr1\t.\tCDS\t1000\t1100\t.\t+\t0\tParent=p1
+chr1\t.\tCDS\t2000\t2100\t.\t+\t0\tParent=p1
+chr1\t.\tCDS\t2900\t2997\t.\t+\t0\tParent=p1
+chr1\t.\tstop_codon\t2998\t3000\t.\t+\t0\tParent=p1
+chr1\t.\tgene\t6000\t6500\t.\t-\t.\tID=pg2
+chr1\t.\ttranscript\t6000\t6500\t.\t-\t.\tID=p2;Parent=pg2
+chr1\t.\tstop_codon\t6000\t6002\t.\t-\t0\tParent=p2
+chr1\t.\tCDS\t6003\t6200\t.\t-\t0\tParent=p2
+chr1\t.\tCDS\t6400\t6500\t.\t-\t0\tParent=p2
+chr1\t.\tgene\t9000\t9300\t.\t+\t.\tID=pg3
+chr1\t.\ttranscript\t9000\t9300\t.\t+\t.\tID=p3;Parent=pg3
+chr1\t.\tCDS\t9000\t9297\t.\t+\t0\tParent=p3
+chr1\t.\tstop_codon\t9298\t9300\t.\t+\t0\tParent=p3
+"""
+
+# The same again with the stop_codon rows removed, which is what a GTF-derived
+# prediction looks like after a naive conversion: the convention can no longer
+# be detected and the 3 bp have to be guessed back.
+STOP_PRED_BARE = "\n".join(
+    l for l in STOP_PRED.splitlines() if "\tstop_codon\t" not in l) + "\n"
 
 
 # Section 4 sequence selection.  Every line is a shape taken from a real panel
@@ -1177,6 +1330,66 @@ def self_test():
         if v != 1.0:
             fails.append("self-comparison %s: got %r, want 1.0" % ("/".join(path), v))
 
+    # Section 4.5, the stop-codon convention.  AUGUSTUS-shaped output must
+    # score 1.0 everywhere with --stop-outside-cds and must be *detected* as
+    # such whether or not the flag is given, because without the flag the
+    # metrics anchored on the 3' end all collapse while nucleotide and locus
+    # stay high enough to look like a real result.
+    spred = os.path.join(d, "spred.gff3")
+    open(spred, "w").write(STOP_PRED)
+    sr = score(ref, spred, "fixture", stop_in_cds=False)
+    check("stop detected", sr["codon"]["stop_codon_convention_detected"], "outside")
+    check("stop merged", sr["codon"]["transcripts_stop_merged_from_feature"], 3)
+    check("stop extended", sr["codon"]["transcripts_stop_extended_by_3bp"], 0)
+    for path in (("nucleotide", "f1"), ("exon", "all", "f1"),
+                 ("transcript", "f1"), ("locus", "f1"),
+                 ("codon", "start", "f1"), ("codon", "stop", "f1")):
+        v = sr
+        for k in path:
+            v = v[k]
+        if v != 1.0:
+            fails.append("stop-outside %s: got %r, want 1.0" % ("/".join(path), v))
+    # The same file scored without the flag: still detected, and the damage is
+    # exactly the terminal and single exons and every stop codon.
+    sw = score(ref, spred, "fixture")
+    check("stop detected without flag",
+          sw["codon"]["stop_codon_convention_detected"], "outside")
+    check("stop tp without flag", sw["codon"]["stop"]["tp"], 0)
+    # t1's two 5' exons and t2's initial exon survive: on the minus strand it
+    # is the *first* block that carries the stop codon.
+    check("stop exon tp without flag", sw["exon"]["all"]["tp"], 3)
+    check("stop tx tp without flag", sw["transcript"]["tp"], 0)
+    check("stop start tp without flag", sw["codon"]["start"]["tp"], 3)
+    os.unlink(spred)
+
+    # No stop_codon features at all: the convention cannot be detected, the
+    # 3 bp are guessed, and the guess is reported.
+    bpred = os.path.join(d, "bpred.gff3")
+    open(bpred, "w").write(STOP_PRED_BARE)
+    br = score(ref, bpred, "fixture", stop_in_cds=False)
+    check("bare stop detected",
+          br["codon"]["stop_codon_convention_detected"], "unknown")
+    check("bare stop extended",
+          br["codon"]["transcripts_stop_extended_by_3bp"], 3)
+    check("bare stop tp", br["codon"]["stop"]["tp"], 3)
+    check("bare exon f1", br["exon"]["all"]["f1"], 1.0)
+    os.unlink(bpred)
+
+    # A reference has no stop_codon features either, so an ordinary run must
+    # report "unknown" and change nothing.
+    check("ref convention", r["codon"]["stop_codon_convention_detected"], "unknown")
+    check("ref not merged", r["codon"]["transcripts_stop_merged_from_feature"], 0)
+
+    # An id reused across sequences must be counted, not silently merged.
+    cpred = os.path.join(d, "cpred.gff3")
+    open(cpred, "w").write(PRED_FIXTURE.replace("chr1", "chr2")
+                           .replace("##gff-version 3\n", "")
+                           + PRED_FIXTURE)
+    cr = score(ref, cpred, "fixture")
+    check("id conflicts", cr["predicted_conflicting_transcript_ids"], 4)
+    check("ref id conflicts", cr["reference_conflicting_transcript_ids"], 0)
+    os.unlink(cpred)
+
     select_test(check)
 
     # The window fetcher must return the same bases as a plain read.
@@ -1273,6 +1486,54 @@ def main():
     # C. elegans chromosome I "I" and RefSeq calls it NC_003279.8, so this is
     # one wrong download away at all times.  Say so on stderr; the counts are
     # in the JSON either way.
+    # The stop-codon convention is the other silent way a correct prediction
+    # scores like a broken one.  AUGUSTUS, BRAKER, GeneMark and SNAP all
+    # exclude the stop codon from the CDS; the panel references all include
+    # it.  Without --stop-outside-cds an AUGUSTUS run scores 0.00 exon F1 and
+    # 0.00 stop-codon F1 on S. cerevisiae while nucleotide F1 stays at 0.96,
+    # which reads as a real result.
+    detected = row["codon"]["stop_codon_convention_detected"]
+    if detected == "outside" and not args.stop_outside_cds:
+        print("warning: the prediction's stop_codon features lie OUTSIDE its "
+              "CDS (%d of %d transcripts with a stop_codon feature), but the "
+              "run was not given --stop-outside-cds. Every terminal exon, "
+              "single-exon gene, stop codon and exact transcript match is "
+              "being scored 3 bp short. Re-run with --stop-outside-cds."
+              % (row["codon"]["stop_outside_cds"],
+                 row["codon"]["transcripts_with_stop_codon_feature"]),
+              file=sys.stderr)
+    elif detected == "inside" and args.stop_outside_cds:
+        print("warning: --stop-outside-cds was given but the prediction's "
+              "stop_codon features lie INSIDE its CDS (%d of %d). The CDS "
+              "chains were left alone where a stop_codon feature said so; "
+              "check the flag."
+              % (row["codon"]["stop_inside_cds"],
+                 row["codon"]["transcripts_with_stop_codon_feature"]),
+              file=sys.stderr)
+    elif detected == "mixed":
+        print("warning: the prediction mixes stop-codon conventions (%d "
+              "inside, %d outside of %d transcripts with a stop_codon "
+              "feature)."
+              % (row["codon"]["stop_inside_cds"],
+                 row["codon"]["stop_outside_cds"],
+                 row["codon"]["transcripts_with_stop_codon_feature"]),
+              file=sys.stderr)
+    elif detected == "unknown" and args.stop_outside_cds:
+        print("warning: --stop-outside-cds was given but the prediction has "
+              "no stop_codon features, so %d CDS chains were extended by a "
+              "blind 3 bp. A 3'-partial gene has no stop codon and is "
+              "extended wrongly by this."
+              % row["codon"]["transcripts_stop_extended_by_3bp"],
+              file=sys.stderr)
+
+    if row["predicted_conflicting_transcript_ids"]:
+        print("warning: %d transcript ids in the prediction appear on more "
+              "than one sequence or strand. Their CDS blocks have been welded "
+              "into one chain and every metric on them is meaningless. This "
+              "is what concatenating per-chromosome predictor output without "
+              "renaming looks like."
+              % row["predicted_conflicting_transcript_ids"], file=sys.stderr)
+
     unscored = row["predicted_transcripts_not_scored"]
     total_pred = row["predicted_transcripts"] + unscored
     if total_pred and unscored > total_pred / 2:
