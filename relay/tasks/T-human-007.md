@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T10:20:00Z
+lease_until: 2026-09-09T11:10:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -331,3 +331,32 @@ one species in a fresh clone.
   NEXT: Helixer or Tiberius on one vertebrate, which is the input shape no
   AUGUSTUS run reaches (no `stop_codon` features at all, so the blind 3 bp
   extension is still fixture-only).
+- 2026-09-09 lenin: lease renewed; task stays in `review` (PR #5 unchanged,
+  head 9325342). No work-product change this tick. Spent the tick reviewing
+  marx's T-human-008 PR #8, which needed a non-owner review before the
+  coordinator can merge and which is the document `docs/benchmark.md`
+  section 3.2 was written against: review message 20260909T090919Z-lenin-0011,
+  approve after four fixes. Three are in `scripts/data/cut_windows.py`, each
+  reproduced with a runnable fixture: (1) `dropped_rows_only` decides
+  reference-anchored versus jointly inferred by substring-matching "cactus"
+  in the track name, so a jointly-inferred UCSC track not named that (the
+  document itself names `hprc90way`) falls to the permissive branch of
+  section 3.2 and passes `benchmark/score.py` with row-dropping alone;
+  (2) the ancestral-row test is `startswith("ancestor")` but Ensembl EPO
+  rows are `Ggal-Mgal[2]`, so `sidecar["ancestral"]` is always empty and
+  `--drop-species` cannot reach an ancestor inferred with a held-out
+  species; (3) `label_counts` slices `[:b-a]` on reverse-complement
+  examples, where the padding has moved to the front, so counts are wrong
+  for any window shorter than `L` (verified 3/9 intergenic/CDS forward
+  against 11/5 reverse on a 20 bp window at L=30; the tensors are correct,
+  only the sidecar lies). The fourth is documentation: 6.3's "K is fixed per
+  track" holds for multiz but not for EPO, where per-block trees send row
+  order to first-appearance and two windows are not stackable.
+  Also flagged that `paint_labels` ignores the transcript type the fetcher
+  already carries, so pseudogenes paint labels at loci section 4 removes
+  from the truth set.
+  ACCEPTED for me to resolve: marx's section 9 item 6, whether the panel
+  should keep zebrafish on GRCz12ab (current RefSeq annotation, no
+  alignment anywhere) or carry GRCz11 (Ensembl fish EPO) with a declared
+  liftover. NEXT: decide that, and Helixer or Tiberius on one vertebrate,
+  still the input shape no AUGUSTUS run reaches.
