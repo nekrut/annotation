@@ -66,6 +66,19 @@ GC_WINDOW = 200
 MIN_INTRON = 20
 GC_BINS = [0.30, 0.40, 0.50, 0.60]  # five bins: <30, 30-40, 40-50, 50-60, >=60
 
+# Section 4.5, stop codons by NCBI translation table, used only by the
+# genome-based convention check below.  Only the tables the panel uses are
+# listed: table 1 for nineteen species, and table 6 for Tetrahymena
+# thermophila, where TAA and TAG code for glutamine and TGA is the only stop.
+# An unlisted table is an error rather than a silent fall back to table 1,
+# because falling back is exactly how a code-6 genome gets judged as if two
+# thirds of its stops were real.
+STOP_CODONS = {1: ("TAA", "TAG", "TGA"), 6: ("TGA",)}
+# How many predicted chains the genome check needs before it will return a
+# verdict.  Three is enough for the fixtures; a real prediction brings
+# thousands, and the count is reported so a thin verdict is visible.
+MIN_CONVENTION_CHAINS = 3
+
 TX_TYPES = {"mRNA", "transcript", "CDS_transcript"}
 
 # Section 4 scores the nuclear primary assembly.  Organelle genomes are out of
@@ -618,14 +631,34 @@ def introns_of(chains, seqids, min_len=MIN_INTRON):
 
 
 def sites_of(introns):
-    """Donor and acceptor positions, strand-aware, with their intron length."""
+    """Donor and acceptor positions, strand-aware, with their intron length.
+
+    One position can carry several intron lengths: alternative splicing shares
+    a donor between a short and a long intron.  On the panel's references that
+    is 0.00% of *S. cerevisiae* donors but 12.35% of human ones, with a spread
+    of over 1 Mb between the shortest and the longest intron at one site, so
+    which length is kept decides that site's §4.3 decile.  ``introns`` is a
+    set, so taking whichever came last made the stratification depend on the
+    interpreter's hash seed: the same file scored twice gave different
+    per-decile counts.  The shortest intron at the site is kept, which is
+    arbitrary but fixed; ``sites_multiple_intron_lengths`` in the result says
+    how many sites the choice was made for.
+    """
     donors, acceptors = {}, {}
+    multi = [set(), set()]
     for seqid, s, e, strand in introns:
         length = e - s + 1
         d, a = (s, e) if strand == "+" else (e, s)
-        donors[(seqid, d, strand)] = length
-        acceptors[(seqid, a, strand)] = length
-    return donors, acceptors
+        for i, (m, key) in enumerate(((donors, (seqid, d, strand)),
+                                      (acceptors, (seqid, a, strand)))):
+            prev = m.get(key)
+            if prev is None:
+                m[key] = length
+            else:
+                if prev != length:
+                    multi[i].add(key)
+                m[key] = min(prev, length)
+    return donors, acceptors, (len(multi[0]), len(multi[1]))
 
 
 def deciles(values):
@@ -649,11 +682,17 @@ def splice(ref_chains, pred_chains, seqids, seqfetch=None):
            "predicted_cds_gaps_below_min": len(pred_short),
            "min_intron": MIN_INTRON,
            "intron_length_decile_cuts": cuts}
-    ref_d, ref_a = sites_of(ref_i)
-    pred_d, pred_a = sites_of(pred_i)
-    for name, r, p in (("donor", ref_d, pred_d), ("acceptor", ref_a, pred_a)):
+    ref_d, ref_a, ref_multi = sites_of(ref_i)
+    pred_d, pred_a, pred_multi = sites_of(pred_i)
+    for i, (name, r, p) in enumerate((("donor", ref_d, pred_d),
+                                      ("acceptor", ref_a, pred_a))):
         tp = set(r) & set(p)
         out[name] = prf(len(tp), len(p) - len(tp), len(r) - len(tp))
+        # Sites whose decile was decided by the shortest-intron rule of
+        # ``sites_of``; the totals above do not depend on it, the
+        # stratification below does.
+        out[name]["reference_sites_multiple_intron_lengths"] = ref_multi[i]
+        out[name]["predicted_sites_multiple_intron_lengths"] = pred_multi[i]
         strat = []
         for b in range(10):
             rb = {k for k in r if bucket(r[k]) == b}
@@ -944,6 +983,7 @@ def _transcripts(ref_loci, pred_loci, ref_chains, pred_chains, matches):
 
 def codons(ref_chains, pred_chains, seqids, stop_in_cds=True,
            detected="unknown", detected_counts=None, merge_stats=None,
+           genome_detected="unknown", genome_counts=None, source="assumed",
            ref_ann=None, pred_ann=None):
     """Section 4.5.  Start and stop codon positions, reported separately.
 
@@ -1029,7 +1069,14 @@ def codons(ref_chains, pred_chains, seqids, stop_in_cds=True,
     out["predicted_partial_3prime"] = len(p3 & set(pred_chains))
     out["stop_codon_inside_cds"] = bool(stop_in_cds)
     out["stop_codon_convention_detected"] = detected
+    # Where the convention actually came from: a stop_codon feature, the
+    # genome, the --stop-outside-cds flag, or nothing at all.  "assumed" means
+    # the run had no evidence either way and took the GFF3 default; it is the
+    # value to look for before believing a terminal-exon or stop-codon score.
+    out["stop_codon_convention_from_genome"] = genome_detected
+    out["stop_codon_convention_source"] = source
     out.update(detected_counts or {})
+    out.update(genome_counts or {})
     out.update(merge_stats or {})
     return out
 
@@ -1134,6 +1181,86 @@ def needed_windows(ref_chains, pred_chains, seqids):
     return wins
 
 
+def _convention_probes(chains, seqids):
+    """(tid, inside window, outside window) for the stop-convention check.
+
+    ``inside`` is the last codon of the CDS chain in the direction of
+    translation; ``outside`` is the codon immediately after it on the genome.
+    A chain whose terminal block is shorter than 3 bp is skipped rather than
+    walked back across the intron: the split-codon case is rare and a wrong
+    window would be counted as evidence.
+    """
+    out = []
+    for tid, (seqid, strand, blocks) in chains.items():
+        if seqid not in seqids or not blocks:
+            continue
+        if strand == "-":
+            s = blocks[0][0]
+            if blocks[0][1] - s + 1 < 3 or s < 4:
+                continue
+            out.append((tid, seqid, strand, (s, s + 2), (s - 3, s - 1)))
+        else:
+            e = blocks[-1][1]
+            if e - blocks[-1][0] + 1 < 3:
+                continue
+            out.append((tid, seqid, strand, (e - 2, e), (e + 1, e + 3)))
+    return out
+
+
+def stop_convention_windows(chains, seqids):
+    wins = set()
+    for _, seqid, _, ins, outs in _convention_probes(chains, seqids):
+        wins.add((seqid, ins[0], ins[1]))
+        wins.add((seqid, outs[0], outs[1]))
+    return wins
+
+
+def stop_convention_from_genome(chains, seqids, fetch, stops):
+    """Which stop-codon convention the prediction uses, read off the genome.
+
+    ``Annotation.stop_codon_convention`` can only answer when the file carries
+    ``stop_codon`` features.  Helixer and Tiberius carry none -- their GFF3 is
+    gene/mRNA/exon/CDS/UTR and nothing else -- so for them the answer was
+    previously the *default of a flag*, and being wrong about it moves the 3'
+    end of every chain by 3 bp while leaving nucleotide and locus numbers
+    looking healthy.  With ``--genome`` the question is decidable without any
+    feature: either the last codon of the chain is a stop or the codon just
+    past it is.
+
+    Returns ``(verdict, counts)`` with the same vocabulary as the feature-based
+    check.  ``unknown`` means too few usable chains, or neither position looks
+    like a stop often enough to call it.
+    """
+    stops = set(stops)
+    inside = outside = neither = 0
+    for _, seqid, strand, ins, outs in _convention_probes(chains, seqids):
+        a = fetch(seqid, ins[0], ins[1])
+        b = fetch(seqid, outs[0], outs[1])
+        if a is None or b is None or len(a) != 3 or len(b) != 3:
+            continue
+        if strand == "-":
+            a, b = _revcomp(a), _revcomp(b)
+        a, b = a.upper(), b.upper()
+        if a in stops:
+            inside += 1
+        elif b in stops:
+            outside += 1
+        else:
+            neither += 1
+    total = inside + outside + neither
+    counts = {"stop_convention_genome_chains": total,
+              "stop_convention_genome_inside": inside,
+              "stop_convention_genome_outside": outside,
+              "stop_convention_genome_neither": neither}
+    if total < MIN_CONVENTION_CHAINS:
+        return "unknown", counts
+    if inside >= 0.9 * total:
+        return "inside", counts
+    if outside >= 0.9 * total:
+        return "outside", counts
+    return "unknown", counts
+
+
 # ----------------------------------------------------------- the declaration
 
 
@@ -1189,7 +1316,7 @@ def transcript_selection_summary(dropped, kept):
 
 
 def score(reference, prediction, species, genome=None, seqids=None,
-          stop_in_cds=True, all_transcripts=False):
+          stop_in_cds=True, all_transcripts=False, genetic_code=1):
     ref = load_gff(reference)
     pred = load_gff(prediction)
     # Section 4.5.  Detected from the file, not taken on trust: a prediction
@@ -1198,14 +1325,63 @@ def score(reference, prediction, species, genome=None, seqids=None,
     # codons and exact transcript matches while leaving the nucleotide and
     # locus numbers looking healthy.
     pred_convention, convention_counts = pred.stop_codon_convention()
-    merge_stats = {"transcripts_stop_merged_from_feature": 0,
-                   "transcripts_stop_extended_by_3bp": 0}
-    if not stop_in_cds:
-        merge_stats = pred.include_stop_codons(seq_len=ref.seq_len)
     dropped = {}
     keep = select_seqids(ref, whitelist=seqids, reasons=dropped)
     ref_chains = {t: c for t, c in ref.chains().items() if c[0] in keep}
     pred_chains = {t: c for t, c in pred.chains().items() if c[0] in keep}
+
+    # One pass over the FASTA serves both the splice strata and the
+    # convention probes.  The probes are planned from the seqid-filtered
+    # chains rather than the transcript-filtered ones, which is a superset and
+    # costs a few unused windows; planning them after the 3 bp extension is
+    # not possible, because the extension is what the probes decide.  Introns
+    # are unaffected by that extension -- it moves the 3' end of the terminal
+    # block and adds no junction -- so the splice windows are the same either
+    # way.
+    fetch = None
+    planned = set()
+    genome_convention, genome_counts = "unknown", {}
+    if genome:
+        planned = (needed_windows(ref_chains, pred_chains, keep)
+                   | stop_convention_windows(pred_chains, keep))
+        fetch = WindowFetcher(genome, planned)
+        genome_convention, genome_counts = stop_convention_from_genome(
+            pred_chains, keep, fetch, STOP_CODONS[genetic_code])
+
+    merge_stats = {"transcripts_stop_merged_from_feature": 0,
+                   "transcripts_stop_extended_by_3bp": 0}
+    convention_source = "assumed"
+    if not stop_in_cds:
+        merge_stats = pred.include_stop_codons(seq_len=ref.seq_len)
+        convention_source = "flag"
+    elif pred_convention == "unknown" and genome_convention == "outside":
+        # No stop_codon feature to read and the genome says the stop sits
+        # just past the chain.  Taking the default here would score every
+        # terminal exon, single-exon gene, stop codon and exact transcript
+        # match 3 bp short, so the evidence wins over the default.  It never
+        # overrides an explicit --stop-outside-cds; that case is the branch
+        # above.
+        merge_stats = pred.include_stop_codons(seq_len=ref.seq_len)
+        convention_source = "genome"
+    elif genome_convention != "unknown":
+        convention_source = "genome"
+    elif pred_convention != "unknown":
+        convention_source = "stop_codon_feature"
+    if any(merge_stats.values()):
+        pred_chains = {t: c for t, c in pred.chains().items() if c[0] in keep}
+        # The comment above is right that the 3 bp extension adds no junction,
+        # but merging a ``stop_codon`` feature can: AUGUSTUS splits a stop
+        # codon across an intron, and unioning that feature into the chain
+        # creates a junction the window plan never saw.  One predicted intron
+        # in the *S. pombe* cross-parameter run is exactly this, and without a
+        # second pass its dinucleotide was reported as `unknown` rather than
+        # the GT-AG it is.  A second pass runs only for the windows the first
+        # one did not plan, so the common case still reads the FASTA once.
+        if fetch is not None:
+            extra = needed_windows(ref_chains, pred_chains, keep) - planned
+            if extra:
+                fetch.cache.update(WindowFetcher(genome, extra).cache)
+                planned |= extra
     # Section 4: pseudogenes and gene fragments are not scored as truth, and
     # the same filter is applied to the prediction so that an identity run is
     # still exactly 1.0.
@@ -1215,10 +1391,6 @@ def score(reference, prediction, species, genome=None, seqids=None,
     pred_chains = select_transcripts(pred_chains, pred, all_transcripts,
                                      pred_dropped_tx)
     scored_bp = sum(ref.seq_len[s] for s in keep)
-
-    fetch = None
-    if genome:
-        fetch = WindowFetcher(genome, needed_windows(ref_chains, pred_chains, keep))
 
     locus, tx = loci(ref, pred, ref_chains, pred_chains, keep)
     return {
@@ -1256,6 +1428,7 @@ def score(reference, prediction, species, genome=None, seqids=None,
         "locus": locus,
         "codon": codons(ref_chains, pred_chains, keep, stop_in_cds,
                         pred_convention, convention_counts, merge_stats,
+                        genome_convention, genome_counts, convention_source,
                         ref, pred),
     }
 
@@ -1357,6 +1530,29 @@ chr1\t.\tstop_codon\t9298\t9300\t.\t+\t0\tParent=p3
 # The same again with the stop_codon rows removed, which is what a GTF-derived
 # prediction looks like after a naive conversion: the convention can no longer
 # be detected and the 3 bp have to be guessed back.
+# A prediction whose ``stop_codon`` feature sits on the far side of an intron
+# from its last CDS block: unioning it into the chain creates a junction that
+# did not exist in the file, so the window plan has to be extended after the
+# merge rather than before it.  AUGUSTUS emits this whenever a stop codon is
+# split by an intron.
+SPLIT_STOP_REF = """##gff-version 3
+##sequence-region chr1 1 20000
+chr1\t.\tregion\t1\t20000\t.\t+\t.\tID=chr1;genome=chromosome
+chr1\t.\tgene\t1000\t2502\t.\t+\t.\tID=g1
+chr1\t.\tmRNA\t1000\t2502\t.\t+\t.\tID=t1;Parent=g1
+chr1\t.\tCDS\t1000\t1100\t.\t+\t0\tID=c1;Parent=t1
+chr1\t.\tCDS\t2000\t2502\t.\t+\t0\tID=c2;Parent=t1
+"""
+
+SPLIT_STOP_PRED = """##gff-version 3
+chr1\t.\tgene\t1000\t2502\t.\t+\t.\tID=pg1
+chr1\t.\ttranscript\t1000\t2502\t.\t+\t.\tID=p1;Parent=pg1
+chr1\t.\tCDS\t1000\t1100\t.\t+\t0\tParent=p1
+chr1\t.\tCDS\t2000\t2101\t.\t+\t0\tParent=p1
+chr1\t.\tstop_codon\t2500\t2502\t.\t+\t0\tParent=p1
+"""
+
+
 STOP_PRED_BARE = "\n".join(
     l for l in STOP_PRED.splitlines() if "\tstop_codon\t" not in l) + "\n"
 
@@ -1410,6 +1606,19 @@ chr1\t.\tCDS\t9060\t9300\t.\t-\t0\tParent=p3
 # (map=unlocalized), an unplaced scaffold (chromosome=Unknown, no map=, the
 # shape maize and Nematostella use), a Tetrahymena-style scaffold with neither,
 # a mitochondrion, a chloroplast, and a scaffold under the 10 kb floor.
+SHARED_DONOR_REF = """##gff-version 3
+##sequence-region chr1 1 20000
+chr1\t.\tregion\t1\t20000\t.\t+\t.\tID=chr1;genome=chromosome
+chr1\t.\tgene\t1000\t9000\t.\t+\t.\tID=g1
+chr1\t.\tmRNA\t1000\t2200\t.\t+\t.\tID=t1;Parent=g1
+chr1\t.\tCDS\t1000\t1099\t.\t+\t0\tID=c1;Parent=t1
+chr1\t.\tCDS\t1200\t2200\t.\t+\t2\tID=c2;Parent=t1
+chr1\t.\tmRNA\t1000\t9000\t.\t+\t.\tID=t2;Parent=g1
+chr1\t.\tCDS\t1000\t1099\t.\t+\t0\tID=c3;Parent=t2
+chr1\t.\tCDS\t8000\t9000\t.\t+\t2\tID=c4;Parent=t2
+"""
+
+
 SELECT_FIXTURE = """##gff-version 3
 chr1\t.\tregion\t1\t248956422\t.\t+\t.\tID=r1;chromosome=1;genome=chromosome
 alt1\t.\tregion\t1\t200000\t.\t+\t.\tID=r2;chromosome=1;genome=genomic;map=19q13.42
@@ -1591,6 +1800,64 @@ def self_test():
           br["codon"]["transcripts_stop_extended_by_3bp"], 3)
     check("bare stop tp", br["codon"]["stop"]["tp"], 3)
     check("bare exon f1", br["exon"]["all"]["f1"], 1.0)
+    check("bare source", br["codon"]["stop_codon_convention_source"], "flag")
+    # ... and without the flag it is scored 3 bp short and says only that it
+    # assumed, which is the state Helixer and Tiberius output was in before
+    # the genome check below.
+    bw = score(ref, bpred, "fixture")
+    check("bare no flag source",
+          bw["codon"]["stop_codon_convention_source"], "assumed")
+    check("bare no flag stop tp", bw["codon"]["stop"]["tp"], 0)
+
+    # The same file with --genome: no stop_codon feature exists, but the
+    # sequence settles it.  chr1 is filled with C so that no filler codon and
+    # no reverse complement of one is a stop, and a stop is placed at exactly
+    # the three positions REF_FIXTURE's chains end on: 2998-3000 for t1,
+    # 6000-6002 (TTA, read TAA on the minus strand) for t2, and 9298-9300 for
+    # t3.  STOP_PRED_BARE stops 3 bp short of each, so its stops are outside.
+    gfa = os.path.join(d, "conv.fa")
+    cseq = list("C" * 20000)
+    for start, codon in ((2998, "TAA"), (6000, "TTA"), (9298, "TAA")):
+        cseq[start - 1:start + 2] = list(codon)
+    cseq = "".join(cseq)
+    with open(gfa, "w") as fh:
+        fh.write(">chr1 convention fixture\n")
+        for i in range(0, len(cseq), 60):
+            fh.write(cseq[i:i + 60] + "\n")
+    bg = score(ref, bpred, "fixture", genome=gfa)
+    check("genome convention outside",
+          bg["codon"]["stop_codon_convention_from_genome"], "outside")
+    check("genome convention source",
+          bg["codon"]["stop_codon_convention_source"], "genome")
+    check("genome chains", bg["codon"]["stop_convention_genome_chains"], 3)
+    check("genome outside count",
+          bg["codon"]["stop_convention_genome_outside"], 3)
+    check("genome inside count",
+          bg["codon"]["stop_convention_genome_inside"], 0)
+    # The payoff: the 3 bp are put back without the flag, so the run that was
+    # scoring 0.00 stop-codon F1 now scores the same as the flagged one.
+    check("genome extended", bg["codon"]["transcripts_stop_extended_by_3bp"], 3)
+    check("genome stop tp", bg["codon"]["stop"]["tp"], 3)
+    check("genome exon f1", bg["exon"]["all"]["f1"], 1.0)
+    check("genome tx f1", bg["transcript"]["f1"], 1.0)
+    # A prediction that already includes its stop codons is read as such and
+    # is left alone.
+    ig = score(ref, ref, "fixture", genome=gfa)
+    check("genome convention inside",
+          ig["codon"]["stop_codon_convention_from_genome"], "inside")
+    check("genome inside not extended",
+          ig["codon"]["transcripts_stop_extended_by_3bp"], 0)
+    check("genome inside f1", ig["codon"]["stop"]["f1"], 1.0)
+    # The translation table is consulted rather than hard-coded: under table 6
+    # (Tetrahymena) TAA is glutamine, so the same three codons are no longer
+    # evidence and the scorer declines to guess instead of extending wrongly.
+    t6 = score(ref, bpred, "fixture", genome=gfa, genetic_code=6)
+    check("code 6 convention",
+          t6["codon"]["stop_codon_convention_from_genome"], "unknown")
+    check("code 6 neither", t6["codon"]["stop_convention_genome_neither"], 3)
+    check("code 6 not extended",
+          t6["codon"]["transcripts_stop_extended_by_3bp"], 0)
+    os.unlink(gfa)
     os.unlink(bpred)
 
     # A reference has no stop_codon features either, so an ordinary run must
@@ -1645,6 +1912,61 @@ def self_test():
     check("all-transcripts locus fn", pall["locus"]["fn"], 2)
     os.unlink(pref)
     os.unlink(ppred)
+
+    # A donor shared by two introns of different lengths must land in a fixed
+    # decile.  ``introns`` is a set, so before ``sites_of`` took the minimum
+    # the length attached to a shared site depended on the hash seed and the
+    # §4.3 stratification of a real reference was not reproducible: on human
+    # 12.35% of donors are shared this way, with over 1 Mb between the
+    # shortest and the longest intron at one site.  Here g1's two isoforms
+    # share the donor at 1099 with a 100 bp and a 6,900 bp intron; the site is
+    # counted once, in the decile of the shorter, and reported as ambiguous.
+    sdref = os.path.join(d, "sdref.gff3")
+    open(sdref, "w").write(SHARED_DONOR_REF)
+    sd = score(sdref, sdref, "fixture")
+    check("shared donor sites", sd["splice"]["donor"]["tp"], 1)
+    check("shared acceptor sites", sd["splice"]["acceptor"]["tp"], 2)
+    check("shared donor ambiguous",
+          sd["splice"]["donor"]["reference_sites_multiple_intron_lengths"], 1)
+    check("shared acceptor ambiguous",
+          sd["splice"]["acceptor"]["reference_sites_multiple_intron_lengths"], 0)
+    check("shared donor decile cuts", sd["splice"]["intron_length_decile_cuts"],
+          [100, 100, 100, 100, 100, 6900, 6900, 6900, 6900])
+    # The shorter intron's decile, not the longer one's: bucket 0.
+    check("shared donor decile", sd["splice"]["donor"]["by_intron_length_decile"][0]["tp"], 1)
+    check("shared donor top decile",
+          sd["splice"]["donor"]["by_intron_length_decile"][9]["tp"], 0)
+    os.unlink(sdref)
+
+    # A stop codon split across an intron: merging the feature into the chain
+    # creates a junction the pre-merge window plan never asked for.  Its
+    # dinucleotide has to be read anyway, so the plan is extended after the
+    # merge; before that it came back `unknown`, which is how one predicted
+    # intron of the S. pombe cross-parameter run was classified.
+    ssref = os.path.join(d, "ssref.gff3")
+    sspred = os.path.join(d, "sspred.gff3")
+    open(ssref, "w").write(SPLIT_STOP_REF)
+    open(sspred, "w").write(SPLIT_STOP_PRED)
+    ssfa = os.path.join(d, "ss.fa")
+    sseq = list("C" * 20000)
+    sseq[2101:2103] = list("GT")       # donor of the junction the merge makes
+    sseq[2497:2499] = list("AG")       # its acceptor
+    sseq = "".join(sseq)
+    with open(ssfa, "w") as fh:
+        fh.write(">chr1 split-stop fixture\n")
+        for i in range(0, len(sseq), 60):
+            fh.write(sseq[i:i + 60] + "\n")
+    ss = score(ssref, sspred, "fixture", stop_in_cds=False, genome=ssfa)
+    ssd = ss["splice"]["by_dinucleotide"]
+    check("split stop merged",
+          ss["codon"]["transcripts_stop_merged_from_feature"], 1)
+    check("split stop predicted introns", ss["splice"]["predicted_introns"], 2)
+    check("split stop no unknown class", "unknown" in ssd, False)
+    check("split stop junction classified", ssd.get("GT-AG", {}).get("fp"), 1)
+    check("split stop reference intron matched", ssd.get("other", {}).get("tp"), 1)
+    os.unlink(ssref)
+    os.unlink(sspred)
+    os.unlink(ssfa)
 
     select_test(check)
 
@@ -1707,6 +2029,11 @@ def main():
                                      "over 10 kb that is not an alt locus or patch")
     ap.add_argument("--stop-outside-cds", action="store_true",
                     help="the prediction excludes the stop codon from its CDS")
+    ap.add_argument("--genetic-code", type=int, default=1,
+                    choices=sorted(STOP_CODONS),
+                    help="NCBI translation table of the species, used only to "
+                         "read the stop-codon convention off --genome "
+                         "(panel.tsv column genetic_code; 6 for Tetrahymena)")
     ap.add_argument("--score-all-transcripts", action="store_true",
                     help="score pseudogene and gene-fragment CDS rows as "
                          "protein-coding truth (section 4; for auditing only)")
@@ -1737,7 +2064,8 @@ def main():
     row = score(args.reference, args.prediction, args.species,
                 genome=args.genome, seqids=seqids,
                 stop_in_cds=not args.stop_outside_cds,
-                all_transcripts=args.score_all_transcripts)
+                all_transcripts=args.score_all_transcripts,
+                genetic_code=args.genetic_code)
     row["declaration"] = {"path": os.path.basename(args.declaration),
                           "sha256": decl_sha,
                           "model": decl.get("model")}
@@ -1785,6 +2113,46 @@ def main():
               "extended wrongly by this."
               % row["codon"]["transcripts_stop_extended_by_3bp"],
               file=sys.stderr)
+
+    # The genome settles what the features cannot.  Helixer and Tiberius emit
+    # no stop_codon feature at all, so before this check their convention was
+    # the default of a flag; --genome makes it a measurement.
+    from_genome = row["codon"]["stop_codon_convention_from_genome"]
+    if row["codon"]["stop_codon_convention_source"] == "genome" \
+            and row["codon"]["transcripts_stop_extended_by_3bp"]:
+        print("note: the prediction has no stop_codon features, but %d of %d "
+              "chains carry a stop codon in the 3 bp *after* the CDS and only "
+              "%d carry one inside it, so the CDS chains were extended by 3 bp "
+              "as if --stop-outside-cds had been given. Pass "
+              "--stop-outside-cds to make that explicit."
+              % (row["codon"]["stop_convention_genome_outside"],
+                 row["codon"]["stop_convention_genome_chains"],
+                 row["codon"]["stop_convention_genome_inside"]),
+              file=sys.stderr)
+    elif from_genome == "inside" and args.stop_outside_cds:
+        print("warning: --stop-outside-cds was given, but %d of %d predicted "
+              "chains already end in a stop codon on the genome. The blind "
+              "3 bp extension has moved the 3' end of every chain past its "
+              "own stop; drop the flag."
+              % (row["codon"]["stop_convention_genome_inside"],
+                 row["codon"]["stop_convention_genome_chains"]),
+              file=sys.stderr)
+    elif from_genome == "unknown" and detected == "unknown" and args.genome:
+        print("warning: the prediction has no stop_codon features and the "
+              "genome does not settle the convention either (%d chains: %d "
+              "end in a stop, %d are followed by one, %d neither). Terminal "
+              "exon, single-exon, stop-codon and exact-transcript scores are "
+              "resting on the GFF3 default."
+              % (row["codon"]["stop_convention_genome_chains"],
+                 row["codon"]["stop_convention_genome_inside"],
+                 row["codon"]["stop_convention_genome_outside"],
+                 row["codon"]["stop_convention_genome_neither"]),
+              file=sys.stderr)
+    elif row["codon"]["stop_codon_convention_source"] == "assumed":
+        print("warning: nothing in this run settles the stop-codon "
+              "convention: the prediction has no stop_codon features and no "
+              "--genome was given. Pass --genome so the convention is "
+              "measured rather than assumed.", file=sys.stderr)
 
     if row["predicted_conflicting_transcript_ids"]:
         print("warning: %d transcript ids in the prediction appear on more "

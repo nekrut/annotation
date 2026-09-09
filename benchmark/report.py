@@ -110,6 +110,18 @@ def main():
             for line in rd:
                 cost[line[0]] = dict(zip(cost_cols, line[1:]))
 
+    # A row whose stop-codon convention was never established is 3 bp of
+    # doubt at the 3' end of every chain in it (docs/benchmark.md 4.5), and
+    # the aggregate would hide that behind nineteen settled ones.
+    assumed = sorted(sp for sp, r in rows.items()
+                     if r.get("codon", {}).get("stop_codon_convention_source")
+                     == "assumed")
+    if assumed:
+        print("warning: stop-codon convention never established for %s. "
+              "Their terminal-exon, single-exon, stop-codon and exact-"
+              "transcript scores rest on the GFF3 default; re-score with "
+              "--genome." % ", ".join(assumed), file=sys.stderr)
+
     unknown = sorted(set(rows) - set(meta))
     if unknown:
         print("not in panel.tsv: %s" % ", ".join(unknown), file=sys.stderr)

@@ -21,7 +21,13 @@
    "tp": 4280
   },
   "stop_codon_convention_detected": "outside",
+  "stop_codon_convention_from_genome": "outside",
+  "stop_codon_convention_source": "flag",
   "stop_codon_inside_cds": false,
+  "stop_convention_genome_chains": 4449,
+  "stop_convention_genome_inside": 0,
+  "stop_convention_genome_neither": 0,
+  "stop_convention_genome_outside": 4449,
   "stop_inside_cds": 0,
   "stop_outside_cds": 4456,
   "transcripts_stop_extended_by_3bp": 0,
@@ -226,6 +232,8 @@
    "fn": 788,
    "fp": 677,
    "precision": 0.86226,
+   "predicted_sites_multiple_intron_lengths": 0,
+   "reference_sites_multiple_intron_lengths": 0,
    "sensitivity": 0.84322,
    "tp": 4238
   },
@@ -376,6 +384,8 @@
    "fn": 783,
    "fp": 672,
    "precision": 0.86328,
+   "predicted_sites_multiple_intron_lengths": 0,
+   "reference_sites_multiple_intron_lengths": 0,
    "sensitivity": 0.84421,
    "tp": 4243
   },

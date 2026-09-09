@@ -427,6 +427,50 @@ Phylogenetic distance is one channel of four, and it is the least dangerous.
    That is legitimate under an unsupervised protocol — it is sequence
    exposure, not label leakage — and it still has to be said, because a
    reader who assumes otherwise will over-read the reported scores.
+
+   This channel is not hypothetical on this panel. Helixer publishes the
+   training and validation species of every shipped checkpoint in
+   `docs/model_overview.md`; parsing that file at commit
+   [`d17bb49`](https://github.com/usadellab/Helixer/blob/d17bb496b8842542590644b2437798711c0125d5/docs/model_overview.md)
+   (109,914 bytes, sha256 `9492017552c6a11d7ede5d72d0188c1202ec94cc2f72463f96181e5d170e2516`,
+   read 2026-09-09) and matching the scientific names literally against
+   `benchmark/panel.tsv` gives:
+
+   | panel species | Helixer model | listed as | listed accession |
+   |---|---|---|---|
+   | *Takifugu rubripes* | vertebrate | **training** | GCF_901000725.2_fTakRub1.2 |
+   | *Ciona intestinalis* | invertebrate | **training** | GCF_000224145.3_KH |
+   | *Drosophila melanogaster* | invertebrate | **training** | GCF_000001215.4_Release_6_plus_ISO1_MT |
+   | *Apis mellifera* | invertebrate | **training** | GCF_003254395.2_Amel_HAv3.1 |
+   | *Caenorhabditis elegans* | invertebrate | **training** | GCF_000002985.6_WBcel235 |
+   | *Arabidopsis thaliana* | land_plant | **training** | TAIR10 |
+   | *Oryza sativa* | land_plant | **training** | v7.0 |
+   | *Zea mays* | land_plant | **training** | RefGen_V4 |
+   | *Saccharomyces cerevisiae* | fungi | **training** | GCF_000146045.2_R64 |
+   | *Schizosaccharomyces pombe* | fungi | **training** | GCF_000002945.1_ASM294v2 |
+   | *Mus musculus* | mammal | **training** | GCF_000001635.26_GRCm38.p6 |
+   | *Mus musculus* | vertebrate | validation | GCF_000001635.27_GRCm39 |
+   | *Homo sapiens* | vertebrate | validation | GCF_000001405.39_GRCh38.p13 |
+   | *Gallus gallus* | vertebrate | validation | GCF_016699485.2_bGalGal1.mat.broiler.GRCg7b |
+   | *Danio rerio* | vertebrate | validation | GCF_000002035.6_GRCz11 |
+   | *Xenopus tropicalis* | vertebrate | validation | GCF_000004195.4_UCB_Xtro_10.0 |
+   | *Nematostella vectensis* | invertebrate | validation | GCF_000209225.1_ASM20922v1 |
+
+   Sixteen of the twenty panel species are named in a shipped checkpoint's
+   lists, eleven of them in a *training* list. The four that appear nowhere
+   are *Neurospora crassa*, *Plasmodium falciparum*, *Dictyostelium
+   discoideum* and *Tetrahymena thermophila*, and Helixer ships no lineage
+   model that covers the three protists, so **on this panel *N. crassa* is
+   the only species Helixer can be run on without declaring exposure.**
+   Six of the training matches — fugu, *S. pombe*, *A. thaliana*,
+   *O. sativa*, *Z. mays*, and mouse under the mammal model — are listed at
+   an *older assembly* than the panel's; that is a different assembly of the
+   same species and §3.2's rule already calls it exposure. This is a
+   documentary membership check against the vendor's own lists, not a
+   measurement of how much the exposure is worth: the point is that a
+   Helixer number on nineteen of these twenty species is an upper bound
+   unless something else is said, and §3.3's `heldout_seen_in_pretraining`
+   is where it gets said. Every run in §6 does exactly that.
 3. **Alignment leakage.** This is the one specific to comparative methods and
    the one the charter's design directly invites. A whole-genome multiple
    alignment (multiz, Cactus —
@@ -598,6 +642,21 @@ The intron-length stratification is the single most informative panel in the
 whole benchmark for the charter's question, because it is where clade-specific
 models are expected to differ from a species-independent one.
 
+One position can belong to introns of two different lengths, and then the
+decile is a choice rather than a fact: alternative splicing shares a donor
+between a short and a long intron. That is 0 of 281 *S. cerevisiae* donors,
+73 of 15,845 in *N. crassa*, 8,086 of 220,976 (3.7%) in *T. rubripes* and
+23,387 of 189,329 (**12.4%**) in human, where the shortest and the longest
+intron at one site are over 1 Mb apart. The site is scored once — the totals
+never depended on this — and stratified by its **shortest** intron, which is
+arbitrary but fixed; the number of sites the rule was applied to is reported
+as `splice.donor.reference_sites_multiple_intron_lengths` and its acceptor and
+prediction counterparts, so a reader can see how much of the column rests on
+it. Before this rule the length kept was whichever intron the internal set
+happened to yield last, which made the whole stratification depend on the
+interpreter's hash seed: scoring the same two files twice moved per-decile
+counts by tens of sites while every total stayed identical.
+
 A gap between consecutive CDS blocks is only treated as an intron if it is at
 least 20 bp. This is not a tuning knob: RefSeq encodes a programmed ribosomal
 frameshift as two CDS blocks separated by 1 bp, and 47 of the 343 CDS gaps in
@@ -711,6 +770,57 @@ direction of translation is extended by 3 bp instead and the guess is counted
 in `transcripts_stop_extended_by_3bp` so it is visible. A submission states
 which convention its output uses.
 
+**Feature-based detection answers nothing for a tool that emits no
+`stop_codon` feature, and the modern ones do not.** Helixer's GFF3 is
+`gene`/`mRNA`/`exon`/`CDS`/`five_prime_UTR`/`three_prime_UTR` and nothing
+else; Tiberius is the same. For those files `stop_codon_convention_detected`
+is `unknown` and, before this was fixed, the convention was in practice *the
+default of a command-line flag* — the one thing this section says it must not
+be. With `--genome` it is decidable without any feature: for each predicted
+chain, read the last codon in the direction of translation and the codon
+immediately after it, and see which one is a stop. `score.py` now does that
+and reports `stop_codon_convention_from_genome`, the three counts it rests on
+(`stop_convention_genome_inside`, `_outside`, `_neither`), and
+`stop_codon_convention_source`, which is `stop_codon_feature`, `genome`,
+`flag`, or `assumed`. **`assumed` is the value to look for before believing a
+terminal-exon, single-exon, stop-codon or exact-transcript score.** When the
+prediction has no `stop_codon` features and the genome says `outside`, the
+3 bp are put back automatically; evidence outranks a default, but never an
+explicit `--stop-outside-cds`, and the note goes to stderr either way. This
+correction is deliberately *not* extended to a prediction that does carry
+`stop_codon` features: there the file states its own convention, disagreeing
+with the flag is a user error that should be seen rather than papered over,
+and the loud stderr warning above already covers it. Only the no-feature case
+has nothing to disagree with and no evidence but the default. Chains
+whose terminal CDS block is under 3 bp are skipped rather than walked back
+across the intron, so a split stop codon is never counted as evidence.
+
+The stop codons used are those of the species' NCBI translation table, taken
+from `panel.tsv`'s `genetic_code` and passed as `--genetic-code`. This is not
+decoration: under table 6 *Tetrahymena* reads TAA and TAG as glutamine, so a
+scorer that hard-coded table 1 would find "stops" in the middle of two thirds
+of its genes and could talk itself into extending every chain by 3 bp. Under
+table 6 the check returns `unknown` on evidence that table 1 would call
+decisive, and declines to guess. Only the tables the panel uses are
+implemented; an unlisted one is an error rather than a silent fall back to
+table 1.
+
+Measured on the two Helixer runs of §6: 24,166 of 24,176 *T. rubripes* chains
+and 10,303 of 10,303 *N. crassa* chains end in a stop codon and none is
+followed by one (the other 10 fugu chains end in neither, which is what a
+chain running into an assembly gap looks like), so Helixer includes the stop
+in its CDS — the same convention as the references. That was previously the
+default's assumption and is now the run's measurement.
+
+The window plan for this check is made before the convention is known, and
+merging a `stop_codon` feature into a chain can add a junction the plan never
+saw: AUGUSTUS splits a stop codon across an intron, and one predicted intron
+of the *S. pombe* cross-parameter run is exactly that. Its dinucleotide came
+back `unknown` — the same silent class the §6 window-fetcher defect produced —
+until the plan was extended after the merge with a second pass over the FASTA
+for the windows the first pass did not ask for. The second pass runs only when
+a merge changed a chain, so the usual case still reads the genome once.
+
 ### 4.6 Proteome completeness
 
 Translate the predicted CDS and run BUSCO in protein mode
@@ -813,7 +923,7 @@ non-`protein_coding` `gene_biotype` and an incomplete end (§4, §4.5).
 Verification so far:
 
 - `python3 benchmark/score.py --self-test` scores built-in fixture pairs and
-  checks 69 expected values: a prediction with one exact transcript, one
+  checks 116 expected values: a prediction with one exact transcript, one
   shifted minus-strand boundary, one overlapping-but-unaligned locus and one
   spurious locus; a fusion-and-split pair; a self-comparison that must score
   exactly 1.0 on every metric; two sequence-selection fixtures, one in RefSeq
@@ -829,8 +939,25 @@ Verification so far:
   `outside` with or without the flag, and lose exactly its terminal exons,
   single-exon genes, stop codons and transcript matches without it; the same
   file with the `stop_codon` rows stripped, where the convention is
-  undetectable and the 3 bp are guessed back; and a prediction that reuses
-  transcript ids across two sequences.
+  undetectable from the file and the 3 bp are guessed back; that same stripped
+  file against a genome fixture whose only stop codons sit at the three
+  positions the reference chains end on, where the convention has to be read
+  off the sequence, the 3 bp are put back *without* the flag and the run
+  recovers exactly 1.0, while a prediction that already includes its stop
+  codons is read as `inside` and left alone, and the same file under
+  translation table 6 is called `unknown` rather than extended; a two-isoform
+  gene sharing one donor between a 100 bp and a 6,900 bp intron, which must
+  land in the decile of the shorter one and be reported as ambiguous (§4.3);
+  a prediction whose `stop_codon` feature sits across an intron from its last
+  CDS block, whose merged-in junction must still get a dinucleotide class
+  (§4.5); and a prediction that reuses transcript ids across two sequences.
+  The self-test is run under several `PYTHONHASHSEED` values, because two of
+  its checks exist to catch results that depended on it.
+- **Identity runs re-verified after the two fixes above** on
+  *S. cerevisiae*, *N. crassa*, *T. rubripes*, *C. elegans* and human: F1 1.0
+  and MCC 1.0 on every metric with 0 fusions and 0 splits, and 0, 73, 8,086,
+  2,120 and 23,387 donors respectively whose decile came from the
+  shortest-intron rule.
 - **Identity runs on all twenty panel references.** Every species in
   `panel.tsv` scored against its own reference gives F1 = 1.0 and MCC = 1.0 on
   every metric, with **0 fusions and 0 splits** everywhere. Cost on one laptop
@@ -920,7 +1047,7 @@ Verification so far:
   gene-fragment CDS rows are no longer scored as truth and incomplete CDS ends
   no longer enter the §4.5 denominators (§4, §4.5); the self-test gained a
   fixture built from those RefSeq shapes, including a minus-strand
-  `start_range=` that is a *3'* end, and now runs 86 checks, up from 69. Every number in
+  `start_range=` that is a *3'* end, and then ran 86 checks, up from 69. Every number in
   this section was recomputed afterwards: the three AUGUSTUS results moved by
   at most 0.002 F1 (the yeasts have 6 and 32 pseudogenes and no partial CDS on
   a scored sequence), and identity runs on human, *C. elegans*,
@@ -937,6 +1064,72 @@ Verification so far:
   every training species tied at the deepest MRCA rank (§3.1), the alignment
   leakage rule is split by alignment type (§3.2), and the greedy matching in
   §4.4 is now documented as greedy.
+- **A second tool and a second output shape: Helixer 0.3.7 on *T. rubripes*,
+  *N. crassa* and *S. cerevisiae*.** Run from the published container
+  (`gglyptodon/helixer-docker:helixer_v0.3.7_cuda_12.2.2-cudnn8`) on one
+  consumer GPU, vertebrate and fungi checkpoints, `--batch-size 8`: fugu
+  384 Mb in **91.6 min**, *N. crassa* 41 Mb in 5.8 min, *S. cerevisiae* 12 Mb
+  in 1.9 min. This is the input
+  shape §7 item 2 asked for and no AUGUSTUS run reaches — `gene`/`mRNA`/
+  `exon`/`CDS`/`five_prime_UTR`/`three_prime_UTR` and **no `stop_codon`
+  feature at all**, so the convention is decided by the §4.5 genome probe
+  rather than by a feature or a flag (`stop_codon_convention_source:
+  genome`), and the file carries UTRs, which the CDS-only scoring has to
+  ignore. Scoring cost on one laptop core: 34 s / 0.71 GB for fugu, 3.7 s /
+  88 MB for *N. crassa*, 1.1 s / 53 MB for *S. cerevisiae*.
+
+  | run | nucleotide F1 | exon F1 | donor F1 | transcript F1 | locus F1 | start F1 | stop F1 |
+  |---|---|---|---|---|---|---|---|
+  | *N. crassa*, fungi model | 0.962 | 0.772 | 0.841 | 0.686 | 0.906 | 0.795 | 0.842 |
+  | *S. cerevisiae*, fungi model | 0.986 | 0.825 | **0.378** | 0.860 | 0.948 | 0.896 | 0.938 |
+  | *T. rubripes*, vertebrate model | 0.919 | 0.776 | 0.853 | **0.238** | 0.887 | 0.499 | 0.742 |
+
+  *N. crassa* is the one species on this panel Helixer can be run on without
+  declaring pretraining exposure (§3.2 channel 2), so it is the only one of
+  the three whose numbers are a measurement rather than an upper bound. Fugu's transcript F1 is not a fugu failure so much as a
+  reminder of what the metric measures: the RefSeq reference has 46,771
+  transcripts over 22,090 loci and Helixer emits exactly one per locus, so
+  three quarters of the reference chains have no candidate to match. Locus F1
+  0.887 on the same run is the number to compare against AUGUSTUS's, and the
+  1,154 splits (against 32 in *N. crassa*) are where a one-isoform-per-locus
+  predictor meets a vertebrate reference. Fugu is also *in the vertebrate
+  checkpoint's own training list* at an older assembly, so 0.919 nucleotide F1
+  there is an upper bound, as is every column of the *S. cerevisiae* row;
+  §3.3's `heldout_seen_in_pretraining` says so in both declarations.
+
+  Two defects, both found by these runs and both invisible on every earlier
+  one:
+  1. **The §4.3 decile stratification was not reproducible.** Scoring the
+     same two fugu files twice gave different per-decile donor and acceptor
+     counts while every total was identical. A splice site shared by introns
+     of two lengths took whichever the internal set yielded last, which is
+     hash-seed dependent; 8,086 fugu donors and 23,387 human ones are shared
+     this way. The shortest intron now decides, and the count of sites the
+     rule touched is reported (§4.3).
+  2. **The genome window plan was made before the stop-codon merge.** Merging
+     a `stop_codon` feature that sits across an intron creates a junction the
+     plan never asked for, and its dinucleotide was reported as `unknown`
+     rather than the GT-AG it is — one predicted intron of the *S. pombe*
+     cross-parameter run. The plan is now extended after the merge (§4.5).
+  All six results in `benchmark/validation/` were regenerated with the fixed
+  scorer; the three AUGUSTUS numbers above are unchanged to five decimals.
+
+  The *S. cerevisiae* row is there to answer item 10, and it does. AUGUSTUS's
+  yeast donor F1 of 0.394 is **not** an AUGUSTUS artefact: Helixer, a
+  completely different architecture with no shared code or training data,
+  scores 0.378 on the same genome, and both do it the same way — by
+  predicting far more introns than exist. The reference has 281 scored
+  introns; AUGUSTUS predicts 566 and Helixer 734, giving donor precision 0.295
+  and 0.262 against sensitivity 0.594 and 0.683. Every other metric on the
+  same Helixer run is the best of the six (nucleotide F1 0.986, exon 0.825,
+  transcript 0.860), so this is not a bad run. Two tools over-predicting
+  introns by 2 to 2.6x in a 95.3% single-exon genome is a property of the
+  regime, not of either tool, and it is the argument for keeping an
+  intron-poor genome in the panel: an intron-rich reference hides intron
+  over-prediction inside a large true-positive count, and this one does not.
+  *S. cerevisiae* is in the fungi checkpoint's training list, so the other
+  columns of that row are an upper bound; the over-prediction is if anything
+  understated by that.
 - **Ensembl input.** `Caenorhabditis_elegans.WBcel235.gff3.gz` from the
   Ensembl FTP site — no `region` features at all, `gene:`/`transcript:`
   ID prefixes — parses and scores: 6 nuclear chromosomes kept, `MtDNA`
@@ -967,16 +1160,22 @@ Verification so far:
 1. **The scorer does not compute §4.6 or §4.7.** BUSCO, OMArk, and the cost
    columns are external and are merged by `report.py --cost`; nothing yet
    produces that TSV. T-human-009 owns the cost half.
-2. **Real predictor output covers two species and one tool.** AUGUSTUS has
-   now been scored on *S. cerevisiae* and *S. pombe* (§6), which is what
-   found the three defects listed there. What that does *not* cover: a tool
-   with a different output shape — Helixer and Tiberius emit no `stop_codon`
-   features at all, so the §4.5 blind 3 bp extension is exercised only by a
-   fixture; a genome with alt loci or many scaffolds, where the prediction's
-   sequence set and the reference's diverge; and any evidence-based pipeline,
-   whose GFF3 carries UTRs and alternative isoforms. Degraded-copy runs still
-   cover only *S. cerevisiae* and *H. sapiens*. The next run should be
-   Helixer or Tiberius on one vertebrate.
+2. **Real predictor output covers four species, two tools and six runs.**
+   AUGUSTUS on the two yeasts and Helixer on *T. rubripes*, *N. crassa* and
+   *S. cerevisiae* (§6) between them cover both stop-codon conventions, both detection routes (feature and
+   genome), a prediction with UTRs, and a 384 Mb genome with 105 unplaced
+   scaffolds. Four defects came out of those four runs. What is still not
+   covered: the §4.5 **blind 3 bp extension** — the fallback for a prediction
+   that has no `stop_codon` feature *and* whose genome says `outside` — is
+   still fixture-only, because Helixer's convention is `inside`; a prediction
+   whose sequence set genuinely diverges from the reference's (both tools were
+   run on the reference assembly, so the divergence is zero); any
+   evidence-based pipeline, whose GFF3 carries alternative isoforms, which is
+   where fugu's transcript F1 0.238 says the metric has the most to say; and
+   any predictor that emits partial genes at contig ends (item 13).
+   Degraded-copy runs still cover only *S. cerevisiae* and *H. sapiens*.
+   Tiberius is the obvious third tool: it is the one that would exercise the
+   blind extension if its GTF turns out to exclude the stop.
 3. **No high-confidence subset** (§2.3). Needed before any accuracy above
    roughly the annotation error rate means anything. Candidate construction:
    loci with MANE Select support in human, community-curated loci elsewhere,
@@ -1006,13 +1205,17 @@ Verification so far:
    *P. falciparum*, *C. elegans*, *D. melanogaster* and *T. rubripes*
    (391 Mb, the largest so far, checksum verified). It has still not been
    exercised at 3 Gb scale.
-10. **AUGUSTUS over-predicts introns in *S. cerevisiae* and the benchmark
-   cannot yet say by how much it should.** Donor F1 is 0.394 there against
-   0.854 on *S. pombe*, from 566 predicted introns against 281 scored
-   reference ones in a genome that is 95.3% single-exon (Table 2). Whether
-   that is a real weakness or an artefact of scoring a near-intronless genome
-   at splice-site level is not decidable from one tool; it needs the second
-   predictor from item 2. Recorded so the number is not read as settled.
+10. **Both tools over-predict introns in *S. cerevisiae*, and the benchmark
+   cannot yet say what the right number is.** This item asked for a second
+   predictor and now has one (§6): against 281 scored reference introns in a
+   95.3% single-exon genome (Table 2), AUGUSTUS predicts 566 (donor F1 0.394)
+   and Helixer 734 (donor F1 0.378). Agreement between two unrelated
+   architectures rules out the tool-specific explanation and leaves two: both
+   are genuinely bad at deciding *not* to splice when introns are rare, or
+   some of those 566 and 734 are real introns the reference does not
+   annotate — *S. cerevisiae* introns are short and RefSeq's yeast annotation
+   is CDS-first. Deciding between them needs the high-confidence subset of
+   item 3 or RNA-seq junction support (item 6), not another predictor.
 11. **The local-GC stratification (§4.3) degenerates on AT-rich genomes.**
    The five bins are fixed absolute GC bands, which is what makes the column
    comparable across species, but the panel deliberately spans 19.5% to 48.5%

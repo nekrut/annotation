@@ -13,8 +13,22 @@ SHA-256 of the declaration beside it, so the pairing is checkable.
 | `augustus-Saccharomyces_cerevisiae.yaml` | `.json` | AUGUSTUS on *S. cerevisiae* with its own parameters |
 | `augustus-Schizosaccharomyces_pombe.yaml` | `.json` | AUGUSTUS on *S. pombe* with its own parameters |
 | `augustus-Schizosaccharomyces_pombe-crossparam.yaml` | `.json` | AUGUSTUS on *S. pombe* with the *S. cerevisiae* parameters |
+| `helixer-Takifugu_rubripes.yaml` | `.json` | Helixer 0.3.7 on *T. rubripes*, vertebrate model, GPU |
+| `helixer-Neurospora_crassa.yaml` | `.json` | Helixer 0.3.7 on *N. crassa*, fungi model, GPU |
+| `helixer-Saccharomyces_cerevisiae.yaml` | `.json` | Helixer 0.3.7 on *S. cerevisiae*, fungi model, GPU |
 
-The third is the ablation: the same genome and the same tool, one parameter
+The three Helixer runs are the second tool and the second output shape: no
+`stop_codon` features at all, UTRs present, and two species (*T. rubripes*,
+*S. cerevisiae*) that the shipped checkpoints' own training lists name,
+against one (*N. crassa*) that they do not. The *S. cerevisiae* one is also
+the direct comparison with the AUGUSTUS run on the same genome, which is what
+settles §7 item 10: two unrelated tools over-predict yeast introns by 2 to
+2.6x. Every JSON here was regenerated with the
+current scorer, so all five carry `stop_codon_convention_from_genome` and
+`stop_codon_convention_source`; the AUGUSTUS numbers are unchanged to five
+decimals by that regeneration.
+
+The third AUGUSTUS run is the ablation: the same genome and the same tool, one parameter
 set away. Exon F1 falls from 0.774 to 0.296 and donor F1 from 0.854 to 0.175
 while nucleotide F1 only falls from 0.955 to 0.868.
 
@@ -57,6 +71,42 @@ python3 benchmark/score.py \
 *S. pombe* is the same with `--species=schizosaccharomyces_pombe`, and the
 ablation is the same *S. pombe* FASTA with
 `--species=saccharomyces_cerevisiae_S288C`.
+
+Helixer is not a dependency either. The runs above used the published
+container image and one consumer GPU; the model files are fetched once into a
+mounted directory so the image stays read-only:
+
+```
+docker pull gglyptodon/helixer-docker:helixer_v0.3.7_cuda_12.2.2-cudnn8
+mkdir -p /tmp/helixer_models
+docker run --rm -v /tmp/helixer_models:/home/helixer_user/.local/share/Helixer \
+    gglyptodon/helixer-docker:helixer_v0.3.7_cuda_12.2.2-cudnn8 \
+    fetch_helixer_models.py --lineage vertebrate   # and --lineage fungi
+
+zcat /tmp/panel/Takifugu_rubripes/*_genomic.fna.gz > /tmp/panel/fugu.fna
+docker run --rm --gpus all -v /tmp/panel:/data \
+    -v /tmp/helixer_models:/home/helixer_user/.local/share/Helixer \
+    gglyptodon/helixer-docker:helixer_v0.3.7_cuda_12.2.2-cudnn8 \
+    bash -lc 'Helixer.py --lineage vertebrate --fasta-path /data/fugu.fna \
+        --species Takifugu_rubripes --gff-output-path /data/fugu_helixer.gff3 \
+        --temporary-dir /data/htmp --batch-size 8'
+
+# No --stop-outside-cds: Helixer emits no stop_codon features and includes
+# the stop in its CDS.  --genome is what lets score.py establish that rather
+# than assume it (docs/benchmark.md 4.5).
+python3 benchmark/score.py \
+    --reference /tmp/panel/Takifugu_rubripes/*_genomic.gff.gz \
+    --prediction /tmp/panel/fugu_helixer.gff3 --species Takifugu_rubripes \
+    --declaration benchmark/validation/helixer-Takifugu_rubripes.yaml \
+    --genome /tmp/panel/fugu.fna --out /tmp/fugu.json
+```
+
+`--batch-size 8` is not a default: the shipped default of 32 exhausts 16 GB of
+GPU memory at `--subsequence-length 213840`. The image's TensorFlow 2.15.1
+carries no cubins for compute capability 12.0, so on an RTX 5080 every kernel
+is JIT-compiled from PTX by the driver on first use; mounting a cache
+directory at `/home/helixer_user/.nv` keeps that cost to the first run.
+*N. crassa* and *S. cerevisiae* are the same with `--lineage fungi`.
 
 These JSON files were regenerated on 2026-09-09 after §4 stopped scoring
 pseudogene and gene-fragment CDS rows as truth and §4.5 stopped charging
