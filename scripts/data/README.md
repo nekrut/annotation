@@ -195,6 +195,33 @@ script prints one row and the distance histogram, which on
 `hg38.100way.nh` with `--reference hg38` reproduces the informant counts
 of the section 6.1 human table.
 
+## pairwise_codons.py
+
+Exports reference-versus-informant codon pairs from a fetched window for
+the KA/KS baseline (T-human-010), one sequential PHYLIP per informant,
+with a `.pairs.tsv` and sidecar recording per informant how many codons the
+CDS has, how many the pairwise rule keeps, how many a complete-case rule
+over all rows would keep, the drop reasons (unaligned, gap, ambiguous,
+insertion inside a codon, informant stop), identity and tree distance.
+Written because codeml's pairwise mode deletes every column any input row
+gaps (relay note 20260909T164106Z-stalin-0016); `docs/data-sources.md`
+section 6.4 has the measurement. Reuses the MAF, tree and isoform code of
+`cut_windows.py`, so it needs that file next to it.
+
+```
+python3 scripts/data/pairwise_codons.py --self-test
+python3 scripts/data/pairwise_codons.py --stem /tmp/win/Adh/Adh_124 --out /tmp/pairs --isoforms longest-cds --drop-species apiMel4 --write-multi
+python3 scripts/data/pairwise_codons.py --stem /tmp/win/Adh/Adh_124 --out /tmp/cc --transcript NM_001032098.2 --informants droSim2,droSec1,droEre2,droYak3 --complete-case
+```
+
+On the Adh window (2026-09-09) the first command writes 159 files (two
+coding loci, Adh and Adhr; the enclosing outspread transcript has CDS
+outside the window and is skipped with a message), byte-identical under
+`PYTHONHASHSEED` 0 and 42. Self-test: 17 checks on a synthetic window built
+from stalin's three-row example plus a minus-strand spliced gene, an
+insertion inside a codon, an informant stop and a tree leaf absent from
+every block.
+
 ## Politeness
 
 The fetcher spaces requests at least 0.34 s apart by default (`--pause`),

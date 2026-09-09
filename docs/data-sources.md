@@ -708,6 +708,52 @@ whether UTR should be split into 5' and 3' (RefSeq lets us, the
 coverage tables do not yet); and whether EPO ancestral rows are an input
 (the only source that has them, section 3.2) or noise to drop.
 
+### 6.4 Pairwise codon export for the KA/KS baseline
+
+T-human-010 will fit the KA/KS test of Nekrutenko, Makova and Li (2002) to
+reference/informant codon pairs cut from these windows. stalin's audit of
+the current PAML source (relay note 20260909T164106Z-stalin-0016,
+`abacus-gene/paml` at `4c7902f`) found that codeml's pairwise mode forces
+`cleandata = 1` and that its reader deletes every codon column in which
+*any* input row has a gap or an ambiguity, before a pair is fitted. Given a
+multispecies block, codeml therefore fits a pair on the columns that are
+clean across the whole block, not the pair. `scripts/data/pairwise_codons.py`
+materialises each pair on its own from the reference CDS (transcription
+order, reverse complemented on the minus strand, codons may span splice
+junctions, terminal and internal reference stops removed and reported)
+and one informant row, writes a two-row sequential PHYLIP per informant
+with the codons retained by the *pairwise* rule (all three bases A, C, G
+or T; no informant insertion between consecutive codon bases; no informant
+stop), and records per informant the codon counts by fate (`unaligned`,
+`gap`, `ambiguous`, `insertion`, `informant_stop`), identity, tree distance
+and the count that the *complete-case* rule over all rows would have kept.
+`--complete-case` writes the complete-case columns instead, so the two
+policies can be fitted on identical inputs; `--write-multi` writes the
+multi-row block that would reproduce codeml's own deletion. Self-test: 17
+checks built on stalin's three-row example, seed-independent.
+
+Measured on the fly Adh window (dm6 124-way, `apiMel4` dropped, 122
+informant rows, `longest-cds` picks NM_001032098.2, 256 codons; run
+2026-09-09, byte-identical under `PYTHONHASHSEED` 0 and 42):
+
+| Informant set | Rows | Complete-case columns | Pairwise codons kept (min / median / max) | Codons lost to complete case, summed over pairs |
+|---|---|---|---|---|
+| all rows | 122 | 0 of 256 | 0 / 119 / 256 | all |
+| within 2 subst/site of dm6 | 38 | 0 of 256 | 0 / 253 / 256 | 8,545 of 8,545 |
+| within 1 subst/site of dm6 | 13 | 226 of 256 | 226 / 256 / 256 | 360 of 3,298 (11%) |
+
+47 of the 122 rows are unaligned at every Adh codon, so one absent
+informant is enough to delete the whole gene under complete-case
+deletion; even among the 13 drosophilids inside the non-coding
+alignability horizon of 6.1, the 30 codons `droRho2` lacks are removed
+from the other twelve pairs. Kept codons fall with distance the way the
+CDS coverage of 6.1 does: mean 1.00 of the CDS below 0.5, 0.82 between 1
+and 2, 0.26 beyond 2 (Adh), so the baseline's coverage accounting (which
+pairs exist and on how many codons) has to be reported next to its
+classification, as stalin's note recommends. The export is what T-human-010
+should feed codeml, one pair per file; a shared complete-case filter is a
+policy that has to be named and costed, not a default.
+
 ## 7. Suitability for training versus held-out evaluation
 
 The benchmark's rules (`docs/benchmark.md` section 3.2): held-out labels may
@@ -857,3 +903,13 @@ informants) is the design-level answer.
    which the distance lookup never matched, so `dist` was NaN for every EPO
    informant; leaves are now mapped back to row names, and ancestors get
    their distance from the internal node.
+9. New: `scripts/data/pairwise_codons.py` (section 6.4) exports
+   reference/informant codon pairs for T-human-010, one pair per file with
+   original and retained codon counts and drop reasons, after stalin's
+   note 20260909T164106Z-stalin-0016 showed that codeml's pairwise mode
+   deletes columns over every row it is given. On the fly Adh window,
+   complete-case deletion over the 122 informant rows keeps no codon at
+   all and over the 13 drosophilids within 1 substitution per site costs
+   11% of the pairwise codons. For T-human-010: fit each pair from its
+   own file and report coverage (pairs that exist, codons retained) next
+   to the classification.
