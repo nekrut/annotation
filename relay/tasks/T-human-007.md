@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T15:06:03Z
+lease_until: 2026-09-09T16:30:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -453,3 +453,54 @@ one species in a fresh clone.
   exercise it if its GTF excludes the stop; no evidence-based pipeline with
   alternative isoforms has been scored; degraded-copy runs still cover 2 of
   20. NEXT: address review feedback on PR #5 when it arrives.
+- 2026-09-09 lenin: run 9. PR #5 still has no review, and nothing open is
+  claimable (T-human-006 waits on T-human-003/004, T-human-009 on T-human-006,
+  T-human-010 and T-human-011 on this task reaching `done`), so the tick went
+  to the largest unexplained number in the run-8 results: fugu's transcript F1
+  0.238. It was not, as run 8 assumed, only the isoform-density effect.
+  DEFECT FOUND (the fifth from a real run, and the first that needs a deeply
+  annotated reference to see): AN EXACT TRANSCRIPT MATCH COULD LOSE THE
+  WITHIN-LOCUS PAIRING TO AN ISOFORM THAT MERELY CONTAINS IT. Section 4.4
+  paired predicted transcripts to annotated isoforms in descending order of
+  shared CDS bases with the reference id as tie-break. An isoform that
+  contains the prediction's whole CDS shares *exactly* as many bases with it
+  as the isoform the prediction equals, so the two tie and the accession
+  string decides. Fugu `rab44` is the case: the prediction is
+  `rna-XM_029826178.1` base for base, `rna-XM_011613896.2` is that chain plus
+  51 bases at one end, both share 10,749, `011` sorts before `029`, and the
+  exact hit was scored as a miss. 343 of fugu's 5,907 exact matches (5.8%) and
+  34 of N. crassa's 6,923 were lost this way, each charged as a false positive
+  and a false negative. Exactness now outranks overlap; the ordering is in
+  4.4 as a specification, not just in the code.
+  Results: T. rubripes transcript F1 0.23782 -> 0.25248 (tp 5,564 -> 5,907),
+  N. crassa 0.68609 -> 0.68947 (tp 6,889 -> 6,923). Nothing else moved in any
+  of the six runs: the three AUGUSTUS runs and Helixer on S. cerevisiae are
+  unchanged, as is every non-transcript column of the other two, because a
+  single-isoform reference cannot exhibit the bug. So fugu's transcript F1 is
+  still mostly the isoform-density effect; 0.014 of it was this.
+  ALSO FIXED, a documentation defect the work surfaced: docs/benchmark.md 6
+  claimed the self-test checks 116 values while it ran 104. The self-test now
+  prints the count it ran (111 with the new fixture) so the sentence cannot
+  drift again.
+  ANSWERED, for marx's T-human-008 question in 20260909T140006Z-marx-0013:
+  the benchmark designates no representative isoform per locus and 4.4 now
+  says why. Picking one would pick a winner the reference does not, and the
+  isoform rule already removes the penalty deep annotation would carry. A
+  window cutter needing one target per locus is making a training decision,
+  not a scoring one. The constraint that does bind: against a
+  one-prediction-per-locus model the transcript column is bounded by how close
+  the chosen target is to *some* annotated isoform.
+  Verified: new fixture (two isoforms, one containing the other, prediction
+  equals the shorter) fails under the old order and passes under the new;
+  self-test 104 -> 111 checks, all pass under PYTHONHASHSEED 0/1/2/42/1337;
+  identity runs re-checked at F1 1.0 and MCC 1.0 with 0 fusions and 0 splits
+  on S. cerevisiae, N. crassa, T. rubripes, C. elegans and human (human
+  131,442 transcript tp), with shared-donor counts 0/73/8,086/2,120/23,387
+  unchanged; all six benchmark/validation/ JSONs regenerated.
+  docs/benchmark.md 4.4, 6 and 7 item 2 and benchmark/validation/README.md
+  updated. Task stays in `review`; PR #5 updated (commit b89f938).
+  NOT done, unchanged: open item 2's remaining gaps -- the blind 3 bp
+  extension is still fixture-only, no prediction with more than one isoform
+  per locus has been scored (so the false-positive branch of the 4.4 pairing
+  is fixture-only too), no evidence-based pipeline, degraded-copy runs still
+  cover 2 of 20. NEXT: address review feedback on PR #5 when it arrives.
