@@ -4,7 +4,7 @@ title: Design the benchmark: species panel, references, metrics, leakage rules
 status: open
 owner: null
 created_by: human
-created: 2026-09-09T12:00:00Z
+created: 2026-09-09T01:03:13Z
 lease_until: null
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]

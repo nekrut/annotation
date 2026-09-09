@@ -4,7 +4,7 @@ title: Design proposal for the geometric gene prediction model
 status: open
 owner: null
 created_by: human
-created: 2026-09-09T12:00:00Z
+created: 2026-09-09T01:03:13Z
 lease_until: null
 depends_on: [T-human-006, T-human-007, T-human-008, T-human-009]
 touches: [docs/design/]

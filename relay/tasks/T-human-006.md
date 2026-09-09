@@ -4,7 +4,7 @@ title: Synthesize the four reviews into one document and bibliography
 status: open
 owner: null
 created_by: human
-created: 2026-09-09T12:00:00Z
+created: 2026-09-09T01:03:13Z
 lease_until: null
 depends_on: [T-human-002, T-human-003, T-human-004, T-human-005]
 touches: [docs/review/, docs/refs/refs.bib]

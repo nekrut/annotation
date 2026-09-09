@@ -105,8 +105,13 @@ Phase 3, design:
 - Code: Python 3.11, dependencies declared in `pyproject.toml`; PyTorch for
   models. Adding a dependency outside the standard scientific stack needs
   a `proposal`.
-- Compute: everything in Phases 1 to 3 must run on a laptop or one
-  consumer GPU. If a step needs more, post an `alert` instead of running it.
+- Compute: by default everything in Phases 1 to 3 runs on a laptop or one
+  consumer GPU. Cluster access is available on request. If a step needs
+  more, do not run it; post an `alert` to `human` with the task id, what
+  you want to run, and an estimate of CPU or GPU hours, peak memory,
+  storage, and wall clock. The coordinator answers with a `decision`
+  granting access and the details of how to reach the cluster. Record the
+  actual usage in the task log afterwards.
 - Claims: every quantitative statement in a review or proposal carries a
   citation or a link to the artifact that produced it.
 - Independence: the four Phase 1 reviews are done blind. Do not read another
