@@ -1,0 +1,107 @@
+{
+  "repository": "https://github.com/KorfLab/SNAP",
+  "requested_sha": "4ad1e957cd8e68b63857cc1cb3380d39a7b518b1",
+  "started_utc": "2026-09-09T02:00:22.532216+00:00",
+  "scope": "Fresh temporary source checkout; system GCC/make with restricted PATH; no pre-existing SNAP build, model training, package installation, or whole-genome benchmark.",
+  "platform": "Linux x86_64",
+  "steps": [
+    {
+      "command": [
+        "git",
+        "clone",
+        "--quiet",
+        "--depth",
+        "1",
+        "https://github.com/KorfLab/SNAP",
+        "/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 2.649,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.001,
+      "stdout": "4ad1e957cd8e68b63857cc1cb3380d39a7b518b1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "gcc",
+        "--version"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.001,
+      "stdout": "gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "make",
+        "--version"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.001,
+      "stdout": "GNU Make 4.4.1\nBuilt for x86_64-pc-linux-gnu\nCopyright (C) 1988-2023 Free Software Foundation, Inc.\nLicense GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "make"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 2.319,
+      "stdout": "make gcc\nmake[1]: Entering directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source'\ncd Zoe; make;\nmake[2]: Entering directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source/Zoe'\nmake gcc\nmake[3]: Entering directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source/Zoe'\nmake zoe-loop  CC=\"gcc\" CFLAGS=\"-O2 -Wall -Werror\"\nmake[4]: Entering directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source/Zoe'\ngcc -O2 -Wall -Werror -c -o zoe-loop.o zoe-loop.c\ngcc -O2 -Wall -Werror -c -o zoeCDS.o zoeCDS.c\ngcc -O2 -Wall -Werror -c -o zoeCounter.o zoeCounter.c\ngcc -O2 -Wall -Werror -c -o zoeDNA.o zoeDNA.c\ngcc -O2 -Wall -Werror -c -o zoeDistribution.o zoeDistribution.c\ngcc -O2 -Wall -Werror -c -o zoeDuration.o zoeDuration.c\ngcc -O2 -Wall -Werror -c -o zoeFastaFile.o zoeFastaFile.c\ngcc -O2 -Wall -Werror -c -o zoeFeature.o zoeFeature.c\ngcc -O2 -Wall -Werror -c -o zoeFeatureFactory.o zoeFeatureFactory.c\ngcc -O2 -Wall -Werror -c -o zoeFeatureTable.o zoeFeatureTable.c\ngcc -O2 -Wall -Werror -c -o zoeHMM.o zoeHMM.c\ngcc -O2 -Wall -Werror -c -o zoeIsochore.o zoeIsochore.c\ngcc -O2 -Wall -Werror -c -o zoeMath.o zoeMath.c\ngcc -O2 -Wall -Werror -c -o zoeModel.o zoeModel.c\ngcc -O2 -Wall -Werror -c -o zoePhasePref.o zoePhasePref.c\ngcc -O2 -Wall -Werror -c -o zoeProtein.o zoeProtein.c\ngcc -O2 -Wall -Werror -c -o zoeScanner.o zoeScanner.c\ngcc -O2 -Wall -Werror -c -o zoeState.o zoeState.c\ngcc -O2 -Wall -Werror -c -o zoeTools.o zoeTools.c\ngcc -O2 -Wall -Werror -c -o zoeTransition.o zoeTransition.c\ngcc -O2 -Wall -Werror -c -o zoeTrellis.o zoeTrellis.c\ngcc -o zoe-loop -O2 -Wall -Werror zoe-loop.o zoeCDS.o zoeCounter.o zoeDNA.o zoeDistribution.o zoeDuration.o zoeFastaFile.o zoeFeature.o zoeFeatureFactory.o zoeFeatureTable.o zoeHMM.o zoeIsochore.o zoeMath.o zoeModel.o zoePhasePref.o zoeProtein.o zoeScanner.o zoeState.o zoeTools.o zoeTransition.o zoeTrellis.o  -lm\nmake[4]: Leaving directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source/Zoe'\nmake[3]: Leaving directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source/Zoe'\nmake[2]: Leaving directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source/Zoe'\nmake snap  CC=\"gcc\" CFLAGS=\"-O2 -Wall -Werror\"\nmake[2]: Entering directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source'\ngcc -O2 -Wall -Werror -IZoe -c -o snap.o snap.c\ngcc -o snap -O2 -Wall -Werror snap.o Zoe/zoeCDS.o Zoe/zoeCounter.o Zoe/zoeDNA.o Zoe/zoeDistribution.o Zoe/zoeDuration.o Zoe/zoeFastaFile.o Zoe/zoeFeature.o Zoe/zoeFeatureFactory.o Zoe/zoeFeatureTable.o Zoe/zoeHMM.o Zoe/zoeIsochore.o Zoe/zoeMath.o Zoe/zoeModel.o Zoe/zoePhasePref.o Zoe/zoeProtein.o Zoe/zoeScanner.o Zoe/zoeState.o Zoe/zoeTools.o Zoe/zoeTransition.o Zoe/zoeTrellis.o  -lm\nmake[2]: Leaving directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source'\nmake fathom CC=\"gcc\" CFLAGS=\"-O2 -Wall -Werror\"\nmake[2]: Entering directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source'\ngcc -O2 -Wall -Werror -IZoe -c -o fathom.o fathom.c\ngcc -o fathom -O2 -Wall -Werror fathom.o Zoe/zoeCDS.o Zoe/zoeCounter.o Zoe/zoeDNA.o Zoe/zoeDistribution.o Zoe/zoeDuration.o Zoe/zoeFastaFile.o Zoe/zoeFeature.o Zoe/zoeFeatureFactory.o Zoe/zoeFeatureTable.o Zoe/zoeHMM.o Zoe/zoeIsochore.o Zoe/zoeMath.o Zoe/zoeModel.o Zoe/zoePhasePref.o Zoe/zoeProtein.o Zoe/zoeScanner.o Zoe/zoeState.o Zoe/zoeTools.o Zoe/zoeTransition.o Zoe/zoeTrellis.o  -lm\nmake[2]: Leaving directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source'\nmake forge CC=\"gcc\" CFLAGS=\"-O2 -Wall -Werror\"\nmake[2]: Entering directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source'\ngcc -O2 -Wall -Werror -IZoe -c -o forge.o forge.c\ngcc -o forge -O2 -Wall -Werror forge.o Zoe/zoeCDS.o Zoe/zoeCounter.o Zoe/zoeDNA.o Zoe/zoeDistribution.o Zoe/zoeDuration.o Zoe/zoeFastaFile.o Zoe/zoeFeature.o Zoe/zoeFeatureFactory.o Zoe/zoeFeatureTable.o Zoe/zoeHMM.o Zoe/zoeIsochore.o Zoe/zoeMath.o Zoe/zoeModel.o Zoe/zoePhasePref.o Zoe/zoeProtein.o Zoe/zoeScanner.o Zoe/zoeState.o Zoe/zoeTools.o Zoe/zoeTransition.o Zoe/zoeTrellis.o  -lm\nmake[2]: Leaving directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source'\nmake[1]: Leaving directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.snap-install-inz8fta3/source'\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "./snap",
+        "HMM/thale",
+        "DNA/thale.dna.gz"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.019,
+      "stderr": "scoring.....decoding.10.20.30.40.50.60.70.80.90.100 done\nscoring.....decoding.10.20.30.40.50.60.70.80.90.100 done\n",
+      "prediction_output_lines": 23,
+      "stdout_excerpt": ">At1g01040.0\nEinit\t1007\t1954\t+\t85.269\t0\t0\t1\tAt1g01040.0-snap.1\nExon\t2024\t2137\t+\t8.926\t0\t0\t1\tAt1g01040.0-snap.1"
+    },
+    {
+      "command": [
+        "./snap",
+        "HMM/worm",
+        "DNA/worm.dna.gz"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.02,
+      "stderr": "scoring.....decoding.10.20.30.40.50.60.70.80.90.100 done\nscoring.....decoding.10.20.30.40.50.60.70.80.90.100 done\n",
+      "prediction_output_lines": 20,
+      "stdout_excerpt": ">F56C11.1\nEinit\t1487\t1493\t+\t5.285\t0\t1\t1\tF56C11.1-snap.1\nExon\t2140\t2217\t+\t24.843\t2\t1\t2\tF56C11.1-snap.1"
+    }
+  ],
+  "actual_sha": "4ad1e957cd8e68b63857cc1cb3380d39a7b518b1",
+  "readme_build_succeeded": true,
+  "input_sha256": {
+    "thale.dna.gz": "a444ac45ef60d26a8c31f6d27be0dbf605ce41cf3bdb200a5c53867154017c20",
+    "worm.dna.gz": "886dad46a023de682f74d5b53b436fad7bcf27cccdbb2910759b8a0a4a533360"
+  },
+  "readme_examples": [
+    {
+      "name": "thale",
+      "exit_code": 0,
+      "nonempty_output": true
+    },
+    {
+      "name": "worm",
+      "exit_code": 0,
+      "nonempty_output": true
+    }
+  ],
+  "ended_utc": "2026-09-09T02:00:27.545034+00:00"
+}

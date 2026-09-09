@@ -1,0 +1,157 @@
+{
+  "date_utc": "2026-09-09T02:03:10.208913+00:00",
+  "note": "Access descriptions refer to this run. Full text was read transiently when accessible; no paper full text is stored here. Availability is not a licence assessment.",
+  "records": [
+    {
+      "doi": "10.1093/bioinformatics/btae685",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11645249/fullTextXML",
+      "access": "available",
+      "reading_scope": "Main text inspected; supplementary tables not fully extracted"
+    },
+    {
+      "doi": "10.64898/2026.04.24.720536",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13142403/fullTextXML",
+      "access": "available",
+      "reading_scope": "Abstract and methods/results paragraphs inspected; supplementary tables pending"
+    },
+    {
+      "doi": "10.1101/gr.200901",
+      "url": "https://genome.cshlp.org/content/12/1/198.full.pdf",
+      "access": "available",
+      "reading_scope": "Empirical/simulation denominators and boundary limitation read; free access is not a redistribution licence"
+    },
+    {
+      "doi": "10.1093/bioinformatics/btac028",
+      "url": "https://academic.oup.com/bioinformatics/article/38/7/1857/6513381",
+      "access": "available",
+      "reading_scope": "Public full-text methods/results; candidate-generation assumptions read; runtime extraction pending"
+    },
+    {
+      "doi": "10.1093/bioinformatics/btg1080",
+      "url": "https://gobics.de/mario/papers/GenePred2003.pdf",
+      "access": "available",
+      "reading_scope": "Author manuscript; methods and tables inspected, final-version table reconciliation pending"
+    },
+    {
+      "doi": "10.1186/1471-2105-5-59",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC421630/fullTextXML",
+      "access": "available",
+      "reading_scope": "Abstract and selected methods/results; complete transfer table pending"
+    },
+    {
+      "doi": "10.1093/nar/gki937",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC1298918/fullTextXML",
+      "access": "available",
+      "reading_scope": "Abstract and selected results"
+    },
+    {
+      "doi": "10.1101/gr.278373.123",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11216313/fullTextXML",
+      "access": "available",
+      "reading_scope": "Abstract, selected methods/results and runtime scope"
+    },
+    {
+      "doi": "10.1101/gr.278090.123",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11216308/fullTextXML",
+      "access": "available",
+      "reading_scope": "Abstract, selected methods/results and runtime scope"
+    },
+    {
+      "doi": "10.1101/gr.6743907",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC2134774/fullTextXML",
+      "access": "404",
+      "reading_scope": "Alternative author-hosted paper subsequently found"
+    },
+    {
+      "doi": "10.1101/gr.6743907",
+      "url": "https://planaria.stowers.org/wp-content/uploads/2017/04/maker.pdf",
+      "access": "available",
+      "reading_scope": "Author-hosted paper; Table 1 and compute-times section read; web screenshot timed out"
+    },
+    {
+      "doi": "10.1186/gb-2007-8-12-r269",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC2246271/fullTextXML",
+      "access": "available",
+      "reading_scope": "Abstract, results discussion and tables inspected"
+    },
+    {
+      "doi": "10.1093/bioinformatics/btr209",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC3117341/fullTextXML",
+      "access": "available",
+      "reading_scope": "Abstract and selected method discussion"
+    },
+    {
+      "doi": "10.1093/bioinformatics/btw494",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC5860283/fullTextXML",
+      "access": "404",
+      "reading_scope": "Metadata and official dataset page only"
+    },
+    {
+      "doi": "10.1038/s41592-025-02939-1",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13076211/fullTextXML",
+      "access": "available",
+      "reading_scope": "Methods, discussion and Tables 1-2 inspected"
+    },
+    {
+      "doi": "10.1038/s41592-026-03036-7",
+      "url": "https://www.nature.com/articles/s41592-026-03036-7",
+      "access": "abstract_only",
+      "reading_scope": "Publisher reports subscription content; full text not accessed"
+    },
+    {
+      "doi": "10.21203/rs.3.rs-6402260/v1",
+      "url": "https://assets-eu.researchsquare.com/files/rs-6402260/v1/ae673ed3-ea38-4d30-acbf-495f0820d114.pdf",
+      "access": "partial_tool_access",
+      "reading_scope": "Web recognized a PDF, but method text unavailable through find and screenshot returned 403; not claimed read"
+    },
+    {
+      "doi": "10.64898/2026.05.18.725946",
+      "url": "https://www.biorxiv.org/content/10.64898/2026.05.18.725946v1.full",
+      "access": "tool_fetch_failed",
+      "reading_scope": "Metadata and author repository read; paper numbers not adopted from secondary sources"
+    },
+    {
+      "doi": "10.64898/2026.06.17.732686",
+      "url": "https://www.biorxiv.org/content/10.64898/2026.06.17.732686v1.full",
+      "access": "available",
+      "reading_scope": "Abstract and main-text sections inspected; appendices pending"
+    },
+    {
+      "doi": "10.1093/nar/gkae1038",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11701664/fullTextXML",
+      "access": "404",
+      "reading_scope": "Public repository documentation and bibliographic metadata only"
+    },
+    {
+      "doi": "10.1006/jmbi.1997.0951",
+      "url": "https://www.sciencedirect.com/science/article/pii/S0022283697909517",
+      "access": "403",
+      "reading_scope": "Metadata and search-accessible publisher excerpt only"
+    },
+    {
+      "doi": "10.1089/cmb.2006.13.379",
+      "url": "https://journals.sagepub.com/doi/10.1089/cmb.2006.13.379",
+      "access": "abstract_only",
+      "reading_scope": "Public publisher abstract read"
+    },
+    {
+      "doi": "10.64898/2026.05.18.725946",
+      "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID%3APPR1235607&format=json&resultType=core",
+      "access": "abstract_only",
+      "reading_scope": "Author abstract retrieved via Europe PMC; reported gene F1 and CPU-time summary extracted, full benchmark configuration unverified"
+    },
+    {
+      "doi": "10.1093/bioinformatics/17.suppl_1.s140",
+      "url": "https://web.stanford.edu/class/cs273a/papers.spr07/lecture12/Twinscan.pdf",
+      "access": "available",
+      "reading_scope": "Original paper methods, set definitions and Tables 1/2 inspected; class-hosted primary paper, not teaching summary"
+    },
+    {
+      "doi": "10.1006/jmbi.1997.0951",
+      "url": "https://www.cs.rice.edu/~devika/comp470/papers/burge97prediction.pdf",
+      "access": "available",
+      "reading_scope": "Original paper results, Tables 1/2 and metric definitions, training-overlap caveat, model overview and runtime read; course-hosted primary paper"
+    }
+  ],
+  "updated_utc": "2026-09-09T02:13:01.351883+00:00"
+}

@@ -1,0 +1,80 @@
+{
+  "repo_url": "https://github.com/BrentLab/Twinscan",
+  "head_sha": "6f5931d7c80ea67ba1c8d0b8e6ee77f5715e4bc0",
+  "started_utc": "2026-09-09T02:11:39.971489+00:00",
+  "environment": {
+    "type": "fresh temporary source checkout, host compiler; not a clean OS or container",
+    "platform": "Linux-7.0.0-30-generic-x86_64-with-glibc2.43",
+    "machine": "x86_64",
+    "PATH": "/usr/bin:/bin"
+  },
+  "harness_note": "A prior temporary checkout stopped before make because the harness assumed README instead of README.rst. Corrected the harness; source unmodified.",
+  "steps": [
+    {
+      "argv": [
+        "gcc",
+        "--version"
+      ],
+      "cwd": "temporary parent",
+      "exit_code": 0,
+      "elapsed_seconds": 0.001,
+      "stdout": "gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "make",
+        "--version"
+      ],
+      "cwd": "temporary parent",
+      "exit_code": 0,
+      "elapsed_seconds": 0.001,
+      "stdout": "GNU Make 4.4.1\nBuilt for x86_64-pc-linux-gnu\nCopyright (C) 1988-2023 Free Software Foundation, Inc.\nLicense GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--quiet",
+        "--depth",
+        "1",
+        "https://github.com/BrentLab/Twinscan",
+        "source"
+      ],
+      "cwd": "temporary parent",
+      "exit_code": 0,
+      "elapsed_seconds": 1.165,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "temporary checkout",
+      "exit_code": 0,
+      "elapsed_seconds": 0.001,
+      "stdout": "6f5931d7c80ea67ba1c8d0b8e6ee77f5715e4bc0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "make",
+        "linux"
+      ],
+      "cwd": "temporary checkout",
+      "exit_code": 2,
+      "elapsed_seconds": 0.31,
+      "stdout": "make all CC=\"gcc\" CFLAGS+=\"-W -Wall -Werror -ansi -pedantic -Wwrite-strings\" CFLAGS+=-march=i686 CFLAGS+=-DNDEBUG CFLAGS+=-O2 CFLAGS+=\"-DBUILD=\\\\\\\"Twinscan\\ version\\ 3.5\\ build\\ 20060720RZ\\\\\\\" -DNDEBUG -O2\"\nmake[1]: Entering directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.twinscan-check-55z_ib49/source'\ngcc \"-MM\" src/*.c > Makefile.include\nsrc/get-glib-flags.sh >> Makefile.include\ngcc -W -Wall -Werror -ansi -pedantic -Wwrite-strings -march=i686 -DNDEBUG -O2 -DBUILD=\\\"Twinscan\\ version\\ 3.5\\ build\\ 20060720RZ\\\" -DNDEBUG -O2 -c -o src/zTools.o src/zTools.c\nmake[1]: Leaving directory '/home/anton/git/mels/stalin/relay/artifacts/T-human-004/.twinscan-check-55z_ib49/source'\n",
+      "stderr": "Package glib-2.0 was not found in the pkg-config search path.\nPerhaps you should add the directory containing `glib-2.0.pc'\nto the PKG_CONFIG_PATH environment variable\nPackage 'glib-2.0' not found\nPackage glib-2.0 was not found in the pkg-config search path.\nPerhaps you should add the directory containing `glib-2.0.pc'\nto the PKG_CONFIG_PATH environment variable\nPackage 'glib-2.0' not found\ncc1: error: CPU you selected does not support x86-64 instruction set\ncc1: error: \u2018-fcf-protection=full\u2019 is not supported for this target\nmake[1]: *** [Makefile:191: src/zTools.o] Error 1\nmake: *** [Makefile:140: linux] Error 2\n"
+    }
+  ],
+  "readme_path": "README.rst",
+  "readme_sha256": "d7d245d0f407dddea26c6803583d00580da277e057071483ae055f90dc0f526c",
+  "result": "documented_build_failed",
+  "example_execution": "not_attempted_after_build_failure",
+  "finished_utc": "2026-09-09T02:11:41.455999+00:00"
+}

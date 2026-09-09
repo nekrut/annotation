@@ -1,0 +1,158 @@
+[
+  {
+    "bibkey": "burge1997genscan",
+    "source_id": "9149143",
+    "doi": "10.1006/jmbi.1997.0951",
+    "title": "Prediction of complete gene structures in human genomic DNA."
+  },
+  {
+    "bibkey": "stanke2003augustus",
+    "source_id": "14534192",
+    "doi": "10.1093/bioinformatics/btg1080",
+    "title": "Gene prediction with a hidden Markov model and a new intron submodel."
+  },
+  {
+    "bibkey": "stanke2006augustus",
+    "source_id": "16845043",
+    "doi": "10.1093/nar/gkl200",
+    "title": "AUGUSTUS: ab initio prediction of alternative transcripts."
+  },
+  {
+    "bibkey": "korf2004snap",
+    "source_id": "15144565",
+    "doi": "10.1186/1471-2105-5-59",
+    "title": "Gene finding in novel genomes."
+  },
+  {
+    "bibkey": "lomsadze2005genemark",
+    "source_id": "16314312",
+    "doi": "10.1093/nar/gki937",
+    "title": "Gene identification in novel eukaryotic genomes by self-training algorithm."
+  },
+  {
+    "bibkey": "bruna2024genemarketp",
+    "source_id": "38866548",
+    "doi": "10.1101/gr.278373.123",
+    "title": "GeneMark-ETP significantly improves the accuracy of automatic annotation of large eukaryotic genomes."
+  },
+  {
+    "bibkey": "gabriel2024braker3",
+    "source_id": "38866550",
+    "doi": "10.1101/gr.278090.123",
+    "title": "BRAKER3: Fully automated genome annotation using RNA-seq and protein evidence with GeneMark-ETP, AUGUSTUS, and TSEBRA."
+  },
+  {
+    "bibkey": "bruna2021braker2",
+    "source_id": "33575650",
+    "doi": "10.1093/nargab/lqaa108",
+    "title": "BRAKER2: automatic eukaryotic genome annotation with GeneMark-EP+ and AUGUSTUS supported by a protein database."
+  },
+  {
+    "bibkey": "hoff2016braker1",
+    "source_id": "26559507",
+    "doi": "10.1093/bioinformatics/btv661",
+    "title": "BRAKER1: Unsupervised RNA-Seq-Based Genome Annotation with GeneMark-ET and AUGUSTUS."
+  },
+  {
+    "bibkey": "cantarel2008maker",
+    "source_id": "18025269",
+    "doi": "10.1101/gr.6743907",
+    "title": "MAKER: an easy-to-use annotation pipeline designed for emerging model organism genomes."
+  },
+  {
+    "bibkey": "korf2001twinscan",
+    "source_id": "11473003",
+    "doi": "10.1093/bioinformatics/17.suppl_1.s140",
+    "title": "Integrating genomic homology into gene structure prediction."
+  },
+  {
+    "bibkey": "gross2006nscan",
+    "source_id": "16597247",
+    "doi": "10.1089/cmb.2006.13.379",
+    "title": "Using multiple alignments to improve gene prediction."
+  },
+  {
+    "bibkey": "gross2007contrast",
+    "source_id": "18096039",
+    "doi": "10.1186/gb-2007-8-12-r269",
+    "title": "CONTRAST: a discriminative, phylogeny-free approach to multiple informant de novo gene prediction."
+  },
+  {
+    "bibkey": "nekrutenko2002kaks",
+    "source_id": "11779845",
+    "doi": "10.1101/gr.200901",
+    "title": "The K(A)/K(S) ratio test for assessing the protein-coding potential of genomic regions: an empirical and simulation study."
+  },
+  {
+    "bibkey": "lin2011phylocsf",
+    "source_id": "21685081",
+    "doi": "10.1093/bioinformatics/btr209",
+    "title": "PhyloCSF: a comparative genomics method to distinguish protein coding and non-coding regions."
+  },
+  {
+    "bibkey": "mertsch2022clamsa",
+    "source_id": "35060608",
+    "doi": "10.1093/bioinformatics/btac028",
+    "title": "End-to-end learning of evolutionary models to find coding regions in genome alignments."
+  },
+  {
+    "bibkey": "koenig2016augustuscgp",
+    "source_id": "27466621",
+    "doi": "10.1093/bioinformatics/btw494",
+    "title": "Simultaneous gene finding in multiple genomes."
+  },
+  {
+    "bibkey": "stiehler2021helixer",
+    "source_id": "33325516",
+    "doi": "10.1093/bioinformatics/btaa1044",
+    "title": "Helixer: cross-species gene annotation of large eukaryotic genomes using deep learning."
+  },
+  {
+    "bibkey": "holst2025helixer",
+    "source_id": "41286201",
+    "doi": "10.1038/s41592-025-02939-1",
+    "title": "Helixer: ab initio prediction of primary eukaryotic gene models combining deep learning and a hidden Markov model."
+  },
+  {
+    "bibkey": "gabriel2024tiberius",
+    "source_id": "39558581",
+    "doi": "10.1093/bioinformatics/btae685",
+    "title": "Tiberius: end-to-end deep learning with an HMM for gene prediction."
+  },
+  {
+    "bibkey": "gabriel2026tiberiusclades",
+    "source_id": "PPR1213068",
+    "doi": "10.64898/2026.04.24.720536",
+    "title": "Accurate  ab initio  gene prediction in eukaryotes with Tiberius in multiple clades"
+  },
+  {
+    "bibkey": "zhang2026annevo",
+    "source_id": "41820667",
+    "doi": "10.1038/s41592-026-03036-7",
+    "title": "Highly accurate ab initio gene annotation with ANNEVO."
+  },
+  {
+    "bibkey": "ye2025annevopreprint",
+    "source_id": "PPR1009150",
+    "doi": "10.21203/rs.3.rs-6402260/v1",
+    "title": "Highly accurate ab initio gene annotation with ANNEVO"
+  },
+  {
+    "bibkey": "vader2026geneml",
+    "source_id": "PPR1235607",
+    "doi": "10.64898/2026.05.18.725946",
+    "title": "geneML: Gene annotation across diverse fungal species using deep learning"
+  },
+  {
+    "bibkey": "shmelev2026genatators",
+    "source_id": "PPR1257394",
+    "doi": "10.64898/2026.06.17.732686",
+    "title": "GENATATORs: ab initio Gene Annotation With DNA Language Models"
+  },
+  {
+    "bibkey": "goldfarb2025refseq",
+    "source_id": "39526381",
+    "doi": "10.1093/nar/gkae1038",
+    "title": "NCBI RefSeq: reference sequence standards through 25 years of curation and annotation."
+  }
+]

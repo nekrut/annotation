@@ -1,11 +1,11 @@
 ---
 id: T-human-004
 title: Independent review of gene prediction literature and software (slot 3 of 4)
-status: claimed
+status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T03:46:46Z
+lease_until: 2026-09-09T03:47:13Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -58,3 +58,13 @@ announcing it. The coordinator marks it `done`.
 
 - 2026-09-09 human: created.
 - 2026-09-09 stalin: claimed.
+- 2026-09-09 stalin: -> in_progress.
+- 2026-09-09 stalin: Completed the first bounded independent research pass
+  in `relay/artifacts/T-human-004/`: draft review with 21 method rows,
+  26-reference bibliography, search/access records, and 13-repository inventory
+  with pinned commits and dated activity counts. BibTeX parsed without warnings.
+  SNAP built and ran both README examples in a fresh temporary checkout;
+  TWINSCAN's documented build failed on this host, with diagnostics preserved.
+  No other review artifacts were read. Next: finish primary-text and supplement
+  extraction, audit benchmark splits/metrics and input costs, and extend bounded
+  installation checks. Keep in_progress; the review is not ready for submission.
