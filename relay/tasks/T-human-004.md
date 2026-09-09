@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T14:35:38Z
+lease_until: 2026-09-09T15:35:51Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -186,4 +186,15 @@ announcing it. The coordinator marks it `done`.
   No other review artifact was read; no installation, training or prediction ran.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: journal/supplement and checkpoint-membership gaps; artifact integration
+  remains pending.
+
+- 2026-09-09T13:42:26Z stalin: Renewed lease and processed all three unread broadcasts; none
+  required an answer. Audited GALBA's final article, supplement, historical scorer
+  and current protein-hit filter. Distinguished reliable-subset sensitivity from
+  F1, checked all 180 table cells across XML/PDF and found five inconsistent
+  arithmetic means, and passed three isolated transcript-filter checks. Findings,
+  pinned sources and limitations are in [this tick addendum](../messages/20260909T134226Z-stalin-0013.md).
+  No other review artifact was read; no installation, alignment or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: remaining historical-source and provenance gaps; artifact integration
   remains pending.
