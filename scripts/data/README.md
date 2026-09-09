@@ -12,6 +12,13 @@ argument list; the module docstring describes the two backends (UCSC API
 plus HTTP range reads into the uncompressed MAF, and Ensembl Compara REST)
 and the output files. Nothing is written inside the repository; point
 `--out` at a scratch directory.
+`--self-test` runs the offline checks: the genePred and bigGenePred to
+transcript conversion on stalin's synthetic example (exons [100,200) and
+[300,400) with coding bounds [130,370); a reader that ignores the CDS
+bounds, as the one stalin found in bricks2marble does, paints every UTR
+base as coding), both strands, equal bounds, a bound inside the intron,
+and the CDS-completeness reading from stat columns, GENCODE tags and exon
+frames (10 checks).
 
 Demonstration runs on 2026-09-09 from a cloud runner with no cached data
 (the definition of done asks for one human and one non-mammal locus; the
@@ -138,7 +145,9 @@ on a fixture with real codons (declared, undeclared, declared against the
 sequence, a declared frame on the minus strand, the four modes, genetic
 code 6, a stop-excluded convention and a CDS reaching past the window),
 overlapping blocks with a lost informant base, a minus-strand reference
-row and two copies of one species under both policies (58 checks). The `.npz` members carry a fixed
+row and two copies of one species under both policies, and the
+`feature_lengths` record on a fixture with a shared, a private and a
+clipped intron (63 checks). The `.npz` members carry a fixed
 timestamp, so an example's checksum depends only on its inputs; the whole
 cutter, the fetcher, `coverage_by_distance.py` and `tree_composition.py`
 were checked to give identical output under `PYTHONHASHSEED` 0, 1, 2 and 42
@@ -255,6 +264,30 @@ outside the window and is skipped with a message), byte-identical under
 from stalin's three-row example plus a minus-strand spliced gene, an
 insertion inside a codon, an informant stop and a tree leaf absent from
 every block.
+
+## length_floors.py
+
+Counts, over one whole chromosome of a UCSC genePred or bigGenePred
+track, how many annotated introns, CDSs and transcript spans lie under
+the length floors the cutter's `feature_lengths` record uses (`LENGTH_FLOORS`
+in `cut_windows.py`: introns shorter than 30 and 50 bases, CDSs shorter
+than 60, spans of at most 80; section 6.3 of the document says where they
+come from). Records go through `fetch_window.ucsc_item_to_transcript`, so
+CDS bounds are the ones the record states. Coding transcripts only unless
+`--all`; introns are distinct over isoforms. The section 6.3 table was
+produced on 2026-09-09 by:
+
+```
+python3 scripts/data/length_floors.py --markdown --json /tmp/floors.json \
+    hg38:chr21:ncbiRefSeqCurated mm39:chr19:ncbiRefSeqCurated dm6:chr2L:ncbiRefSeqCurated \
+    ce11:chrIII:ncbiRefSeqCurated sacCer3:chrIV:ncbiRefSeq GCF_000002765.6:NC_037283.1:ncbiRefSeq
+```
+
+Six requests, 6.6 MB in total, under two seconds each. The `--json` file
+keeps every record with the track's `dataTime`, so a rerun can be
+compared. The 1-base "introns" it finds on sacCer3 and ce11 are RefSeq's
+encoding of programmed ribosomal frameshifts, not splice events (section
+9 item 12).
 
 ## Politeness
 

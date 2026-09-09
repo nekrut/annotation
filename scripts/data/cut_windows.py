@@ -146,7 +146,18 @@ import struct
 import sys
 import zipfile
 
-TOOL_VERSION = "0.7"
+TOOL_VERSION = "0.8"
+
+# Length floors the sidecar counts features under (``feature_lengths``).
+# They are the ones engels measured in Helixer's decoder (relay note
+# 20260909T202745Z-engels-0020): the HMM's shortest intron path is 30
+# bases (U12 AT-AC) and the U2 GT-AG / GC-AG paths 50, so a shorter intron
+# cannot be decoded at all; a transcript needs a genic run above 80 bases
+# to pass the default candidate gate (window 100, peak 0.8) before the
+# decoder sees it; and the published minimum coding length is 60.  Any
+# decoder with hard minimum durations has floors of this kind, and the
+# labels below them are the ones such a model can never reproduce.
+LENGTH_FLOORS = {"intron": (30, 50), "cds": (60,), "span": (81,)}
 BASE = {"A": 0, "C": 1, "G": 2, "T": 3}
 # Stop codons by NCBI genetic code table number, for the sequence check of
 # CDS ends.  1 standard; 4 mold/protozoan mitochondrial and Mycoplasma; 6
@@ -909,6 +920,55 @@ def site_counts(sites: set[tuple[str, int, int]], lo: int, hi: int) -> dict[str,
     return {k: sum(1 for kind, _, pos in sites if kind == k and lo <= pos < hi) for k in SITE_KINDS}
 
 
+def feature_lengths(transcripts: list[dict], lo: int, hi: int) -> dict:
+    """Lengths of the introns, CDSs and transcript spans the transcripts
+    state, with counts under ``LENGTH_FLOORS``.  Introns are distinct
+    (strand, start, end) intervals between consecutive exons and are
+    measured only when both ends lie inside [lo, hi); the ones cut by the
+    window edge are counted as ``clipped`` and not measured.  A CDS length
+    is a transcript's coding bases summed over its whole annotation
+    record, which the fetcher carries complete even where the window
+    cuts it (``outside_window`` counts the transcripts whose CDS reaches
+    past the edge); a span is txStart to txEnd the same way.  Two isoforms
+    sharing an intron contribute it once; CDS and span are per transcript."""
+    introns: set[tuple[int, int, int]] = set()
+    clipped = 0
+    cds_len, spans, cds_out, span_out = [], [], 0, 0
+    for t in transcripts:
+        s = 1 if t.get("strand", "+") == "+" else -1
+        ex = sorted(t.get("exons", []))
+        for (a1, b1), (a2, b2) in zip(ex, ex[1:]):
+            if b1 >= a2:
+                continue
+            if lo <= b1 and a2 <= hi:
+                introns.add((s, b1, a2))
+            else:
+                clipped += 1
+        cds = sorted(t.get("cds", []))
+        if cds:
+            cds_len.append(sum(b - a for a, b in cds))
+            cds_out += int(cds[0][0] < lo or cds[-1][1] > hi)
+        if ex:
+            spans.append(ex[-1][1] - ex[0][0])
+            span_out += int(ex[0][0] < lo or ex[-1][1] > hi)
+
+    def summary(vals: list[int], kind: str) -> dict:
+        vals = sorted(vals)
+        n = len(vals)
+        med = None if not n else (vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) / 2)
+        out = {"n": n, "min": vals[0] if n else None, "median": med, "max": vals[-1] if n else None}
+        for f in LENGTH_FLOORS[kind]:
+            out[f"below_{f}"] = sum(1 for v in vals if v < f)
+        return out
+
+    return {
+        "units": {"lengths": "bases", "n": "distinct introns / transcripts", "below_F": "count with length < F"},
+        "introns": {**summary([b - a for _, a, b in introns], "intron"), "clipped": clipped},
+        "cds": {**summary(cds_len, "cds"), "outside_window": cds_out},
+        "span": {**summary(spans, "span"), "outside_window": span_out},
+    }
+
+
 # ---------------------------------------------------------------- cutting
 
 def revcomp_example(ex: dict, L: int, K: int) -> dict:
@@ -1019,8 +1079,10 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
     transcripts, excluded = select_transcripts(transcripts, transcript_types)
     cds_ends = cds_end_status(transcripts, seq, start, end, stops, partial_ends)
     sites_all = distinct_sites(transcripts)
+    lengths_all = feature_lengths(transcripts, start, end)
     transcripts, dropped_iso, fallback_loci = select_isoforms(transcripts, isoforms, representatives)
     sites_kept = distinct_sites(transcripts)
+    lengths_kept = feature_lengths(transcripts, start, end)
     label, frame, strand, bound = paint_labels(start, end, transcripts)
     cons = [math.nan] * (end - start)
     if os.path.exists(stem + ".conservation.json"):
@@ -1109,6 +1171,11 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
                     "all_isoforms": site_counts(sites_all, start + a, start + b),
                     "painted": site_counts(sites_kept, start + a, start + b),
                     "dropped": site_counts(sites_all - sites_kept, start + a, start + b),
+                },
+                "feature_lengths": {
+                    "floors": {k: list(v) for k, v in LENGTH_FLOORS.items()},
+                    "all_isoforms": lengths_all,
+                    "painted": lengths_kept,
                 },
                 "genetic_code": genetic_code if not stop_codons else None,
                 "stop_codons": sorted(stops),
@@ -1584,6 +1651,28 @@ def self_test() -> int:
         and b2["duplicate_max_copies"] == 3 and b2["duplicate_informants"] == 1 \
         and b2["kept_informant_bases_in_window"] == 6, b2
     assert list(npz(os.path.join(d, "dup_f", "ov.w0.npz"))["inf"])[0:8] == [U, 1, 0, 0, 3, U, U, U]
+    checks += 1
+    # 60-62: feature_lengths.  Two isoforms share the 20-base intron; the
+    # 45-base one is the second isoform's alone; the 100-base intron reaches
+    # past the window edge and is clipped, as is that transcript's span.
+    fl = feature_lengths([
+        {"strand": "+", "exons": [[0, 10], [30, 40], [85, 100]], "cds": [[5, 10], [30, 40], [85, 90]]},
+        {"strand": "+", "exons": [[0, 10], [30, 40], [85, 100], [200, 210]], "cds": [[5, 10], [30, 40]]},
+        {"strand": "-", "exons": [[50, 60]], "cds": []},
+    ], 0, 150)
+    assert fl["introns"] == {"n": 2, "min": 20, "median": 32.5, "max": 45, "below_30": 1, "below_50": 2,
+                             "clipped": 1}, fl["introns"]
+    checks += 1
+    assert fl["cds"] == {"n": 2, "min": 15, "median": 17.5, "max": 20, "below_60": 2, "outside_window": 0}, fl["cds"]
+    checks += 1
+    assert fl["span"] == {"n": 3, "min": 10, "median": 100, "max": 210, "below_81": 1, "outside_window": 1} \
+        and set(fl["units"]) == {"lengths", "n", "below_F"}, fl["span"]
+    checks += 1
+    # 63: the toy window's sidecar carries the record for all and painted isoforms
+    st = json.load(open(os.path.join(d, "out", "toy.w0.json")))["feature_lengths"]
+    assert st["floors"] == {"intron": [30, 50], "cds": [60], "span": [81]} \
+        and st["all_isoforms"]["introns"]["n"] == 1 and st["painted"]["introns"]["below_30"] == 1 \
+        and st["painted"]["span"]["below_81"] == 2, st
     checks += 1
     print(f"self-test passed ({checks} checks)")
     return 0

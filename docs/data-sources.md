@@ -171,7 +171,17 @@ CDS-bearing transcript checked on four assemblies is `cmpl` at both ends;
 the GENCODE `knownGene` bigGenePred sets those columns to `none`
 throughout and states truncation only through its `tag` column
 (`cds_start_NF`, `cds_end_NF`) and the frame of the first coding exon in
-`exonFrames`; the fetcher reads all three (section 6.3).
+`exonFrames`; the fetcher reads all three (section 6.3). CDS
+intervals are the exons clipped to `cdsStart` / `cdsEnd` (`thickStart` /
+`thickEnd` on a bigGenePred), read from the record and never assumed to
+coincide with the exon bounds: stalin found a GenePred reader in
+Vipsania's evaluation dependency that builds CDS blocks from exon starts
+and ends alone, so every UTR base scores as coding (relay note
+20260909T204115Z-stalin-0020), and `fetch_window.py --self-test` now holds
+that synthetic case (exons [100,200) and [300,400) with coding bounds
+[130,370) give CDS [130,200) and [300,370), on both strands and in both
+record shapes, equal bounds give no CDS, a bound inside the intron leaves
+the far exon UTR) together with the stat-column, NF-tag and frame reading.
 
 ### 2.4 GenArk assembly hubs
 
@@ -710,6 +720,62 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   UCSC `ncbiRefSeq` genePred carries none, so everything there paints), so
   that the labels do not teach structure at loci the scorer deletes; `all`
   paints everything and the sidecar lists what was excluded.
+  The sidecar's `feature_lengths` records, over all isoforms and over the
+  painted ones, the lengths of the distinct introns with both ends inside
+  the example (minimum, median, maximum, and the count of introns cut by
+  the edge), the CDS length and the transcript span per transcript (read
+  from the whole annotation record, with a count of those reaching past
+  the edge), and how many of each lie under fixed floors: introns shorter
+  than 30 and than 50 bases, CDSs shorter than 60, spans of at most 80.
+  Those are the floors engels read out of Helixer's decoder (relay note
+  20260909T202745Z-engels-0020: the HMM's shortest intron path is 30
+  bases and its U2 GT-AG and GC-AG paths 50, the candidate gate at the
+  default window and peak needs a genic run above 80 bases, and the
+  published minimum coding length is 60), and any decoder with hard
+  minimum durations has floors of the kind; the record says per example
+  which labels such a model can never reproduce. On the two demonstration
+  windows nothing lies under them: `Adh` has 6 distinct introns of 51 to
+  659 bases (median 248; 40 intron ends of the enclosing gene lie outside
+  the window), `TP53` 18 of 81 to 10,757 (median 704), and the shortest
+  CDS is 771 and 549 bases. Two windows say nothing about how often the
+  floors bite, so `scripts/data/length_floors.py` counts the same record
+  over one whole chromosome of a RefSeq track, where nothing is clipped
+  (coding transcripts only; introns distinct over isoforms; fetched
+  2026-09-09 through the UCSC API, 0.2 to 2.6 MB per chromosome):
+
+  | Assembly | Chromosome | Track | Coding transcripts | Single-exon | Distinct introns | Shortest | Median | Introns < 30 | Introns < 50 | CDS < 60 | Span < 81 |
+  |---|---|---|---|---|---|---|---|---|---|---|---|
+  | hg38 | chr21 | ncbiRefSeqCurated | 726 | 56 (7.7%) | 2,382 | 74 | 2,248 | 0 | 0 | 0 | 0 |
+  | mm39 | chr19 | ncbiRefSeqCurated | 1,435 | 81 (5.6%) | 6,940 | 65 | 1,175 | 0 | 0 | 0 | 0 |
+  | dm6 | chr2L | ncbiRefSeqCurated | 5,707 | 677 (11.9%) | 10,204 | 43 | 92 | 0 | 48 (0.47%) | 1 | 0 |
+  | ce11 | chrIII | ncbiRefSeqCurated | 3,657 | 84 (2.3%) | 15,468 | 1 | 110 | 12 (0.08%) | 3,940 (25.5%) | 9 (0.25%) | 12 (0.33%) |
+  | sacCer3 | chrIV | ncbiRefSeq | 766 | 726 (94.8%) | 41 | 1 | 101 | 8 (19.5%) | 8 (19.5%) | 0 | 2 (0.26%) |
+  | GCF_000002765.6 (*P. falciparum*) | NC_037283.1 | ncbiRefSeq | 773 | 364 (47.1%) | 1,294 | 65 | 142 | 0 | 0 | 0 | 0 |
+
+  Three things follow. First, the U2 floor is a clade property: no
+  human, mouse or *Plasmodium* intron on these chromosomes is under 50
+  bases, half a percent of fly introns are, and a quarter of worm
+  introns are (the worm distribution peaks at 47 bases, with 3,940
+  distinct introns between 31 and 49 and only 12 shorter), so a decoder
+  built with that floor cannot annotate *C. elegans* whatever its network
+  learns, which is the intron-length-regime failure the charter names and
+  a number the benchmark's intron-length decile (`docs/benchmark.md`)
+  will show as a whole stratum lost. Second, the shortest "introns" are
+  not introns: the 1-base gaps are how RefSeq encodes a programmed
+  ribosomal frameshift inside a CDS (all eight on sacCer3 chrIV are Ty
+  retrotransposon gag-pol ORFs, `YDR034C-D`, `YDR098C-B`, `YDR210W-B` and
+  their kind; the two on ce11 chrIII sit in `cdh-4`), and the cutter
+  currently paints them as a 1-base intron with a donor and an acceptor
+  mark, which no splice model should be asked to learn (section 9 item
+  12). The ten worm introns of 15 to 29 bases all lie on the UTR side of a
+  CDS end, where an annotation is least checked. Third, the single-exon
+  fraction runs from 2% (worm) to 95% (yeast) with *Plasmodium* at 47%,
+  so a candidate gate tuned on a spliced vertebrate genome sees a very
+  different population of short genic runs in a compact one; the span
+  floor itself bites on under 0.4% of transcripts everywhere here, so
+  engels' gate is a corner case in these annotations rather than a
+  stratum. The floors are constants in `cut_windows.py` (`LENGTH_FLOORS`);
+  a different decoder's floors are one edit and a rerun.
 - **Informants**: one row per informant, in an order fixed per source so
   that examples stack into batches. For a UCSC track (multiz, Cactus) that
   is the track tree's depth-first leaf order minus the reference, and `K`
@@ -1085,3 +1151,20 @@ informants) is the design-level answer.
     ignores, or the UCSC `--noDupes` style export if the track offers
     one. Until then, Cactus examples carry `duplicate_row_policy` and
     the per-informant counts so a result can say which copies it saw.
+12. New, from engels' Helixer audit (relay note
+    20260909T202745Z-engels-0020) and stalin's converter audit (relay
+    note 20260909T204115Z-stalin-0020): the sidecar's `feature_lengths`
+    and `scripts/data/length_floors.py` count what lies under a decoder's
+    minimum durations (section 6.3). Two things are open. For T-human-007:
+    RefSeq encodes a programmed ribosomal frameshift as a 1-base gap
+    between two CDS exons (the Ty ORFs on sacCer3 chrIV, `cdh-4` on ce11
+    chrIII), which the fetcher carries faithfully and the cutter paints as
+    an intron with a donor and an acceptor; the truth rule should say
+    whether such a gap is a splice site for scoring (a predictor that
+    joins the two exons through the gap is right about the protein and
+    wrong about the "intron"), and the cutter will follow. For
+    T-human-011: a quarter of worm introns and half a percent of fly
+    introns lie under the 50-base floor a U2 duration model imposes, so
+    whatever replaces the HMM decoder must either have no minimum
+    duration or have one below 30 bases; the counts above are the
+    price of each choice on one chromosome per clade.

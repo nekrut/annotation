@@ -369,29 +369,45 @@ def ucsc_annotation(fx: Fetcher, genome: str, chrom: str, start: int, end: int, 
         raise RuntimeError(f"annotation track {track}: {d.get('error') or d.get('statusMessage') or 'no items'}")
     out = []
     for it in items:
-        if "exonStarts" in it:  # genePred
-            es = [int(x) for x in it["exonStarts"].rstrip(",").split(",") if x]
-            ee = [int(x) for x in it["exonEnds"].rstrip(",").split(",") if x]
-            cs, ce = int(it["cdsStart"]), int(it["cdsEnd"])
-            tx = {"id": it["name"], "gene": it.get("name2"), "strand": it["strand"],
-                  "start": int(it["txStart"]), "end": int(it["txEnd"]),
-                  "exons": list(zip(es, ee)), "source": track}
-        elif "blockCount" in it:  # bigGenePred (GenArk hubs)
-            sizes = [int(x) for x in str(it["blockSizes"]).rstrip(",").split(",") if x]
-            starts = [int(x) for x in str(it["chromStarts"]).rstrip(",").split(",") if x]
-            es = [int(it["chromStart"]) + s for s in starts]
-            ee = [a + b for a, b in zip(es, sizes)]
-            cs, ce = int(it["thickStart"]), int(it["thickEnd"])
-            tx = {"id": it["name"], "gene": it.get("geneName") or it.get("name2"), "strand": it["strand"],
-                  "start": int(it["chromStart"]), "end": int(it["chromEnd"]),
-                  "exons": list(zip(es, ee)), "source": track, "type": it.get("geneType")}
-        else:
-            continue
-        tx["cds"] = [(max(a, cs), min(b, ce)) for a, b in tx["exons"] if min(b, ce) > max(a, cs)] if ce > cs else []
-        if tx["cds"]:
-            tx.update(cds_completeness(it, tx["strand"]))
-        out.append(tx)
+        tx = ucsc_item_to_transcript(it, track)
+        if tx is not None:
+            out.append(tx)
     return out
+
+
+def ucsc_item_to_transcript(it: dict, track: str) -> dict | None:
+    """One UCSC API item (genePred or bigGenePred) to the transcript
+    format every tool here consumes: 0-based half-open exon intervals and
+    CDS intervals that are the exons clipped to ``cdsStart``/``cdsEnd``
+    (``thickStart``/``thickEnd`` on a bigGenePred).  The CDS bounds are
+    read, never assumed to coincide with the exon bounds: a converter that
+    builds CDS blocks from exon starts and ends alone paints every UTR
+    base as coding (stalin's finding on bricks2marble's GenePred reader,
+    relay note 20260909T204115Z-stalin-0020), and ``--self-test`` holds
+    that case.  Equal bounds mean no CDS.  Returns None for an item of
+    neither shape."""
+    if "exonStarts" in it:  # genePred
+        es = [int(x) for x in str(it["exonStarts"]).rstrip(",").split(",") if x]
+        ee = [int(x) for x in str(it["exonEnds"]).rstrip(",").split(",") if x]
+        cs, ce = int(it["cdsStart"]), int(it["cdsEnd"])
+        tx = {"id": it["name"], "gene": it.get("name2"), "strand": it["strand"],
+              "start": int(it["txStart"]), "end": int(it["txEnd"]),
+              "exons": list(zip(es, ee)), "source": track}
+    elif "blockCount" in it:  # bigGenePred (GenArk hubs)
+        sizes = [int(x) for x in str(it["blockSizes"]).rstrip(",").split(",") if x]
+        starts = [int(x) for x in str(it["chromStarts"]).rstrip(",").split(",") if x]
+        es = [int(it["chromStart"]) + s for s in starts]
+        ee = [a + b for a, b in zip(es, sizes)]
+        cs, ce = int(it["thickStart"]), int(it["thickEnd"])
+        tx = {"id": it["name"], "gene": it.get("geneName") or it.get("name2"), "strand": it["strand"],
+              "start": int(it["chromStart"]), "end": int(it["chromEnd"]),
+              "exons": list(zip(es, ee)), "source": track, "type": it.get("geneType")}
+    else:
+        return None
+    tx["cds"] = [(max(a, cs), min(b, ce)) for a, b in tx["exons"] if min(b, ce) > max(a, cs)] if ce > cs else []
+    if tx["cds"]:
+        tx.update(cds_completeness(it, tx["strand"]))
+    return tx
 
 
 def cds_completeness(it: dict, strand: str) -> dict:
@@ -630,11 +646,79 @@ def coverage_by_species(maf_blocks: list[str], ref_prefix: str, start: int, end:
 
 
 # ------------------------------------------------------------------- main
+# -------------------------------------------------------------- self test
+
+def self_test() -> int:
+    """Checks that need no network: the genePred / bigGenePred to
+    transcript conversion and the CDS-completeness reading.  The fixture
+    is stalin's synthetic example (relay note 20260909T204115Z-stalin-0020):
+    exons [100,200) and [300,400) with coding bounds [130,370), which a
+    reader that ignores the CDS bounds turns into CDS blocks [100,200) and
+    [300,400)."""
+    checks = 0
+
+    def gp(cs: int, ce: int, strand: str = "+", **extra) -> dict:
+        d = {"name": "t", "name2": "g", "strand": strand, "txStart": 100, "txEnd": 400,
+             "exonStarts": "100,300,", "exonEnds": "200,400,", "cdsStart": cs, "cdsEnd": ce}
+        d.update(extra)
+        return d
+
+    def bgp(cs: int, ce: int, strand: str = "+", **extra) -> dict:
+        d = {"name": "t", "geneName": "g", "strand": strand, "chromStart": 100, "chromEnd": 400,
+             "blockCount": 2, "blockSizes": "100,100,", "chromStarts": "0,200,",
+             "thickStart": cs, "thickEnd": ce, "geneType": "protein_coding"}
+        d.update(extra)
+        return d
+
+    # 1-2: coding bounds inside both exons clip each exon, on either strand
+    for strand in "+-":
+        t = ucsc_item_to_transcript(gp(130, 370, strand), "toy")
+        assert t["exons"] == [(100, 200), (300, 400)] and t["cds"] == [(130, 200), (300, 370)], t
+        checks += 1
+    # 3: bigGenePred through thickStart/thickEnd gives the same intervals
+    t = ucsc_item_to_transcript(bgp(130, 370), "toy")
+    assert t["exons"] == [(100, 200), (300, 400)] and t["cds"] == [(130, 200), (300, 370)] \
+        and t["type"] == "protein_coding", t
+    checks += 1
+    # 4: coding bounds equal to the transcript bounds: CDS is the exons (the one
+    # case where an exon-only reader happens to be right)
+    assert ucsc_item_to_transcript(gp(100, 400), "toy")["cds"] == [(100, 200), (300, 400)]
+    checks += 1
+    # 5: equal bounds are the genePred spelling of "no CDS"; nothing is
+    # declared about ends either
+    t = ucsc_item_to_transcript(gp(100, 100, cdsStartStat="none", cdsEndStat="none"), "toy")
+    assert t["cds"] == [] and "cds_start_status" not in t and "cds_end_status" not in t, t
+    checks += 1
+    # 6: a CDS end inside the intron leaves the second exon entirely UTR
+    assert ucsc_item_to_transcript(gp(130, 250), "toy")["cds"] == [(130, 200)]
+    checks += 1
+    # 7: a CDS inside one exon
+    assert ucsc_item_to_transcript(gp(310, 350), "toy")["cds"] == [(310, 350)]
+    checks += 1
+    # 8: an unknown item shape is skipped, not guessed
+    assert ucsc_item_to_transcript({"name": "x", "chromStart": 1, "chromEnd": 2}, "toy") is None
+    checks += 1
+    # 9: RefSeq-style stat columns
+    t = ucsc_item_to_transcript(gp(130, 370, cdsStartStat="cmpl", cdsEndStat="incmpl", exonFrames="0,1,"), "toy")
+    assert t["cds_start_status"] == "complete" and t["cds_end_status"] == "incomplete" \
+        and t["cds_start_frame"] == 0 and t["cds_status_source"] == {"start": "cdsStartStat", "end": "cdsEndStat"}, t
+    checks += 1
+    # 10: GENCODE-style: stat columns 'none', NF tag and a non-zero first frame;
+    # on the minus strand the first coding exon is the last listed
+    t = ucsc_item_to_transcript(bgp(130, 370, "-", cdsStartStat="none", cdsEndStat="none",
+                                    tag="basic,cds_start_NF", exonFrames="0,2,"), "toy")
+    assert t["cds_start_status"] == "incomplete" and "cds_end_status" not in t \
+        and t["cds_start_frame"] == 2 and t["cds_status_source"] == {"start": "tag"}, t
+    checks += 1
+    print(f"self-test passed ({checks} checks)")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--assembly", required=True,
+    ap.add_argument("--assembly", default=None,
                     help="UCSC db (hg38, dm6), GenArk accession (GCF_000002765.6) or Ensembl species (gallus_gallus)")
-    ap.add_argument("--locus", required=True, help="chrom:start-end; RefSeq/GenBank names accepted on the UCSC side")
+    ap.add_argument("--locus", default=None, help="chrom:start-end; RefSeq/GenBank names accepted on the UCSC side")
     ap.add_argument("--flank", type=int, default=0, help="bases added on each side")
     ap.add_argument("--source", choices=["auto", "ucsc", "ensembl"], default="auto")
     ap.add_argument("--track", default=None,
@@ -644,7 +728,7 @@ def main() -> int:
     ap.add_argument("--conservation", default=None, help="UCSC conservation track; 'none' to skip")
     ap.add_argument("--species-set", default="mammals", help="Ensembl Compara species_set_group")
     ap.add_argument("--method", default="EPO", help="Ensembl Compara method: EPO, EPO_EXTENDED, PECAN, CACTUS_DB")
-    ap.add_argument("--out", required=True, help="output directory (outside the repository)")
+    ap.add_argument("--out", default=None, help="output directory (outside the repository)")
     ap.add_argument("--name", default=None, help="output file stem (default: assembly_chrom_start_end)")
     ap.add_argument("--max-items", type=int, default=100000, help="UCSC maxItemsOutput for alignment blocks (API maximum 1000000)")
     ap.add_argument("--timeout", type=float, default=120.0)
@@ -652,7 +736,12 @@ def main() -> int:
     ap.add_argument("--download-host", default=None,
                     help="primary hgdownload host, e.g. https://hgdownload2.soe.ucsc.edu (mirrors are tried on connection errors)")
     ap.add_argument("--dry-run", action="store_true", help="print what would be fetched and exit")
+    ap.add_argument("--self-test", action="store_true", help="run the offline checks and exit")
     args = ap.parse_args()
+    if args.self_test:
+        return self_test()
+    if not (args.assembly and args.locus and args.out):
+        ap.error("--assembly, --locus and --out are required")
     if args.download_host:
         global UCSC_DL
         UCSC_DL = args.download_host.rstrip("/")
