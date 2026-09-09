@@ -246,13 +246,85 @@ Per-species caveats that a scorer must carry:
 | *Xenopus tropicalis* | release 104 (2019-12-06) is the oldest annotation of any panel species still used for ranking. |
 | *Tetrahymena thermophila* | scaffold-level assembly (1,158 scaffolds), annotation submitted 2015-06-09, no non-coding or pseudogene calls at all — the 26,996 gene models are all `protein_coding`, which is itself implausible. Report, never rank. |
 | *Saccharomyces cerevisiae* | 296 unique introns genome-wide; exon-level metrics have almost no support and gene-level metrics dominate. |
-| *Danio rerio* | GRCz12ab annotation is from 2026-07-20 and will move; the MD5 in `panel.tsv` is the pin. |
+| *Danio rerio* | GRCz12ab annotation is from 2026-07-20 and will move; the MD5 in `panel.tsv` is the pin. The assembly is deliberately the one no public alignment is built on; see §2.4. |
 | all | isoform choice matters: a locus with 40 annotated transcripts is easy to hit at gene level and hard at transcript level (§4.4). |
 
 **A high-confidence subset is required and does not exist yet.** Above some
 accuracy level the benchmark stops measuring the model and starts measuring
 its ability to reproduce known annotation errors. §7 carries this as the
 largest open item.
+
+### 2.4 Assembly choice when the annotation and the alignment disagree (*Danio rerio*)
+
+Zebrafish is the one panel species whose current reference annotation and
+only public multiple alignment sit on different assemblies. marx raised it
+as `docs/data-sources.md` §7 item 6; the call is mine and the panel
+**keeps GRCz12ab** (`GCF_052040795.1`). The reasoning is recorded because
+the same question recurs every time a telomere-to-telomere assembly lands
+ahead of the alignments built on its predecessor.
+
+The alternative is GRCz11 (`GCF_000002035.6`). It is a real option: it
+carries a full RefSeq annotation (`GCF_000002035.6-RS_2024_08`, 2024-08-15,
+27,158 protein-coding genes) and it is still the zebrafish assembly in
+Ensembl 116 (`rest.ensembl.org/info/assembly/danio_rerio`, 2026-09-09).
+Moving to it buys exactly one thing: the Ensembl fish EPO.
+
+**That alignment is unusable here regardless of assembly.** Both fish
+species sets — EPO with 32 species and EPO-extended with 65, from
+`rest.ensembl.org/info/compara/species_sets/{EPO,EPO_EXTENDED}` on
+2026-09-09 — contain `takifugu_rubripes`, and fugu is the `heldout_paired`
+species paired with zebrafish. EPO is jointly inferred, so §3.2 channel 3
+requires it to be *rebuilt* with fugu removed before a zebrafish training
+window may be cut from it; dropping the row does not qualify. Zebrafish is
+rebuild-only for the comparative arm on GRCz11 exactly as it is on GRCz12ab.
+The contamination is not incidental either: the zebrafish/fugu pair exists to
+test a 6.8-fold median-intron shift inside one subclass (Table 2), which is
+the axis a fugu-informed alignment leaks on.
+
+Nothing else is on either assembly. UCSC `danRer11` (= GRCz11) has **no
+multiz, phastCons or phyloP track at all**: `api.genome.ucsc.edu
+/list/tracks?genome=danRer11` returns 40 tracks, none of them conservation,
+and `hgdownload.soe.ucsc.edu/goldenPath/danRer11/` has no `*way` directory,
+only the `vsHg38`, `vsMm39`, `vsMm10` and `vsGalGal6` pairwise chains (marx's
+`docs/data-sources.md` §2.1 records the same absence). GRCz12ab has no GenArk
+hub as of 2026-09-09.
+
+Since a rebuild is required on either assembly, the assembly to rebuild on is
+the better one, and it is not close (NCBI Datasets `dataset_report` for both
+accessions, 2026-09-09):
+
+| | GRCz11 | GRCz12ab |
+|---|---:|---:|
+| scaffolds | 1,917 | 25 |
+| contigs | 19,725 | 25 |
+| contig N50 | 1.42 Mb | 59.43 Mb |
+| gap bases | 4,689,282 | 0 |
+| RefSeq annotation | RS_2024_08 (2024-08-15) | RS_2026_07 (2026-07-20) |
+| protein-coding genes | 27,158 | 28,415 |
+
+Zebrafish carries the panel's third-longest introns — p99 62,699 bp, max
+1,090,140 bp (Table 2) — and GRCz11 spreads 19,725 contigs and 4.69 Mb of N
+through them. A 1 Mb intron interrupted by an assembly gap is not the test
+case the long-intron axis is there to measure. Keeping GRCz12ab also keeps
+the panel's rule uniform: every one of the twenty species is scored against
+the current reference annotation of its current assembly.
+
+The third option — GRCz12ab for annotation, GRCz11 for alignment, with a
+declared liftover — is technically available. UCSC ships
+`danRer11ToGCA_052040795.1.over.chain.gz` (9.4 MB, 2026-05-08), and
+`GCA_052040795.1` is the GenBank pair of `GCF_052040795.1`, differing only in
+that RefSeq adds chromosome MT (which §4 drops as an organelle anyway). It is
+rejected: it adds a chain-projection channel, a second assembly per species in
+`panel.tsv` and one more thing for every submission to declare, and what it
+buys is the fugu-contaminated alignment that §3.2 already forbids.
+
+Consequence for T-human-008: from this benchmark's point of view zebrafish
+belongs with the twelve panel species that have no usable public multiple
+alignment, not with the two whose alignment is merely on an older assembly,
+so the count is **thirteen of twenty**. Fugu is unaffected — an informant set
+at *inference* on a held-out target is permitted (§3.2), and only the
+training side of the pair is constrained. `panel.tsv` `notes` and the §2.3
+caveat table record the decision.
 
 ## 3. Splits and held-out rules
 
