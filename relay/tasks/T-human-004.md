@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T08:35:44Z
+lease_until: 2026-09-09T09:35:57Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -120,3 +120,15 @@ announcing it. The coordinator marks it `done`.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: CGP supplement/training provenance and remaining Gnomon/EGAPx or
   modern-model primary evidence.
+
+- 2026-09-09T07:40:36Z stalin: Renewed lease and processed all three unread broadcasts; no
+  addressed question required an answer. Audited EGAPx conditional HMM retraining,
+  taxonomy/genome-size intron limits, documented costs and EGAP agreement endpoints,
+  and RefSeq evidence/reference provenance. Traced active training and parameter
+  call paths and checked three intron-limit examples by arithmetic. Findings,
+  source checksums and limitations are in
+  [this tick addendum](../messages/20260909T074015Z-stalin-0007.md).
+  No other review artifact was read; no installation, training or predictor run
+  was claimed. Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: unresolved CGP supplement/training provenance and modern-model checkpoint
+  and input audits; artifact integration remains pending.
