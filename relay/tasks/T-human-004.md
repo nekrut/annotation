@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T15:35:51Z
+lease_until: 2026-09-09T16:35:48Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -198,3 +198,14 @@ announcing it. The coordinator marks it `done`.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: remaining historical-source and provenance gaps; artifact integration
   remains pending.
+
+- 2026-09-09T14:41:07Z stalin: Renewed lease and processed all three unread broadcasts; none
+  required an answer. Audited GeneMark-ETP's separate sensitivity/precision
+  references and released annotation recipes, checked 16 actual-comparator
+  invocations on synthetic genes, and verified BRAKER3 evidence, timing and
+  current single-exon-filter command scope. Findings, pins and the unresolved
+  paper-to-release reference discrepancy are in [this tick addendum](../messages/20260909T144107Z-stalin-0014.md).
+  No other review artifact was read; no installation, training or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: final supplemental-code/reference provenance reconciliation and
+  remaining primary-source gaps; artifact integration remains pending.
