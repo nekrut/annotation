@@ -594,7 +594,12 @@ test so that an identity run still scores exactly 1.0:
 
 Both are recognised only from what the file states, so a prediction that
 carries neither attribute loses nothing, and `--score-all-transcripts`
-restores the old behaviour for auditing. On the human reference the filter
+restores the old behaviour for auditing. The biotype is read from
+`gene_biotype` (RefSeq), `gene_type` (GENCODE) or `biotype` (Ensembl),
+whichever the gene row carries; reading only the first applies the filter to a
+RefSeq-shaped submission and not to a GENCODE-shaped one, which charges the
+latter false positives for exactly the rows the reference is forbidden to
+score (§6). On the human reference the filter
 drops 588 of 132,030 transcripts and the identity run stays at 1.0 on every
 metric.
 
@@ -946,12 +951,12 @@ deciles are computed from the reference at score time (§4.3), a CDS gap under
 20 bp is not a splice junction (§4.3), the stop-codon convention is detected
 from the prediction rather than trusted to a flag (§4.5), and a reference CDS
 row is not truth until it has been checked for `pseudo=true`, a
-non-`protein_coding` `gene_biotype` and an incomplete end (§4, §4.5).
+non-`protein_coding` biotype and an incomplete end (§4, §4.5).
 
 Verification so far:
 
 - `python3 benchmark/score.py --self-test` scores built-in fixture pairs and
-  checks 111 expected values — it prints the count it ran, so this sentence
+  checks 118 expected values — it prints the count it ran, so this sentence
   cannot drift from the code again; it said 116 while the code ran 104: a
   prediction with one exact transcript, one
   shifted minus-strand boundary, one overlapping-but-unaligned locus and one
@@ -983,8 +988,10 @@ Verification so far:
   (§4.5); a two-isoform gene in which one isoform is the other plus 51 bases
   at one end and the prediction equals the shorter, where the containing
   isoform must not take the pairing and the same file against itself must
-  still be 1.0 (§4.4); and a prediction that reuses transcript ids across two
-  sequences.
+  still be 1.0 (§4.4); a prediction that declares an immunoglobulin segment
+  and a pseudogene the way GENCODE and Ensembl declare them, which must cost
+  it nothing and must not be reported as an off-panel sequence; and a
+  prediction that reuses transcript ids across two sequences.
   The self-test is run under several `PYTHONHASHSEED` values, because two of
   its checks exist to catch results that depended on it.
 - **Identity runs re-verified after the fixes above** on
@@ -1203,31 +1210,91 @@ Locus F1
 - `benchmark/fetch.py --what fasta` is now exercised: it downloads and
   checksum-verifies the 3.8 MB *S. cerevisiae* FASTA. It is still untested at
   3 Gb (§7).
+- **A prediction with many isoforms per locus: GENCODE 50 scored against
+  RefSeq on human.** Every run above emits at most one transcript per locus,
+  so the §4.4 branch that charges an *unmatched extra prediction* as a false
+  positive had only ever run on fixtures. GENCODE 50 (Ensembl 116,
+  primary-assembly GFF3, released 2026-04-08, sha256
+  `272f9972d1bfffa344889c7ae47973bbd79a75e933c55505f347cd25121876fb`) is the
+  input that exercises it: 370,910 CDS-bearing transcripts over the same
+  assembly the RefSeq reference uses, 2.8x the reference's 131,442. It is not
+  a predictor and its numbers are not an accuracy measurement — both files are
+  human curation of the same genome — but it is a *real* multi-isoform
+  submission, and it is the shape an evidence-based pipeline produces.
+  Preparation was sequence renaming only: `chr*` and the GenBank scaffold
+  accessions to RefSeq accessions from
+  `GCF_000001405.40_GRCh38.p14_assembly_report.txt` (sha256
+  `64318ddff470b69b261a667d813210044f60d4ce654253a547db80ff73638d38`), which
+  the report maps for all but `KI270721.1` and `KI270734.1`; rows on those two
+  (423 of 11,253,000) were dropped before scoring. 64 s and 1.6 GB on one
+  laptop core, identical under `PYTHONHASHSEED` 0 and 1. Declaration and full
+  result: `benchmark/validation/gencode50-Homo_sapiens.{yaml,json}`.
+
+  | nucleotide F1 | exon F1 | donor F1 | acceptor F1 | transcript F1 | locus F1 | start F1 | stop F1 |
+  |---|---|---|---|---|---|---|---|
+  | 0.933 | 0.697 | 0.908 | 0.826 | **0.290** | 0.968 | 0.637 | 0.360 |
+
+  Two defects came out of it, both specific to a submission that is not
+  RefSeq-shaped:
+  1. **The §4 biotype filter read only `gene_biotype`.** RefSeq spells it
+     that way; GENCODE spells it `gene_type` and Ensembl spells it `biotype`.
+     The filter is applied to the prediction as well as the reference, so
+     reading one spelling meant the reference's 390 immunoglobulin and T-cell
+     receptor transcripts were dropped as unanswerable while GENCODE's 421
+     equivalents were kept and charged as false positives — the submission was
+     penalised for answering a question §4 forbids the reference to ask.
+     All three spellings are now read. Locus F1 0.959 to 0.968 (false-positive
+     loci 1,133 to 723) and nucleotide F1 0.931 to 0.933; every prior run is
+     unaffected, because none of the six declares a biotype at all.
+  2. **`predicted_transcripts_not_scored` pooled two unrelated causes.** It
+     was every predicted transcript minus the scored ones, so biotype-dropped
+     rows landed in the field whose documented meaning is "on a sequence the
+     reference does not have", and whose warning tells the submitter to check
+     their sequence names. On this run it read 434 where 13 transcripts are
+     actually off-panel. It now counts sequence exclusion only; the filter's
+     own drops are already reported by reason in
+     `predicted_transcript_selection`.
+
+  What the run says about the metrics themselves, none of it a defect:
+  transcript precision is 0.190 against sensitivity 0.610 — 300,036 predicted
+  chains match nothing in RefSeq, which is what §4.4 does to a submission that
+  offers 2.8 isoforms for every one the reference has. Locus F1 0.968 on the
+  same run is the contrast the two levels exist for: the *loci* agree almost
+  perfectly and the *chains* do not. Stop-codon precision 0.231 is the
+  91,818 nonsense-mediated-decay transcripts, each ending at a stop RefSeq
+  does not annotate as one; terminal-exon F1 0.340 has the same source. The
+  one asymmetry worth recording is that GENCODE states 257,153 distinct CDS
+  acceptors against 212,078 donors (21% more), where RefSeq states 193,359
+  against 188,913 (2.4% more), which is why acceptor F1 0.826 sits well below
+  donor F1 0.908. Counted independently from the GFF3 outside the scorer, both
+  numbers agree exactly, so this is annotation depth and not a scoring
+  artefact; §4.3 reporting donors and acceptors separately is what makes it
+  visible.
 
 ## 7. Open items
 
 1. **The scorer does not compute §4.6 or §4.7.** BUSCO, OMArk, and the cost
    columns are external and are merged by `report.py --cost`; nothing yet
    produces that TSV. T-human-009 owns the cost half.
-2. **Real predictor output covers four species, two tools and six runs.**
-   AUGUSTUS on the two yeasts and Helixer on *T. rubripes*, *N. crassa* and
-   *S. cerevisiae* (§6) between them cover both stop-codon conventions, both detection routes (feature and
-   genome), a prediction with UTRs, a reference with several isoforms per
-   locus, and a 384 Mb genome with 105 unplaced
-   scaffolds. Five defects came out of those runs. What is still not
-   covered: the §4.5 **blind 3 bp extension** — the fallback for a prediction
-   that has no `stop_codon` feature *and* whose genome says `outside` — is
-   still fixture-only, because Helixer's convention is `inside`; a prediction
-   whose sequence set genuinely diverges from the reference's (both tools were
-   run on the reference assembly, so the divergence is zero); any
-   evidence-based pipeline, whose GFF3 carries alternative isoforms — no run
-   yet has a *prediction* with more than one isoform per locus, so the §4.4
-   pairing has only ever been exercised one predicted transcript at a time and
-   the branch charging an unmatched extra prediction as a false positive is
-   fixture-only; and
-   any predictor that emits partial genes at contig ends (item 13).
+2. **Scored submissions cover five species, three sources and seven runs.**
+   AUGUSTUS on the two yeasts, Helixer on *T. rubripes*, *N. crassa* and
+   *S. cerevisiae*, and GENCODE 50 on human (§6) between them cover both
+   stop-codon conventions, all three detection routes (feature, genome and
+   flag), a prediction with UTRs, a reference with several isoforms per locus,
+   a *prediction* with 2.8 isoforms per locus, a GENCODE-shaped attribute set,
+   and a 384 Mb genome with 105 unplaced scaffolds. Seven defects came out of
+   those runs. What is still not covered: the §4.5 **blind 3 bp extension** —
+   the fallback for a prediction that has no `stop_codon` feature *and* whose
+   genome says `outside` — is still fixture-only, because Helixer's convention
+   is `inside`; a prediction whose sequence set genuinely diverges from the
+   reference's (every submission so far was made against the reference
+   assembly, and the GENCODE run was renamed onto it, so the divergence is
+   zero); an *evidence-based pipeline* run end to end, which is what would
+   make the multi-isoform case a measurement rather than the annotation
+   comparison the GENCODE run is; and any predictor that emits partial genes
+   at contig ends (item 13).
    Degraded-copy runs still cover only *S. cerevisiae* and *H. sapiens*.
-   Tiberius is the obvious third tool: it is the one that would exercise the
+   Tiberius is the obvious next tool: it is the one that would exercise the
    blind extension if its GTF turns out to exclude the stop.
 3. **No high-confidence subset** (§2.3). Needed before any accuracy above
    roughly the annotation error rate means anything. Candidate construction:

@@ -2,7 +2,8 @@
 
 Scored runs of a real gene predictor, kept because they are the evidence for
 the claims in [`docs/benchmark.md`](../../docs/benchmark.md) §6 and because
-they are what found three defects in `score.py` and `report.py`.
+they are what found the defects in `score.py` and `report.py` that
+section records.
 
 No genome, annotation or prediction data is here: the declarations say what
 was run and the JSON is the scorer's own output. Each JSON records the
@@ -16,6 +17,7 @@ SHA-256 of the declaration beside it, so the pairing is checkable.
 | `helixer-Takifugu_rubripes.yaml` | `.json` | Helixer 0.3.7 on *T. rubripes*, vertebrate model, GPU |
 | `helixer-Neurospora_crassa.yaml` | `.json` | Helixer 0.3.7 on *N. crassa*, fungi model, GPU |
 | `helixer-Saccharomyces_cerevisiae.yaml` | `.json` | Helixer 0.3.7 on *S. cerevisiae*, fungi model, GPU |
+| `gencode50-Homo_sapiens.yaml` | `.json` | GENCODE 50 scored as a submission against the human RefSeq reference |
 
 The three Helixer runs are the second tool and the second output shape: no
 `stop_codon` features at all, UTRs present, and two species (*T. rubripes*,
@@ -120,6 +122,30 @@ several isoforms per locus: *T. rubripes* F1 0.23782 -> 0.25248 (tp 5,564 ->
 5,907) and *N. crassa* 0.68609 -> 0.68947 (tp 6,889 -> 6,923). The three
 AUGUSTUS runs and the *S. cerevisiae* Helixer run are byte-identical apart
 from their regeneration timestamps.
+
+`gencode50-Homo_sapiens` is not a predictor run at all: it is one human
+annotation scored against another, and it is here because it is the only
+submission so far with more than one isoform per locus (370,476 scored chains
+against the reference's 131,442). That is what exercises the §4.4
+false-positive branch on real data, and it found two defects: the §4 biotype
+filter read only RefSeq's `gene_biotype` spelling, and
+`predicted_transcripts_not_scored` pooled the filter's drops with off-panel
+sequences. Neither touches the six runs above, which declare no biotype; the
+JSON here is the output after both fixes. Reproducing it needs no tool:
+
+```
+curl -O https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_50/gencode.v50.primary_assembly.annotation.gff3.gz
+curl -O https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_assembly_report.txt
+# rewrite column 1 from the UCSC-style / GenBank names in the GFF3 to the
+# RefSeq accessions the reference uses, using columns 5, 7 and 10 of the
+# assembly report; drop rows on names the report does not map (KI270721.1,
+# KI270734.1).  Nothing else about the file is changed.
+python3 benchmark/score.py \
+    --reference /tmp/panel/Homo_sapiens/*_genomic.gff.gz \
+    --prediction gencode.v50.refseqnames.gff3.gz --species Homo_sapiens \
+    --declaration benchmark/validation/gencode50-Homo_sapiens.yaml \
+    --out /tmp/gencode.json
+```
 
 These are not benchmark results for AUGUSTUS. Both species are in AUGUSTUS's
 own training set — `heldout_seen_in_pretraining: yes` in two of the three

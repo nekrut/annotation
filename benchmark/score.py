@@ -282,7 +282,17 @@ def load_gff(path):
             if ftype in ("gene", "pseudogene"):
                 gid = _attr(attrs, "ID") or _attr(attrs, "gene_id")
                 if gid:
+                    # RefSeq writes ``gene_biotype``, GENCODE ``gene_type``,
+                    # Ensembl ``biotype``.  All three name the same thing, and
+                    # reading only the first silently disables section 4's
+                    # filter on the other two: GENCODE 50 states
+                    # ``gene_type=IG_V_gene`` on 421 CDS-bearing transcripts
+                    # that RefSeq drops as ``V_segment`` and friends, so a
+                    # GENCODE-shaped submission was charged 421 false
+                    # positives the reference was not allowed to answer.
                     gene_biotype[gid] = (_attr(attrs, "gene_biotype")
+                                         or _attr(attrs, "gene_type")
+                                         or _attr(attrs, "biotype")
                                          or ("pseudogene" if ftype == "pseudogene"
                                              else None))
             elif ftype not in ("CDS", "stop_codon", "exon"):
@@ -1426,8 +1436,12 @@ def score(reference, prediction, species, genome=None, seqids=None,
         # the reference does not have at all, are not scored.  A large count
         # here means the prediction was made against a different assembly or
         # a different naming convention and the run is not comparable.
+        # Rows the section 4 biotype filter dropped are *not* counted here --
+        # they are on a scored sequence and are reported, by reason, in
+        # ``predicted_transcript_selection`` -- because pooling the two makes
+        # a GENCODE-shaped submission look like an assembly mismatch.
         "predicted_transcripts_not_scored":
-            len(pred.chains()) - len(pred_chains),
+            len(pred.chains()) - len(pred_chains) - len(pred_dropped_tx),
         "predicted_sequences_absent_from_reference":
             len({c[0] for c in pred.chains().values()} - set(ref.seq_len)),
         # Non-zero means the prediction reuses a transcript id across
@@ -1613,6 +1627,20 @@ chr1\t.\tgene\t9060\t9300\t.\t-\t.\tID=pg3
 chr1\t.\tmRNA\t9060\t9300\t.\t-\t.\tID=p3;Parent=pg3
 chr1\t.\tCDS\t9060\t9300\t.\t-\t0\tParent=p3
 """
+
+# The same prediction as PSEUDO_PRED, plus the V segment and a pseudogene,
+# declared the way GENCODE (``gene_type``) and Ensembl (``biotype``) declare
+# them rather than the way RefSeq does (``gene_biotype``).  Section 4 applies
+# the same filter to the prediction as to the reference, so all three
+# spellings must be read; otherwise a GENCODE-shaped submission is charged
+# false positives for the very rows the reference is forbidden to score.
+PSEUDO_PRED_SYNONYM = PSEUDO_PRED + (
+    "chr1\t.\tgene\t5000\t5200\t.\t+\t.\tID=pg4;gene_type=IG_V_gene\n"
+    "chr1\t.\tmRNA\t5000\t5200\t.\t+\t.\tID=p4;Parent=pg4\n"
+    "chr1\t.\tCDS\t5000\t5200\t.\t+\t0\tParent=p4\n"
+    "chr1\t.\tgene\t4000\t4300\t.\t+\t.\tID=pg5;biotype=pseudogene\n"
+    "chr1\t.\tmRNA\t4000\t4300\t.\t+\t.\tID=p5;Parent=pg5\n"
+    "chr1\t.\tCDS\t4000\t4300\t.\t+\t0\tParent=p5\n")
 
 
 # Section 4 sequence selection.  Every line is a shape taken from a real panel
@@ -1953,6 +1981,31 @@ def self_test():
     pall = score(pref, ppred, "fixture", all_transcripts=True)
     check("all-transcripts ref kept", pall["reference_transcripts"], 5)
     check("all-transcripts locus fn", pall["locus"]["fn"], 2)
+
+    # GENCODE's ``gene_type`` and Ensembl's ``biotype`` must drop the same
+    # rows RefSeq's ``gene_biotype`` does.  Before the synonyms were read,
+    # these two predicted loci were false positives against a reference that
+    # is not allowed to contain their answer.
+    spred = os.path.join(d, "spred.gff3")
+    open(spred, "w").write(PSEUDO_PRED_SYNONYM)
+    sr = score(pref, spred, "fixture")
+    check("synonym pred dropped",
+          sr["predicted_transcript_selection"]["dropped_by_reason"],
+          {"biotype=IG_V_gene": 1, "pseudogene": 1})
+    # Declaring them costs the submission nothing: every scored count is the
+    # one PSEUDO_PRED gets without those two rows.
+    check("synonym locus", sr["locus"], pr["locus"])
+    check("synonym transcript", sr["transcript"], pr["transcript"])
+    check("synonym nucleotide", sr["nucleotide"], pr["nucleotide"])
+    # ``--score-all-transcripts`` puts both sides back, and then the two rows
+    # match the reference's own V segment and pseudogene.
+    sall = score(pref, spred, "fixture", all_transcripts=True)
+    check("synonym audit pred kept", sall["predicted_transcripts"], 5)
+    check("synonym audit locus fp", sall["locus"]["fp"], 0)
+    # A biotype-dropped row is on a scored sequence, so it must not be
+    # reported as if the prediction named a sequence the reference lacks.
+    check("synonym not scored", sr["predicted_transcripts_not_scored"], 0)
+    os.unlink(spred)
     os.unlink(pref)
     os.unlink(ppred)
 
@@ -2229,7 +2282,8 @@ def main():
               % row["predicted_conflicting_transcript_ids"], file=sys.stderr)
 
     unscored = row["predicted_transcripts_not_scored"]
-    total_pred = row["predicted_transcripts"] + unscored
+    total_pred = (row["predicted_transcripts"] + unscored
+                  + row["predicted_transcript_selection"]["dropped"])
     if total_pred and unscored > total_pred / 2:
         print("warning: %d of %d predicted transcripts (%.0f%%) are not on a "
               "scored sequence; %d predicted sequence names are absent from "
