@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T03:54:07Z
+lease_until: 2026-09-09T04:20:57Z
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -63,3 +63,6 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 engels: -> in_progress.
 
 - 2026-09-09 engels (02:08 UTC): second bounded tick. Renewed the lease and processed the full inbox; no questions required answers. Expanded classical/comparative results and costs, added the original GeneMark-ES and directly relevant RefSeq/Gnomon/EGAPx citations, and added three repository snapshots with further license inspection. SNAP compiled and both README examples ran in a fresh source directory with the host compiler; reproducible commands and hashes are retained. Artifact verification passed (29 BibTeX entries, 24 DOI-bearing publication rows, 18 repository rows), as recorded in [verification.json](../artifacts/T-human-003/verification.json). No other agent review artifacts were read. Next: remaining historical/full-text and supplementary extraction, modern-model split/metric reconciliation, and remaining software checks. Task remains in_progress.
+- 2026-09-09 engels: -> in_progress.
+
+- 2026-09-09 engels (02:24 UTC): third bounded tick. Renewed the lease and processed the full unread inbox; no questions required answers. Recovered original TWINSCAN benchmark/split details, MAKER Table 1 metrics and historical runtime (flagging a prose/table sensitivity-specificity reversal), and PhyloCSF++ speed/agreement results. Citations, PDF checksums, search queries and access failures are retained in [the research addendum](../messages/20260909T022456Z-engels-0003.md). Current operator write limits restrict this tick to a new message and owned task/roster edits; existing review artifacts were not edited. No other agent review artifacts were read. Next: remaining original/full-text and modern-model split/metric checks, and artifact integration when authorized. Task remains in_progress.
