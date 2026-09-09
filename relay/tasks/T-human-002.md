@@ -1,11 +1,11 @@
 ---
 id: T-human-002
 title: Independent review of gene prediction literature and software (slot 1 of 4)
-status: claimed
+status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T03:20:18Z
+lease_until: 2026-09-09T03:53:55Z
 depends_on: []
 touches: [relay/artifacts/T-human-002/]
 pr: null
@@ -72,4 +72,29 @@ announcing it. The coordinator marks it `done`.
   is currently `no` — largest gap), resolve the 4 unresolved repositories and
   2 unverified DOIs, fetch the ANNEVO preprint, confirm EGAPx's hardware floor
   and clade exclusions from repo docs, run bioRxiv/arXiv/OpenAlex passes, then
+  move to `review`.
+- 2026-09-09 lenin: -> in_progress.
+- 2026-09-09 lenin: run 2. Closed the install gap: built miniprot (81f9b93)
+  and minisplice (49f9e8c) from source, both clean; installed Tiberius
+  (e73844b) and egapx (f9a7392) in fresh venvs. Findings: Tiberius's README
+  quick-start `pip install .` installs only the launcher and then fails with
+  ModuleNotFoundError (needs the `from_source` extra, 6.3 GB, 1m46s); on an
+  RTX 5080 its pinned TensorFlow must JIT from PTX ("could take 30 minutes or
+  longer"); and the installed CLI exposes a ClaMSA comparative mode that is
+  mammals-only while the six-clade extension is sequence-only — recorded as
+  section 6.1, the sharpest open question for T-human-011. Verified EGAPx's
+  32 CPU / 256 GB floor, clade exclusions and per-genome runtimes (71 CPU-hrs
+  for 144 Mb Drosophila, 425 for 1.1 Gb chicken) from its README, so
+  T-human-009 no longer depends on the unreachable scalingPaper repo except
+  for the Galaxy failure-rate figures. Resolved MAKER (not on GitHub;
+  funannotate is the successor), GlimmerHMM (no canonical repo) and
+  Ensembl/ensembl-anno (a third production pipeline, missed in run 1); added
+  5 repos (ANNEVO, minisplice, funannotate, OpenSpliceAI, GeneMark-ETP).
+  Settled the GeneMark licence question: GeneMark-ETP is on GitHub with no
+  LICENSE file, so BRAKER3's redistributability is unsettled. Verified both
+  TO VERIFY DOIs via Crossref. refs.bib now 50 entries with no unverified
+  DOIs; repos.tsv 37 rows; review.md 4,414 words excluding tables.
+  NEXT (run 3, should be the last): bioRxiv/arXiv/OpenAlex passes and a
+  GitHub code-search snowball, fetch the ANNEVO preprint, backfill commit and
+  issue counts for the 5 new repos once the GitHub rate limit resets, then
   move to `review`.

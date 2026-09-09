@@ -170,7 +170,7 @@
 
 @article{bruna2023galba,
   author  = {Br{\r u}na, Tom{\'a}{\v s} and Li, Heng and Guhlin, Joseph and
-             others},
+             Honsel, Daniel and Herbold, Steffen and Stanke, Mario},
   title   = {{Galba}: genome annotation with miniprot and {AUGUSTUS}},
   journal = {BMC Bioinformatics},
   year    = {2023},
@@ -238,8 +238,8 @@
   number  = {1},
   pages   = {46--54},
   doi     = {10.1101/gr.830003},
-  note    = {TO VERIFY next run: DOI taken from citation, not yet confirmed
-             against Europe PMC.}
+  note    = {TWINSCAN. DOI, authors, volume and pages confirmed against
+             Crossref 2026-09-09 (run 2).}
 }
 
 @article{gross2007contrast,
@@ -252,8 +252,8 @@
   volume  = {8},
   pages   = {R269},
   doi     = {10.1186/gb-2007-8-12-r269},
-  note    = {TO VERIFY next run: title-search in Europe PMC was swamped by
-             MRI ``contrast agent'' hits; DOI from citation.}
+  note    = {DOI, authors and journal confirmed against Crossref 2026-09-09
+             (run 2). Published 2007-12-20.}
 }
 
 @article{stiehler2021helixer,
@@ -305,14 +305,19 @@
   note    = {Preprint. Source of the 33-species, 6-clade benchmark numbers.}
 }
 
-@article{annevo2026,
+@article{zhang2026annevo,
+  author  = {Zhang, Pengyu and Xu, Tun and Wang, Songbo and Yang, Xiaofei and
+             Sun, Peisen and Jia, Peng},
   title   = {Highly accurate ab initio gene annotation with {ANNEVO}},
   journal = {Nature Methods},
   year    = {2026},
+  volume  = {23},
+  pages   = {740--748},
   doi     = {10.1038/s41592-026-03036-7},
-  note    = {Not open access in Europe PMC; preprint at
-             10.21203/rs.3.rs-6402260/v1. Authors not yet captured; fill in
-             next run.}
+  note    = {Metadata confirmed against Crossref 2026-09-09 (run 2);
+             published 2026-03-12. Not open access in Europe PMC; preprint
+             at 10.21203/rs.3.rs-6402260/v1. Code:
+             github.com/xjtu-omics/ANNEVO.}
 }
 
 @article{jaganathan2019spliceai,
@@ -575,4 +580,37 @@
   pages   = {1639--1643},
   doi     = {10.1093/bioinformatics/btaa1016},
   pmcid   = {PMC8289374}
+}
+
+@misc{egapx_readme,
+  author       = {{NCBI}},
+  title        = {{EGAPx}: {Eukaryotic} {Genome} {Annotation} {Pipeline}
+                  --- repository documentation},
+  howpublished = {\url{https://github.com/ncbi/egapx}},
+  year         = {2026},
+  note         = {Commit f9a7392, README retrieved 2026-09-09. There is no
+                  EGAPx methods paper; this is the citable source for its
+                  prerequisites (32 CPU / 256 GB), supported and excluded
+                  taxa, and published per-genome runtimes.}
+}
+
+@misc{genemark_etp_repo,
+  author       = {{Georgia Tech Genemark group}},
+  title        = {{GeneMark-ETP}},
+  howpublished = {\url{https://github.com/gatech-genemark/GeneMark-ETP}},
+  year         = {2025},
+  note         = {Checked 2026-09-09: no LICENSE file in the repository, so
+                  redistribution terms are unstated. Relevant to whether
+                  BRAKER3 can serve as a redistributable baseline.}
+}
+
+@misc{helixer_readme,
+  author       = {{Weber lab, HHU}},
+  title        = {{Helixer} --- repository documentation},
+  howpublished = {\url{https://github.com/weberlab-hhu/Helixer}},
+  year         = {2026},
+  note         = {Commit d17bb49, README retrieved 2026-09-09. Source of the
+                  stated install cost: 20--30 minutes for an experienced
+                  user, up to 2--3 hours otherwise; Docker/Singularity
+                  recommended, manual install Linux-only.}
 }

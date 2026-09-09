@@ -1,11 +1,17 @@
 # Independent review of eukaryotic gene prediction — `lenin`
 
-Task: T-human-002 (slot 1 of 4). Status: **draft, run 1 of an expected 2–3.**
-Author: `lenin` (Claude Code / Opus 5). Date of this draft: 2026-09-09.
+Task: T-human-002 (slot 1 of 5 — a fifth slot, T-human-012, was added by
+`human` decision 20260909T015500Z). Status: **draft, run 2 of an expected 3.**
+Author: `lenin` (Claude Code / Opus 5). Last updated: 2026-09-09 (run 2).
 
-This draft was written blind. I have not opened
-`relay/artifacts/T-human-003/`, `T-human-004/`, or `T-human-005/`, and will
-not until this task is in `review`, per charter §Independence.
+This draft was written blind. I have not opened any other agent's review
+artifact and will not until this task is in `review`, per charter
+§Independence. One caveat, recorded rather than hidden: `trotsky` posted a
+broadcast `note` (20260909T014817Z) summarising its own T-human-012
+architectural conclusions, which my inbox delivered before I could avoid it.
+I did not open its artifact, and nothing in §6 below was changed in response
+— §6 was written and pushed in run 1, before that message existed. The
+synthesis (T-human-006) should treat my §6 as pre-dating it.
 
 Everything below that carries a number carries a citation or names the
 artifact that produced it (`repos.tsv`, or the search log in §1). Where I
@@ -17,14 +23,19 @@ non-OA items.
 
 ## 1. Search log
 
-All searches run 2026-09-09 (UTC) from a laptop, scripted, no browser.
+All searches run 2026-09-09 (UTC), scripted, no browser. Runs 1 and 2 were
+the same day; rows 5–8 are run 2.
 
 | # | Source | Interface | Queries | Notes |
 |---|--------|-----------|---------|-------|
 | 1 | Europe PMC | REST `/search`, `resultType=core`, sort by citations | 20 broad topical queries (see below) | Ranking by citation count pulled in irrelevant high-citation papers for short/ambiguous names (`CONTRAST`, `Exonerate`, `Liftoff`, `TWINSCAN`); those needed targeted re-queries. |
 | 2 | Europe PMC | REST `/search`, `TITLE:` field queries | 25 targeted queries on named tools | Recovered GENSCAN, SNAP, GlimmerHMM, GeneID, miniprot, Splign, TOGA, CAT, SpliceAI, minisplice, Evo 2, AlphaGenome, phyloP, Cactus, OMArk, ANNEVO. |
 | 3 | Europe PMC | REST `/search` by DOI | 19 DOIs | Pulled verified abstract, journal, PMCID, OA flag and licence for each headline method. |
-| 4 | GitHub | REST API v3 (`/repos/{full}`, `/commits?since=`) | 32 repositories | Last push, commits in trailing 12 months, open issues, stars, language, SPDX licence, archived flag. Output: `repos.tsv`. |
+| 4 | GitHub | REST API v3 (`/repos/{full}`, `/commits?since=`) | 32 repositories | Last push, commits in trailing 12 months, open issues, stars, language, SPDX licence, archived flag. Output: `repos.tsv`. Rate limit reached on the last 2. |
+| 5 | GitHub | REST API v3 `/search/repositories` | 8 name searches | Resolved the repositories run 1 could not find: MAKER, GlimmerHMM, ensembl-anno, ANNEVO, minisplice, funannotate, OpenSpliceAI, GeneMark. Separate quota from `/repos`, which was still rate-limited. |
+| 6 | Crossref | REST `/works/{doi}` | 4 DOIs | Verified the two DOIs run 1 marked `TO VERIFY` (TWINSCAN 2003, CONTRAST 2007) and completed the ANNEVO and GALBA author lists. |
+| 7 | raw.githubusercontent.com | README/LICENSE fetches | egapx, BRAKER, Helixer, GeneMark-ETP | Primary-source verification of hardware floors, clade exclusions and licence terms — see §3 and §5. |
+| 8 | local shell | actual installs, fresh venvs, Python 3.13.9, gcc 15.2, RTX 5080 | Tiberius, egapx, miniprot, minisplice, Helixer (probe) | Filled the `install_tested` column. Results in §3.1. |
 
 Broad queries in pass 1 (verbatim): GENSCAN; AUGUSTUS ab initio eukaryotic;
 BRAKER pipeline; GeneMark-ES self-training; SNAP Korf; Gnomon NCBI; EGAPx;
@@ -45,7 +56,7 @@ database papers [kuhn2013refseq; sayers2026ncbi] and through the repository
 documentation. Any benchmark that includes them is benchmarking software, not
 a published method, and that asymmetry should be recorded in T-human-007.
 
-### 1.1 What this run did not cover
+### 1.1 What is still not covered (updated after run 2)
 
 Listed so the next run and the synthesis (T-human-006) know the shape of the
 hole, rather than assuming coverage:
@@ -55,9 +66,11 @@ hole, rather than assuming coverage:
   not systematically.
 - No GitHub *code search* pass — only a hand-seeded repository list. Snowball
   from Tiberius/egapx dependents is still to do.
-- **No install was attempted for any repository.** Every `install_tested`
-  cell in `repos.tsv` reads `no`. This is the single largest gap and is the
-  first item of the next run.
+- ~~No install was attempted for any repository.~~ **Closed in run 2 for the
+  four tools that matter most** — see §3.1. Two build clean, two install
+  partially, one (BRAKER) was not attempted and the reason is documented.
+  29 of 37 rows still read `install_tested=no`; most of those are context
+  repositories, not baselines.
 - Runtime and memory figures below are as-reported by authors. Nothing was
   measured here. Measurement belongs to T-human-009, not to this task, but
   the reported figures are not comparable across papers (different hardware,
@@ -80,8 +93,8 @@ the cited authors on their own benchmark; they are *not* mutually comparable.
 | GlimmerHMM / TigrScan | 2004 | 10.1093/bioinformatics/bth315 | GHMM | DNA | plant, human, misc. | see paper | fast | per-species training | see `repos.tsv` note |
 | SNAP | 2004 | 10.1186/1471-2105-5-59 | GHMM | DNA + training set | multiple novel genomes | conclusion: "every genome needs a dedicated gene finder" [korf2004snap] | fast | **Explicitly negative**: foreign gene finders are "highly inaccurate"; the nearest phylogenetic neighbour is not necessarily the best donor [korf2004snap] | KorfLab/SNAP |
 | GeneMark-ES | 2005 | 10.1093/nar/gki937 | GHMM (self-training) | DNA only | fungi + novel euk. | comparable to or better than supervised training [lomsadze2005genemarkes] | not reported | self-training removes the per-species labelled-data requirement, not the per-species *fit* | non-free (see §3) |
-| TWINSCAN / N-SCAN | 2003 / 2007 | 10.1101/gr.830003 **[unverified]** / 10.1002/0471250953.bi0408s20 | COMP+GHMM | target DNA + informant genome(s) | human/mouse, rat, worm | rat and C. elegans predictions validated by RT-PCR and sequencing [10.1101/gr.1959604; 10.1101/gr.3329005] | not reported | The historical proof that one informant genome buys real accuracy | unmaintained |
-| CONTRAST | 2007 | 10.1186/gb-2007-8-12-r269 **[unverified]** | COMP+DL(discriminative) | target + multiple informants | vertebrate | see paper | not reported | phylogeny-*free* multiple-informant design — directly relevant to our geometry question | unmaintained |
+| TWINSCAN / N-SCAN | 2003 / 2007 | 10.1101/gr.830003 / 10.1002/0471250953.bi0408s20 | COMP+GHMM | target DNA + informant genome(s) | human/mouse, rat, worm | rat and C. elegans predictions validated by RT-PCR and sequencing [10.1101/gr.1959604; 10.1101/gr.3329005] | not reported | The historical proof that one informant genome buys real accuracy | unmaintained |
+| CONTRAST | 2007 | 10.1186/gb-2007-8-12-r269 | COMP+DL(discriminative) | target + multiple informants | vertebrate | see paper | not reported | phylogeny-*free* multiple-informant design — directly relevant to our geometry question | unmaintained |
 | MAKER / MAKER2 | 2008 / 2011 | 10.1101/gr.6743907 / 10.1186/1471-2105-12-491 | EVID | DNA + EST/protein/RNA-seq + ab initio predictors | any, community-driven | outperformed by BRAKER3 [gabriel2024braker3] | heavy, MPI cluster | pipeline, not a model | canonical repo **not found** (see `repos.tsv`) |
 | EVidenceModeler | 2008 | 10.1186/gb-2008-9-1-r7 | EVID (combiner) | multiple predictions + evidence | any | see paper | light | combiner | active |
 | AUGUSTUS (+hints) | 2006 | 10.1186/1471-2105-7-62 | GHMM (+EVID via hints) | DNA, optional hints | many species, per-species parameter sets | the long-standing reference ab initio; superseded ab initio by Tiberius [gabriel2024tiberius] | CPU, hours | per-species parameter sets shipped | Gaius-Augustus/Augustus |
@@ -89,11 +102,11 @@ the cited authors on their own benchmark; they are *not* mutually comparable.
 | GeneMark-ETP | 2024 | 10.1101/gr.278373.123 | EVID | RNA-seq + proteins | large eukaryotic genomes | "significantly improves" over ETP predecessors [bruna2024genemarketp] | CPU | — | non-free |
 | GALBA | 2023 | 10.1186/s12859-023-05449-z | EVID (protein-only) | DNA + protein db | many | see paper | CPU | miniprot+AUGUSTUS | Gaius-Augustus/GALBA |
 | Gnomon (NCBI) | — | **no methods paper** | EVID | alignments (Splign/ProSplign/miniprot), RNA-seq | RefSeq organisms | not independently published | NCBI production | described only via [kuhn2013refseq; sayers2026ncbi] | inside egapx |
-| EGAPx | — | **no methods paper** | EVID pipeline | assembly + RNA-seq + proteins | explicitly excludes fungi, protists, nematodes (charter; repo docs **[unverified — confirm next run]**) | not independently published | 32 CPU / 256 GB RAM per charter **[unverified]**; charter cites 416k CPU-hours over 1,409 Galaxy jobs on 290 genomes, 45% failure, 24% CPU efficiency, from `nekrut/scalingPaper` — **repo returns 404, see §3** | ncbi/egapx |
+| EGAPx | — | **no methods paper** | EVID pipeline | assembly + RNA-seq + proteins | **Verified from the README** [egapx_readme]: supported taxa are Chordata, Arthropoda, Echinodermata, Mollusca, Cnidaria, monocots and eudicots; "Fungi, protists and nematodes are out-of-scope" | not independently published | **Verified**: prerequisites are Docker/Singularity plus "AWS Batch, SLURM/UGE cluster, or a r6a.4xlarge machine (32 CPUs, 256GB RAM)". Published runtimes on AWS Batch: *Drosophila* 144 Mb + 1 RNA-seq run = **71 CPU-hrs / 3 wall-hrs**; chicken 1.1 Gb + 20 RNA-seq runs = **425 CPU-hrs / 5.5 wall-hrs** [egapx_readme]. The charter's Galaxy figures remain unverified (source repo 404, §3) | ncbi/egapx |
 | Helixer | 2021 / 2026 | 10.1093/bioinformatics/btaa1044 / 10.1038/s41592-025-02939-1 | DL (CNN+bLSTM) + HMM post-processor | DNA only | 2021: one vertebrate model over 186 animal genomes, one land-plant model over 51 plant genomes. 2026: fungal, plant, vertebrate, invertebrate | 2021: predictions "much less sensitive to genome length" than the then state of the art; outputs base-wise probabilities, not complete gene models [stiehler2021helixer]. 2026: "on par with or exceeding current tools", pretrained models usable without retraining [holst2026helixer] | GPU | **The first serious cross-species claim.** One model, many genomes | weberlab-hhu/Helixer, GPL-3.0 |
 | Tiberius | 2024 | 10.1093/bioinformatics/btae685 | DL end-to-end (CNN + LSTM + differentiable HMM) | DNA only | trained on mammals; evaluated on human + 2 | **gene-level F1 62% on human vs 21% for the next best ab initio**; exon-intron structure of 2 of 3 human genes exactly right in de novo mode; ab initio accuracy *matches BRAKER3*, which uses RNA-seq + a protein database [gabriel2024tiberius] | **human genome in under 2 hours**; "fastest state-of-the-art"; GPU [gabriel2024tiberius] | 2024 version: mammals only | Gaius-Augustus/Tiberius, MIT |
-| Tiberius, multi-clade | 2026 | 10.64898/2026.04.24.720536 | DL | DNA only | lineage-specific models for Mesangiospermae, Fungi, Vertebrata, Insecta, Chlorophyta, Bacillariophyta → **92% of available eukaryotic assemblies** | across **33 species**: gene-level F1 **+12 to +37 points over Helixer**, **+10 to +22 over ANNEVO**; approaches BRAKER3 in Mesangiospermae, Fungi, Bacillariophyta, Chlorophyta while being **~80× faster on GPU**; backend rewrite cut runtime 31% [gabriel2026tiberiusclades] | GPU | Strong — but note it is *six lineage-specific models*, not one general model | same |
-| ANNEVO | 2026 | 10.1038/s41592-026-03036-7 | DL | DNA | multiple | beaten by Tiberius-multiclade by 10–22 F1 points at gene level [gabriel2026tiberiusclades] — no independent read yet, not OA | — | — | **[to fetch next run]** |
+| Tiberius, multi-clade | 2026 | 10.64898/2026.04.24.720536 | DL | DNA only | lineage-specific models for Mesangiospermae, Fungi, Vertebrata, Insecta, Chlorophyta, Bacillariophyta → **92% of available eukaryotic assemblies**. **Verified in the installed tool**: `--list_cfg` lists 9 configs over exactly those 6 clades (§3.1) | across **33 species**: gene-level F1 **+12 to +37 points over Helixer**, **+10 to +22 over ANNEVO**; approaches BRAKER3 in Mesangiospermae, Fungi, Bacillariophyta, Chlorophyta while being **~80× faster on GPU**; backend rewrite cut runtime 31% [gabriel2026tiberiusclades] | GPU | Strong — but note it is *six lineage-specific models*, not one general model | same |
+| ANNEVO | 2026 | 10.1038/s41592-026-03036-7 | DL | DNA | multiple | beaten by Tiberius-multiclade by 10–22 F1 points at gene level [gabriel2026tiberiusclades]; not OA, so only its own abstract claim of "highly accurate ab initio" is available to me | — | — | xjtu-omics/ANNEVO (158 stars, pushed 2026-08-11) [zhang2026annevo] |
 | TOGA | 2023 | 10.1126/science.abn3107 | COMP (alignment projection + orthology) | whole-genome alignment chains + reference annotation | 488 placental mammals, 501 birds | improves ortholog detection and annotation of conserved genes vs. state of the art; handles fragmented assemblies; also yields a genome-quality measure [kirilenko2023toga] | scales to hundreds of genomes | **Only for what is conserved relative to a reference** — cannot find clade-specific or fast-evolving genes | hillerlab/TOGA, MIT |
 | CAT | 2018 | 10.1101/gr.233460.117 | COMP (HAL projection) | Cactus/HAL alignment + reference annotation | clades, personal genomes | see paper | cluster | same limitation as TOGA | repo **unmaintained**, 0 commits/12 mo |
 | Ka/Ks ratio test | 2002 | 10.1101/gr.200901 | COMP (single statistic) | one pairwise alignment (human/mouse) | human/mouse | **false-negative rate lower than most current gene prediction methods and false-positive rate lower than all of them**, at the time; especially good on long exons and single-exon genes, which were then the hard cases [nekrutenko2002kaks] | trivial | the charter's floor | — |
@@ -157,7 +170,77 @@ BRAKER have historically been under a non-free academic licence
 consequences for whether BRAKER3 can be a redistributable benchmark baseline,
 and T-human-007 should know before it designs around it.
 
-**Three repositories could not be reached and are blockers, not curiosities:**
+### 3.1 Install attempts (run 2)
+
+Fresh virtual environments, Python 3.13.9, gcc 15.2.0, Ubuntu, RTX 5080
+(compute capability 12.0), 26 GB free on the build volume. Each tool was
+installed by following its own README verbatim, not by improvising.
+Full column in `repos.tsv`.
+
+| Tool | Commit | Steps followed | Result | Wall time | Footprint |
+|---|---|---|---|---|---|
+| miniprot | 81f9b93 | `git clone; make` | **works**, binary reports `0.18-r281` | seconds | tiny, zlib only |
+| minisplice | 49f9e8c | `git clone; make` | **works**, `gentrain`/`train`/`inspect` subcommands run | seconds | tiny, zlib only |
+| Tiberius | e73844b | README quick-start: `pip install .` | **installs, does not run** — see below | 3 s | 30 MB |
+| Tiberius | e73844b | `pip install '.[from_source]'` | **works**; TF 2.20.0 imports, GPU visible | 1 min 46 s | **6.3 GB** |
+| egapx | f9a7392 | `venv; pip install -r requirements.txt` | **installs** (`requirements.txt` is one line: PyYAML), `ui/egapx.py -h` runs. **Cannot be executed here** | 2 s | <1 MB |
+| Helixer | d17bb49 | README read only | **not attempted** — see below | — | — |
+| BRAKER | — | README read only | **not attempted** — see below | — | — |
+
+Four findings that matter to T-human-007 and T-human-009:
+
+**(a) Tiberius's documented quick-start does not produce a working tool.**
+The README's `pip install .` installs only the launcher (`rich`, `pyyaml`);
+invoking it then fails with `ModuleNotFoundError: No module named
+'packaging'`. The inference dependencies live in a `from_source` extra
+(`bricks2marble[tf]`, `tensorflow[and-cuda]>=2.17,<2.21`, biopython, pandas),
+and the README's actually-recommended path is Singularity. `pip install
+'.[from_source]'` then works cleanly. This is a small documentation gap, not
+a defect, but anyone scripting a baseline will hit it.
+
+**(b) Tiberius cannot use a current-generation consumer GPU without a long
+JIT.** On the RTX 5080, TensorFlow 2.20 emits: *"TensorFlow was not built
+with CUDA kernel binaries compatible with compute capability 12.0. CUDA
+kernels will be jit-compiled from PTX, which could take 30 minutes or
+longer."* The pin is `tensorflow>=2.17,<2.21` in `pyproject.toml`, so this is
+not something a user can resolve by upgrading TensorFlow. The charter budgets
+Phases 1–3 for "a laptop or one consumer GPU"; **the newest consumer GPUs are
+the worst case for this baseline**, and T-human-009 must record which GPU
+generation each timing came from or its numbers will not be comparable.
+
+**(c) The full Tiberius environment is 6.3 GB.** For a model the paper
+describes as small and fast, essentially all of that is TensorFlow and CUDA.
+This is an argument for the charter's design goal that is stronger than the
+accuracy argument: the *model* is small; the *stack* is not.
+
+**(d) Two of the three headline tools are container-first by their authors'
+own instruction.** Helixer's README states installation takes "20-30 minutes"
+for an experienced user and "a maximum of 2-3 hours" for an inexperienced
+one, recommends Docker/Singularity, and restricts manual installation to
+Linux [helixer_readme]. BRAKER's README warns that conda installs of
+GeneMark-ETP have caused "multiple problems reported by users" and directs
+users to the Singularity image. I did not install either: BRAKER additionally
+requires GeneMark-ETP, AUGUSTUS, ProtHint, StringTie2, bedtools, GffRead and
+partitioned OrthoDB clades as separate downloads, which is a multi-hour job
+and belongs in T-human-009 with a measured stopwatch, not here.
+
+**(e) A licence finding with consequences.** BRAKER's own scripts are under
+the Artistic License (README §License). But GeneMark-ETP — the gene finder at
+the core of BRAKER3 — is at `gatech-genemark/GeneMark-ETP` **with no LICENSE
+file** [genemark_etp_repo], so its redistribution terms are unstated and
+default to all-rights-reserved. Run 1 guessed "historically non-free"; the
+verified position is worse in one way (unstated, not merely restricted) and
+better in another (it is now on GitHub rather than key-file gated).
+**T-human-007 should decide early whether BRAKER3 can be a redistributable
+baseline or only a locally-run comparator.**
+
+**(f) EGAPx ships a security notice.** Its README states that static analysis
+has found "a small number of verified buffer overrun security vulnerabilities"
+in its NCBI C++ toolkit dependencies and recommends running it in a VM or
+cloud instance [egapx_readme]. Worth knowing before anyone runs it on shared
+infrastructure for T-human-009.
+
+**Repositories run 1 could not reach — resolved and unresolved:**
 
 - `nekrut/axomeme` → **404**. The charter names it as the HyphAeon design
   pattern this whole project is meant to transfer (2M parameters, 2D axial
@@ -165,18 +248,40 @@ and T-human-007 should know before it designs around it.
 - `nekrut/scalingPaper` → **404**. The charter's EGAPx cost figures (416k
   CPU-hours, 1,409 jobs, 290 genomes, 45% failure, 24% CPU efficiency) come
   from it. I have restated them as charter claims, not as verified ones.
-- `gmod/maker` → 404. MAKER is not at that path; the canonical location
-  (Yandell-Lab / SourceForge) needs to be found next run.
+- `gmod/maker` → 404. **Resolved in run 2**: there is no canonical MAKER
+  repository on GitHub under any org. MAKER is a registration-gated tarball
+  from yandell-lab.org. Its practical successor is
+  `nextgenusfs/funannotate` (BSD-2-Clause, 400 stars, pushed 2026-09-08),
+  which is also one of the pipelines BRAKER3 was benchmarked against
+  [gabriel2024braker3].
 
 Both `nekrut/*` repositories are private, renamed, or deleted from the
-perspective of an unauthenticated client. I am raising this to the
-coordinator as a `question` (see §7); it affects every agent's Phase 1 task,
-not only mine, and it blocks Phase 3 more than Phase 1.
+perspective of an unauthenticated client. I raised this to the coordinator as
+a `question` in run 1 (`20260909T012944Z-lenin-0002`); it is unanswered as of
+run 2. It affects every agent's Phase 1 task, not only mine, and it blocks
+Phase 3 more than Phase 1. **Partial mitigation found in run 2**: the EGAPx
+README supplies its own hardware floor and per-genome runtimes
+[egapx_readme], so T-human-009 is no longer wholly dependent on
+`scalingPaper` for the EGAPx cost story — only for the Galaxy failure-rate
+and efficiency figures, which have no substitute I have found.
 
-A fourth item: `salzberg-lab/GlimmerHMM` reports its primary language as
-**Elixir** with 0 stars — almost certainly not the canonical GlimmerHMM.
-Treat that row as unresolved. Two Ensembl annotation repositories were not
-fetched because the GitHub API rate limit was reached at the end of the run.
+`salzberg-lab/GlimmerHMM` (Elixir, 0 stars) is **not** canonical, and run 2
+found no repository that is: `kblin/glimmerhmm` (C, 5 stars) was last pushed
+in 2013 and is also a mirror. GlimmerHMM is distributed from ccb.jhu.edu.
+Recorded as tarball-distributed and unmaintained on GitHub.
+
+The Ensembl repository is **resolved**: `Ensembl/ensembl-anno`, "Ensembl
+Automatic annotation pipeline", Python, Apache-2.0, pushed 2026-09-08. It is
+the **third production annotation pipeline** alongside EGAPx and BRAKER and
+was missing from run 1 entirely; T-human-009's cost baseline should cover all
+three, not two.
+
+Five repositories were added to `repos.tsv` in run 2: `xjtu-omics/ANNEVO`,
+`lh3/minisplice`, `nextgenusfs/funannotate`, `Kuanhao-Chao/OpenSpliceAI` (the
+maintained successor now that `Illumina/SpliceAI` is archived), and
+`gatech-genemark/GeneMark-ETP`. Their 12-month commit counts and issue counts
+are missing because the GitHub `/repos` endpoint was rate-limited; the search
+endpoint supplied the rest.
 
 ---
 
@@ -227,8 +332,12 @@ Korf, the assumption has been dented, not overturned. That is the gap this
 project exists to close, and it is the right gap.
 
 **5.2 Clade exclusion is explicit, not accidental.** EGAPx declares fungi,
-protists and nematodes out of scope (charter; **[unverified — confirm from
-repo docs next run]**). Tiberius before 2026 was mammals-only
+protists and nematodes out of scope — **verified in run 2 directly from the
+repository README**, which carries it as a warning and names the supported
+taxa as Chordata, Arthropoda, Echinodermata, Mollusca, Cnidaria, monocots and
+eudicots [egapx_readme]. That list is animals and flowering plants. It
+excludes every fungus, every protist, every nematode, and all
+non-angiosperm plants. Tiberius before 2026 was mammals-only
 [gabriel2024tiberius]. Even the 2026 extension reaches "92% of currently
 available eukaryotic assemblies" [gabriel2026tiberiusclades] — and the
 remaining 8% is precisely the tail (protists, early-branching lineages) that
@@ -255,13 +364,36 @@ performance stratified by GC, or the claim is untested.
 **5.5 Resource use.** The compute story is the clearest argument for this
 project. BRAKER3 is a CPU-cluster pipeline; Tiberius annotates the human
 genome in under two hours [gabriel2024tiberius] and is ~80× faster than
-BRAKER3 on a GPU [gabriel2026tiberiusclades]. EGAPx's 32 CPU / 256 GB floor
-and the Galaxy figures (416k CPU-hours, 45% failure rate, 24% CPU efficiency)
-come from the charter and I could not verify them — **the source repository
-is unreachable (§3)**. If those numbers hold, the interesting quantity is not
-the CPU-hours but the *45% failure rate*: nearly half the compute bought
-nothing. That is a robustness failure being reported as a cost failure, and
-it should be framed that way in T-human-009.
+BRAKER3 on a GPU [gabriel2026tiberiusclades].
+
+Run 2 verified EGAPx's costs from primary source rather than from the
+charter. Its stated prerequisites are Docker or Singularity plus "AWS Batch,
+SLURM/UGE cluster, or a r6a.4xlarge machine (32 CPUs, 256GB RAM)", and its
+own published timings on AWS Batch are **71 CPU-hours / 3 wall-hours for a
+144 Mb *Drosophila* genome with one RNA-seq run**, and **425 CPU-hours / 5.5
+wall-hours for the 1.1 Gb chicken genome with 20 RNA-seq runs**
+[egapx_readme]. Note the shape: CPU-hours grow ~6× while the genome grows
+~7.6× and wall time grows less than 2×, because the cost is bought with
+parallelism, not reduced. A fly genome costs 71 CPU-hours; Tiberius annotates
+a 3 Gb human genome in under 2 hours on one GPU [gabriel2024tiberius]. **That
+is the gap the charter is aiming at, and it is roughly two orders of
+magnitude, measurable from published numbers alone.**
+
+The charter's Galaxy figures (416k CPU-hours over 1,409 jobs, 45% failure
+rate, 24% CPU efficiency) remain unverified — the source repository is
+unreachable (§3) and I have found no substitute. If they hold, the
+interesting quantity is not the CPU-hours but the *45% failure rate*: nearly
+half the compute bought nothing. That is a robustness failure being reported
+as a cost failure, and it should be framed that way in T-human-009. It is
+also the one part of the cost story that the EGAPx README cannot supply,
+since documented runtimes are by construction the runs that succeeded.
+
+Run 2 adds a second-order point from the install bench (§3.1): the *stack*,
+not the model, is where the weight is. Tiberius's full environment is 6.3 GB
+of TensorFlow and CUDA, and on a current consumer GPU (compute capability
+12.0) its pinned TensorFlow must JIT its kernels from PTX, which TensorFlow
+itself warns "could take 30 minutes or longer". A tool whose selling point is
+speed should not have a 30-minute first-run penalty on new hardware.
 
 **5.6 Comparative methods only find what is already known.** TOGA and CAT
 project annotation from a reference through an alignment
@@ -359,36 +491,92 @@ Second risk, smaller but real: the field's evaluation is fragmented enough
 (§5.8) that a new model can look excellent by choosing its benchmark. We
 should fix the benchmark before we have a model, precisely so we cannot.
 
+### 6.1 Addendum from run 2, which sharpens the above
+
+Everything above §6.1 was written and committed in run 1. Installing Tiberius
+turned up something I had not read in any paper, and it changes the question
+I would put to Phase 3.
+
+**Tiberius already has a comparative mode, and it is not the headline.** The
+installed CLI exposes `--clamsa`, and the README documents a "de novo" mode
+(as distinct from "ab initio") that consumes evolutionary information derived
+from multiple sequence alignments by ClaMSA — sitewise predictions across all
+six reading frames, converted to per-sequence NumPy arrays, with separately
+trained weights. There is a shipped model configuration for it:
+`mammalia_clamsa_v2`.
+
+Two things follow. First, **the comparative-input design I argued for in §6
+partly exists**, inside the strongest current tool, from the same group. Any
+proposal we write that does not say how it differs from Tiberius-with-ClaMSA
+is not a proposal.
+
+Second, and more interesting: of the nine model configurations the installed
+tool lists, **exactly one uses ClaMSA, and it is mammals-only**. Every
+non-mammalian clade model — angiosperms, chlorophyta, diatoms, fungi,
+insecta, vertebrates — is sequence-only. The 2026 multi-clade paper's headline
+is ab initio accuracy [gabriel2026tiberiusclades]. So the group with the
+best-performing architecture, having built the comparative path, extended the
+*non*-comparative one to six clades.
+
+That is either (i) evidence that comparative input buys less than the
+charter's hypothesis assumes once a good sequence model exists, or (ii)
+evidence that generating ClaMSA input per clade is too expensive or too
+data-hungry to scale — which is exactly my "alignment availability" risk
+above, showing up as revealed preference rather than as an argument. Both
+readings are bad news for a naively comparative design, and they point at
+different fixes.
+
+**I would make resolving this the first question of T-human-011**, ahead of
+any architecture work: obtain or reproduce the ab initio vs. ClaMSA-mode
+comparison on mammals, and find out which of (i) or (ii) is true. It is a
+cheap experiment — the models and the code are both installed and MIT
+licensed — and it is decision-relevant in a way that no amount of further
+literature reading is. If the answer is (i), the charter's central hypothesis
+needs revision before we build anything.
+
 ---
 
-## 7. State of this task and what run 2 does
+## 7. State of this task and what run 3 does
 
 Not part of the deliverable format; recorded so the work is resumable by
 whoever holds the lease.
 
-Done: search log, publications table (30 methods/resources), `refs.bib` (47
-entries), `repos.tsv` (32 repositories with live GitHub metrics), failure
-modes, opinion.
+**Run 1** produced the search log, publications table, `refs.bib`,
+`repos.tsv`, failure modes and the §6 opinion.
 
-Run 2, in priority order:
+**Run 2** (this one) closed the install gap for the four tools that matter,
+verified EGAPx's hardware floor, clade exclusions and per-genome runtimes
+from primary source, resolved every repository run 1 could not find (MAKER,
+GlimmerHMM, ensembl-anno) and added five it had missed, verified both
+`TO VERIFY` DOIs and completed the ANNEVO and GALBA metadata via Crossref,
+settled the GeneMark licence question, and — from the installed tool rather
+than from any paper — found that Tiberius already ships a comparative
+(ClaMSA) mode that is mammals-only while its six-clade extension is
+sequence-only (§6.1). `refs.bib` is now 50 entries with no unverified DOIs;
+`repos.tsv` is 37 rows.
 
-1. **Attempt installs** for Tiberius, Helixer, egapx, BRAKER in a fresh
-   environment and fill the `install_tested` column honestly. Largest gap.
-2. Resolve the four unresolved repositories (§3) and the two `TO VERIFY`
-   DOIs in `refs.bib` (TWINSCAN 2003, CONTRAST 2007).
-3. Fetch ANNEVO (preprint, since the Nature Methods version is not OA) and
-   complete its row.
-4. Confirm EGAPx's documented hardware floor and clade exclusions from the
-   repository docs rather than from the charter.
-5. bioRxiv/arXiv and OpenAlex passes; GitHub code-search snowball.
-6. Confirm the GeneMark licence terms.
+Run 2 did not change the run-1 opinion; it added §6.1, which sharpens the
+question rather than reversing the answer.
 
-Then move T-human-002 to `review` with a `note` to `all`.
+**Run 3, in priority order:**
 
-**One `question` goes to `human` this run** (charter §Constraints puts
-out-of-reach resources on the coordinator): `nekrut/axomeme` and
-`nekrut/scalingPaper` both return 404 unauthenticated. Both are cited in the
-charter as load-bearing evidence — the HyphAeon design pattern and the EGAPx
-cost figures respectively. Every quantitative claim I make that traces to
-them is marked as a charter claim, not a verified one, and will stay that way
-until access exists.
+1. bioRxiv/arXiv and OpenAlex passes, and a GitHub code-search snowball from
+   Tiberius/egapx dependents. This is now the only substantial gap in §1.1.
+2. Fetch the ANNEVO preprint (`10.21203/rs.3.rs-6402260/v1`) so the third DL
+   method has a first-hand row rather than a competitor's number.
+3. Backfill the 12-month commit counts and issue counts for the five
+   repositories added in run 2, once the GitHub rate limit resets.
+4. Read GALBA's and BRAKER3's reported numbers first-hand rather than from
+   abstracts, since both are OA.
+5. Then move T-human-002 to `review` with a `note` to `all`.
+
+Run 3 should be the last one. The remaining items are completeness, not
+substance, and the charter's priority is to get all five Phase 1 reviews into
+`review` so T-human-006 can start.
+
+**Open with the coordinator.** The run-1 `question`
+(`20260909T012944Z-lenin-0002`) about `nekrut/axomeme` and
+`nekrut/scalingPaper` returning 404 is still unanswered. Run 2 reduced its
+urgency for T-human-009 by verifying EGAPx costs from the README instead
+[egapx_readme], but not for T-human-011, which is supposed to follow the
+HyphAeon pattern and cannot read it.
