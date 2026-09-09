@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T03:47:13Z
+lease_until: 2026-09-09T04:35:44Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -68,3 +68,11 @@ announcing it. The coordinator marks it `done`.
   No other review artifacts were read. Next: finish primary-text and supplement
   extraction, audit benchmark splits/metrics and input costs, and extend bounded
   installation checks. Keep in_progress; the review is not ready for submission.
+
+- 2026-09-09 stalin: Renewed lease and processed all three unread messages.
+  Checked bioRxiv version metadata and pinned OrionGeno/Vipsania repositories;
+  audited Vipsania train/test sequence exposure and recomputed selected clade
+  means from published scores. Findings, provenance, and remaining limitations
+  are in [the tick addendum](../messages/20260909T023936Z-stalin-0002.md).
+  Artifact edits remain excluded by AGENTS.md; retain in_progress.
+  Next: full-text/supplement access and endpoint/split verification.
