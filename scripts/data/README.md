@@ -99,8 +99,16 @@ a track unknown to the built-in class table to be reference-anchored;
 `--both-strands` adds the reverse-complement example. `--self-test` checks
 labels, frames, boundaries, informant codes, insertions, distances, the
 reverse complement, the transcript filter, the alignment-class table,
-label counts on a padded window and an EPO-shaped two-block window with
-ancestral rows (28 checks).
+label counts on a padded window, an EPO-shaped two-block window with
+ancestral rows, a gene nested on the opposite strand inside another gene's
+intron (strand and frame follow the nested gene), and byte-identical
+archives from repeated runs (35 checks). The `.npz` members carry a fixed
+timestamp, so an example's checksum depends only on its inputs; the whole
+cutter, the fetcher, `coverage_by_distance.py` and `tree_composition.py`
+were checked to give identical output under `PYTHONHASHSEED` 0, 1, 2 and 42
+on the fly `Adh` window (a stratified count that depends on set iteration
+order is the defect lenin found in the benchmark scorer, relay note
+20260909T133356Z-lenin-0013).
 
 ```
 python3 scripts/data/cut_windows.py --self-test

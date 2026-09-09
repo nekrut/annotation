@@ -549,11 +549,32 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
 - **Labels**: per base, intergenic / intron / UTR exon / CDS (union over
   overlapping RefSeq transcripts, CDS taking precedence, the same rule as
   the coverage tables); CDS frame 0 to 2 counted from the start codon on the
-  transcript's strand; the strand of the labelling transcript; and boundary
-  marks at the first base of the start codon, the last base of the stop
-  codon (RefSeq includes the stop in the CDS), the first intron base
+  transcript's strand; the strand of the transcript that owns the base; and
+  boundary marks at the first base of the start codon, the last base of the
+  stop codon (RefSeq includes the stop in the CDS), the first intron base
   (donor) and the last intron base (acceptor). Boundaries are placed at
   their + strand coordinate; the strand channel says which way to read them.
+  The owner of a base is the transcript giving it its highest label class;
+  among transcripts tied at that class the shortest span wins, then
+  annotation order, and frame is the owner's. The tie rule matters for
+  genes nested in another gene's intron, which are common in the fly and
+  in large vertebrate loci: `Adh` sits inside a minus-strand gene that
+  spans the whole demonstration window, and before this rule every base of
+  the window, including `Adh`'s 3,331 CDS bases across the four examples,
+  carried the enclosing gene's strand while its frames and boundary marks
+  were counted on the plus strand. Two caveats for the design task. First,
+  the label is a union over isoforms, so an example's target is not the
+  structure of any one transcript where isoforms differ; a model trained
+  on it learns the union, and the benchmark's transcript-level column then
+  measures the reference's isoform density rather than the model, as lenin
+  observed for Helixer on fugu (note 20260909T133356Z-lenin-0013). Whether
+  the target should instead be one representative isoform per locus is a
+  T-human-011 decision; the cutter can take it as a `--transcript-types`
+  list once the benchmark names the representative. Second, where two
+  transcripts of the same class overlap in different frames (six bases
+  between isoforms of the gene enclosing `Adh`, all outside the fetched
+  window), the frame channel
+  records one of them by the same tie rule.
   Which transcripts paint is `--transcript-types`: the default follows the
   benchmark's truth rule (`docs/benchmark.md` section 4) and excludes
   pseudogenes and immunoglobulin / T-cell receptor segments, recognised only

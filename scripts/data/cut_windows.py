@@ -20,8 +20,12 @@ Arrays in each ``.npz`` (``L`` = ``--length``, ``K`` = number of informants):
                            (union over transcripts, CDS > UTR > intron)
   ``frame``  int8  [L]     codon position 0,1,2 of a CDS base counted from the
                            start codon on the transcript's strand; -1 elsewhere
-  ``strand`` int8  [L]     +1 / -1 strand of the transcript that labelled the
-                           base, 0 for intergenic
+  ``strand`` int8  [L]     +1 / -1 strand of the transcript that owns the
+                           base, 0 for intergenic.  The owner is the transcript
+                           giving the base its highest label class; ties go
+                           to the shortest span (a gene nested in another
+                           gene's intron owns its own exons and introns), then
+                           annotation order.  ``frame`` is the owner's too.
   ``bound``  uint8 [L]     0 none, 1 first base of start codon, 2 last base of
                            stop codon, 3 donor (first intron base),
                            4 acceptor (last intron base); all placed at their
@@ -109,11 +113,12 @@ import json
 import math
 import os
 import re
+import shutil
 import struct
 import sys
 import zipfile
 
-TOOL_VERSION = "0.1"
+TOOL_VERSION = "0.2"
 BASE = {"A": 0, "C": 1, "G": 2, "T": 3}
 INF_GAP, INF_UNALIGNED, INF_OTHER = 4, 5, 6
 LABEL = {"intergenic": 0, "intron": 1, "utr": 2, "cds": 3}
@@ -182,9 +187,14 @@ def npy_bytes(data: bytes, dtype: str, shape: tuple[int, ...]) -> bytes:
 
 
 def write_npz(path: str, arrays: dict[str, tuple[bytes, str, tuple[int, ...]]]) -> None:
+    """Zip members carry a fixed timestamp, so the same inputs give the same
+    bytes and a checksum of an example means something."""
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as z:
         for name, (data, dtype, shape) in arrays.items():
-            z.writestr(name + ".npy", npy_bytes(data, dtype, shape))
+            info = zipfile.ZipInfo(name + ".npy", date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            z.writestr(info, npy_bytes(data, dtype, shape))
 
 
 def f32(values) -> bytes:
@@ -389,6 +399,18 @@ def paint_informants(blocks, ref: str, start: int, end: int, rows: list[str]):
 # ------------------------------------------------------------- annotation
 
 def paint_labels(start: int, end: int, transcripts: list[dict]):
+    """Per-base label, CDS frame, strand and boundary marks.
+
+    A base belongs to the transcript that gives it the highest label class
+    (CDS > UTR > intron); among transcripts tied at that class the one with
+    the shortest span owns it, then annotation order.  Strand and frame are
+    the owner's.  The tie rule is what makes a gene nested in another gene's
+    intron (fly Adh inside the minus-strand gene that spans it, and the
+    intronic genes common in large vertebrate loci) carry its own strand
+    across its exons and introns instead of the enclosing gene's, so that
+    frame and boundary marks, which are always counted on the owner's
+    strand, agree with the strand channel.  Boundary marks are the union
+    over transcripts; a position marked by two transcripts keeps the first."""
     n = end - start
     label = bytearray(n)
     frame = bytearray(b"\xff" * n)      # -1 as int8
@@ -399,30 +421,44 @@ def paint_labels(start: int, end: int, transcripts: list[dict]):
         if start <= pos < end and (force or arr[pos - start] == 0):
             arr[pos - start] = val
 
-    for t in transcripts:
+    # longest span first and, within a span, last in annotation order first:
+    # a later painter overwrites on ties, so the nested transcript wins, and
+    # among equal spans the first in annotation order does
+    order = sorted(range(len(transcripts)),
+                   key=lambda i: (-(transcripts[i]["end"] - transcripts[i]["start"]), -i))
+    for ti in order:
+        t = transcripts[ti]
         s = 1 if t.get("strand", "+") == "+" else 255
-        for i in range(max(t["start"], start), min(t["end"], end)):
-            if label[i - start] < LABEL["intron"]:
-                label[i - start] = LABEL["intron"]
-            if strand[i - start] == 0:
-                strand[i - start] = s
+        lo, hi = max(t["start"], start), min(t["end"], end)
+        if lo >= hi:
+            continue
+        cls = bytearray(n)
+        fr = bytearray(b"\xff" * n)
+        for i in range(lo, hi):
+            cls[i - start] = LABEL["intron"]
         for a, b in t.get("exons", []):
             for i in range(max(a, start), min(b, end)):
-                if label[i - start] < LABEL["utr"]:
-                    label[i - start] = LABEL["utr"]
+                cls[i - start] = LABEL["utr"]
         cds = sorted(t.get("cds", []))
         for a, b in cds:
             for i in range(max(a, start), min(b, end)):
-                label[i - start] = LABEL["cds"]
+                cls[i - start] = LABEL["cds"]
         if cds:
             k = 0
-            order = cds if s == 1 else [(b, a) for a, b in reversed(cds)]
-            for a, b in order:
+            cds_order = cds if s == 1 else [(b, a) for a, b in reversed(cds)]
+            for a, b in cds_order:
                 rng = range(a, b) if s == 1 else range(a - 1, b - 1, -1)
                 for i in rng:
-                    if start <= i < end and frame[i - start] == 255:
-                        frame[i - start] = k % 3
+                    if start <= i < end:
+                        fr[i - start] = k % 3
                     k += 1
+        for i in range(lo - start, hi - start):
+            c = cls[i]
+            if c and c >= label[i]:
+                label[i] = c
+                strand[i] = s
+                frame[i] = fr[i]
+        if cds:
             if s == 1:
                 put(bound, cds[0][0], 1); put(bound, cds[-1][1] - 1, 2)
             else:
@@ -789,6 +825,40 @@ def self_test() -> int:
     # GenArk source names carry a version dot and their tree leaf spells it with a v (mm39 35-way)
     assert maf_source("GCF_003668045.3.NC_048596.1") == "GCF_003668045v3" and maf_source("mm39.chr19") == "mm39" \
         and maf_source("C_sp38_MB_2015.chrI") == "C_sp38_MB_2015" and canonical_name("GCF_003668045.3.NC_048596.1") == "GCF_003668045v3"
+    checks += 1
+    # 29-33: a gene nested in another gene's intron on the opposite strand owns its
+    # bases (strand, frame) even though the enclosing transcript is listed first
+    nst = os.path.join(d, "nest")
+    for ext in (".fa", ".maf", ".nh", ".manifest.json"):
+        shutil.copyfile(stem + ext, nst + ext)
+    with open(nst + ".annotation.json", "w") as fh:
+        json.dump({"transcripts": [
+            {"id": "outer", "strand": "-", "start": 0, "end": 20, "exons": [[0, 3], [17, 20]], "cds": [[0, 3], [17, 20]]},
+            {"id": "inner", "strand": "+", "start": 5, "end": 15, "exons": [[5, 8], [11, 15]], "cds": [[6, 8], [11, 14]]},
+        ]}, fh)
+    cut(nst, os.path.join(d, "nest1"), 0, 0, set(), True, True)
+    z2 = npz(os.path.join(d, "nest1", "nest.w0.npz"))
+    lab2 = list(z2["label"])
+    st2 = [v - 256 if v > 127 else v for v in z2["strand"]]
+    fr2 = [v - 256 if v > 127 else v for v in z2["frame"]]
+    bd2 = list(z2["bound"])
+    assert lab2 == [3, 3, 3, 1, 1, 2, 3, 3, 1, 1, 1, 3, 3, 3, 2, 1, 1, 3, 3, 3], lab2
+    assert st2[:5] == [-1] * 5 and st2[5:15] == [1] * 10 and st2[15:] == [-1] * 5, st2
+    assert fr2[:3] == [2, 1, 0] and fr2[17:] == [2, 1, 0] and fr2[6:8] == [0, 1] and fr2[11:14] == [2, 0, 1] \
+        and fr2[3:6] == [-1] * 3 and fr2[8:11] == [-1] * 3, fr2
+    assert bd2[19] == 1 and bd2[0] == 2 and bd2[16] == 3 and bd2[3] == 4, bd2  # outer, read on -
+    assert bd2[6] == 1 and bd2[13] == 2 and bd2[8] == 3 and bd2[10] == 4, bd2  # inner, read on +
+    checks += 5
+    # 34: the reverse complement of the nested case flips strand signs and reverses everything else
+    r2 = npz(os.path.join(d, "nest1", "nest.w0.rc.npz"))
+    assert [v - 256 if v > 127 else v for v in r2["strand"]] == [-v for v in st2][::-1] \
+        and list(r2["label"]) == lab2[::-1] and list(r2["frame"]) == list(z2["frame"])[::-1]
+    checks += 1
+    # 35: the same inputs give byte-identical archives (fixed zip timestamps), so checksums mean something
+    cut(nst, os.path.join(d, "nest2"), 0, 0, set(), True, True)
+    for nm in ("nest.w0.npz", "nest.w0.rc.npz"):
+        with open(os.path.join(d, "nest1", nm), "rb") as f1, open(os.path.join(d, "nest2", nm), "rb") as f2:
+            assert f1.read() == f2.read(), nm
     checks += 1
     print(f"self-test passed ({checks} checks)")
     return 0
