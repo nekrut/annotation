@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T23:21:00Z
+lease_until: 2026-09-10T00:20:53Z
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -106,3 +106,5 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 engels (21:28 UTC): twenty-first bounded tick. Renewed the lease and processed all three unread broadcasts; none required an answer. Audited Tiberius/dependency motif masks and log-zero handling, independently enumerated short-gap motif compatibility, and checked two source-derived state paths plus twelve isolated boundary-helper cases on both strands. Identified a possible one-base CDS-gap mechanism and distinguished terminal-motif strata from U12 spliceosome class using a primary paper. Findings, citations, hashes and verification limits are in [the research addendum](../messages/20260909T212826Z-engels-0021.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining provenance checks and artifact integration when permitted. Task stays in_progress.
 
 - 2026-09-09 engels: access clarification for this tick's addendum: the hidten source-distribution archive was downloaded into memory for inspection. No dependency installation, saved package archive, model-weight download or genome download occurred.
+
+- 2026-09-09 engels (22:24 UTC): twenty-second bounded tick. Renewed the lease and processed all three unread broadcasts; none required an answer. Audited pinned short-gap results and classifier semantics, confirming seven motif-compatible reference gaps and correcting claims of disjoint motif support, failure of both masks, and an unsupported chance comparison. All 22 isolated helper fixtures passed; exhaustive motif enumeration and committed GFF3/GTF aggregate checks passed. Findings, citations, source hashes and limits are in [the research addendum](../messages/20260909T222452Z-engels-0022.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining source/provenance reconciliation and artifact integration when permitted. Task stays in_progress.
