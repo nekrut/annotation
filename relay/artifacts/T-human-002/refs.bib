@@ -614,3 +614,206 @@
                   user, up to 2--3 hours otherwise; Docker/Singularity
                   recommended, manual install Linux-only.}
 }
+
+% ---------------------------------------------------------------------------
+% Run 3 (2026-09-09). The 2025-2026 cohort found by the Europe PMC preprint
+% pass (SRC:PPR) and the OpenAlex pass. Metadata verified by DOI lookup
+% against Europe PMC resultType=core; abstracts read, no full text retrieved.
+% ---------------------------------------------------------------------------
+
+@article{liu2026oriongeno,
+  author  = {Liu, Lin and Cai, Xingyu and Wang, Sheng and Deng, Yuan and
+             Wu, Yi and Pan, Yu and Wang, Jian and Zhang, Chi and
+             Xia, Huan and Tan, Ning and Su, Kai and Liu, Yan and
+             Zhou, Xin and Liu, Long and Wei, Tong and others},
+  title   = {Scaling genome annotation across the eukaryotic tree of life
+             with {OrionGeno}},
+  journal = {bioRxiv},
+  year    = {2026},
+  doi     = {10.64898/2026.04.26.720859},
+  note    = {Preprint, 2026-04-29. Phylogeny-aware deep model; exons,
+             introns, UTRs and repeats from sequence; applied to >5,300
+             unannotated NCBI genomes. Code BGIResearch/OrionGeno, README
+             licence badge "Non-Commercial". Europe PMC reports no licence.}
+}
+
+@article{krieg2026vipsania,
+  author  = {Krieg, Ronja and Becker, Felix and Saenko, Sergey and
+             Diehl, Jonas and Stanke, Mario},
+  title   = {Vipsania: Unsupervised Deep Gene Finding},
+  journal = {bioRxiv},
+  year    = {2026},
+  doi     = {10.64898/2026.08.26.747235},
+  note    = {Preprint, 2026-08-30, CC BY. First unsupervised deep gene
+             finder: differentiable HMM layer inside a masked-language-model
+             network, no reference annotation at any point. Code
+             Gaius-Augustus/Vipsania, MIT; PyPI vipsania 1.0.0.}
+}
+
+@article{malovichko2026toga2,
+  author  = {Malovichko, Yury V. and Bein, Berit and
+             Gonzales-Irribarren, Alejandro and Leushkin, Evgeny and
+             Hilgers, Leon and Stephen, Alexander and Yi, Xin and
+             Albertini, Marco and Stadager, Tobias and others},
+  title   = {Accurate, comprehensive gene annotation and ortholog
+             identification across thousands of vertebrate genomes with
+             {TOGA2}},
+  journal = {bioRxiv},
+  year    = {2026},
+  doi     = {10.64898/2026.06.30.735536},
+  note    = {Preprint, 2026-07-04. Exon-level orthology; 513x memory and
+             6.1x runtime reduction; reports that human-trained deep
+             splice-site models generalize across vertebrates. Code
+             hillerlab/TOGA2, MIT.}
+}
+
+@article{liu2025genecad,
+  author  = {Liu, Zhen and Berthel, Andre and Czech, Eric and
+             Marroquin, Emilio and Stitzer, Michelle and Hsu, Sheng and
+             Pennell, Matthew and Buckler, Edward S. and Zhai, Jixian},
+  title   = {{GeneCAD}: Plant Genome Annotation with a {DNA} Foundation
+             Model},
+  journal = {bioRxiv},
+  year    = {2025},
+  doi     = {10.1101/2025.10.31.685877},
+  note    = {Preprint, 2025-11-03, CC BY-NC. PlantCAD2 embeddings +
+             modernBERT encoder + chromosome-scale CRF; ~9% transcript-F1
+             over Helixer and BRAKER3 on angiosperms. Code plantcad/genecad,
+             Apache-2.0.}
+}
+
+@article{zhai2025plantcad2,
+  author  = {{PlantCAD2 authors}},
+  title   = {{PlantCAD2}: a {DNA} foundation model for interpreting genomes
+             across flowering plants},
+  journal = {bioRxiv},
+  year    = {2025},
+  doi     = {10.1101/2025.08.27.672609},
+  note    = {The foundation model GeneCAD builds on. Found via OpenAlex;
+             author list not individually verified.}
+}
+
+@article{shmelev2026genatators,
+  author  = {Shmelev, Artem and Shadskiy, Aleksandr and Kuratov, Yuri and
+             Burtsev, Mikhail and Kardymon, Olga and Fishman, Veniamin},
+  title   = {{GENATATORs}: ab initio Gene Annotation With {DNA} Language
+             Models},
+  journal = {bioRxiv},
+  year    = {2026},
+  doi     = {10.64898/2026.06.17.732686},
+  note    = {Preprint, 2026-06-21. Two negative results this project should
+             not re-derive: pretrained DNA-LM embeddings do not capture the
+             features needed for gene segmentation, and standard per-token /
+             per-sequence metrics fail to reflect real annotation quality.}
+}
+
+@article{he2026benchmarkfm,
+  author  = {He, Zhe and Florea, Liliana},
+  title   = {Benchmarking foundation models for splice site and exon
+             annotation},
+  journal = {bioRxiv},
+  year    = {2026},
+  doi     = {10.64898/2026.02.22.707219},
+  note    = {Preprint, 2026-02-23. Stratified evaluation of SegmentNT,
+             Enformer, Borzoi, SpliceAI and AlphaGenome by exon class
+             (coding/non-coding, terminal/internal, constitutive/alternative,
+             TE-derived); all degrade sharply outside their training class.
+             The benchmark-design input for T-human-007.}
+}
+
+@article{dealmeida2024segmentnt,
+  author  = {de Almeida, Bernardo P. and Dalla-Torre, Hugo and
+             Richard, Guillaume and Blum, Christopher and Hexemer, Lorenz and
+             Gelard, Maxence and Mendoza-Revilla, Javier and Tang, Ziqi and
+             Marin, Frederikke I. and others},
+  title   = {Annotating the genome at single-nucleotide resolution with
+             {DNA} foundation models},
+  journal = {bioRxiv},
+  year    = {2024},
+  doi     = {10.1101/2024.03.14.584712},
+  note    = {SegmentNT. CC BY-NC-ND. Frames annotation as instance
+             segmentation over 14 element classes; the formulation GeneCAD
+             and OrionGeno build on.}
+}
+
+@article{vader2026geneml,
+  author  = {Vader, Lisa and Harvey, Colin J. and Weber, Tilmann and
+             Hon, Lawrence S.},
+  title   = {{geneML}: Gene annotation across diverse fungal species using
+             deep learning},
+  journal = {bioRxiv},
+  year    = {2026},
+  doi     = {10.64898/2026.05.18.725946},
+  note    = {Preprint, 2026-05-21, CC BY. Gene-level F1 64.9 -> 67.1 vs
+             BRAKER3 with protein hints over nine fungal genomes; ~6 min per
+             genome on 8 CPU cores; isoform recall 41.1% / precision 71.1%
+             against Fusarium graminearum Iso-Seq. Fungi are out of scope
+             for EGAPx.}
+}
+
+@article{grau2026gemoseq,
+  author  = {Grau, Jan and Weise, Dennis and Panster, Milan and
+             Schattat, Martin H. and Keilwagen, Jens},
+  title   = {Improved reconstruction of transcripts and coding sequences
+             from {RNA}-seq data},
+  journal = {Nucleic Acids Research},
+  year    = {2026},
+  doi     = {10.1093/nar/gkag091},
+  note    = {GeMoSeq. Open access, CC BY-NC. Benchmarked over seven species;
+             CDS prediction integral to the algorithm.}
+}
+
+@article{bates2026omannotator,
+  author  = {Bates, Sade and Dessimoz, Christophe and Nevers, Yannis},
+  title   = {{OMAnnotator}: a novel approach to building an annotated
+             consensus genome sequence},
+  journal = {Bioinformatics Advances},
+  year    = {2026},
+  doi     = {10.1093/bioadv/vbag015},
+  note    = {Open access, CC BY. Repurposes the OMA orthology algorithm to
+             arbitrate between ab initio, transcriptomic and homology
+             annotations using evolutionary information as tie-breaker.}
+}
+
+@article{abbas2026gapms,
+  author  = {Abbas, Qaisar and Wilhelm, Mathias and Kuster, Bernhard and
+             Frishman, Dmitrij},
+  title   = {{GAP-MS}: Automated validation of gene predictions using
+             integrated mass spectrometry evidence},
+  journal = {bioRxiv},
+  year    = {2026},
+  doi     = {10.64898/2026.03.17.712294},
+  note    = {Preprint, 2026-03-19, CC BY-NC-ND. Proteogenomic validation
+             across nine crops; improves precision for four gene predictors
+             and finds hundreds of peptide-supported loci absent from
+             reference annotations. Evidence about ground-truth quality.}
+}
+
+@article{roedelsperger2026pristionchus,
+  author  = {R{\"o}delsperger, Christian and Agyal, Nikita and
+             Quiobe, Sara Petronella and Wu, Hanh and R{\"o}seler, Waltraud
+             and Ibarra-Morales, Dara and Sommer, Ralf J.},
+  title   = {Lessons learned from manual curation of thousands of gene
+             models in the nematode {Pristionchus pacificus}},
+  journal = {bioRxiv},
+  year    = {2026},
+  doi     = {10.64898/2026.02.18.706511},
+  note    = {Preprint, 2026-02-19, CC BY. Community curation corrected more
+             than 7,500 gene models, about 24% of the annotation of one
+             strain; causes include assembly errors and artificial transcript
+             fusions.}
+}
+
+@article{tico2026selenoprotein,
+  author  = {Tic{\'o}, Marc and Sullivan, Erin and Guig{\'o}, Roderic and
+             Mariotti, Marco},
+  title   = {Overcoming the widespread flaws in the annotation of vertebrate
+             selenoprotein genes in public databases},
+  journal = {PLOS Computational Biology},
+  year    = {2026},
+  doi     = {10.1371/journal.pcbi.1013885},
+  note    = {Open access, CC BY. Only 11% (Ensembl) and 5% (NCBI GenBank) of
+             vertebrate selenoprotein genes are well annotated, because
+             neither pipeline handles UGA recoding. A recoding failure mode
+             that any stop-codon-constrained decoder inherits.}
+}

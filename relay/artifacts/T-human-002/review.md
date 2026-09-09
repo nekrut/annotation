@@ -23,8 +23,8 @@ non-OA items.
 
 ## 1. Search log
 
-All searches run 2026-09-09 (UTC), scripted, no browser. Runs 1 and 2 were
-the same day; rows 5–8 are run 2.
+All searches run 2026-09-09 (UTC), scripted, no browser. Runs 1, 2 and 3
+were the same day; rows 5–8 are run 2, rows 9–13 are run 3.
 
 | # | Source | Interface | Queries | Notes |
 |---|--------|-----------|---------|-------|
@@ -36,6 +36,12 @@ the same day; rows 5–8 are run 2.
 | 6 | Crossref | REST `/works/{doi}` | 4 DOIs | Verified the two DOIs run 1 marked `TO VERIFY` (TWINSCAN 2003, CONTRAST 2007) and completed the ANNEVO and GALBA author lists. |
 | 7 | raw.githubusercontent.com | README/LICENSE fetches | egapx, BRAKER, Helixer, GeneMark-ETP | Primary-source verification of hardware floors, clade exclusions and licence terms — see §3 and §5. |
 | 8 | local shell | actual installs, fresh venvs, Python 3.13.9, gcc 15.2, RTX 5080 | Tiberius, egapx, miniprot, minisplice, Helixer (probe) | Filled the `install_tested` column. Results in §3.1. |
+| 9 | OpenAlex | REST `/works?search=`, `from_publication_date:2022-01-01` | 8 topical queries, 25 hits each | 163 unique works. Relevance ranking is noisy (it returns high-citation genome papers that merely *used* a predictor), but it independently re-surfaced everything already in §2 and added the Helixer *Nature Methods* version and [djossou2025overview]. Useful mainly as a **negative** control on run-1 coverage. |
+| 10 | Europe PMC | REST `/search` with `SRC:PPR` and date filters | 6 preprint queries | **The productive pass of this run.** 281 + 65 + 131 + 57 hits; yielded the entire 2025–2026 deep-learning annotation cohort that runs 1 and 2 missed (§2.1). |
+| 11 | Europe PMC | REST `/search` by DOI, `resultType=core` | 17 DOIs | Verified title, authors, licence and abstract for every row added in §2.1, plus the ANNEVO preprint. |
+| 12 | GitHub | REST API v3 via authenticated `gh api` | 13 `/repos` + 7 `/search/repositories` | Backfilled the five run-2 rows whose counts were `?` (unauthenticated quota had been exhausted) and resolved the run-3 repositories. |
+| 13 | raw.githubusercontent.com + PyPI | README and package metadata | Vipsania, OrionGeno, GeneCAD, TOGA2 | Primary-source licence and hardware terms for the new cohort — see §3.2. |
+| — | arXiv | REST `/api/query` | 5 queries, 3 retries each, custom User-Agent | **Failed: HTTP 429 on every attempt from this host, including a single query in isolation.** Covered indirectly through OpenAlex `type:preprint`, which indexes arXiv; recorded as a gap rather than claimed as done. |
 
 Broad queries in pass 1 (verbatim): GENSCAN; AUGUSTUS ab initio eukaryotic;
 BRAKER pipeline; GeneMark-ES self-training; SNAP Korf; Gnomon NCBI; EGAPx;
@@ -61,15 +67,21 @@ a published method, and that asymmetry should be recorded in T-human-007.
 Listed so the next run and the synthesis (T-human-006) know the shape of the
 hole, rather than assuming coverage:
 
-- No bioRxiv, arXiv, OpenAlex or Semantic Scholar pass yet. Europe PMC
-  indexes bioRxiv, so preprints leaked in (Tiberius-multiclade, ANNEVO), but
-  not systematically.
-- No GitHub *code search* pass — only a hand-seeded repository list. Snowball
-  from Tiberius/egapx dependents is still to do.
+- ~~No bioRxiv, arXiv, OpenAlex or Semantic Scholar pass yet.~~ **Closed in
+  run 3 for bioRxiv (via Europe PMC `SRC:PPR`) and OpenAlex.** This was the
+  most consequential gap in the whole review: it produced §2.1, eleven
+  methods from 2025–2026 that runs 1 and 2 did not see at all, including two
+  that bear directly on the charter's central hypothesis. **arXiv is still
+  not covered directly** — its API returns 429 to this host — and Semantic
+  Scholar was not attempted. OpenAlex `type:preprint` partly compensates.
+- ~~No GitHub *code search* pass.~~ **Partly closed in run 3**: seven name
+  searches resolved the run-3 cohort's repositories, and the five run-2 rows
+  with `?` counts are now filled. A true dependents/code snowball
+  (`/search/code`, `/network/dependents`) was still not run.
 - ~~No install was attempted for any repository.~~ **Closed in run 2 for the
   four tools that matter most** — see §3.1. Two build clean, two install
   partially, one (BRAKER) was not attempted and the reason is documented.
-  29 of 37 rows still read `install_tested=no`; most of those are context
+  37 of 41 rows read `install_tested=no` after run 3 (2 `yes`, 2 `partial`); most of those are context
   repositories, not baselines.
 - Runtime and memory figures below are as-reported by authors. Nothing was
   measured here. Measurement belongs to T-human-009, not to this task, but
@@ -127,7 +139,41 @@ Supporting infrastructure cited but not a gene predictor: Progressive Cactus
 tracks), Splign [kapustin2008splign], StringTie [pertea2015stringtie],
 Liftoff [shumate2021liftoff], Zoonomia [christmas2023zoonomia].
 
-Full BibTeX: `refs.bib` (47 entries; two DOIs marked `TO VERIFY`).
+### 2.1 The 2025–2026 cohort, found in run 3
+
+The preprint pass (search-log row 10) turned up eleven methods that runs 1
+and 2 missed entirely. This is not a long tail. Two of them — OrionGeno and
+Vipsania — speak directly to the charter's hypothesis, and one of them
+(§6.2) partly pre-empts it. I record the whole cohort here because the
+synthesis (T-human-006) and the design proposal (T-human-011) both need it,
+and because the *rate* at which this cohort is appearing is itself a finding:
+five of the eleven were posted in the last five months.
+
+| Method | Date | DOI | Class | What it is | Why it matters here |
+|---|---|---|---|---|---|
+| **OrionGeno** | 2026-04-29 | 10.64898/2026.04.26.720859 | DL, **phylogeny-aware** | End-to-end eukaryotic annotation predicting exons, introns, UTRs *and repeats* from sequence; "integrates phylogenetic context, long-range sequence modeling and joint prediction"; applied to **>5,300 unannotated NCBI chromosome-level genomes**; reports beating state of the art at exon, gene, protein-sequence and protein-structure level across lineages [liu2026oriongeno] | **The closest published thing to what the charter proposes**, from BGI. See §6.2. Licence is **non-commercial** (README badge), which matters for T-human-007 |
+| **Vipsania** | 2026-08-30 | 10.64898/2026.08.26.747235 | DL, **unsupervised** | Stanke lab. Differentiable HMM layer inside a masked-language-model sequence network; *never shown a reference annotation*; pretrained pan-eukaryotically and finetuned unsupervised on the target genome; handles non-standard genetic codes. Claims to be **on average more accurate than supervised methods across most clades**, and to avoid the accuracy drop supervised models suffer on distant targets [krieg2026vipsania] | Attacks the exact failure mode §5 identifies (supervised models degrade with phylogenetic distance) by removing the labels. MIT, on PyPI. Directly relevant to the "no per-clade retraining" clause of the charter goal |
+| **TOGA2** | 2026-07-04 | 10.64898/2026.06.30.735536 | COMP | Exon-level orthology and exon-wise annotation: **513× less memory, 6.1× faster** than TOGA. Adds gene-tree reconciliation and UTR annotation. Reports that **human-trained deep splice-site models generalize across vertebrates**, and uses them to handle splice-site shifts, intron deletions and exonization [malovichko2026toga2] | The generalization claim is an independent replication of the minisplice/SpliceAI result at a different scale, and it is the strongest evidence in this review that *splice signals* are the transferable part |
+| **GeneCAD** | 2025-11-03 | 10.1101/2025.10.31.685877 | DL + CRF | PlantCAD2 foundation-model embeddings + transformer encoder + **chromosome-scale CRF** enforcing splice phase and feature order; sequence-only. Reports **~9% transcript-F1 over Helixer and BRAKER3** on angiosperms including an allotetraploid, and 86% recovery of classical CDS [liu2025genecad; zhai2025plantcad2] | The CRF-as-grammar design is the main published alternative to a differentiable HMM. Apache-2.0. Also a cautionary tale: v0.1.0 shipped with a bug that wrecked BUSCO scores (§5.9) |
+| **GENATATORs** | 2026-06-21 | 10.64898/2026.06.17.732686 | DL benchmark + method | Systematic study of DNA-LM gene segmentation. Two results we should not ignore: **pretrained DNA-LM embeddings do not capture the features needed for gene segmentation** (task-specific finetuning is essential), and **standard per-token / per-sequence metrics fail to capture real annotation quality**; proposes biologically grounded metrics and datasets [shmelev2026genatators] | A direct, negative result about the "just use a foundation model" path, and a metrics critique that T-human-007 should adopt rather than re-derive |
+| **He & Florea benchmark** | 2026-02-23 | 10.64898/2026.02.22.707219 | benchmark | Evaluates SegmentNT, Enformer, Borzoi (with segmentation heads), SpliceAI and AlphaGenome on **stratified** exon classes: coding vs non-coding, terminal vs internal, constitutive vs alternative, TE-derived. Finding: every method is best on the exon class in its training data and **degrades drastically on under-represented classes** [he2026benchmarkfm] | The single most useful benchmark-design input I found. Aggregate F1 hides this entirely; §5.8's complaint now has a citation |
+| **SegmentNT** | 2024-03-15 | 10.1101/2024.03.14.584712 | DL | Frames annotation as **instance segmentation**; finetunes Nucleotide Transformer to segment 14 genic and regulatory element classes at single-nucleotide resolution [dealmeida2024segmentnt] | The formulation GeneCAD and OrionGeno both build on; CC-BY-NC-ND |
+| **geneML** | 2026-05-21 | 10.64898/2026.05.18.725946 | DL | Fungal-specific; gene-level F1 **64.9 → 67.1 vs BRAKER3 with protein hints** (recall 64.1 → 69.0 at equal precision) across nine fungal genomes, **~6 min/genome on 8 CPU cores**, and predicts **alternative transcripts** (41.1% recall / 71.1% precision vs Iso-Seq, against AUGUSTUS's 33.8 / 48.9) [vader2026geneml] | Fungi are explicitly out of scope for EGAPx. This is a CPU-only tool beating an evidence-based pipeline there, and one of very few with isoform numbers |
+| **ANNEVO** (first-hand) | 2025 preprint / 2026 | 10.21203/rs.3.rs-6402260/v1 → 10.1038/s41592-026-03036-7 | DL | Now read from its own abstract rather than a competitor's table: a **mixture-of-experts genomic language model** modelling distal dependencies and "joint evolutionary relationships", benchmarked on **566 phylogenetically diverse species**; claims to exceed reference annotations for some species [zhang2026annevo] | The 566-species evaluation is the largest species panel in this review and a candidate template for T-human-007 |
+| **GeMoSeq** | 2026-02-01 | 10.1093/nar/gkag091 | EVID | Transcript reconstruction from RNA-seq by combinatorial enumeration plus likelihood-based quantification, with CDS prediction integral to the algorithm; benchmarked over seven species [grau2026gemoseq] | The RNA-seq-side baseline; relevant to T-human-008's evidence inventory |
+| **OMAnnotator** | 2026-01-22 | 10.1093/bioadv/vbag015 | EVID (combiner) | Repurposes the OMA orthology algorithm to build a **consensus** from ab initio, transcriptomic and homology annotations, using evolutionary information as the tie-breaker; improves on its own sources on *D. melanogaster* [bates2026omannotator] | Evolutionary geometry used as an arbiter rather than as an input — a cheap design worth knowing before we propose an expensive one |
+
+Two further items that are not gene finders but that Phase 2 should have:
+**GAP-MS** [abbas2026gapms], which validates gene models against mass-spec
+peptides across nine crops and finds hundreds of peptide-supported loci
+missing from reference annotations; and the **Pristionchus pacificus**
+curation study [roedelsperger2026pristionchus], in which community curation
+corrected **more than 7,500 gene models — about 24% of the annotation** of
+one nematode strain. Both are direct evidence about the quality of the
+"ground truth" T-human-007 intends to score against.
+
+Full BibTeX: `refs.bib` (64 entries as of run 3; every publication row
+carries a DOI, and no entry is marked `TO VERIFY`).
 
 ---
 
@@ -279,9 +325,29 @@ three, not two.
 Five repositories were added to `repos.tsv` in run 2: `xjtu-omics/ANNEVO`,
 `lh3/minisplice`, `nextgenusfs/funannotate`, `Kuanhao-Chao/OpenSpliceAI` (the
 maintained successor now that `Illumina/SpliceAI` is archived), and
-`gatech-genemark/GeneMark-ETP`. Their 12-month commit counts and issue counts
-are missing because the GitHub `/repos` endpoint was rate-limited; the search
-endpoint supplied the rest.
+`gatech-genemark/GeneMark-ETP`. ~~Their 12-month commit counts and issue
+counts are missing because the GitHub `/repos` endpoint was rate-limited.~~
+**Backfilled in run 3** using an authenticated client.
+
+### 3.2 The run-3 cohort, and what their READMEs say
+
+Four repositories were added in run 3, one of them the most important row in
+the file. All figures below are from the repository itself, not from a paper.
+
+| Repo | Pushed | Commits/12 mo | Stars | Licence | The thing to know |
+|---|---|---|---|---|---|
+| `BGIResearch/OrionGeno` | 2026-08-21 | 16 | 24 | **`NOASSERTION`; README badge reads "License: Non-Commercial"** | Weights on Hugging Face and ModelScope; a hosted API at CNGBdb. Requires Linux, Python `>=3.10,<3.11`, and an **NVIDIA GPU of compute capability ≥ 7.0** with `mamba-ssm`/`causal-conv1d`. So the model whose design is closest to ours is also the one we may not be able to use as a baseline in a redistributable benchmark — a T-human-007 problem that should be raised now, not later |
+| `Gaius-Augustus/Vipsania` | 2026-09-07 | 11 | 17 | **MIT** | `pip install vipsania` (PyPI 1.0.0, Python ≥ 3.12) pulls `bricks2marble[tf]` and `tensorflow<2.20`; `hidten` supplies the differentiable HMM. GPU strongly recommended; CPU annotation "possible, but slow". Annotates from a FASTA alone, with `--finetune` on the target genome itself |
+| `hillerlab/TOGA2` | 2026-08-19 | 100+ | 53 | **MIT** | Active successor to `hillerlab/TOGA` (211 stars, 1 commit in 12 months — TOGA itself is now effectively frozen) |
+| `plantcad/genecad` | 2026-09-08 | 100+ | 40 | **Apache-2.0** | The most actively developed repo in the whole inventory. Ships plant *and* vertebrate models, Docker images, CI. v0.4.0 added enforcement of canonical start/stop and donor/acceptor motifs and minimum intron/exon lengths — i.e. the grammar constraints were bolted on *after* the neural model, which is worth noting for §6 |
+
+Licensing summary across the inventory, since it decides what T-human-007 can
+actually run: MIT or Apache for Tiberius, TOGA/TOGA2, miniprot, Vipsania and
+GeneCAD; GPL-3.0 for Helixer and OpenSpliceAI; **no LICENSE file at all** for
+`gatech-genemark/GeneMark-ETP` (and hence unsettled redistribution for
+BRAKER3) and for `lh3/minisplice`; **non-commercial** for OrionGeno;
+`NOASSERTION` for ANNEVO and egapx. Only the first group is unambiguously
+safe to redistribute in a benchmark image.
 
 ---
 
@@ -417,6 +483,42 @@ meaningless, and I have deliberately not built a "which is best" column.
 **Constructing a single benchmark all of them run on is the highest-value
 thing this project can do first**, independent of any model design.
 
+Run 3 adds a citation this argument previously lacked. He and Florea evaluate
+SegmentNT, Enformer, Borzoi, SpliceAI and AlphaGenome on *stratified* exon
+classes and find that every method peaks on the exon class best represented
+in its training data and "decreases drastically" on the rest — non-coding,
+terminal, alternatively spliced and TE-derived exons [he2026benchmarkfm].
+GENATATORs makes the complementary point from the metrics side: standard
+per-token and per-sequence scores "fail to capture the challenges of
+real-world gene annotation" [shmelev2026genatators]. **T-human-007 should
+therefore require stratified reporting, not a single F1**, and should adopt
+the metric critique from these two papers rather than re-deriving it.
+
+**5.9 The reference annotations are themselves wrong, in measurable amounts.**
+This is the failure mode I under-weighted in runs 1 and 2, and run 3 gives it
+three independent numbers. (i) Vertebrate selenoprotein genes — where UGA is
+recoded rather than a stop — are well annotated for only **11% of genes in
+Ensembl and 5% in NCBI GenBank**, because neither pipeline has a dedicated
+selenoprotein path [tico2026selenoprotein]. (ii) Community curation of one
+*Pristionchus pacificus* strain identified and corrected **more than 7,500
+gene models, about 24% of the annotation**, and attributed them to assembly
+errors, artificial transcript fusions and unexpressed genes
+[roedelsperger2026pristionchus]. (iii) GAP-MS finds **hundreds of
+peptide-supported coding loci absent from reference annotations** across nine
+crops [abbas2026gapms]; ANNEVO and OrionGeno make the same claim from the
+prediction side [zhang2026annevo; liu2026oriongeno]. The consequence for us
+is concrete: a model scored against RefSeq or Ensembl is partly being scored
+on its ability to reproduce known errors, and above some accuracy level the
+benchmark stops measuring the model. T-human-007 needs an error bar on the
+ground truth, and a curated high-confidence subset to score on separately.
+
+**5.10 Preprint-stage tools are not yet reliable artifacts.** GeneCAD's
+README carries a warning that v0.1.0 "caused low BUSCO scores" and that users
+must upgrade — a bug found by the MaizeGDB team after release, not by the
+authors. Half of §2.1 is unpublished preprint software of the same maturity.
+Any number T-human-009 takes from this cohort should be pinned to a version
+and re-measured, not quoted.
+
 ---
 
 ## 6. Opinion: what I would build
@@ -534,49 +636,117 @@ licensed — and it is decision-relevant in a way that no amount of further
 literature reading is. If the answer is (i), the charter's central hypothesis
 needs revision before we build anything.
 
+### 6.2 Addendum from run 3: someone has built a version of this
+
+Run 2's addendum sharpened the question. Run 3 changes the answer, and I
+would rather say so plainly than defend the run-1 opinion.
+
+**OrionGeno is a phylogeny-aware deep model for end-to-end eukaryotic
+annotation, and it has already been run on more than 5,300 genomes**
+[liu2026oriongeno]. The abstract's own framing — "integrates phylogenetic
+context, long-range sequence modeling and joint prediction of gene structures
+and repetitive elements", motivated by existing methods' failure to
+"generalize across distant lineages" — is, sentence for sentence, close to
+the charter's motivation. ANNEVO, separately, is a mixture-of-experts genomic
+language model that claims to model "joint evolutionary relationships" across
+566 species [zhang2026annevo]. The bet that phylogeny-as-input is the missing
+inductive bias is no longer an open bet; it is being placed, by well-resourced
+groups, and at least two of them report state-of-the-art results.
+
+This does not make the charter's project pointless, but it changes what its
+contribution can honestly be. Three things are still genuinely open:
+
+1. **Nobody has shown *which* geometry does the work.** OrionGeno reports
+   accuracy; it does not isolate the contribution of phylogenetic context
+   from that of long-range modelling, and neither does ANNEVO. HyphAeon's
+   claim is specifically that injecting the tree *as a metric* (MDS
+   embeddings, Tree-RoPE) removes the need to learn phylogeny. An ablation
+   that separates tree-as-metric from tree-as-extra-tokens from no-tree,
+   at a fixed parameter budget, would be a real result, and it is cheap.
+2. **Parameter budget is untouched territory.** OrionGeno needs an NVIDIA GPU
+   with `mamba-ssm`; GeneCAD sits on a foundation model. minisplice does a
+   real job with **7,026 parameters** [yang2026minisplice], and TOGA2 finds
+   that human-trained splice models transfer across vertebrates
+   [malovichko2026toga2]. The charter's ~2M-parameter target is the part of
+   the hypothesis nobody in this cohort is testing.
+3. **Licensing and reproducibility.** OrionGeno is non-commercial and its
+   weights sit behind two model hubs; the benchmark this project builds can
+   be the neutral ground none of these tools currently has.
+
+And Vipsania forces one more revision. Its claim — an unsupervised
+differentiable-HMM gene finder that is *on average more accurate than
+supervised methods across most clades* and does not degrade with phylogenetic
+distance [krieg2026vipsania] — attacks the generalization problem from the
+opposite side from the charter: not by giving the model better geometry, but
+by removing the labelled data whose clade bias causes the degradation. If
+that result holds, the diagnosis in §5.1 is right but the charter's remedy is
+not the only one, and a design proposal that ignores it is incomplete.
+
+**Revised recommendation for T-human-011.** Keep the §6 design, but demote it
+from "the idea" to "one of three arms", and put the first run's effort into
+the comparison rather than the architecture:
+
+- Arm A: sequence-only at ~2M parameters (Tiberius-class, our budget).
+- Arm B: A plus tree-as-metric geometry (the HyphAeon transfer).
+- Arm C: A trained unsupervised, Vipsania-style.
+
+with OrionGeno, Tiberius-multiclade, Helixer, GeneCAD and BRAKER3 as external
+reference points on the T-human-007 benchmark. The deliverable that no one
+else is producing is **the ablation and the neutral benchmark**, not another
+architecture. I would still run the run-2 experiment (§6.1, ab initio vs.
+ClaMSA on mammals) first, because it is a day's work and it decides whether
+Arm B is worth building at all.
+
+I was wrong in run 1 to treat the comparative-geometry idea as unoccupied
+ground. It is occupied. The unoccupied ground is the measurement.
+
 ---
 
-## 7. State of this task and what run 3 does
+## 7. State of this task
 
-Not part of the deliverable format; recorded so the work is resumable by
-whoever holds the lease.
+Not part of the deliverable format; recorded so the work is resumable.
 
 **Run 1** produced the search log, publications table, `refs.bib`,
 `repos.tsv`, failure modes and the §6 opinion.
 
-**Run 2** (this one) closed the install gap for the four tools that matter,
-verified EGAPx's hardware floor, clade exclusions and per-genome runtimes
-from primary source, resolved every repository run 1 could not find (MAKER,
-GlimmerHMM, ensembl-anno) and added five it had missed, verified both
-`TO VERIFY` DOIs and completed the ANNEVO and GALBA metadata via Crossref,
-settled the GeneMark licence question, and — from the installed tool rather
-than from any paper — found that Tiberius already ships a comparative
-(ClaMSA) mode that is mammals-only while its six-clade extension is
-sequence-only (§6.1). `refs.bib` is now 50 entries with no unverified DOIs;
-`repos.tsv` is 37 rows.
+**Run 2** closed the install gap for the four tools that matter, verified
+EGAPx's hardware floor, clade exclusions and per-genome runtimes from primary
+source, resolved every repository run 1 could not find and added five it had
+missed, verified both `TO VERIFY` DOIs, settled the GeneMark licence
+question, and found that Tiberius already ships a comparative (ClaMSA) mode
+that is mammals-only while its six-clade extension is sequence-only (§6.1).
 
-Run 2 did not change the run-1 opinion; it added §6.1, which sharpens the
-question rather than reversing the answer.
+**Run 3** (this one) ran the preprint and OpenAlex passes that §1.1 had
+flagged as the remaining substantial gap, and they were not a formality: they
+produced §2.1, eleven 2025–2026 methods that runs 1 and 2 missed, five of
+them posted in the last five months. Consequences recorded in §3.2 (four new
+repositories, and a licensing summary of what a benchmark may actually
+redistribute), §5.9 and §5.10 (two new failure modes, both about the quality
+of the ground truth and of the tools themselves), and §6.2, which revises the
+run-1 opinion: the comparative-geometry idea is occupied ground, the
+measurement is not. ANNEVO is now read first-hand from its own abstract. The
+five run-2 repository rows with `?` counts are backfilled.
 
-**Run 3, in priority order:**
+**What is still not done, stated so the synthesis can weigh it:**
 
-1. bioRxiv/arXiv and OpenAlex passes, and a GitHub code-search snowball from
-   Tiberius/egapx dependents. This is now the only substantial gap in §1.1.
-2. Fetch the ANNEVO preprint (`10.21203/rs.3.rs-6402260/v1`) so the third DL
-   method has a first-hand row rather than a competitor's number.
-3. Backfill the 12-month commit counts and issue counts for the five
-   repositories added in run 2, once the GitHub rate limit resets.
-4. Read GALBA's and BRAKER3's reported numbers first-hand rather than from
-   abstracts, since both are OA.
-5. Then move T-human-002 to `review` with a `note` to `all`.
+- **arXiv is not covered directly.** Its API returned HTTP 429 to this host on
+  every attempt, including a single isolated query. OpenAlex `type:preprint`
+  partly compensates; Semantic Scholar was not attempted.
+- **No install was attempted for the run-3 cohort.** Vipsania (MIT, PyPI),
+  GeneCAD (Apache-2.0, Docker) and TOGA2 (MIT) are all installable and the
+  §3.1 method would apply; OrionGeno needs a GPU and a non-commercial licence
+  decision. 37 of 41 `repos.tsv` rows read `install_tested=no` (2 `yes`, 2 `partial`).
+- **No `/search/code` or dependents snowball.** Run 3 used name searches only.
+- **The run-1 `question` to the coordinator is still unanswered**
+  (`20260909T012944Z-lenin-0002`): `nekrut/axomeme` and
+  `nekrut/scalingPaper` both return 404, so the charter's HyphAeon design
+  pattern and its Galaxy cost figures cannot be read from here. Run 2 removed
+  the dependency for T-human-009's EGAPx costs [egapx_readme]; §6.2's revised
+  recommendation makes it *more* urgent for T-human-011, because "Arm B" is
+  defined by a document I have not been able to read.
 
-Run 3 should be the last one. The remaining items are completeness, not
-substance, and the charter's priority is to get all five Phase 1 reviews into
-`review` so T-human-006 can start.
-
-**Open with the coordinator.** The run-1 `question`
-(`20260909T012944Z-lenin-0002`) about `nekrut/axomeme` and
-`nekrut/scalingPaper` returning 404 is still unanswered. Run 2 reduced its
-urgency for T-human-009 by verifying EGAPx costs from the README instead
-[egapx_readme], but not for T-human-011, which is supposed to follow the
-HyphAeon pattern and cannot read it.
+I am moving the task to `review` rather than continuing. The remaining items
+are completeness, and the charter's first priority is to get all Phase 1
+reviews into `review` so T-human-006 can start. Whoever picks up the
+synthesis should treat §2.1 and §6.2 as the parts of this review most likely
+to disagree with the others', since they arrived last.

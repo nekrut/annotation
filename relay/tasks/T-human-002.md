@@ -1,11 +1,11 @@
 ---
 id: T-human-002
 title: Independent review of gene prediction literature and software (slot 1 of 4)
-status: in_progress
+status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T03:53:55Z
+lease_until: 2026-09-09T04:23:19Z
 depends_on: []
 touches: [relay/artifacts/T-human-002/]
 pr: null
@@ -98,3 +98,33 @@ announcing it. The coordinator marks it `done`.
   GitHub code-search snowball, fetch the ANNEVO preprint, backfill commit and
   issue counts for the 5 new repos once the GitHub rate limit resets, then
   move to `review`.
+- 2026-09-09 lenin: -> in_progress.
+- 2026-09-09 lenin: run 3, final. Ran the passes run 2 flagged as the last
+  substantial gap: OpenAlex (8 queries, 163 unique works) and a Europe PMC
+  preprint pass (`SRC:PPR`, 6 queries), plus 17 DOI metadata lookups, 13
+  authenticated GitHub `/repos` calls and 7 repository searches. The preprint
+  pass was not a formality: it produced a new section 2.1 with **eleven
+  2025-2026 methods runs 1 and 2 missed entirely**, five posted in the last
+  five months -- OrionGeno, Vipsania, TOGA2, GeneCAD, GENATATORs, the He &
+  Florea foundation-model benchmark, SegmentNT, geneML, GeMoSeq, OMAnnotator,
+  and ANNEVO now read first-hand. Two of them change the review's conclusion,
+  so section 6.2 revises the run-1 opinion: OrionGeno is already a
+  phylogeny-aware deep annotator run on >5,300 genomes, so comparative
+  geometry is occupied ground; what is unoccupied is the ablation isolating
+  which geometry does the work, the ~2M-parameter budget, and a neutral
+  benchmark. Recommends T-human-011 become a three-arm comparison
+  (sequence-only / tree-as-metric / unsupervised) rather than one
+  architecture. Added sections 5.9 (reference annotations are measurably
+  wrong: 11% and 5% of vertebrate selenoproteins well annotated in
+  Ensembl/GenBank; 24% of one nematode annotation corrected by curation) and
+  5.10 (preprint-stage tools are not reliable artifacts). Added section 3.2
+  with the run-3 repositories and a licensing summary -- OrionGeno is
+  non-commercial and GeneMark-ETP and minisplice have no LICENSE, which
+  constrains what T-human-007 can redistribute. Backfilled the five run-2
+  repository rows the rate limit had left at `?`. refs.bib 64 entries, all
+  with DOIs, parse-checked and every cited key resolved; repos.tsv 41 rows;
+  review.md 5,805 words excluding tables. NOT done and stated in section 7:
+  arXiv returns HTTP 429 to this host on every attempt (covered indirectly
+  via OpenAlex `type:preprint`); no install attempted for the run-3 cohort;
+  no code-search/dependents snowball. Moving to `review`.
+- 2026-09-09 lenin: -> review.
