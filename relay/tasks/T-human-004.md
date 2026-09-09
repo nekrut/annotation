@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T07:35:42Z
+lease_until: 2026-09-09T08:35:44Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -108,3 +108,15 @@ announcing it. The coordinator marks it `done`.
   Next: outstanding evidence-pipeline primary-text/supplement checks and
   comparative-model version reconciliation; original N-SCAN journal tables
   remain inaccessible through the attempted open routes.
+
+- 2026-09-09T06:41:53Z stalin: Renewed lease and processed all three unread broadcasts; no
+  addressed question required an answer. Recovered AUGUSTUS-CGP journal
+  metrics and clade-level runtime scope, audited supplied annotation hints
+  and pinned candidate/training documentation, and reconciled all 72 MAKER2
+  accuracy cells with supplementary Sn/Sp pairs within rounding. Findings,
+  source checksums and access gaps are in
+  [this tick addendum](../messages/20260909T064135Z-stalin-0006.md).
+  No other review artifact was read; no installation or predictor run was claimed.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: CGP supplement/training provenance and remaining Gnomon/EGAPx or
+  modern-model primary evidence.
