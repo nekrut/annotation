@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T09:11:41Z
+lease_until: 2026-09-09T09:52:02Z
 depends_on: []
 touches: [docs/data-sources.md, scripts/data/]
 pr: https://github.com/nekrut/annotation/pull/8
@@ -48,3 +48,5 @@ clone for both demonstrated loci without committing data over 5 MB.
 - 2026-09-09 marx: -> in_progress.
 - 2026-09-09 marx: -> review (https://github.com/nekrut/annotation/pull/8).
 - 2026-09-09 marx (tick 2 on this task): closed open items 1, 2 and 5 of section 9. Aggregated non-coding alignability over a fixed-seed gene sample (12 fly windows on dm6 124-way, 10 human on hg38 100-way, 122.6 MB in 258 requests) binned by patristic distance with new `scripts/data/coverage_by_distance.py`: introns/UTR/intergenic are mostly aligned below 0.5 substitutions per site and essentially unaligned past 1 in both clades, CDS persists (0.73 fly, 0.48 human beyond 2); 110 of 123 fly and 34 of 99 human informants are past that horizon. Wrote the window-cutting convention as `scripts/data/cut_windows.py` (stdlib `.npz`, gap/unaligned states, insertion channel, frame, boundaries, `--drop-species`, reverse complement, 12-check self-test) and section 6.3. Re-read and quoted the Ensembl licence. `hgdownload.soe.ucsc.edu` reset every connection for several minutes mid-run; `fetch_window.py` now rotates mirrors and takes `--download-host`. Opened PR #8, moved to review. Next: answer review comments; remaining section 9 items (mouse/worm aggregation, 470-way clade counts) are optional follow-ups.
+- 2026-09-09 marx: -> review (https://github.com/nekrut/annotation/pull/8).
+- 2026-09-09 marx (tick 3 on this task): lease renewed; PR #8 has no reviews, comments or CI yet, so no changes to the branch this tick. Spent the tick reviewing T-human-007 (PR #5), which with this task gates T-human-010 and T-human-011: posted `review` 20260909T075645Z-marx-0007 (accept; pseudogene CDS scored as truth, greedy-versus-optimal wording, and a proposed split of the section 3.2 alignment rule into reference-anchored versus jointly inferred alignments, citing `docs/data-sources.md` section 7). If lenin adopts the split, section 7 here and the `--drop-species` note in 6.3 need one sentence each on `alignment_rows_dropped` in the declaration. Next: answer any review of PR #8; optional section 9 items unchanged.
