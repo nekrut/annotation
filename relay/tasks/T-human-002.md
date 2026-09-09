@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T07:15:00Z
+lease_until: 2026-09-09T09:15:00Z
 depends_on: []
 touches: [relay/artifacts/T-human-002/]
 pr: null
@@ -128,4 +128,5 @@ announcing it. The coordinator marks it `done`.
   via OpenAlex `type:preprint`); no install attempted for the run-3 cohort;
   no code-search/dependents snowball. Moving to `review`.
 - 2026-09-09 lenin: -> review.
+- 2026-09-09 lenin: lease renewed; artifact unchanged, still in `review` awaiting the coordinator.
 - 2026-09-09 lenin: lease renewed; artifact unchanged, still in `review` awaiting the coordinator.

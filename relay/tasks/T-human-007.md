@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T07:15:00Z
+lease_until: 2026-09-09T09:15:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -153,3 +153,48 @@ one species in a fresh clone.
   vertebrate scale, so the section 4.3 dinucleotide and GC stratifications are
   yeast-only; the no-`region`-features path is a name heuristic, now open
   item 5. NEXT: address review feedback on PR #5 when it arrives.
+- 2026-09-09 lenin: run 4. Closed run 3's two open items and found one defect by
+  doing so. (a) Identity runs now cover all 20 panel references, not 8: every
+  species scores F1 1.0 and MCC 1.0 on every metric against itself with 0
+  fusions and 0 splits, 1.0 s / 43 MB (P. falciparum, 23 Mb) to 52 s / 335 MB
+  (Z. mays, 2.18 Gb), human 38 s / 0.92 GB over 3.10 Gb; all 20 take the RefSeq
+  `region` path. (b) `--genome` ran for the first time beyond yeast and at
+  vertebrate scale: T. rubripes (384 Mb, 230,048 introns, 32 s / 0.69 GB),
+  D. melanogaster, C. elegans, S. pombe, P. falciparum, S. cerevisiae, so the
+  4.3 dinucleotide and local-GC strata are now exercised across four kingdoms.
+  Non-GT-AG donor fractions recovered from the genomes: 1.57 / 0.98 / 0.97 /
+  0.16 / 0.18 / 3.91%.
+  DEFECT (b) found: `WindowFetcher` silently dropped windows near the end of a
+  sequence and everything queued behind them. It pops a window when its *end*
+  has been read, but the queue is sorted by window *start*, so a local-GC
+  window centred on a splice site within GC_WINDOW/2 (100 bp) of a sequence end
+  can never satisfy that test; it stalls at the head and hides every later
+  window on that sequence. The fetcher returns None, which `dinuc_class`
+  reports as an `unknown` class and `gc_bin` drops from the denominator -- a
+  silent loss, not an error. One T. rubripes intron ending 52 bp from the end
+  of a 43 kb scaffold was counted `unknown` rather than the GT-AG it is. Fixed
+  by flushing the remaining queue against what was read at each record end,
+  clipping the window to the sequence; the buffer is never trimmed past the
+  head window's start, so nothing is lost by then. Impact was 1 intron in
+  230,048 here and 0 on the other five, because a stall only reaches windows
+  behind it, but on a fragmented assembly or with a larger GC_WINDOW it would
+  take out the tail of every affected scaffold.
+  Verified: regression fixture added (two-record FASTA, overrun on the first
+  record and on the last) which fails on the old code with four wrong values;
+  self-test now 41 checks, all pass; all six --genome runs repeated after the
+  fix, `unknown` count 0 everywhere and the T. rubripes GT-AG total up by
+  exactly 1. `fetch.py --what fasta` now exercised on 6 of 20 genomes, largest
+  391 Mb.
+  Also documented, as open item 10: the local-GC stratification degenerates on
+  AT-rich genomes by design -- fixed absolute GC bands keep the column
+  comparable across species, but 98.9% of P. falciparum donors land in one bin,
+  so that column is to be read across species, not within one.
+  docs/benchmark.md sections 6 and 7 rewritten to match. Task stays in `review`;
+  PR #5 updated.
+  NOT done, now open item 2: degraded-copy runs still cover only 2 of 20
+  species, and no real predictor output has ever been scored -- an identity run
+  exercises every code path but pins only the fixed points. NEXT: score a real
+  AUGUSTUS or Helixer GFF3 on one species to exercise the section 4 conventions
+  (stop codon in/out of CDS, Parent shapes, no `region` features) that no
+  RefSeq-vs-RefSeq run can reach; address review feedback on PR #5 when it
+  arrives.
