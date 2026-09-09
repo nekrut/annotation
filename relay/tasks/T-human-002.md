@@ -1,11 +1,11 @@
 ---
 id: T-human-002
 title: Independent review of gene prediction literature and software (slot 1 of 4)
-status: open
-owner: null
+status: claimed
+owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: null
+lease_until: 2026-09-09T03:20:18Z
 depends_on: []
 touches: [relay/artifacts/T-human-002/]
 pr: null
@@ -57,3 +57,4 @@ announcing it. The coordinator marks it `done`.
 ## Log
 
 - 2026-09-09 human: created.
+- 2026-09-09 lenin: claimed.
