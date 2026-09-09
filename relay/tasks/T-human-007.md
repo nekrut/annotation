@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T21:30:00Z
+lease_until: 2026-09-09T23:30:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -702,6 +702,68 @@ one species in a fresh clone.
   EXISTING FIELD MOVING in any of them.
   docs/benchmark.md 4.3, 6, 7 items 9 and 11, benchmark/README.md and
   validation/README.md updated; PR #5 updated (commit 795e0f8).
+  NOT done, unchanged: no BUSCO/OMArk or cost columns; the blind 3 bp
+  extension is still fixture-only; no prediction whose sequence set genuinely
+  diverges from the reference's; no evidence-based pipeline end to end.
+  NEXT: address review feedback on PR #5 when it arrives.
+- 2026-09-09T21:45Z (lenin): lease renewed to 23:30Z. Run 11: a third tool, and
+  the worst-class defect it found.
+  THE SCORER READ A GTF WITHOUT COMPLAINING. `_attr` matched only GFF3's
+  `key=value`. A GTF was not rejected: `transcript_id "x"` never matched, so
+  the CDS branch synthesized one transcript id per row. On the Tiberius
+  T. rubripes GTF that is 241,333 single-exon "transcripts" from 23,948 real
+  ones -- at nucleotide F1 0.93801 and exon F1 0.89110, IDENTICAL TO FIVE
+  DECIMALS to the correct parse, and locus sensitivity 0.9665 against the
+  correct 0.9565, i.e. HIGHER. Donor F1 0.000, transcript F1 0.008, locus
+  precision 0.088, 20,057 splits. Anyone checking a submission against a
+  headline nucleotide number would have accepted the file; the columns that
+  collapse are exactly the chain-dependent ones, which is section 4.8's
+  argument arriving as a defect rather than an assertion.
+  `_attr` now reads both dialects. Regression: the four-locus fixture written
+  a second time in GTF (with the `exon`/`intron`/`start_codon`/`stop_codon`
+  rows a GTF carries), asserting EVERY field of the two results is equal
+  except an allowlist of fields reporting what the file states about itself.
+  Tiberius writes both dialects from one invocation, so it is checked on real
+  output too: 74 MB GTF vs 44 MB GFF3, exactly five fields differ (filename,
+  `transcripts_with_stop_codon_feature`, `stop_inside_cds`,
+  `stop_codon_convention_detected`, `predicted_partial_source`); every scored
+  metric identical, 36.5 s / 1.04 GB either way. The GTF is therefore the
+  BETTER submission of the two: it states its stop convention where the GFF3
+  of the identical prediction cannot.
+  TIBERIUS 2.0.7 on T. rubripes, `vertebrates`, published container, one
+  consumer GPU: 384 Mb in 23.1 min against Helixer's 91.6 min on the same
+  genome and card. Ahead on every metric (nucl 0.938/exon 0.891/donor
+  0.935/transcript 0.641/locus 0.918/start 0.747/stop 0.823 against Helixer's
+  0.919/0.776/0.853/0.252/0.887/0.499/0.742). THE FIRST VERTEBRATE ROW IN
+  SECTION 6 THAT IS A MEASUREMENT: fugu is absent from vertebrates.yaml's 65
+  training species and named in that file's own test set. Both tools emit one
+  transcript per locus, so the isoform handicap section 6 blamed for Helixer's
+  0.252 is shared and is not the explanation.
+  THE FINDING FOR T-human-011: the 4.3 dinucleotide strata separate the two
+  decoders where the headline does not. Per intron, Tiberius recovers 0 of 235
+  AT-AC and 0 of 999 non-canonical introns, with 0 and 1 false positives --
+  a decoder that does not emit those classes at all. Helixer recovers 27 and
+  12 and pays 95 and 5,115 false positives for the attempt. Invisible in donor
+  F1 (0.935 vs 0.853, reads as "somewhat better"). 1.14% of human reference
+  introns are non-GT-AG, so that is a hard ceiling, not a rounding error.
+  SECTION 7 ITEM 2: Tiberius settles the blind-extension question NEGATIVELY
+  -- its GTF states the stop with a feature and the genome probe agrees the
+  stop is inside, so that fallback stays fixture-only.
+  ALSO CORRECTED, in the section 3.3 counts of the previous (uncommitted) pass:
+  five panel species intersect a Tiberius training list, not four, and fifteen
+  intersect none, not sixteen; the first parser read fungi.yaml's 306 species
+  as one, because `training_species` is a bracketed whitespace-separated bare
+  sequence there and a `-` list in vertebrates.yaml. And vertebrates.yaml's own
+  comment announces "35 vertebrate, non-mammalian species" above a list of 34,
+  so its 65 entries are one short of the 66 it claims; the declaration now
+  carries the list's count with the discrepancy recorded.
+  Verified: self-test 145 -> 150 under PYTHONHASHSEED 0/1/42/1337, the new
+  check confirmed to fail on the pre-fix code (fixture's four transcripts read
+  as seven, locus F1 0.600 vs 0.857); degrade.py 27 checks; leakage_check 0
+  violations; both committed Tiberius JSONs reproduce byte-for-byte from the
+  prediction files.
+  docs/benchmark.md 3.3, 6, 7 item 2, benchmark/README.md and
+  validation/README.md updated; PR #5 updated (commit dbe9ffb).
   NOT done, unchanged: no BUSCO/OMArk or cost columns; the blind 3 bp
   extension is still fixture-only; no prediction whose sequence set genuinely
   diverges from the reference's; no evidence-based pipeline end to end.
