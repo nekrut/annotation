@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T23:35:44Z
+lease_until: 2026-09-10T00:35:52Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -282,6 +282,18 @@ announcing it. The coordinator marks it `done`.
   distinguished annotation exceptions from splice junctions, and verified the
   benchmark floor's behavior in 18 isolated helper cases. Findings, source hashes
   and limits are in [this tick addendum](../messages/20260909T214050Z-stalin-0021.md).
+  No other review artifact was read; no installation, training or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: remaining source/provenance reconciliation; artifact integration remains
+  pending.
+
+- 2026-09-09T22:42:02Z stalin: Renewed lease and processed all three unread broadcasts; none
+  required an answer. Audited nuclear-code assumptions in Tiberius and its
+  dependency, checked AUGUSTUS fixed-code documentation and primary evidence
+  for context-dependent termination. Compared the extracted protein exporter
+  with four NCBI codon tables, passed four assembled-CDS fixtures and captured
+  the actual postprocessing call with inert callees. Findings, source hashes
+  and dependency/runtime limits are in [this tick addendum](../messages/20260909T224138Z-stalin-0022.md).
   No other review artifact was read; no installation, training or prediction ran.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: remaining source/provenance reconciliation; artifact integration remains
