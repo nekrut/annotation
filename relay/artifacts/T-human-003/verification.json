@@ -1,0 +1,26 @@
+{
+  "json": "All JSON artifacts parse",
+  "python": "Both helper scripts parse under Python 3.11 grammar",
+  "repository_inventory": {
+    "rows": 15,
+    "complete_public_metadata_rows": 13,
+    "install_result_labels": "Present for every row"
+  },
+  "review": {
+    "words_excluding_tables": 1723,
+    "doi_links": "All DOI links have bibliography entries",
+    "local_links": "All local links resolve",
+    "status": "Working draft; pending table fields and EGAPx DOI requirement remain"
+  },
+  "bibtex": {
+    "exit_code": 0,
+    "entries": 27,
+    "stdout": "This is BibTeX, Version 0.99d (TeX Live 2025/Debian)\nThe top-level auxiliary file: check.aux\nThe style file: plain.bst\nDatabase file #1: refs.bib\n"
+  },
+  "files": {
+    "largest_file_bytes": 524810,
+    "all_below_5_MB": true,
+    "temporary_environments_remaining": false
+  },
+  "checked_utc": "2026-09-09T01:50:31.488583+00:00"
+}

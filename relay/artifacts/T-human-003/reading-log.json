@@ -1,0 +1,120 @@
+[
+  {
+    "pmcid": "PMC11645249",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11645249/fullTextXML",
+    "accessed_utc": "2026-09-09T01:41:51.358931+00:00",
+    "reading_coverage": "Main text read, including a second pass over methods after output truncation; supplements pending",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 95243,
+    "sha256": "af5baaf34c9ca5323ca70abf765156bba27de1db979bf5328f67c7caddaf4a7a",
+    "licence_links": [
+      "https://creativecommons.org/licenses/by/4.0/"
+    ]
+  },
+  {
+    "pmcid": "PMC13142403",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13142403/fullTextXML",
+    "accessed_utc": "2026-09-09T01:41:52.646387+00:00",
+    "reading_coverage": "Main text read; supplementary tables pending",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 50807,
+    "sha256": "5e1d33758dde772d2c1c6ee6ddb75eeffd4bcd47ed32da0eb68cfd9cb83ee665",
+    "licence_links": [
+      "https://creativecommons.org/licenses/by/4.0/"
+    ]
+  },
+  {
+    "pmcid": "PMC421630",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC421630/fullTextXML",
+    "accessed_utc": "2026-09-09T01:41:53.862925+00:00",
+    "reading_coverage": "Main text read",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 78831,
+    "sha256": "7b03ad0a0d738425a1ede4eef59986b54a4f3b9ec3ecd37ab03cb2e1ff2f59b2",
+    "licence_links": []
+  },
+  {
+    "pmcid": "PMC13076211",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13076211/fullTextXML",
+    "accessed_utc": "2026-09-09T01:41:55.087376+00:00",
+    "reading_coverage": "Main text, results, discussion and methods read; supplements pending",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 125891,
+    "sha256": "b4e455b379638f84c5282d020c973b2fe5d3e0d1a3d7b1f4668da80e2a993d50",
+    "licence_links": [
+      "https://creativecommons.org/licenses/by/4.0/"
+    ]
+  },
+  {
+    "pmcid": "PMC11216308",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11216308/fullTextXML",
+    "accessed_utc": "2026-09-09T01:41:56.370369+00:00",
+    "reading_coverage": "Main text read; truncated passages revisited separately; supplementary tables pending",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 98509,
+    "sha256": "9090d3cce2fb2295bd882f1c00021aa1ab1077d3968ba699ac7322663ab762e4",
+    "licence_links": [
+      "https://creativecommons.org/licenses/by-nc/4.0/"
+    ]
+  },
+  {
+    "pmcid": "PMC11216313",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11216313/fullTextXML",
+    "accessed_utc": "2026-09-09T01:41:57.631304+00:00",
+    "reading_coverage": "Results/discussion and selected methods read; remaining methods pending",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 156164,
+    "sha256": "dc3dd897eedf89ea18eba3d854b5a498603f76af7e316c89bbc8bc4792262f3d",
+    "licence_links": [
+      "https://creativecommons.org/licenses/by-nc/4.0/"
+    ]
+  },
+  {
+    "pmcid": "PMC3117341",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC3117341/fullTextXML",
+    "accessed_utc": "2026-09-09T01:41:58.976245+00:00",
+    "reading_coverage": "Approach, methods and results read; some initial extraction truncated",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 73865,
+    "sha256": "0f3da59e66212338683b6ef77e19adb9138d9dc50611fc6b8b55376af4812808",
+    "licence_links": [
+      "http://creativecommons.org/licenses/by-nc/2.5"
+    ]
+  },
+  {
+    "pmcid": "PMC12615259",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC12615259/fullTextXML",
+    "accessed_utc": "2026-09-09T01:42:00.207058+00:00",
+    "reading_coverage": "Selected architecture, training and cross-species results/methods read",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 192293,
+    "sha256": "b9bddff89c5f8898fc677008205a47b960ea569f3887cc15845e2547b92aaa70",
+    "licence_links": [
+      "https://creativecommons.org/licenses/by-nc-nd/4.0/"
+    ]
+  },
+  {
+    "pmcid": "PMC155263",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC155263/fullTextXML",
+    "accessed_utc": "2026-09-09T01:42:01.871590+00:00",
+    "reading_coverage": "XML unavailable; primary PMC indexed passages and abstract read, including false-positive simulation description",
+    "full_text_retained": false,
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "pmcid": "PMC2134774",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC2134774/fullTextXML",
+    "accessed_utc": "2026-09-09T01:42:02.830259+00:00",
+    "reading_coverage": "XML unavailable; metadata only so far",
+    "full_text_retained": false,
+    "error": "HTTP Error 404: Not Found"
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "repository": "Gaius-Augustus/Augustus",
+    "revision": "220e5a63c0fd546563472ec6d1f9271faddaf569",
+    "url": "https://raw.githubusercontent.com/Gaius-Augustus/Augustus/220e5a63c0fd546563472ec6d1f9271faddaf569/README.md",
+    "accessed_utc": "2026-09-09T01:45:45.693074+00:00",
+    "sha256": "cb4220e3d62d667659a192fa8dbf3f9d324980920941d71e5620b354992c6afc"
+  },
+  {
+    "repository": "Gaius-Augustus/BRAKER",
+    "revision": "8f6a9b862c778f10ca33c27f931032bd7872b545",
+    "url": "https://raw.githubusercontent.com/Gaius-Augustus/BRAKER/8f6a9b862c778f10ca33c27f931032bd7872b545/LICENSE.TXT",
+    "accessed_utc": "2026-09-09T01:45:46.140291+00:00",
+    "sha256": "e710730660976e919ba77574b7283fe04ceceabed08f6d26a41c96f8c6cd8e3b"
+  },
+  {
+    "repository": "KorfLab/SNAP",
+    "revision": "4ad1e957cd8e68b63857cc1cb3380d39a7b518b1",
+    "url": "https://raw.githubusercontent.com/KorfLab/SNAP/4ad1e957cd8e68b63857cc1cb3380d39a7b518b1/LICENSE",
+    "accessed_utc": "2026-09-09T01:45:46.649488+00:00",
+    "sha256": "fa4672e826d77512e2b8fae293c2307db2429a6b4431a39a092e6de2dcf2c273"
+  },
+  {
+    "repository": "xjtu-omics/ANNEVO",
+    "revision": "42c920f70f52f96c7c06c665a639ec47d9304fff",
+    "url": "https://raw.githubusercontent.com/xjtu-omics/ANNEVO/42c920f70f52f96c7c06c665a639ec47d9304fff/LICENSE",
+    "accessed_utc": "2026-09-09T01:45:46.883364+00:00",
+    "sha256": "7be49b84b88942a1875d0a02cef455b39a3a31045145babdd53afc7780d7d456"
+  },
+  {
+    "repository": "instadeepai/nucleotide-transformer",
+    "revision": "2dc37b86e16a6970fbc731751f7719d9f676f7f9",
+    "url": "https://raw.githubusercontent.com/instadeepai/nucleotide-transformer/2dc37b86e16a6970fbc731751f7719d9f676f7f9/LICENSE",
+    "accessed_utc": "2026-09-09T01:45:47.137730+00:00",
+    "error": "HTTP Error 404: Not Found"
+  }
+]

@@ -1,0 +1,31 @@
+{
+  "date_utc": "2026-09-09",
+  "engine": "web search tool",
+  "query_count": 22,
+  "queries": [
+    "Tiberius gene prediction differentiable HMM 2024 2025 Nature Methods",
+    "Helixer 2023 2024 eukaryotic gene annotation deep learning cross species",
+    "gene prediction deep learning 2025 2026 cross species annotation",
+    "Nekrutenko Makova Li 2002 PMC155263 KA KS",
+    "\"KA/KS\" \"9.5\" Nekrutenko 2002",
+    "\"CONTRAST\" gene prediction Gross Do 2007 2008",
+    "\"TWINSCAN\" \"N-SCAN\" gene prediction DOI",
+    "\"gene prediction\" \"2026\" deep learning benchmark",
+    "\"PMC155263\" Nekrutenko Makova Li",
+    "\"Nekrutenko\" \"9.5%\"",
+    "\"geneML\" \"2026\" gene annotation",
+    "\"ClaMSA\" gene coding non coding 2022",
+    "ANNEVO Zhang 2026 gene prediction neural evolutionary",
+    "\"geneML\" \"725946\"",
+    "site.biorxiv.org \"geneML\" \"Gene annotation\"",
+    "\"Gnomon\" \"NCBI eukaryotic genome annotation pipeline\" DOI",
+    "\"Helixer\" \"2025\" \"2026\" \"02939\"",
+    "\"GENSCAN\" Burge Karlin 1997 accuracy exon 80",
+    "\"geneML: Gene annotation across diverse fungal species using deep learning\"",
+    "site:pmc.ncbi.nlm.nih.gov/articles/PMC155263/ \"false-positive\" \"RESULTS\"",
+    "site:pmc.ncbi.nlm.nih.gov/articles/PMC155263/ \"METHODS\" \"100\"",
+    "site:pubmed.ncbi.nlm.nih.gov \"Gene prediction with a hidden Markov model and a new intron submodel\""
+  ],
+  "counts_note": "Tool returned ranked mixed-source results, not stable exhaustive per-query counts. Only primary publications and author documentation were used for accepted claims.",
+  "screening_note": "Search results about function prediction, cancer drivers, bacterial/viral genes, or essential genes were not treated as structural eukaryotic gene predictors."
+}

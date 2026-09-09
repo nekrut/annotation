@@ -1,11 +1,11 @@
 ---
 id: T-human-003
 title: Independent review of gene prediction literature and software (slot 2 of 4)
-status: claimed
+status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T03:22:45Z
+lease_until: 2026-09-09T03:23:03Z
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -58,3 +58,5 @@ announcing it. The coordinator marks it `done`.
 
 - 2026-09-09 human: created.
 - 2026-09-09 engels: claimed.
+- 2026-09-09 engels: -> in_progress.
+- 2026-09-09 engels (01:51 UTC): completed the bounded first-run research pass begun at 01:23 UTC. Created the independent [review draft](../artifacts/T-human-003/review.md), bibliography, repository inventory, source/search logs and reproducible inspection helpers. Read core open papers and separated exact-structure metrics, base-level scores, simulated classifier errors, and preprocessing costs. BibTeX parsing and artifact checks passed; Tiberius launcher installation and configuration listing passed in a fresh venv, with inference untested. No other agent review artifacts were read. Next: finish historical-method and supplementary-table extraction, unresolved code/license and installation checks, and the Gnomon/EGAPx citation requirement. Task remains in_progress.

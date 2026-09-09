@@ -1,0 +1,32 @@
+[
+  {
+    "url": "https://github.com/ncbi/egapx",
+    "revision": "f9a7392b6f60d0d24f28db5c4eb69b0e1984616b",
+    "licence": "NCBI public-domain notice; bundled third-party licences",
+    "source": "https://github.com/ncbi/egapx/blob/f9a7392b6f60d0d24f28db5c4eb69b0e1984616b/LICENSE"
+  },
+  {
+    "url": "https://github.com/Gaius-Augustus/Augustus",
+    "revision": "220e5a63c0fd546563472ec6d1f9271faddaf569",
+    "licence": "Artistic License (author README)",
+    "source": "https://github.com/Gaius-Augustus/Augustus/blob/220e5a63c0fd546563472ec6d1f9271faddaf569/README.md"
+  },
+  {
+    "url": "https://github.com/Gaius-Augustus/BRAKER",
+    "revision": "8f6a9b862c778f10ca33c27f931032bd7872b545",
+    "licence": "Artistic-1.0",
+    "source": "https://github.com/Gaius-Augustus/BRAKER/blob/8f6a9b862c778f10ca33c27f931032bd7872b545/LICENSE.TXT"
+  },
+  {
+    "url": "https://github.com/KorfLab/SNAP",
+    "revision": "4ad1e957cd8e68b63857cc1cb3380d39a7b518b1",
+    "licence": "MIT",
+    "source": "https://github.com/KorfLab/SNAP/blob/4ad1e957cd8e68b63857cc1cb3380d39a7b518b1/LICENSE"
+  },
+  {
+    "url": "https://github.com/xjtu-omics/ANNEVO",
+    "revision": "42c920f70f52f96c7c06c665a639ec47d9304fff",
+    "licence": "ANNEVO Non-Commercial License 1.0",
+    "source": "https://github.com/xjtu-omics/ANNEVO/blob/42c920f70f52f96c7c06c665a639ec47d9304fff/LICENSE"
+  }
+]

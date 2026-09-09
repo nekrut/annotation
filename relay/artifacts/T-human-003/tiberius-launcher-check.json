@@ -1,0 +1,99 @@
+{
+  "started_utc": "2026-09-09T01:37:39.141051+00:00",
+  "repository": "https://github.com/Gaius-Augustus/Tiberius",
+  "revision": "e73844bfc7170665bc6632f1806a05dfe59fae8a",
+  "python": "3.13.9 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 19:16:10) [GCC 11.2.0]",
+  "platform": "Linux-7.0.0-30-generic-x86_64-with-glibc2.43",
+  "scope": "Fresh venv without system site packages: pip install . and --list_cfg only; no model weights, TensorFlow, containers, or inference.",
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--depth",
+        "1",
+        "--no-tags",
+        "https://github.com/Gaius-Augustus/Tiberius",
+        "<TEMP>/Tiberius"
+      ],
+      "cwd": "<TEMP>",
+      "exit_code": 0,
+      "elapsed_seconds": 3.133,
+      "stdout": "",
+      "stderr": "Cloning into '<TEMP>/Tiberius'...\n"
+    },
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "cwd": "<TEMP>/Tiberius",
+      "exit_code": 0,
+      "elapsed_seconds": 0.002,
+      "stdout": "e73844bfc7170665bc6632f1806a05dfe59fae8a\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/home/anton/miniconda3/bin/python3",
+        "-m",
+        "venv",
+        "<TEMP>/venv"
+      ],
+      "cwd": "<TEMP>",
+      "exit_code": 0,
+      "elapsed_seconds": 1.012,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "<TEMP>/venv/bin/python",
+        "-m",
+        "pip",
+        "--isolated",
+        "--disable-pip-version-check",
+        "install",
+        "--no-cache-dir",
+        "--index-url",
+        "https://pypi.org/simple",
+        "."
+      ],
+      "cwd": "<TEMP>/Tiberius",
+      "exit_code": 0,
+      "elapsed_seconds": 3.574,
+      "stdout": "Processing <TEMP>/Tiberius\n  Installing build dependencies: started\n  Installing build dependencies: finished with status 'done'\n  Getting requirements to build wheel: started\n  Getting requirements to build wheel: finished with status 'done'\n  Preparing metadata (pyproject.toml): started\n  Preparing metadata (pyproject.toml): finished with status 'done'\nCollecting pyyaml (from tiberius==2.0.7)\n  Downloading pyyaml-6.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)\nCollecting rich (from tiberius==2.0.7)\n  Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)\nCollecting markdown-it-py>=2.2.0 (from rich->tiberius==2.0.7)\n  Downloading markdown_it_py-4.2.0-py3-none-any.whl.metadata (7.4 kB)\nCollecting pygments<3.0.0,>=2.13.0 (from rich->tiberius==2.0.7)\n  Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)\nCollecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich->tiberius==2.0.7)\n  Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)\nDownloading pyyaml-6.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (801 kB)\n   \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 801.6/801.6 kB 10.0 MB/s  0:00:00\nDownloading rich-15.0.0-py3-none-any.whl (310 kB)\nDownloading pygments-2.21.0-py3-none-any.whl (1.3 MB)\n   \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 1.3/1.3 MB 20.8 MB/s  0:00:00\nDownloading markdown_it_py-4.2.0-py3-none-any.whl (91 kB)\nDownloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)\nBuilding wheels for collected packages: tiberius\n  Building wheel for tiberius (pyproject.toml): started\n  Building wheel for tiberius (pyproject.toml): finished with status 'done'\n  Created wheel for tiberius: filename=tiberius-2.0.7-py3-none-any.whl size=138874 sha256=987524a39606b5c4a0235c8ce25bc9fe84ae78f3fb8dbf059bad7ef094a2a057\n  Stored in directory: <TEMP>/pip-ephem-wheel-cache-ukzly090/wheels/fd/cb/76/71cdf26095120b345981c1b634f65b5e1a55b014b65873ea0d\nSuccessfully built tiberius\nInstalling collected packages: pyyaml, pygments, mdurl, markdown-it-py, rich, tiberius\n\nSuccessfully installed markdown-it-py-4.2.0 mdurl-0.1.2 pygments-2.21.0 pyyaml-6.0.3 rich-15.0.0 tiberius-2.0.7\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "<TEMP>/venv/bin/python",
+        "tiberius.py",
+        "--list_cfg"
+      ],
+      "cwd": "<TEMP>/Tiberius",
+      "exit_code": 0,
+      "elapsed_seconds": 0.095,
+      "stdout": "\u250f\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2513\n\u2503 Config                     \u2503 Target species  \u2503\n\u2521\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2529\n\u2502 angiosperms                \u2502 Mesangiospermae \u2502\n\u2502 chlorophyta                \u2502 Chlorophyta     \u2502\n\u2502 diatoms                    \u2502 Bacillariophyta \u2502\n\u2502 fungi                      \u2502 Fungi           \u2502\n\u2502 insecta                    \u2502 Insecta         \u2502\n\u2502 mammalia_clamsa_v2         \u2502 Mammalia        \u2502\n\u2502 mammalia_nosofttmasking_v2 \u2502 Mammalia        \u2502\n\u2502 mammalia_softmasking_v2    \u2502 Mammalia        \u2502\n\u2502 vertebrates                \u2502 Vertebrata      \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "<TEMP>/venv/bin/python",
+        "-m",
+        "pip",
+        "--isolated",
+        "--disable-pip-version-check",
+        "freeze"
+      ],
+      "cwd": "<TEMP>",
+      "exit_code": 0,
+      "elapsed_seconds": 0.118,
+      "stdout": "markdown-it-py==4.2.0\nmdurl==0.1.2\nPygments==2.21.0\nPyYAML==6.0.3\nrich==15.0.0\ntiberius @ file://<TEMP>/Tiberius\n",
+      "stderr": ""
+    }
+  ],
+  "result": "PASS: launcher install and model-configuration listing; full inference untested",
+  "finished_utc": "2026-09-09T01:37:47.098894+00:00"
+}

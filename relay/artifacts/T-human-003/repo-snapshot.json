@@ -1,0 +1,557 @@
+{
+  "accessed_utc": "2026-09-09T01:38:53Z",
+  "since": "2025-09-09T01:38:53Z",
+  "until": "2026-09-09T01:38:53Z",
+  "commit_definition": "Default-branch reachable commits including merges; GitHub since/until filter.",
+  "requests": [
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/Tiberius",
+      "sha256": "e5a2787d65bbe5405db21de2b7500247e3009c2948571dd03ccc7c1e650d6a09",
+      "accessed_utc": "2026-09-09T01:26:29.097314Z",
+      "etag": "W/\"34d822a1937779586c12df0150141e0c9cd48d8c9d777ebb042e22dd4db49692\"",
+      "rate_limit_remaining": "57"
+    },
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/Tiberius/pulls?state=open&per_page=100&page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:26:29.671205Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "56"
+    },
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/Tiberius/commits?since=2025-09-09T01%3A26%3A28Z&until=2026-09-09T01%3A26%3A28Z&per_page=1",
+      "sha256": "53cfc74d2532becb061cdd6255fab1733c557467a0ede96c265399c974a1ea0b",
+      "accessed_utc": "2026-09-09T01:26:30.291636Z",
+      "etag": "W/\"4450093d0913d41a46012841b928a4765aa60a1a2b9916990c487633b8a7af5c\"",
+      "rate_limit_remaining": "55"
+    },
+    {
+      "url": "https://api.github.com/repos/ncbi/egapx",
+      "sha256": "93b722e8e6d43ea49659d0e6b04412fb39da00cfdcfb8ea41a67c9598263fe5f",
+      "accessed_utc": "2026-09-09T01:26:30.882523Z",
+      "etag": "W/\"5eff8ece624ea56fe7d5d2fd50b8be5e94bb1b58655063a4e62d6ed54d7ce348\"",
+      "rate_limit_remaining": "54"
+    },
+    {
+      "url": "https://api.github.com/repos/ncbi/egapx/pulls?state=open&per_page=100&page=1",
+      "sha256": "7d3eea71b6b77de9cbc644dfde94d8a5558ae7d901d08e29116a528289ac2e95",
+      "accessed_utc": "2026-09-09T01:26:31.878576Z",
+      "etag": "W/\"175459658c047c15ae78bb7615e6aaf75908b12636d34af9253314f2166bc2b6\"",
+      "rate_limit_remaining": "53"
+    },
+    {
+      "url": "https://api.github.com/repos/ncbi/egapx/commits?since=2025-09-09T01%3A26%3A28Z&until=2026-09-09T01%3A26%3A28Z&per_page=1",
+      "sha256": "bc6898bcc81b26e40d1d4a75fd89ff74ae94c22b082572317adf5f4e2f154616",
+      "accessed_utc": "2026-09-09T01:26:32.728730Z",
+      "etag": "W/\"3d42f72321d672464c135975d504c4128c169b0abe070324acb7f1f647b10628\"",
+      "rate_limit_remaining": "52"
+    },
+    {
+      "url": "https://api.github.com/repos/usadellab/Helixer",
+      "sha256": "d5e3fc9861d30a8b35dc3c38bd771a13c2459e16f2046f68bdbf2f695a9f8a92",
+      "accessed_utc": "2026-09-09T01:26:33.586680Z",
+      "etag": "W/\"f44bb8c37be753f8a8aa3c9b8b8d7368ef21d87d235e7e000d49f720c849f362\"",
+      "rate_limit_remaining": "51"
+    },
+    {
+      "url": "https://api.github.com/repos/usadellab/Helixer/pulls?state=open&per_page=100&page=1",
+      "sha256": "4dc6830e95f29a8e3a7aaf2d63f4e4b5e8e3058a62166e1278bbdf7b00fa56dd",
+      "accessed_utc": "2026-09-09T01:26:34.436696Z",
+      "etag": "W/\"35805ccc95005d7a8ac8551c98a193ec75063f33ff15268bb6aba4723b8a27f3\"",
+      "rate_limit_remaining": "50"
+    },
+    {
+      "url": "https://api.github.com/repos/usadellab/Helixer/commits?since=2025-09-09T01%3A26%3A28Z&until=2026-09-09T01%3A26%3A28Z&per_page=1",
+      "sha256": "c6ac8ced8be60ec85bf5eebf45f122337aeddd090b2eb2757c074f28e778cc93",
+      "accessed_utc": "2026-09-09T01:26:35.069154Z",
+      "etag": "W/\"4a307a507b1200baa187d2bfae714d4a32dee2517ce9af3d811797e6f8cf3258\"",
+      "rate_limit_remaining": "49"
+    },
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/Augustus",
+      "sha256": "3a5b04338e2abd9f3d8f659cf732b01bb5dd6bbe106fc961531ce1ad25a3ee84",
+      "accessed_utc": "2026-09-09T01:26:35.672211Z",
+      "etag": "W/\"4323365963e8bc75699b3d020438cb531031378f3547ebcef3daf4a84f09ea4e\"",
+      "rate_limit_remaining": "48"
+    },
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/Augustus/pulls?state=open&per_page=100&page=1",
+      "sha256": "ea77d65d5c85afd239474b5a3a42e7a3c78ec21b77b703a40dfcb99d3a767204",
+      "accessed_utc": "2026-09-09T01:26:36.622573Z",
+      "etag": "W/\"9ab7f40a22b54746fe94856005143d1abe0cec618be46cc83692b17740d1c433\"",
+      "rate_limit_remaining": "47"
+    },
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/Augustus/commits?since=2025-09-09T01%3A26%3A28Z&until=2026-09-09T01%3A26%3A28Z&per_page=1",
+      "sha256": "651d740e2649da9c2b546468fd0fda38733f25613f32fb3d0aedbe24eef7f33c",
+      "accessed_utc": "2026-09-09T01:26:37.245953Z",
+      "etag": "W/\"2db7715f4154e315a198242ff4b38af0a02825084f7e81f0e2fdfe9e82712aa9\"",
+      "rate_limit_remaining": "46"
+    },
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/BRAKER",
+      "sha256": "f8ca3308ce232a6aed3243f2dc50304af20bd9336c139372b8a7a14bedfb1626",
+      "accessed_utc": "2026-09-09T01:26:37.851946Z",
+      "etag": "W/\"12554709647a6f469fca36ca197d9b451f1b8a65030099f129303505331f85ae\"",
+      "rate_limit_remaining": "45"
+    },
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/BRAKER/pulls?state=open&per_page=100&page=1",
+      "sha256": "b02c3301389ba89eed3f7bb613c5a5ba62ead3b20f1e9ddcd8d0302f94cb16c9",
+      "accessed_utc": "2026-09-09T01:26:38.515935Z",
+      "etag": "W/\"bfb7a96ac443ce0124983e943fbfcc3ecee8b73b379643430b94cc3d16ea8c47\"",
+      "rate_limit_remaining": "44"
+    },
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/BRAKER/commits?since=2025-09-09T01%3A26%3A28Z&until=2026-09-09T01%3A26%3A28Z&per_page=1",
+      "sha256": "42bed8e444c5bcfb0d180a3e4f8bed36952ead059782c5dc592250d5a7db7f12",
+      "accessed_utc": "2026-09-09T01:26:39.174571Z",
+      "etag": "W/\"88030bc10b333ba70985d3ebc292743c68200ccd626d80db08774733188546d0\"",
+      "rate_limit_remaining": "43"
+    },
+    {
+      "url": "https://api.github.com/repos/gatech-genemark/GeneMark-ETP",
+      "sha256": "6b0eb0404c2bdbe27a28c2f6368fcee88a1cacc1f6305342f39adbd59c3d0e7c",
+      "accessed_utc": "2026-09-09T01:26:39.779647Z",
+      "etag": "W/\"0f27bf09113376f2ce56eb04eaa5590510c6c954d7dc2b04efac4c03c4b4da85\"",
+      "rate_limit_remaining": "42"
+    },
+    {
+      "url": "https://api.github.com/repos/gatech-genemark/GeneMark-ETP/pulls?state=open&per_page=100&page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:26:40.322494Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "41"
+    },
+    {
+      "url": "https://api.github.com/repos/gatech-genemark/GeneMark-ETP/commits?since=2025-09-09T01%3A26%3A28Z&until=2026-09-09T01%3A26%3A28Z&per_page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:26:40.901433Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "40"
+    },
+    {
+      "url": "https://api.github.com/repos/gatech-genemark/GeneMark-ETP/commits?per_page=1",
+      "sha256": "0c33fddd9256ebc0b6a2039e1d707edd41f08152e016ae28d964d126a76abea3",
+      "accessed_utc": "2026-09-09T01:26:41.781949Z",
+      "etag": "W/\"94e66733f7a6074c24765c9cfb08df4a6e39939468fe047806b6cf04894bd76a\"",
+      "rate_limit_remaining": "39"
+    },
+    {
+      "url": "https://api.github.com/repos/KorfLab/SNAP",
+      "sha256": "d0c87a798ec9200f7ec0ead6304e78992288d4870269631de3724b3424fc736f",
+      "accessed_utc": "2026-09-09T01:26:42.578574Z",
+      "etag": "W/\"dafafeb7dce65c687fad2d87ee153dfaee8cd23370e2e4f146c8dd9004c70d6d\"",
+      "rate_limit_remaining": "38"
+    },
+    {
+      "url": "https://api.github.com/repos/KorfLab/SNAP/pulls?state=open&per_page=100&page=1",
+      "sha256": "b88cef681200e3890f875ab9876a6c9cc0ff517f54da7eb0e679f005dc94ed0c",
+      "accessed_utc": "2026-09-09T01:26:43.281986Z",
+      "etag": "W/\"351441e016f462b7f48b7f6c33858889d3b23cf005ed6b42b8624c31ae1429f4\"",
+      "rate_limit_remaining": "37"
+    },
+    {
+      "url": "https://api.github.com/repos/KorfLab/SNAP/commits?since=2025-09-09T01%3A26%3A28Z&until=2026-09-09T01%3A26%3A28Z&per_page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:26:43.886694Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "36"
+    },
+    {
+      "url": "https://api.github.com/repos/KorfLab/SNAP/commits?per_page=1",
+      "sha256": "c08b240e6c76268415c1705cc21420c4f499e64190937877dab69f37ff045ad5",
+      "accessed_utc": "2026-09-09T01:26:44.534587Z",
+      "etag": "W/\"5d70db781e1f2789a74a6d3378e666f74e7b849e8e1917a29b90e70fab9c0943\"",
+      "rate_limit_remaining": "35"
+    },
+    {
+      "url": "https://api.github.com/repos/Yandell-Lab/maker",
+      "sha256": "2108f40c2b7c124544bdb8bc4bd879bebec0c5663aa48d95eceb0bcd1ce27903",
+      "accessed_utc": "2026-09-09T01:26:45.386278Z",
+      "etag": "W/\"bb206a569b5fde99288fa26c2547c963983a86174295615c20c24d055acbc51c\"",
+      "rate_limit_remaining": "34"
+    },
+    {
+      "url": "https://api.github.com/repos/Yandell-Lab/maker/pulls?state=open&per_page=100&page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:26:46.150475Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "33"
+    },
+    {
+      "url": "https://api.github.com/repos/Yandell-Lab/maker/commits?since=2025-09-09T01%3A26%3A28Z&until=2026-09-09T01%3A26%3A28Z&per_page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:26:46.977140Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "32"
+    },
+    {
+      "url": "https://api.github.com/repos/Yandell-Lab/maker/commits?per_page=1",
+      "sha256": "2994bc1b5f70d65f4133b2f0e2e83b2f0380fb9aca406458827f0008ea8cdda6",
+      "accessed_utc": "2026-09-09T01:26:47.584506Z",
+      "etag": "W/\"c7a9fca432f49d89f23c9cb78f0631f8ffe596a28072f57819e4a516191e6648\"",
+      "rate_limit_remaining": "31"
+    },
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/clamsa",
+      "sha256": "eb3db86f388e0619452fa29109bedb128e2bfcf5705a45dd672a93335941945b",
+      "accessed_utc": "2026-09-09T01:26:48.316577Z",
+      "etag": "W/\"7bd2968dfd17311dafb0e514ee2212d77ab16711f453af88eab089fe8634a8f4\"",
+      "rate_limit_remaining": "30"
+    },
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/clamsa/pulls?state=open&per_page=100&page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:26:48.893063Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "29"
+    },
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/clamsa/commits?since=2025-09-09T01%3A26%3A28Z&until=2026-09-09T01%3A26%3A28Z&per_page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:26:49.942196Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "28"
+    },
+    {
+      "url": "https://api.github.com/repos/Gaius-Augustus/clamsa/commits?per_page=1",
+      "sha256": "7a459277c77f4c2e737b67414e1d8a3e0de77ff100f54a97b14e1e14b2e63c65",
+      "accessed_utc": "2026-09-09T01:26:50.552874Z",
+      "etag": "W/\"14f14d449d901029d0ea30e373d81982341d61d61772091394d5fc15b7395edf\"",
+      "rate_limit_remaining": "27"
+    },
+    {
+      "url": "https://api.github.com/repos/mlin/PhyloCSF",
+      "sha256": "87cf39b0cad541e9ad03d1ab3b7a3af7bade70b8da152e0b26a54325bd6e41b3",
+      "accessed_utc": "2026-09-09T01:26:51.152560Z",
+      "etag": "W/\"d6a75180e3c7b9f5d50c466f5f43f0527fbbadb314ae3d5a1d2b456bd57cac74\"",
+      "rate_limit_remaining": "26"
+    },
+    {
+      "url": "https://api.github.com/repos/mlin/PhyloCSF/pulls?state=open&per_page=100&page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:26:51.733763Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "25"
+    },
+    {
+      "url": "https://api.github.com/repos/mlin/PhyloCSF/commits?since=2025-09-09T01%3A26%3A28Z&until=2026-09-09T01%3A26%3A28Z&per_page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:26:52.333471Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "24"
+    },
+    {
+      "url": "https://api.github.com/repos/mlin/PhyloCSF/commits?per_page=1",
+      "sha256": "f90dde71fad88e2952b01cb63a26687eea7dc8c4307e488ea93d889158baeaa9",
+      "accessed_utc": "2026-09-09T01:26:53.970348Z",
+      "etag": "W/\"91e6ac39055a04d870004bdf8fd2ab30b537c090f3f112c29bad20d2f4758193\"",
+      "rate_limit_remaining": "23"
+    },
+    {
+      "url": "https://api.github.com/repos/hexagonbio/geneML",
+      "sha256": "191bc5da500a87c43d4a9984dccefa8dca718987dd37d9bf8403534320cbfa95",
+      "accessed_utc": "2026-09-09T01:26:55.114904Z",
+      "etag": "W/\"6404815b385d9335373a43272763ddcce3871f12116bec614a336d2de38c58ef\"",
+      "rate_limit_remaining": "20"
+    },
+    {
+      "url": "https://api.github.com/repos/hexagonbio/geneML/pulls?state=open&per_page=100&page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:26:55.679702Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "19"
+    },
+    {
+      "url": "https://api.github.com/repos/hexagonbio/geneML/commits?since=2025-09-09T01%3A26%3A28Z&until=2026-09-09T01%3A26%3A28Z&per_page=1",
+      "sha256": "90f1a3ebb871d5a55e14588966008b10e3917044d30105ed15ce936082d6f935",
+      "accessed_utc": "2026-09-09T01:26:56.302343Z",
+      "etag": "W/\"ea8516108a0bf3c8612707639443f9142cd290a83d6ea5b0e808af4fcdc7b7c3\"",
+      "rate_limit_remaining": "18"
+    },
+    {
+      "url": "https://api.github.com/repos/xjtu-omics/ANNEVO",
+      "sha256": "1e5f9faf6f7daa3e84efcb2bd640f16e86cb4261116ba9b1785a7b33a719426c",
+      "accessed_utc": "2026-09-09T01:38:54.261642Z",
+      "etag": "W/\"aeef0026dd6a7470415ed508f3bdd3735cc17ee1e6c6b829d1e727642eb470ce\"",
+      "rate_limit_remaining": "59"
+    },
+    {
+      "url": "https://api.github.com/repos/xjtu-omics/ANNEVO/pulls?state=open&per_page=100&page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:38:54.821936Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "58"
+    },
+    {
+      "url": "https://api.github.com/repos/xjtu-omics/ANNEVO/commits?since=2025-09-09T01%3A38%3A53Z&until=2026-09-09T01%3A38%3A53Z&per_page=1",
+      "sha256": "46436179dc26f145b811fd3c91e919fe0830168f732c01713d9fefdb11ecbcc4",
+      "accessed_utc": "2026-09-09T01:38:55.408038Z",
+      "etag": "W/\"0dde48739070807afa7f7392a737a29c136c85b4846f3b922e977a657169382f\"",
+      "rate_limit_remaining": "57"
+    },
+    {
+      "url": "https://api.github.com/repos/instadeepai/nucleotide-transformer",
+      "sha256": "dd0ff4d153393e78b54f7cfec0873e20ff812a098a64fe7a74a2ea2004320e5d",
+      "accessed_utc": "2026-09-09T01:38:56.020578Z",
+      "etag": "W/\"44a931ccf238573e9a13968f706529dce72d51f8f21efb7fd8acd640e65331b5\"",
+      "rate_limit_remaining": "56"
+    },
+    {
+      "url": "https://api.github.com/repos/instadeepai/nucleotide-transformer/pulls?state=open&per_page=100&page=1",
+      "sha256": "7513e89f1a3b63d41fe4d01531b0769c8bbf88fa28fa85094867e7fb9dcaf451",
+      "accessed_utc": "2026-09-09T01:38:56.686431Z",
+      "etag": "W/\"9017ca271b20c9057668a5e5d566ed356f5bc4d6c36b67844ab0c8fcfad3c1db\"",
+      "rate_limit_remaining": "55"
+    },
+    {
+      "url": "https://api.github.com/repos/instadeepai/nucleotide-transformer/commits?since=2025-09-09T01%3A38%3A53Z&until=2026-09-09T01%3A38%3A53Z&per_page=1",
+      "sha256": "14f75d51a35421b42900a24814521a7d652868af27715aa6b11d33a4659652c5",
+      "accessed_utc": "2026-09-09T01:38:57.296937Z",
+      "etag": "W/\"5cab106d23c81a90c06eef8e17161e52e4bc05ff3cbe1877bf6c24a56df4f088\"",
+      "rate_limit_remaining": "54"
+    }
+  ],
+  "repositories": [
+    {
+      "url": "https://github.com/Gaius-Augustus/Tiberius",
+      "readme_install_fresh_env": "PASS: launcher install and model-configuration listing; full inference untested",
+      "notes": "Fresh isolated venv; launcher only. See tiberius-launcher-check.json.",
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "default_branch": "main",
+      "stars": 138,
+      "language": "Python",
+      "licence": "MIT",
+      "archived": false,
+      "open_issues": 21,
+      "commits_last_12_months": 174,
+      "last_commit_date": "2026-09-07T11:14:18Z",
+      "default_branch_sha": "e73844bfc7170665bc6632f1806a05dfe59fae8a",
+      "count_since_utc": "2025-09-09T01:26:28Z",
+      "count_until_utc": "2026-09-09T01:26:28Z"
+    },
+    {
+      "url": "https://github.com/ncbi/egapx",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested. License audit: https://github.com/ncbi/egapx/blob/f9a7392b6f60d0d24f28db5c4eb69b0e1984616b/LICENSE",
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "default_branch": "main",
+      "stars": 207,
+      "language": "Nextflow",
+      "licence": "NCBI public-domain notice; bundled third-party licences",
+      "archived": false,
+      "open_issues": 17,
+      "commits_last_12_months": 26,
+      "last_commit_date": "2026-09-04T14:03:37Z",
+      "default_branch_sha": "f9a7392b6f60d0d24f28db5c4eb69b0e1984616b",
+      "count_since_utc": "2025-09-09T01:26:28Z",
+      "count_until_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "NOASSERTION"
+    },
+    {
+      "url": "https://github.com/usadellab/Helixer",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested.",
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "default_branch": "main",
+      "stars": 305,
+      "language": "Python",
+      "licence": "GPL-3.0",
+      "archived": false,
+      "open_issues": 28,
+      "commits_last_12_months": 49,
+      "last_commit_date": "2026-07-01T14:47:25Z",
+      "default_branch_sha": "d17bb496b8842542590644b2437798711c0125d5",
+      "count_since_utc": "2025-09-09T01:26:28Z",
+      "count_until_utc": "2026-09-09T01:26:28Z"
+    },
+    {
+      "url": "https://github.com/Gaius-Augustus/Augustus",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested. License audit: https://github.com/Gaius-Augustus/Augustus/blob/220e5a63c0fd546563472ec6d1f9271faddaf569/README.md",
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "default_branch": "master",
+      "stars": 339,
+      "language": "C++",
+      "licence": "Artistic License (author README)",
+      "archived": false,
+      "open_issues": 166,
+      "commits_last_12_months": 5,
+      "last_commit_date": "2026-05-18T12:50:11Z",
+      "default_branch_sha": "220e5a63c0fd546563472ec6d1f9271faddaf569",
+      "count_since_utc": "2025-09-09T01:26:28Z",
+      "count_until_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "unknown"
+    },
+    {
+      "url": "https://github.com/Gaius-Augustus/BRAKER",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested. License audit: https://github.com/Gaius-Augustus/BRAKER/blob/8f6a9b862c778f10ca33c27f931032bd7872b545/LICENSE.TXT",
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "default_branch": "master",
+      "stars": 467,
+      "language": "Perl",
+      "licence": "Artistic-1.0",
+      "archived": false,
+      "open_issues": 101,
+      "commits_last_12_months": 11,
+      "last_commit_date": "2026-06-17T12:40:52Z",
+      "default_branch_sha": "8f6a9b862c778f10ca33c27f931032bd7872b545",
+      "count_since_utc": "2025-09-09T01:26:28Z",
+      "count_until_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "NOASSERTION"
+    },
+    {
+      "url": "https://github.com/gatech-genemark/GeneMark-ETP",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested.",
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "default_branch": "main",
+      "stars": 31,
+      "language": "AMPL",
+      "licence": "unknown",
+      "archived": false,
+      "open_issues": 11,
+      "commits_last_12_months": 0,
+      "last_commit_date": "2025-04-11T17:46:52Z",
+      "default_branch_sha": "8b3dbc2bdb831f02d3eaf697a495a2067a7eb1cf",
+      "count_since_utc": "2025-09-09T01:26:28Z",
+      "count_until_utc": "2026-09-09T01:26:28Z"
+    },
+    {
+      "url": "https://github.com/KorfLab/SNAP",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested. License audit: https://github.com/KorfLab/SNAP/blob/4ad1e957cd8e68b63857cc1cb3380d39a7b518b1/LICENSE",
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "default_branch": "master",
+      "stars": 72,
+      "language": "C",
+      "licence": "MIT",
+      "archived": false,
+      "open_issues": 14,
+      "commits_last_12_months": 0,
+      "last_commit_date": "2022-10-22T21:29:10Z",
+      "default_branch_sha": "4ad1e957cd8e68b63857cc1cb3380d39a7b518b1",
+      "count_since_utc": "2025-09-09T01:26:28Z",
+      "count_until_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "NOASSERTION"
+    },
+    {
+      "url": "https://github.com/Yandell-Lab/maker",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested.",
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "default_branch": "master",
+      "stars": 47,
+      "language": "Perl",
+      "licence": "NOASSERTION",
+      "archived": false,
+      "open_issues": 10,
+      "commits_last_12_months": 0,
+      "last_commit_date": "2024-08-20T16:56:05Z",
+      "default_branch_sha": "4bf3085ae8df4680468646a63c635094a0a3dc2a",
+      "count_since_utc": "2025-09-09T01:26:28Z",
+      "count_until_utc": "2026-09-09T01:26:28Z"
+    },
+    {
+      "url": "https://github.com/Gaius-Augustus/clamsa",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested.",
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "default_branch": "master",
+      "stars": 13,
+      "language": "Python",
+      "licence": "unknown",
+      "archived": false,
+      "open_issues": 4,
+      "commits_last_12_months": 0,
+      "last_commit_date": "2024-07-04T12:26:25Z",
+      "default_branch_sha": "95d8d6c07c00f1218eb22545cf54aacfd9603a9e",
+      "count_since_utc": "2025-09-09T01:26:28Z",
+      "count_until_utc": "2026-09-09T01:26:28Z"
+    },
+    {
+      "url": "https://github.com/mlin/PhyloCSF",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested.",
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "default_branch": "master",
+      "stars": 73,
+      "language": "OCaml",
+      "licence": "AGPL-3.0",
+      "archived": false,
+      "open_issues": 17,
+      "commits_last_12_months": 0,
+      "last_commit_date": "2023-10-16T15:11:59Z",
+      "default_branch_sha": "3d29221f8a0d408d48a09ad32cb51400daf253f9",
+      "count_since_utc": "2025-09-09T01:26:28Z",
+      "count_until_utc": "2026-09-09T01:26:28Z"
+    },
+    {
+      "url": "https://github.com/nekrut/axomeme",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata incomplete: HTTP Error 404: Not Found",
+      "snapshot_utc": "2026-09-09T01:26:28Z"
+    },
+    {
+      "url": "https://github.com/nekrut/scalingPaper",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata incomplete: HTTP Error 404: Not Found",
+      "snapshot_utc": "2026-09-09T01:26:28Z"
+    },
+    {
+      "url": "https://github.com/hexagonbio/geneML",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested.",
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "default_branch": "main",
+      "stars": 12,
+      "language": "Python",
+      "licence": "GPL-3.0",
+      "archived": false,
+      "open_issues": 1,
+      "commits_last_12_months": 175,
+      "last_commit_date": "2026-04-03T12:59:05Z",
+      "default_branch_sha": "0627add6269cd9b9e4c0028748e6802513c6e2d6",
+      "count_since_utc": "2025-09-09T01:26:28Z",
+      "count_until_utc": "2026-09-09T01:26:28Z"
+    },
+    {
+      "url": "https://github.com/xjtu-omics/ANNEVO",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested. License audit: https://github.com/xjtu-omics/ANNEVO/blob/42c920f70f52f96c7c06c665a639ec47d9304fff/LICENSE",
+      "snapshot_utc": "2026-09-09T01:38:53Z",
+      "default_branch": "main",
+      "stars": 158,
+      "language": "Python",
+      "licence": "ANNEVO Non-Commercial License 1.0",
+      "archived": false,
+      "open_issues": 10,
+      "commits_last_12_months": 30,
+      "last_commit_date": "2026-08-11T02:44:08Z",
+      "default_branch_sha": "42c920f70f52f96c7c06c665a639ec47d9304fff",
+      "count_since_utc": "2025-09-09T01:38:53Z",
+      "count_until_utc": "2026-09-09T01:38:53Z",
+      "github_detected_licence": "NOASSERTION"
+    },
+    {
+      "url": "https://github.com/instadeepai/nucleotide-transformer",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested.",
+      "snapshot_utc": "2026-09-09T01:38:53Z",
+      "default_branch": "main",
+      "stars": 917,
+      "language": "Jupyter Notebook",
+      "licence": "NOASSERTION",
+      "archived": false,
+      "open_issues": 13,
+      "commits_last_12_months": 3,
+      "last_commit_date": "2025-12-27T14:29:33Z",
+      "default_branch_sha": "2dc37b86e16a6970fbc731751f7719d9f676f7f9",
+      "count_since_utc": "2025-09-09T01:38:53Z",
+      "count_until_utc": "2026-09-09T01:38:53Z"
+    }
+  ],
+  "initial_accessed_utc": "2026-09-09T01:26:28Z"
+}
