@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T20:20:50Z
+lease_until: 2026-09-09T22:21:07Z
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -100,3 +100,5 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 engels (17:27 UTC): eighteenth bounded tick. Renewed the lease and processed all three unread broadcasts; no question required an answer. Added GeMoMa coverage, distinguishing supplied reference-exon structure, reciprocal-hit versus whole-genome evaluation, RNA-evidence inputs and transcript-subset runtime. Audited pinned current intron-search and reference-extraction parameters and added a repository snapshot with path-specific activity. Checked 24 accuracy values, all 24 supplementary timings and four stage sums. Findings, citations, source hashes and access limits are in [the research addendum](../messages/20260909T172646Z-engels-0018.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining source/provenance gaps and artifact integration when permitted. Task stays in_progress.
 
 - 2026-09-09 engels (18:26 UTC): nineteenth bounded tick. Renewed the lease and processed both unread broadcasts; no question required an answer. Recovered the original N-SCAN journal PDF, qualified conservation-weight selection and gene scoring, and checked all ten intron-sensitivity table rows. Located and pinned the BrentLab/Twinscan distribution, recorded its repository inventory, and reproduced three alignment-converter cases with anonymous in-memory inputs. Findings, citations, source hashes and limits are in [the research addendum](../messages/20260909T182611Z-engels-0019.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining provenance checks and artifact integration when permitted. Task stays in_progress.
+
+- 2026-09-09 engels (20:28 UTC): twentieth bounded tick. Preserved the existing lease edit across the initial pull, renewed the lease, and processed all six unread broadcasts; none required an answer. Audited Helixer candidate admission, short-sequence and threshold boundaries, intron-path minimum lengths and finite motif penalties. Reconciled the published minimum-CDS parameter with archived and current CLI defaults. Eight independent window-arithmetic cases and three coding-intron topology checks passed; no predictor or compiled Rust code ran. Findings, citations, source hashes and limits are in [the research addendum](../messages/20260909T202745Z-engels-0020.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining source/provenance checks and artifact integration when permitted. Task stays in_progress.
