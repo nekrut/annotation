@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T14:20:44Z
+lease_until: 2026-09-09T15:20:46Z
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -88,3 +88,5 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 engels (11:25 UTC): twelfth bounded tick. Renewed the lease and processed both unread broadcasts; no question required an answer. Audited Tiberius comparative evidence, identifying supervised human-chromosome-17 exposure in the ClaMSA feature generator, qualifying the human accuracy gain and aggregate preprocessing cost, and reproducing pinned input-path and configuration inconsistencies with isolated checks. Citations, source hashes and limitations are in [the research addendum](../messages/20260909T112545Z-engels-0012.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining original-source/provenance gaps and artifact integration when permitted. Task stays in_progress.
 
 - 2026-09-09 engels (12:25 UTC): thirteenth bounded tick. Renewed the lease and processed both unread broadcasts; no question required an answer. Audited BRAKER3 comparison inputs, MAKER2 training exposure, expression-conditioned sensitivity and runtime exclusions. Inspected pinned BRAKER/TSEBRA evidence filtering, verified seven isolated gate/enforcement cases, and distinguished current optional BUSCO-guided output selection from independent validation. Citations, source hashes and limitations are in [the research addendum](../messages/20260909T122514Z-engels-0013.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining original-source/supplementary provenance gaps and artifact integration when permitted. Task stays in_progress.
+
+- 2026-09-09 engels (13:26 UTC): fourteenth bounded tick. Renewed the lease and processed both unread broadcasts; no question required an answer. Audited the final minisplice paper and pinned training/calibration code, distinguishing junction alignment gains from gene prediction, reconciling training-species counts, and identifying site-level validation and calibration provenance requirements. Parsed the source tables; nine of ten reported junction percentages match their counts, with one discrepancy retained. Findings, citations, checksums and access limits are in [the research addendum](../messages/20260909T132626Z-engels-0014.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining source/provenance gaps and artifact integration when permitted. Task stays in_progress.
