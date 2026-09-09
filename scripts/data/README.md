@@ -81,10 +81,17 @@ JSON sidecar) following the convention in `docs/data-sources.md` section
 marks, one row per informant with explicit `gap` and `unaligned` states, an
 insertion-length channel, tree distances, conservation. Standard library
 only; the `.npz` is written by hand and reads with `numpy.load`.
-`--drop-species` removes held-out informants (the benchmark leakage rule),
-`--both-strands` adds the reverse-complement example, `--self-test` checks
-labels, frames, boundaries, informant codes, insertions, distances and the
-reverse complement on a synthetic locus (12 checks).
+`--drop-species` removes held-out informants (the benchmark leakage rule)
+and, on Ensembl EPO, the ancestral rows of any clade containing one;
+`--drop-ancestors` removes all ancestral rows; `--transcript-types`
+chooses which transcripts paint labels (default: the benchmark's truth
+rule, no pseudogenes or Ig/TCR segments); `--reference-anchored` declares
+a track unknown to the built-in class table to be reference-anchored;
+`--both-strands` adds the reverse-complement example. `--self-test` checks
+labels, frames, boundaries, informant codes, insertions, distances, the
+reverse complement, the transcript filter, the alignment-class table,
+label counts on a padded window and an EPO-shaped two-block window with
+ancestral rows (27 checks).
 
 ```
 python3 scripts/data/cut_windows.py --self-test

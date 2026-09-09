@@ -447,6 +447,25 @@ def ensembl_blocks_to_maf(fx: Fetcher, blocks: list[dict], species: str, manifes
     return mafs, trees
 
 
+def ensembl_species_set_members(fx: Fetcher, species_set: str, method: str, manifest: dict) -> None:
+    """Record the species set's full member list (sorted) in the manifest, so
+    ``cut_windows.py`` can give every window of a set the same rows in the
+    same order whatever subset happens to align there.  Failure is a warning,
+    not an error: the cutter falls back to the observed rows."""
+    url = f"{ENSEMBL}/info/compara/species_sets/{method}?content-type=application/json"
+    try:
+        sets = fx.json(url, "species_sets")
+    except (RuntimeError, ValueError) as err:
+        manifest["warnings"].append(f"species_sets: {err}")
+        return
+    for s in sets if isinstance(sets, list) else []:
+        if s.get("species_set_group") == species_set and s.get("method", method) == method:
+            manifest["species_set_name"] = s.get("name")
+            manifest["species_set_members"] = sorted(s.get("species_set", []))
+            return
+    manifest["warnings"].append(f"species_sets: group {species_set!r} not listed for method {method}")
+
+
 def ensembl_annotation(fx: Fetcher, species: str, region: str) -> list[dict]:
     url = (f"{ENSEMBL}/overlap/region/{species}/{region}?feature=gene;feature=transcript;"
            f"feature=exon;feature=cds;content-type=application/json")
@@ -670,6 +689,9 @@ def main() -> int:
         species = args.assembly
         region = f"{chrom}:{start + 1}-{end}"  # Ensembl is 1-based closed
         manifest["ensembl_region"] = region
+        manifest["species_set"] = args.species_set
+        manifest["method"] = args.method
+        ensembl_species_set_members(fx, args.species_set, args.method, manifest)
         try:
             blocks = ensembl_alignment(fx, species, region, args.species_set, args.method, manifest)
         except RuntimeError as err:

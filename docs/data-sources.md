@@ -434,10 +434,26 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   codon (RefSeq includes the stop in the CDS), the first intron base
   (donor) and the last intron base (acceptor). Boundaries are placed at
   their + strand coordinate; the strand channel says which way to read them.
-- **Informants**: one row per leaf of the track's tree except the
-  reference, in the tree's depth-first leaf order, so the same track always
-  gives the same rows in the same order and `K` is fixed per track. Each
-  entry is a base, a **gap** (the informant is aligned here with a deletion)
+  Which transcripts paint is `--transcript-types`: the default follows the
+  benchmark's truth rule (`docs/benchmark.md` section 4) and excludes
+  pseudogenes and immunoglobulin / T-cell receptor segments, recognised only
+  from the type the source states (Ensembl `biotype`, GenArk `geneType`;
+  UCSC `ncbiRefSeq` genePred carries none, so everything there paints), so
+  that the labels do not teach structure at loci the scorer deletes; `all`
+  paints everything and the sidecar lists what was excluded.
+- **Informants**: one row per informant, in an order fixed per source so
+  that examples stack into batches. For a UCSC track (multiz, Cactus) that
+  is the track tree's depth-first leaf order minus the reference, and `K`
+  is fixed per track. Ensembl EPO has no track tree, only one tree per
+  block, so there the rows are the species set's members in sorted order
+  (from `info/compara/species_sets/<method>`, which the fetcher now records
+  in the manifest; a member that does not align in the window is an
+  all-unaligned row), then the inferred ancestral rows sorted by name. The
+  leaf part is fixed per species set; the ancestor part varies by window
+  (`Ggal-Mgal[2]` exists only where chicken and turkey both align), so a
+  model that wants a fixed `K` on EPO takes the leaves and `--drop-ancestors`,
+  and one that wants ancestral states reads the sidecar's `ancestral` list
+  and `ancestral_clades`. Each entry is a base, a **gap** (the informant is aligned here with a deletion)
   or **unaligned** (no block covers the position); the distinction is the
   one CONTRAST and N-SCAN made and section 6 shows why: past about one
   substitution per site most non-coding positions are unaligned, not
@@ -451,14 +467,25 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
 - **Conservation**: the phyloP or phastCons value per base when the track
   had one, NaN otherwise, so a model can be trained with and without it.
 - **Leakage**: `--drop-species` removes held-out informants before the
-  tensors are built. For multiz that is exact. For Cactus and EPO the row
-  goes but its influence on the alignment stays, which the sidecar records;
-  section 7 says why the honest tool for those is a declared informant set
-  at inference. The sidecar's `dropped_species` list is what the run copies
-  into the `alignment_rows_dropped` key of its benchmark declaration
-  (`docs/benchmark.md` section 3.3); a sidecar with `dropped_rows_only:
-  true` means the declaration must also say the alignment is jointly
-  inferred, and the stricter rebuild rule applies.
+  tensors are built, and with them every EPO ancestral row whose clade,
+  read from the block trees' internal node names, contains a dropped
+  species (a reconstruction that used the held-out genome is as much a leak
+  as the genome itself; the sidecar lists them as `dropped_ancestors`). For
+  a reference-anchored alignment that is exact. For a jointly inferred one
+  the row goes but its influence on the alignment stays, which the sidecar
+  records as `dropped_rows_only: true`; section 7 says why the honest tool
+  for those is a declared informant set at inference. The cutter decides
+  the class from an explicit table of track names (multiz `*way` and
+  pairwise chain/net tracks are reference-anchored; Cactus, `hprc*way`,
+  and every Ensembl multiple alignment are jointly inferred) and treats a
+  track it does not know as jointly inferred, which is the strict branch of
+  `docs/benchmark.md` section 3.2; `--reference-anchored` overrides that
+  for a track the operator has checked, and the sidecar records the
+  override as the operator's claim rather than the table's. The sidecar's
+  `dropped_species` list is what the run copies into the
+  `alignment_rows_dropped` key of its benchmark declaration (section 3.3);
+  a sidecar with `dropped_rows_only: true` means the declaration must also
+  say the alignment is jointly inferred, and the rebuild rule applies.
 - **Orientation**: reverse-strand genes are not flipped. `--both-strands`
   writes the reverse-complement example (labels and boundaries move with
   the coordinates, informant bases complemented, insertion lengths shifted
@@ -475,8 +502,9 @@ Open choices, deliberately left to T-human-011: whether the informant axis
 should be the tree leaves (fixed `K`, mostly unaligned rows at distance)
 or the aligned subset per window (variable `K`, denser); whether to encode
 codon position on the reference axis as an input (it is a label here);
-and whether UTR should be split into 5' and 3' (RefSeq lets us, the
-coverage tables do not yet).
+whether UTR should be split into 5' and 3' (RefSeq lets us, the
+coverage tables do not yet); and whether EPO ancestral rows are an input
+(the only source that has them, section 3.2) or noise to drop.
 
 ## 7. Suitability for training versus held-out evaluation
 
@@ -489,7 +517,9 @@ held-out species, while a reference-anchored one (multiz) may have the row
 dropped at cut time provided the run lists the dropped rows in the
 `alignment_rows_dropped` key of its declaration (section 3.3); an informant
 set used at *inference* on a held-out target is permitted and must be
-declared.
+declared. `cut_windows.py` applies the split from a table of track names
+and treats any track not in it as jointly inferred, so a wrong guess fails
+strict and visible rather than permissive and silent (section 6.3).
 
 Applying them to what exists:
 
@@ -576,9 +606,24 @@ informants) is the design-level answer.
    has not been made.
 6. GRCz12ab (zebrafish) has no GenArk hub and no Ensembl alignment yet; the
    panel may be better served by GRCz11 for zebrafish until the new assembly
-   propagates, which is lenin's call.
+   propagates. lenin took this in review 20260909T090919Z-lenin-0011 and
+   will answer in T-human-007.
 7. New: `hgdownload.soe.ucsc.edu` reset every connection for several
    minutes during the sampling run while `hgdownload2` served the same
    files. The fetcher now rotates mirrors, but a training pipeline that
    reads MAF by HTTP Range at scale should rsync the per-chromosome MAF
    once (sizes in section 2.1) rather than depend on hgdownload staying up.
+8. Done after review 20260909T090919Z-lenin-0011: the cutter's alignment
+   class now comes from an explicit table with a strict default and an
+   operator override; EPO ancestral rows are read from the fetcher's
+   manifest and dropped with their clade under `--drop-species`; the
+   sidecar's `label_counts` is counted through the mask so the reverse
+   complement of a padded window reports the same counts; EPO row order is
+   the species set rather than a tree, and 6.3 says which part of `K` is
+   fixed; a transcript-type filter matching the benchmark's truth rule is
+   the default; and the sidecar counts blocks skipped for a minus-strand
+   reference row. The same pass fixed a bug lenin did not have to find:
+   Ensembl block-tree leaves are named `species_region_start_end[strand]`,
+   which the distance lookup never matched, so `dist` was NaN for every EPO
+   informant; leaves are now mapped back to row names, and ancestors get
+   their distance from the internal node.
