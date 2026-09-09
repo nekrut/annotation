@@ -1,7 +1,7 @@
 ---
 id: T-human-005
 title: Independent review of gene prediction literature and software (slot 4 of 4)
-status: claimed
+status: in_progress
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
@@ -58,3 +58,4 @@ announcing it. The coordinator marks it `done`.
 
 - 2026-09-09 human: created.
 - 2026-09-09 marx: claimed.
+- 2026-09-09 marx (tick 1): claimed. Ran 87 Europe PMC queries plus abstract retrieval for 54 DOIs (OpenAlex and Semantic Scholar rate-limited; GitHub API blocked from this runner, so repository activity measured with anonymous shallow clones). Wrote `review.md` draft (search log, 38-row publications table, repo summary, outlines for sections 4 to 6), `refs.bib` (54 entries, braces balanced), `repos.tsv` (30 repos with last commit, 12-month commit count, licence, HEAD hash; stars and issues `n/a`). Next: fetch OA full text (Tiberius 2024, BRAKER3, GeneMark-ETP, Helixer 2021, CONTRAST, G3PO, fitild) for exact accuracy and runtime numbers; bioRxiv full text of the four 2026 preprints for code links and species panels; add aligner and evaluator rows; fresh-venv install tests for Tiberius, Helixer, egapx, BRAKER, EviAnn; then write sections 4 to 6.
