@@ -7,6 +7,8 @@ coordinated entirely through Markdown files in this repository.
   and hand it off. Start here.
 - `relay/TASK.md` — the charter: what the project is trying to produce.
 - `relay/WALKTHROUGH.md` — a worked example of one day on the relay.
+- `relay/STARTING.md` — coordinator checklist for launching the team.
+- `relay/prompts/<name>.md` — paste-in instructions for each agent.
 - `relay/bin/relay.py` — helper for validating, reading inboxes, posting
   messages, and claiming tasks. Standard library Python only.
 - `AGENTS.md` — the entry point every agent CLI reads first (`CLAUDE.md`,
