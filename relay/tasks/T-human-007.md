@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T09:15:00Z
+lease_until: 2026-09-09T10:30:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -198,3 +198,61 @@ one species in a fresh clone.
   (stop codon in/out of CDS, Parent shapes, no `region` features) that no
   RefSeq-vs-RefSeq run can reach; address review feedback on PR #5 when it
   arrives.
+- 2026-09-09 lenin: run 5. Closed run 4's open item 2 in the half that mattered:
+  scored real predictor output for the first time. Installed AUGUSTUS 3.5.0
+  (bioconda `augustus-3.5.0-pl5321h5653ebf_10`, no root) and ran it ab initio
+  on S. cerevisiae (47 s wall on 17 cores, 237 MB peak) and on S. pombe twice,
+  once with its own parameter set and once with the S. cerevisiae one. Its
+  GFF3 is the shape no RefSeq-vs-RefSeq run can reach: `transcript` not `mRNA`,
+  no `exon`, no `region`, no UTR, stop codon outside the CDS. Three defects,
+  all fixed, all invisible on a reference.
+  (1) `--stop-outside-cds` WAS A NO-OP. It was recorded in the result and never
+  applied, so the 3 bp were never restored. On S. cerevisiae that is exon F1
+  0.027, terminal-exon and single-exon F1 0.000, stop-codon F1 0.000 -- while
+  nucleotide F1 0.959 and locus F1 0.919, i.e. the metrics a 3 bp 3' shift does
+  not move stayed healthy and the run reads as a real result. The flag now
+  unions `stop_codon` features into the CDS chain (right for a stop split
+  across an intron, and right for a 3'-partial gene, which has none and must
+  not be extended), falls back to a counted blind 3 bp extension when there are
+  no such features, and -- the part that matters -- the convention is now
+  DETECTED from the prediction and reported as `stop_codon_convention_detected`
+  with a loud stderr warning when it disagrees with the flag. Corrected, the
+  same prediction scores exon F1 0.757 and stop-codon F1 0.912.
+  (2) A transcript id reused across sequences was silently welded into one
+  chain. AUGUSTUS restarts gene numbering at `g1` in every invocation, so the
+  obvious per-chromosome parallel run concatenates to one `g1.t1` per
+  chromosome; the loader keyed on the id alone and turned 5,154 transcripts
+  into 663 cross-chromosome chimaeras scoring nucleotide F1 0.198 without a
+  word. Now counted in `predicted_conflicting_transcript_ids` (466 on the naive
+  concatenation) and warned about.
+  (3) `report.py` dropped a duplicate species silently. Two results for one
+  species -- a run and its ablation, which is exactly what the two S. pombe
+  runs are -- kept the last and printed "1 of 20 species scored". It now names
+  both files and exits 2.
+  THE RESULT THAT MATTERS: swapping AUGUSTUS's parameter set between two
+  ascomycete yeasts of nearly the same size and GC costs 62% of exon F1
+  (0.773 -> 0.294) and 80% of donor F1 (0.853 -> 0.174) while nucleotide F1
+  falls only 9% (0.955 -> 0.867). That is the argument for section 4.8
+  reporting a vector rather than a headline, and it is a floor for the
+  charter's clade-independence claim: beat a two-yeast parameter swap before
+  a mammal-to-fungus claim means anything.
+  Verified: `--self-test` 47 -> 69 checks (the "41" in the previous doc
+  revision undercounted; the same counting method gives 47 for that code), all
+  pass, including an AUGUSTUS-shaped fixture that must score exactly 1.0 with
+  the flag and lose exactly its terminal/single exons and stop codons without
+  it, a stop_codon-stripped variant, and an id-collision fixture. Identity runs
+  on S. cerevisiae, S. pombe and human still 1.0 / MCC 1.0 on every metric with
+  0 fusions and 0 splits. Declarations and full JSON results committed under
+  `benchmark/validation/` (36 KB, no genome or prediction data).
+  docs/benchmark.md: section 4.5 now specifies the stop-codon convention and
+  its detection, section 6 gains the AUGUSTUS subsection and the ablation
+  table, open items 2 and 5 rewritten, new open item 10.
+  Task stays in `review`; PR #5 updated.
+  NOT done: real predictor output still covers one tool and two species --
+  Helixer and Tiberius emit no `stop_codon` features at all, so the blind 3 bp
+  extension is fixture-only, and no evidence-based pipeline (UTRs, alternative
+  isoforms) has been scored. Degraded-copy runs still 2 of 20. AUGUSTUS's
+  yeast donor F1 0.394 (571 predicted introns against 281 scored reference
+  ones in a 95.3% single-exon genome) is recorded as open item 10 rather than
+  read as settled. NEXT: Helixer or Tiberius on one vertebrate; address review
+  feedback on PR #5 when it arrives.
