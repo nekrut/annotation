@@ -48,13 +48,17 @@ Section 8 costs this.
 Listing of `hgdownload.soe.ucsc.edu/goldenPath/<db>/` and `/gbdb/<db>/` on
 2026-09-09. "Compressed" is the `maf/*.maf.gz` directory total; "raw" is the
 uncompressed per-chromosome MAF that backs the browser track and is served
-under `/gbdb/` with HTTP `Accept-Ranges: bytes` (verified with HEAD).
+under `/gbdb/` with HTTP `Accept-Ranges: bytes` (verified with HEAD). The
+470-way is the exception: its raw MAF sits under
+`goldenPath/hg38/multiz470way/maf/` (499 uncompressed files dated 2022-08,
+5.9 TB in total, 5.7 TB in the 25 primary chromosomes, `chr1.maf` alone
+471 GB; listing read 2026-09-09), and there is no compressed copy.
 
 | Assembly | Track | Aligner | Year | Species | Format on hgdownload | Compressed | Raw | Panel relevance |
 |---|---|---|---|---|---|---|---|---|
 | hg38 | multiz100way | multiz | 2015 | 100 | maf.gz per chromosome + `.nh` | 71.4 GB (357 files) | 790 GB | human `heldout_paired` |
 | hg38 | multiz30way | multiz | 2017 | 30 | maf.gz + `.nh` | 18.0 GB | 156 GB | human |
-| hg38 | multiz470way | multiz | 2022 | 470 | bigMaf (API only; no maf.gz directory) + `.nh` | n/a | n/a | human; largest vertebrate set |
+| hg38 | multiz470way | multiz | 2022 | 470 (mammals only; 431 distinct species) | bigMaf (API) + uncompressed `maf/` per chromosome + `.nh` | none | 5.9 TB (499 files) | human; largest mammal set |
 | hg38 | cactus241way (`cactus241wayBM`) | Cactus (Zoonomia) | 2020 | 241 mammals | bigMaf (API) + `.nh`; phyloP bigWig 9.6 GB | n/a | n/a | human |
 | hg38 | cactus447way | Cactus (Zoonomia + primates) | 2023 | 447 | bigMaf (API) + `.nh.txt`; phyloP bigWig 10.0 GB | n/a | n/a | human |
 | mm39 | multiz35way | multiz | 2021 | 35 | maf.gz + `.nh` | 16.3 GB | 141 GB | mouse `train` |
@@ -78,6 +82,42 @@ Notes.
   Cactus tracks (`Pan_troglodytes`). `fetch_window.py` checks that every
   source in the fetched blocks is a leaf of the tree; on the demonstration
   windows the match was 461 of 461 (hg38 470-way) and 89 of 89 (dm6).
+- Composition of the 470-way (`scripts/data/tree_composition.py` on
+  `hg38.470way.scientificNames.nh`, orders from GBIF on 2026-09-09 in
+  `scripts/data/hg38.470way.orders.tsv`). It is a mammal-only alignment:
+  470 leaves, 444 distinct leaf names, 431 distinct binomials; 35 species
+  are present as two or more assemblies or subspecies (two dog assemblies
+  plus the dingo, two *Mus musculus* and two *Rattus norvegicus*
+  assemblies, two jaguars, and so on), so an informant axis of 469 rows carries about 8% duplicate signal.
+  Distance is patristic from human on the track's own tree, in
+  substitutions per site; "within 0.5" and "beyond 1" are the horizon
+  thresholds of section 6.2. Orders with fewer than five leaves are
+  summed in the last row; the script prints all 23.
+
+  | order | leaves | species | min | median | max | within 0.5 | beyond 1 |
+  |---|---|---|---|---|---|---|---|
+  | Artiodactyla (incl. whales) | 126 | 113 | 0.323 | 0.408 | 0.442 | 126 | 0 |
+  | Rodentia | 87 | 84 | 0.325 | 0.467 | 0.544 | 54 | 0 |
+  | Carnivora | 68 | 58 | 0.339 | 0.360 | 0.400 | 68 | 0 |
+  | Primates | 60 | 58 | 0.012 | 0.110 | 0.280 | 60 | 0 |
+  | Chiroptera | 52 | 49 | 0.345 | 0.392 | 0.450 | 52 | 0 |
+  | Diprotodontia (marsupial) | 13 | 13 | 0.784 | 0.812 | 0.822 | 0 | 0 |
+  | Perissodactyla | 13 | 10 | 0.295 | 0.299 | 0.308 | 13 | 0 |
+  | Eulipotyphla | 7 | 7 | 0.384 | 0.426 | 0.552 | 6 | 0 |
+  | Lagomorpha | 7 | 5 | 0.370 | 0.377 | 0.451 | 7 | 0 |
+  | Pholidota | 6 | 4 | 0.341 | 0.345 | 0.348 | 6 | 0 |
+  | Pilosa | 5 | 4 | 0.334 | 0.342 | 0.364 | 5 | 0 |
+  | 12 other orders (incl. 6 more marsupials, 2 monotremes) | 25 | 25 | 0.236 | 0.426 | 1.023 | 16 | 2 |
+  | total informants | 469 | 430 | 0.012 | 0.377 | 1.023 | 413 | 2 |
+
+  Histogram of the 469 informants by distance from human: 28 within 0.1,
+  26 in 0.1 to 0.25, 359 in 0.25 to 0.5, 54 in 0.5 to 1 (rodents past
+  0.5, marsupials), 2 beyond 1 (platypus, echidna), none beyond 2. The
+  same script on `hg38.100way.nh` reproduces the section 6.1 human
+  histogram (9, 2, 40, 14, 24, 10) and puts the mouse at 0.502 against
+  0.547 on the 470-way tree, dog 0.332 against 0.371, opossum 0.766
+  against 0.810, so distances on the two trees are comparable to about
+  10%.
 - The UCSC JSON API behaves differently for the two MAF track types. For
   bigMaf tracks (470-way, both Cactus tracks, `hprc90way`) `getData/track`
   returns the MAF blocks themselves. For wigMaf tracks (every other multiz
@@ -400,12 +440,18 @@ not committed (regenerate with the commands in `scripts/data/README.md`).
    informants, 110 sit past 1 substitution per site; of the human 100-way's
    99, 34 do, and 40 of the rest are in the 0.25 to 0.5 band (laurasiatheres,
    glires). So the informant rows that carry an intron or UTR signal are
-   about 13 of 123 for fly and about 65 of 99 for human, and for the
-   470-way the fraction will be lower still. The model's informant axis
-   should expect to be mostly `unaligned` at every non-coding position and
-   should not pay attention cost for it, which is an argument for the
-   variable-`K` option in section 6.3 or for a sparse attention over aligned
-   rows only.
+   about 13 of 123 for fly and about 65 of 99 for human. The 470-way is
+   the opposite case: it is mammal-only, 413 of its 469 informants are
+   within 0.5 substitutions per site of human and only the two monotremes
+   are beyond 1 (section 2.1 composition table), so at `K` = 469 nearly
+   every row is inside the horizon and the axis is dense, with 359 rows
+   packed into the 0.25 to 0.5 band and about 8% of rows duplicating a
+   species. So the informant axis has to handle both regimes: mostly
+   `unaligned` rows on the vertebrate-wide and fly trees, and hundreds of
+   near-redundant aligned rows on the mammal tree. That is an argument for
+   the variable-`K` option in section 6.3 or for a sparse attention over
+   aligned rows, and, on the dense side, for subsampling or clade-pooling
+   rows at cut time rather than paying attention cost for 126 artiodactyls.
 3. **UTR tracks intron, not CDS, once distance grows.** In the human 0.5 to
    1 band UTR is at 0.42 against intron 0.27 and CDS 0.80; in the fly 1 to 2
    band UTR 0.45, intron 0.32, CDS 0.88. So the UTR objective will get its
@@ -618,8 +664,10 @@ informants) is the design-level answer.
    option 2.
 5. Done this draft: the Ensembl licence text is quoted in section 3. The
    470-way species composition is in `hg38.470way.scientificNames.nh` next
-   to the bigMaf (listing read 2026-09-09); a per-clade count of its leaves
-   has not been made.
+   to the bigMaf (listing read 2026-09-09); the per-order count of its
+   leaves with distances from human is now the composition table in
+   section 2.1 (`scripts/data/tree_composition.py`,
+   `scripts/data/hg38.470way.orders.tsv`).
 6. Answered: lenin (T-human-007, note 20260909T101258Z-lenin-0012,
    `docs/benchmark.md` section 2.4 on PR #5) keeps zebrafish on GRCz12ab.
    Moving to GRCz11 would buy only the Ensembl fish EPO, and both fish
@@ -634,6 +682,11 @@ informants) is the design-level answer.
    files. The fetcher now rotates mirrors, but a training pipeline that
    reads MAF by HTTP Range at scale should rsync the per-chromosome MAF
    once (sizes in section 2.1) rather than depend on hgdownload staying up.
+   That holds for the 100-way (790 GB raw, 71 GB gzipped) and the 35-way;
+   it does not hold for the 470-way, whose raw MAF is 5.9 TB with no
+   gzipped copy, so for that track the bigMaf API and Range reads into
+   `maf/chr*.maf` are the only laptop-scale paths and a full copy is a
+   cluster storage request.
 8. Done after review 20260909T090919Z-lenin-0011: the cutter's alignment
    class now comes from an explicit table with a strict default and an
    operator override; EPO ancestral rows are read from the fetcher's

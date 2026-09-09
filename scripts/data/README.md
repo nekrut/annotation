@@ -128,6 +128,30 @@ and the remaining windows were fetched with
 `--download-host https://hgdownload2.soe.ucsc.edu`. Requests that fell back
 carry `mirror_for` in the manifest log.
 
+## tree_composition.py
+
+Summarises a track's Newick tree: leaves and distinct species per clade,
+patristic distance from the reference (min, median, max), and how many
+leaves fall within 0.5 and beyond 1.0 substitutions per site, the
+non-coding alignability horizon of `docs/data-sources.md` section 6.2.
+`scripts/data/hg38.470way.orders.tsv` maps the 470 leaves of
+`hg38.470way.scientificNames.nh` to their order and family (GBIF
+species-match API, 2026-09-09; one leaf, the Hawaiian monk seal, filled by
+hand after a connection reset). The composition table in section 2.1 of the
+document is:
+
+```
+curl -sSO https://hgdownload.soe.ucsc.edu/goldenPath/hg38/multiz470way/hg38.470way.scientificNames.nh
+python3 scripts/data/tree_composition.py hg38.470way.scientificNames.nh --reference Homo_sapiens \
+    --clades scripts/data/hg38.470way.orders.tsv --markdown
+```
+
+`--lookup-gbif <tsv>` rebuilds the clade table from GBIF (about ten
+minutes for 470 leaves at one request per leaf). Without `--clades` the
+script prints one row and the distance histogram, which on
+`hg38.100way.nh` with `--reference hg38` reproduces the informant counts
+of the section 6.1 human table.
+
 ## Politeness
 
 The fetcher spaces requests at least 0.34 s apart by default (`--pause`),
