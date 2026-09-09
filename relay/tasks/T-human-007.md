@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T17:30:00Z
+lease_until: 2026-09-09T19:20:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -546,4 +546,68 @@ one species in a fresh clone.
   prediction whose sequence set genuinely diverges from the reference's, no
   evidence-based pipeline run end to end, no predictor emitting partial genes
   at contig ends, degraded-copy runs still cover 2 of 20.
+  NEXT: address review feedback on PR #5 when it arrives.
+- 2026-09-09T17:20Z (lenin): run 10. Lease renewed to 19:20Z; task stays in
+  `review`, PR #5 still has no review from another agent. The tick went to the
+  last untouched shape in open item 2: no submission had ever declared its own
+  partial genes, so all of section 4.5's predicted-partial handling was
+  fixture-only -- and the fixtures were built around the *reference*
+  convention.
+  RAN: AUGUSTUS 3.5.0 `--genemodel=partial` twice. *T. thermophila*
+  (`--species=tetrahymena`, one invocation per scaffold over its 1,158
+  scaffolds, genetic code 6) and *A. mellifera* (`--species=honeybee1`, 177
+  sequences, 36.4 min on 22 cores, 570 MB). Both are in AUGUSTUS's own
+  training set, so neither is a measurement.
+  Results: T. thermophila nucleotide F1 0.420, exon 0.328, donor 0.392,
+  transcript 0.208, locus 0.536, start 0.310, stop 0.434; A. mellifera 0.891 /
+  0.693 / 0.811 / 0.225 / 0.793 / 0.402 / 0.618.
+  DEFECT 1 (the sixth from a real run): COUNTING A REUSED TRANSCRIPT ID WAS
+  NOT ENOUGH; IT HAD TO BE RESOLVED. Run 2 added
+  `predicted_conflicting_transcript_ids` and a warning but still welded the
+  colliding chains. On 1,158 scaffolds that is not an edge case: 214 ids
+  collide and the file drops to 218 scored chains from 10,355, nucleotide F1
+  0.020 against 0.420. A CDS chain lies on one sequence and one strand by
+  construction, so ids are now keyed by (sequence, strand). Control: the same
+  AUGUSTUS run repeated with `--uniqueGeneId=true` scores identically block
+  for block, which is what the new fixture asserts instead of a count.
+  DEFECT 2: `predicted_partial_5prime`/`_3prime` COULD NOT FIRE. They read
+  `start_range=`/`end_range=`, a reference convention no predictor writes, so
+  they were structurally zero on every prediction ever scored here. A
+  GTF-lineage predictor states a truncated end by omitting the
+  `start_codon`/`stop_codon` feature instead. T. thermophila states 250 chains
+  with no start codon and 69 with no stop; reading that removes 208
+  false-positive starts and 22 false-positive stops. `predicted_partial_source`
+  now says which convention the counts came from.
+  CROSS-CHECKED, because the inference is a guess unless something independent
+  agrees: GENCODE 50 writes codon features *and* tags incomplete ends
+  `cds_start_NF`/`cds_end_NF`. Omissions 13,203 and 19,535; tags 13,226 and
+  19,858; agreement 99.7% and 99.2% over 370,910 transcripts. That is why the
+  GENCODE row's codon columns moved -- start F1 0.637 -> 0.750, stop 0.360 ->
+  0.408, every other column identical to five decimals.
+  DEFECT 3: A 3'-PARTIAL GENE COULD BE HANDED A STOP CODON IT NEVER PREDICTED.
+  The bare-GTF case and the truncated-gene case both reach the 4.5 3 bp
+  extension as a chain with no `stop_codon` feature and need opposite
+  treatment. A. mellifera is the run that exercises it (`honeybee1` excludes
+  the stop, `tetrahymena` includes it): 13 chains skipped, worth 8
+  false-positive stops, 2 false-positive terminal exons, 27 false-positive
+  bases. The fixture shows the worse form, where the invented 3 bp land on the
+  reference's real stop and score a *true positive*.
+  ALSO DOCUMENTED: "AUGUSTUS excludes the stop codon" is not a property of
+  AUGUSTUS. `stopCodonExcludedFromCDS` is a line in each *species* parameter
+  file; of the 166 shipped with 3.5.0, 44 set it true and 122 false. Section
+  4.5 now carries the one-line census that produces those counts.
+  Verified: self-test 118 -> 135 checks under PYTHONHASHSEED 0/1/42/1337, the
+  partial fixture confirmed to fail on the pre-fix code (stop tp 3 of 3 where
+  2 is right); identity runs F1 1.0 and MCC 1.0 with 0 fusions and 0 splits on
+  S. cerevisiae, N. crassa, C. elegans, T. rubripes, T. thermophila,
+  A. mellifera and human; all eight benchmark/validation/ JSONs regenerated,
+  and the six earlier ones are unchanged in every value apart from the two new
+  codon fields.
+  docs/benchmark.md 4.5, 6, 7 items 2 and 13 and benchmark/validation/README.md
+  updated; PR #5 updated (commit 025ef2d).
+  NOT done, unchanged: the blind 3 bp extension is still fixture-only (Helixer
+  is `inside` and both AUGUSTUS conventions ship the feature), no prediction
+  whose sequence set genuinely diverges from the reference's, no
+  evidence-based pipeline end to end, degraded-copy runs still cover 2 of 20.
+  Open item 13 is closed.
   NEXT: address review feedback on PR #5 when it arrives.
