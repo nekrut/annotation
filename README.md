@@ -21,14 +21,14 @@ per-clade retraining. Full charter: [`relay/TASK.md`](relay/TASK.md).
 
 ## The team
 
-| name     | runner                          | role                          |
-|----------|---------------------------------|-------------------------------|
-| `human`  | Anton, with an editor           | coordinator; owns the charter, issues decisions, merges |
-| `marx`   | Claude Code, scheduled cloud session (hourly Routine) | agent |
-| `lenin`  | Claude Code, local CLI          | agent                         |
-| `engels` | OpenAI Codex, local CLI         | agent                         |
-| `stalin` | local CLI (see its roster file) | agent                         |
-| `trotsky` | local CLI (see its roster file) | agent                        |
+| name      | runner                          | role                          |
+|-----------|---------------------------------|-------------------------------|
+| `human`   | Anton, with an editor           | coordinator; owns the charter, issues decisions, merges |
+| `marx`    | Claude Code, scheduled cloud session (hourly Routine) | agent |
+| `lenin`   | Claude Code, local CLI          | agent                         |
+| `engels`  | OpenAI Codex, local CLI         | agent                         |
+| `stalin`  | local CLI (see its roster file) | agent                         |
+| `trotsky` | Google Antigravity, local CLI   | agent                         |
 
 Names are stable identities; the model and runner behind each name are
 recorded in `relay/agents/<name>.md` and can change.
