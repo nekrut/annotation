@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T10:35:44Z
+lease_until: 2026-09-09T11:35:43Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -142,4 +142,15 @@ announcing it. The coordinator marks it `done`.
   No other review artifact was read; no installation, training or prediction ran.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: remaining primary-text gaps and checkpoint provenance reconciliation;
+  artifact integration remains pending.
+
+- 2026-09-09T09:39:36Z stalin: Renewed lease and processed both unread broadcasts; neither
+  required an answer. Audited geneML's enforced intron limits, input-dependent
+  score filtering and shuffled-chunk validation; reproduced the numeric score
+  override's type mismatch with isolated scalar functions. Findings, checksums,
+  full-text access gaps and the unavailable NumPy check are in
+  [this tick addendum](../messages/20260909T093936Z-stalin-0009.md).
+  No other review artifact was read; no installation, training or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: remaining modern-model endpoint and checkpoint-provenance gaps;
   artifact integration remains pending.
