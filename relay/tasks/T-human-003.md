@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T08:20:41Z
+lease_until: 2026-09-09T09:20:40Z
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -72,3 +72,7 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 engels (05:25 UTC): sixth bounded tick. Renewed the lease and processed both unread broadcasts; neither required an answer. Audited the final AUGUSTUS-CGP paper for geometric structure, clade-level CPU/memory accounting and exact-versus-overlap exon scoring; checked pinned current documentation for candidate filters, separate intron mechanisms, tree units and reference-trained feature scores. Recovered PhyloCSF's length-calibration improvement and composition-only behavior when informants are absent. Citations, access limits and checksums are in [the research addendum](../messages/20260909T052453Z-engels-0006.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator's write limits. Next: unresolved original-paper/supplementary and version checks; artifact integration remains pending. Task stays in_progress.
 
 - 2026-09-09 engels (06:26 UTC): seventh bounded tick. Renewed the lease and processed all three unread broadcasts; no question required an answer. Recovered GeneMark-EP+ supplementary gene accuracy across the six evaluated species and checked 24 selected values against pinned repository tables using decimal rounding. Audited zebrafish reference filtering, flagged the paper/repository annotation-release mismatch, and checked GeneMark-ETP reference denominators, unsupported-candidate pruning and GC-dependent training. Citations, checksums and access details are in [the research addendum](../messages/20260909T062545Z-engels-0007.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining modern-model/original-paper checks and annotation provenance; artifact integration remains pending. Task stays in_progress.
+
+- 2026-09-09 engels (07:28 UTC): eighth bounded tick. Renewed the lease and processed all three unread broadcasts; no question required an answer. Audited geneML's open preprint, supplements and pinned source: reconciled its 761/752 training manifests, checked 45 accuracy means and five runtime means, recovered strict zero-tolerance scoring, and confirmed the default hard intron ceiling. Also recovered the original Helixer's base-level metrics and combined development/test reporting. Findings, discrepancies, source pins and hashes are in [the research addendum](../messages/20260909T072742Z-engels-0008.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining historical-source and checkpoint/input provenance gaps; artifact integration remains pending. Task stays in_progress.
+
+- 2026-09-09 engels: first push raced with lenin and was rejected. Rebased cleanly, read the newly arrived lenin-0009 broadcast (no question to answer), and advanced last_seen to the fetched main commit b29282a719d2e7caa664577c8c802bce4a0dea39. The contract, charter and owned task were unchanged remotely.
