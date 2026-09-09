@@ -71,7 +71,16 @@ informant-window pairs above 0.5; `--tsv` writes every pair. The numbers in
 ```
 python3 scripts/data/coverage_by_distance.py /tmp/cov/fly --reference dm6 --markdown --bins 0.1,0.25,0.5,1.0,2.0
 python3 scripts/data/coverage_by_distance.py /tmp/cov/human --reference hg38 --markdown --bins 0.1,0.25,0.5,1.0,2.0
+python3 scripts/data/coverage_by_distance.py /tmp/cov/mouse --reference mm39 --markdown --bins 0.1,0.25,0.5,1.0,2.0
+python3 scripts/data/coverage_by_distance.py /tmp/cov/worm --reference ce11 --markdown --bins 0.1,0.25,0.5,1.0,2.0
 ```
+
+A source that is not a leaf of the tree is reported on stderr and skipped
+for the bins, but a tree leaf with no coverage entry counts as an
+all-unaligned informant; that is how the mm39 35-way's GenArk assembly
+(`GCF_003668045.3` in the MAF, `GCF_003668045v3` in the tree) scored zero
+until `fetch_window.py` learned the naming convention (`maf_source()`), so
+check the warning before trusting a bin.
 
 ## cut_windows.py
 
@@ -91,7 +100,7 @@ a track unknown to the built-in class table to be reference-anchored;
 labels, frames, boundaries, informant codes, insertions, distances, the
 reverse complement, the transcript filter, the alignment-class table,
 label counts on a padded window and an EPO-shaped two-block window with
-ancestral rows (27 checks).
+ancestral rows (28 checks).
 
 ```
 python3 scripts/data/cut_windows.py --self-test
@@ -113,14 +122,29 @@ reverse-complement sidecars. Tree distances are 0.038 to the chicken-turkey
 ancestor, 0.079 to turkey, 0.168 to great tit and 0.175 to canary; the
 other members do not align in this window and are all-unaligned rows.
 
-## Sampling run (section 6.1 of the document)
+## sample_genes.py and the sampling runs (section 6.1 of the document)
 
-`docs/data-sources.md` section 6.1 aggregates 12 fly and 10 human windows.
-The genes were drawn with a fixed seed from `ncbiRefSeqCurated` on dm6
-chr2L and hg38 chr11 (NM_ transcripts, complete CDS, at least 3 exons,
-transcript length 2 to 8 kb for fly and 3 to 12 kb for human, one per gene,
-non-overlapping), so the human sample is biased to short genes; the list
-is in the document. Midway through the run `hgdownload.soe.ucsc.edu` reset
+`docs/data-sources.md` section 6.1 aggregates 12 fly, 10 human, 10 mouse
+and 10 worm windows. The fly and human genes were drawn with a fixed seed
+from `ncbiRefSeqCurated` on dm6 chr2L and hg38 chr11 (NM_ transcripts,
+complete CDS, at least 3 exons, transcript length 2 to 8 kb for fly and
+3 to 12 kb for human, one per gene, non-overlapping), so the human sample
+is biased to short genes; the list is in the document. That draw was done
+in an interactive session; `sample_genes.py` is the same procedure as a
+script (longest qualifying NM_ per gene, genes overlapping any other
+transcript of the track dropped, `random.Random(seed).shuffle`, first `n`),
+and the mouse and worm samples were drawn with it on 2026-09-09:
+
+```
+python3 scripts/data/sample_genes.py --genome mm39 --chrom chr19 --length 3000-12000 --n 10 --seed 20260909
+python3 scripts/data/sample_genes.py --genome ce11 --chrom chrIII --length 2000-8000 --n 10 --seed 20260909
+```
+
+Each printed line is `gene`, `transcript`, `chrom:start-end`, `exons`; the
+locus goes straight to `fetch_window.py --locus ... --flank 500`
+(`--track multiz35way` on mm39, `--track multiz135way` on ce11,
+`--conservation none` since the coverage run does not use it). The header
+line records the track's `dataTime`, which is what the draw depends on. Midway through the run `hgdownload.soe.ucsc.edu` reset
 every connection for several minutes while the API host and
 `hgdownload2.soe.ucsc.edu` kept serving; the fetcher now rotates through
 the mirrors on connection errors and `--download-host` sets the primary,

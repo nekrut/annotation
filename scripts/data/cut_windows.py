@@ -234,6 +234,18 @@ def parse_newick(text: str):
     return children, parent, length, name
 
 
+
+def maf_source(src: str) -> str:
+    """Assembly part of a MAF ``s`` row name, spelled as the track's tree
+    spells its leaves.  UCSC names rows ``<db>.<chrom>``; GenArk assemblies
+    carry a version dot in the db (``GCF_003668045.3.NC_048596.1`` in the
+    mm39 35-way) and their tree leaf is ``GCF_003668045v3``."""
+    m = re.match(r"^(GC[AF]_\d+)\.(\d+)\.", src)
+    if m:
+        return f"{m.group(1)}v{m.group(2)}"
+    return src.split(".")[0]
+
+
 def canonical_name(label: str, names=()) -> str:
     """Map a tree label to a MAF row name.  UCSC leaves are the row names
     themselves.  Ensembl leaves are ``species_region_start_end[strand]``: the
@@ -248,7 +260,7 @@ def canonical_name(label: str, names=()) -> str:
     if best:
         return best
     m = re.match(r"^(.+?)_[^_]+_\d+_\d+\[[+-]\]$", label)
-    return m.group(1) if m else label.split(".")[0]
+    return m.group(1) if m else maf_source(label)
 
 
 def newick_leaves_and_distances(text: str, ref: str, names=()) -> tuple[list[str], dict[str, float]]:
@@ -330,7 +342,7 @@ def paint_informants(blocks, ref: str, start: int, end: int, rows: list[str]):
     overlaps = 0
     minus = 0
     for block in blocks:
-        rref = next((r for r in block if r[1].split(".")[0] == ref), None)
+        rref = next((r for r in block if maf_source(r[1]) == ref), None)
         if rref is None:
             continue
         if rref[4] != "+":
@@ -350,7 +362,7 @@ def paint_informants(blocks, ref: str, start: int, end: int, rows: list[str]):
         for r in block:
             if r is rref:
                 continue
-            k = row_of.get(r[1].split(".")[0])
+            k = row_of.get(maf_source(r[1]))
             if k is None:
                 continue
             seq = r[6]
@@ -483,7 +495,7 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
     sources: list[str] = []
     for b in blocks:
         for r in b:
-            nm = r[1].split(".")[0]
+            nm = maf_source(r[1])
             if nm not in sources:
                 sources.append(nm)
     # ancestral rows: what the fetcher recorded, else by name
@@ -774,6 +786,10 @@ def self_test() -> int:
     assert s3["informants"] == ["meleagris_gallopavo", "taeniopygia_guttata"] and s3["row_order"] == "observed-sorted" \
         and s3["dropped_ancestors"] == ["Ggal-Mgal[2]", "Ggal-Tgut[3]"], s3
     checks += 7
+    # GenArk source names carry a version dot and their tree leaf spells it with a v (mm39 35-way)
+    assert maf_source("GCF_003668045.3.NC_048596.1") == "GCF_003668045v3" and maf_source("mm39.chr19") == "mm39" \
+        and maf_source("C_sp38_MB_2015.chrI") == "C_sp38_MB_2015" and canonical_name("GCF_003668045.3.NC_048596.1") == "GCF_003668045v3"
+    checks += 1
     print(f"self-test passed ({checks} checks)")
     return 0
 

@@ -167,6 +167,18 @@ class Fetcher:
         return json.loads(self.get(url, what=what).decode("utf-8"))
 
 
+
+def maf_source(src: str) -> str:
+    """Assembly part of a MAF ``s`` row name, spelled as the track's tree
+    spells its leaves.  UCSC names rows ``<db>.<chrom>``; GenArk assemblies
+    carry a version dot in the db (``GCF_003668045.3.NC_048596.1`` in the
+    mm39 35-way) and their tree leaf is ``GCF_003668045v3``."""
+    m = re.match(r"^(GC[AF]_\d+)\.(\d+)\.", src)
+    if m:
+        return f"{m.group(1)}v{m.group(2)}"
+    return src.split(".")[0]
+
+
 def sha256_file(path: str) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -544,7 +556,7 @@ def coverage_by_species(maf_blocks: list[str], ref_prefix: str, start: int, end:
         rows = [ln.split() for ln in block.splitlines() if ln.startswith("s ")]
         if not rows:
             continue
-        ref = next((r for r in rows if r[1].split(".")[0] == ref_prefix), None)
+        ref = next((r for r in rows if maf_source(r[1]) == ref_prefix), None)
         if ref is None:
             continue
         ref_seq = ref[6]
@@ -561,7 +573,7 @@ def coverage_by_species(maf_blocks: list[str], ref_prefix: str, start: int, end:
         for r in rows:
             if r is ref:
                 continue
-            sp = r[1].split(".")[0]
+            sp = maf_source(r[1])
             arr = covered.setdefault(sp, bytearray(n))
             seq = r[6]
             for col, refp in enumerate(col_to_ref):
@@ -734,7 +746,7 @@ def main() -> int:
         json.dump(cons or {"track": None, "values": []}, f)
 
     # ---- summary statistics
-    sources = sorted({ln.split()[1].split(".")[0] for b in maf_blocks for ln in b.splitlines() if ln.startswith("s ")})
+    sources = sorted({maf_source(ln.split()[1]) for b in maf_blocks for ln in b.splitlines() if ln.startswith("s ")})
     manifest["alignment_sources"] = len(sources)
     if trees and source == "ucsc":
         leaves = set(newick_leaves(trees[0]))

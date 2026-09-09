@@ -421,13 +421,57 @@ reference bases (13,006 CDS, 18,810 UTR, 46,053 intron, 4,256 intergenic),
 | 1-2 | 24 | 0.556 | 0.052 | 0.057 | 0.031 | 0.62 | 0.02 | 0.01 | 0.03 |
 | >2 | 10 | 0.478 | 0.015 | 0.037 | 0.008 | 0.49 | 0.00 | 0.00 | 0.01 |
 
-The per-pair rows (1,476 fly, 990 human) are what `--tsv` writes; they are
-not committed (regenerate with the commands in `scripts/data/README.md`).
+Mouse, mm39 multiz35way, 10 windows (`Slc22a6`, `Lipo1`, `Rcor2`, `Doc2g`,
+`Tlx1`, `Ap5b1`, `Klc2`, `Slc22a12`, `Kcnk4`, `Trim8`; drawn on chr19,
+3 to 12 kb, with `scripts/data/sample_genes.py`, seed 20260909), 90,270
+reference bases (15,599 CDS, 13,242 UTR, 54,549 intron, 6,880
+intergenic), 34 informants, 17.4 MB in 76 requests. The 35-way has one
+informant under 0.25 (rat) and four in the 0.25 to 0.5 band (a GenArk
+rodent assembly at 0.26, beaver, squirrel, colugo); 24 of the 34, primates
+and laurasiatheres included, sit between 0.51 and 0.76:
+
+| distance (subst/site) | informants | CDS cov | UTR cov | intron cov | intergenic cov | CDS >0.5 | UTR >0.5 | intron >0.5 | intergenic >0.5 |
+|---|---|---|---|---|---|---|---|---|---|
+| 0.1-0.25 | 1 | 1.000 | 0.966 | 0.906 | 0.948 | 1.00 | 1.00 | 1.00 | 1.00 |
+| 0.25-0.5 | 4 | 0.945 | 0.827 | 0.596 | 0.666 | 0.95 | 0.90 | 0.82 | 0.78 |
+| 0.5-1 | 24 | 0.894 | 0.653 | 0.443 | 0.451 | 0.91 | 0.68 | 0.59 | 0.51 |
+| 1-2 | 3 | 0.654 | 0.079 | 0.059 | 0.020 | 0.77 | 0.07 | 0.03 | 0.00 |
+| >2 | 2 | 0.484 | 0.004 | 0.018 | 0.000 | 0.55 | 0.00 | 0.00 | 0.00 |
+
+Human seen from mouse (0.52 on this tree; 0.50 seen from human on the
+100-way) aligns 0.65 of mouse intron bases in these windows; the 100-way
+puts mouse in its 0.25 to 0.5 bin, whose intron coverage over all 40
+informants is 0.56, so the pair looks about the same from either end.
+
+Worm, ce11 multiz135way, 10 windows (`Y45F3A.4`, `clp-2`, `C40H1.7`,
+`C50C3.2`, `Y71H2AM.3`, `affl-1`, `ZK1128.7`, `enu-3.2`, `B0524.2`,
+`ttm-1`; drawn on chrIII, 2 to 8 kb, with `scripts/data/sample_genes.py`,
+seed 20260909), 50,814 reference bases (18,803 CDS, 4,867 UTR, 20,321
+intron, 6,823 intergenic), 134 informants, 30.2 MB in 98 requests. The
+track's own tree puts the nearest informant (*Caenorhabditis* sp. 11) at
+1.11 substitutions per site from *C. elegans* and the median informant at
+2.54, so the first three bins are empty:
+
+| distance (subst/site) | informants | CDS cov | UTR cov | intron cov | intergenic cov | CDS >0.5 | UTR >0.5 | intron >0.5 | intergenic >0.5 |
+|---|---|---|---|---|---|---|---|---|---|
+| 1-2 | 34 | 0.500 | 0.219 | 0.200 | 0.174 | 0.53 | 0.24 | 0.12 | 0.18 |
+| >2 | 100 | 0.119 | 0.047 | 0.052 | 0.041 | 0.10 | 0.00 | 0.00 | 0.01 |
+
+The 1 to 2 bin is two different things: the 18 *Caenorhabditis* informants
+(1.11 to 1.39) have per-informant intron coverage of 0.16 to 0.46 (mean
+0.34) and CDS 0.59 to 0.90, while the 16 non-*Caenorhabditis* rhabditids
+in the same bin (*Pristionchus*, *Oscheius*, *Diploscapter*, strongylids,
+1.68 to 1.90) have intron coverage 0.00 to 0.18 and CDS mostly below 0.5.
+
+The per-pair rows (1,476 fly, 990 human, 340 mouse, 1,340 worm) are what
+`--tsv` writes; they are not committed (regenerate with the commands in
+`scripts/data/README.md`).
 
 ### 6.2 What the aggregate adds to the anecdote
 
-1. **The non-coding signal has a horizon near one substitution per site,
-   in both clades.** Below 0.5 substitutions per site introns and
+1. **The non-coding signal has a horizon near one substitution per site
+   on the three vertebrate and insect trees, and the worm tree is scaled
+   differently.** Below 0.5 substitutions per site introns and
    intergenic sequence are mostly aligned (fly 0.78 to 0.94, human 0.56 to
    0.94); between 0.5 and 1 they are aligned in a quarter to three quarters
    of pairs; past 1 they are essentially gone (under 0.06 base-weighted,
@@ -435,12 +479,27 @@ not committed (regenerate with the commands in `scripts/data/README.md`).
    0.48 (human) even beyond 2 substitutions per site. The two references
    agree on the shape although their trees are different (the fly tree
    reaches 2 substitutions per site inside Diptera; the human tree reaches
-   it at fish).
+   it at fish). Mouse (35-way) gives the same shape from the third
+   reference: the 0.25 to 0.5 band is at 0.60 intron
+   coverage, 0.5 to 1 at 0.44, opossum (1.0) at 0.18, and chicken, frog,
+   fish and lamprey (1.3 to 2.5) at 0.06 or less while CDS stays at 0.46
+   to 0.65. The worm 135-way does not: its
+   nearest informant is 1.11 substitutions per site away, yet the 18
+   *Caenorhabditis* informants between 1.11 and 1.39 still align 0.34 of
+   intron bases on average, where the fly and mammal trees give under 0.06.
+   Either the multiz tree for ce11 is on a different scale (its root-to-
+   *C. elegans* branch alone is 0.43) or *Caenorhabditis* non-coding
+   sequence is more alignable per substitution; the point for the design
+   is that the horizon should be learned per tree or expressed through the
+   coverage the cutter records, not hard-coded as a distance.
 2. **Most of the tree is beyond the horizon.** Of the fly 124-way's 123
    informants, 110 sit past 1 substitution per site; of the human 100-way's
    99, 34 do, and 40 of the rest are in the 0.25 to 0.5 band (laurasiatheres,
    glires). So the informant rows that carry an intron or UTR signal are
-   about 13 of 123 for fly and about 65 of 99 for human. The 470-way is
+   about 13 of 123 for fly and about 65 of 99 for human; for mouse it is
+   29 of 34 (the 35-way was built for a mouse browser and stops at
+   lamprey), and for worm it is 0 of 134 by distance and 18 by the
+   *Caenorhabditis* coverage of item 5. The 470-way is
    the opposite case: it is mammal-only, 413 of its 469 informants are
    within 0.5 substitutions per site of human and only the two monotremes
    are beyond 1 (section 2.1 composition table), so at `K` = 469 nearly
@@ -463,8 +522,17 @@ not committed (regenerate with the commands in `scripts/data/README.md`).
    property of which genomes were sequenced, not of the clades, and it is
    why per-species alignment depth in Table 7 (section 7) matters as much
    as the existence of an alignment.
-5. Caveats: one chromosome per species, short human genes, twelve and ten
-   windows; multiz block boundaries depress close-informant CDS coverage a
+5. **The worm training alignment has no informant inside the horizon.**
+   On the ce11 135-way every informant is beyond 1 substitution per site
+   and 100 of 134 are beyond 2; the whole *Caenorhabditis* signal is
+   carried by 18 rows with a third of intron bases aligned. So for the one
+   nematode in the panel, the model must get most of its intron and UTR
+   evidence from sequence and RNA-seq, and the comparative channel is
+   CDS-dominated (0.50 base-weighted in the 1 to 2 bin). That is the
+   opposite of the mammal case in item 2, and it argues for training with
+   informant dropout so the model does not learn to depend on close rows.
+6. Caveats: one chromosome per species, short human genes, twelve, ten,
+   ten and ten windows; multiz block boundaries depress close-informant CDS coverage a
    little (the 0.976 for primates is boundaries, not biology); the fly
    intergenic column is 4.7 kb of flank. The direction of every effect is
    the same as in the single-locus tables above, which is what the sample
@@ -583,7 +651,7 @@ Applying them to what exists:
 | zebrafish | train | Ensembl fish EPO on GRCz11 (panel is GRCz12ab; `docs/benchmark.md` section 2.4 keeps it there) | none on either assembly (danRer11 has no `*way`, phyloP or phastCons track; GRCz12ab has no hub yet) | no usable training alignment: both fish EPO sets (32 and 65 species) contain fugu (held-out) and are jointly inferred, so under section 3.2 they must be rebuilt without fugu whichever assembly zebrafish sits on; dropping the row does not qualify. Lifting to GRCz11 through UCSC's `danRer11ToGCA_052040795.1.over.chain.gz` buys only that same unusable alignment and was rejected in section 2.4. Counts with the thirteen in section 8 |
 | fugu | heldout_paired | Ensembl fish EPO on fTakRub1.2 (panel 1.3) | none | evaluation; informant set contains zebrafish (train), which the rules allow at inference if declared |
 | fruit fly | train | dm6 124-way and 27-way | dm6 phyloP124way | training; the 124-way contains honey bee (`apiMel4`, held-out): drop that row at cut time and declare `alignment_rows_dropped: [apiMel4]` |
-| C. elegans | train | ce11 135-way (raw MAF only) | ce11 phyloP135way | training; no panel species among informants |
+| C. elegans | train | ce11 135-way (raw MAF only, readable by Range from `/gbdb`) | ce11 phyloP135way | training; no panel species among informants; but no informant within 1 substitution per site either (section 6.1), so comparative evidence for non-coding classes is thin |
 | yeast | train | sacCer3 7-way | phastCons7way | training; near-intronless, so mostly a negative control for the intron machinery |
 | frog, honey bee, sea anemone, ciona, thale cress, rice, maize, S. pombe, Neurospora, Dictyostelium, Plasmodium, Tetrahymena | 5 train, 7 held-out | none (rice: 8-way EPO on IRGSP, not the panel's AGIS1.0) | none | no comparative input available; the model runs single-genome on these unless we build alignments |
 
@@ -642,12 +710,18 @@ informants) is the design-level answer.
 
 ## 9. Open items and questions for other owners
 
-1. Done this draft: section 6.1 aggregates coverage over 12 fly and 10
-   human windows by tree distance (`scripts/data/coverage_by_distance.py`).
-   Still one chromosome per species and short genes for human; extending
-   to the panel's other aligned references (mouse mm39 35-way, worm ce11
-   135-way, which the fetcher does not yet read because it is raw MAF only)
-   is a laptop job for whoever needs the numbers.
+1. Done: section 6.1 aggregates coverage over 12 fly, 10 human, 10 mouse
+   and 10 worm windows by tree distance (`scripts/data/coverage_by_distance.py`;
+   the mouse and worm draws are reproducible with
+   `scripts/data/sample_genes.py`). The mm39 35-way and ce11 135-way read
+   through the same wigMaf index plus Range path as the 100-way and
+   124-way (the ce11 MAF sits at `/gbdb/ce11/multiz135way/chr*.maf`, without
+   a `maf/` subdirectory; the fetcher tries both layouts). Still one
+   chromosome per species and short genes for human. The mouse run found
+   and fixed a parsing bug: GenArk sources (`GCF_003668045.3.NC_048596.1`)
+   were cut at the first dot and never matched their tree leaf
+   (`GCF_003668045v3`), so that informant scored as fully unaligned;
+   `maf_source()` in the fetcher and the cutter now handles the convention.
 2. Done this draft: the window-cutting convention is section 6.3 and
    `scripts/data/cut_windows.py`; the three open design choices at the end
    of 6.3 are for T-human-011.
