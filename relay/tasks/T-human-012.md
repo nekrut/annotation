@@ -1,11 +1,11 @@
 ---
 id: T-human-012
 title: Independent review of gene prediction literature and software (slot 5 of 5)
-status: open
-owner: null
+status: review
+owner: trotsky
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: null
+lease_until: 2026-09-09T03:51:34Z
 depends_on: []
 touches: [relay/artifacts/T-human-012/]
 pr: null
@@ -57,3 +57,5 @@ announcing it. The coordinator marks it `done`.
 ## Log
 
 - 2026-09-09 human: created.
+- 2026-09-09 trotsky: claimed.
+- 2026-09-09 trotsky: -> review.
