@@ -30,7 +30,9 @@ Arrays in each ``.npz`` (``L`` = ``--length``, ``K`` = number of informants):
   ``bound``  uint8 [L]     0 none, 1 first base of start codon, 2 last base of
                            stop codon, 3 donor (first intron base),
                            4 acceptor (last intron base); all placed at their
-                           + strand coordinate, strand given by ``strand``
+                           + strand coordinate, strand given by ``strand``.
+                           A CDS end the annotation leaves incomplete gets no
+                           start or stop mark (see --partial-ends)
   ``inf``    uint8 [K, L]  informant base opposite each reference base:
                            A=0 C=1 G=2 T=3, gap=4, unaligned=5 (no block covers
                            the position), N or other=6
@@ -50,7 +52,8 @@ rule was applied under, the transcripts painted and the transcripts
 excluded by type, the distinct start codons, stop codons, donors and
 acceptors the annotation states over all isoforms against those the
 painted isoforms keep (``distinct_sites``, so the cost of an isoform
-policy in splice-site diversity is on record), the source manifest's
+policy in splice-site diversity is on record), which CDS ends were judged
+incomplete and on what evidence (``cds_ends``), the source manifest's
 SHA-256 and the tool version.
 
 Conventions worth stating once:
@@ -59,6 +62,23 @@ Conventions worth stating once:
   (defaults 4096 / 2048); the last example is padded, never dropped, and
   ``mask`` says where the padding starts.  ``--length 0`` emits the whole
   fetched window as one unpadded example.
+* Incomplete CDS ends.  An annotation states a truncated CDS end either
+  explicitly (genePred ``cdsStartStat``/``cdsEndStat`` = ``incmpl``,
+  GENCODE ``cds_start_NF``/``cds_end_NF`` tags, a non-zero frame on the
+  first coding exon; the fetcher carries these as ``cds_start_status``,
+  ``cds_end_status`` and ``cds_start_frame``) or only by omission, and some
+  sources (Ensembl REST, UCSC's GENCODE ``cdsStartStat`` columns, which are
+  ``none`` throughout) state nothing.  ``--partial-ends both`` (default)
+  takes the declaration where there is one and otherwise reads the
+  reference: a CDS whose first codon is not ATG is 5' incomplete, one whose
+  last codon is not a stop (nor the codon after it, for a stop-excluded
+  convention) is 3' incomplete, under ``--genetic-code``.  An incomplete
+  end gets no start/stop mark in ``bound``, is not counted in
+  ``distinct_sites``, and a declared 5' frame offsets ``frame``.
+  ``declared`` and ``sequence`` use one signal only; ``none`` paints every
+  end as before version 0.5.  The sidecar's ``cds_ends`` records the
+  declared and sequence evidence per window, the transcripts judged
+  incomplete at each end, and every disagreement between the two signals.
 * Row order.  For a track with one tree (multiz, Cactus on UCSC) rows are
   the tree's leaves in depth-first order, so ``K`` is fixed per track.
   Ensembl returns one tree per block, so rows there are the species set's
@@ -123,8 +143,23 @@ import struct
 import sys
 import zipfile
 
-TOOL_VERSION = "0.4"
+TOOL_VERSION = "0.5"
 BASE = {"A": 0, "C": 1, "G": 2, "T": 3}
+# Stop codons by NCBI genetic code table number, for the sequence check of
+# CDS ends.  1 standard; 4 mold/protozoan mitochondrial and Mycoplasma; 6
+# ciliate, dasycladacean and hexamita (T. thermophila: TAA and TAG read
+# Gln); 10 euplotid (TGA reads Cys); 12 alternative yeast; 25 candidate
+# division SR1; 26 Pachysolen; 29-31 Mesodinium, Peritrich, Blastocrithidia.
+GENETIC_CODE_STOPS = {1: {"TAA", "TAG", "TGA"}, 4: {"TAA", "TAG"}, 6: {"TGA"}, 10: {"TAA", "TAG"},
+                      12: {"TAA", "TAG", "TGA"}, 25: {"TAA", "TAG"}, 26: {"TAA", "TAG", "TGA"},
+                      29: {"TGA"}, 30: {"TGA"}, 31: {"TGA"}}
+# Near-cognate initiation codons; a CDS opening on one is treated as 5'
+# incomplete by the sequence rule (docs/data-sources.md 6.3: on GENCODE
+# hg38 chr21, 3,664 of 3,669 untagged CDSs open on ATG, none of the 117
+# cds_start_NF ones do, and 15 of those open on a near-cognate codon), and
+# the sidecar counts them apart from ATG.
+NEAR_COGNATE_STARTS = {"CTG", "GTG", "TTG", "ACG", "ATA", "ATC", "ATT", "AAG", "AGG"}
+PARTIAL_END_MODES = ("both", "declared", "sequence", "none")
 INF_GAP, INF_UNALIGNED, INF_OTHER = 4, 5, 6
 LABEL = {"intergenic": 0, "intron": 1, "utr": 2, "cds": 3}
 COMP = str.maketrans("ACGTNacgtn", "TGCANtgcan")
@@ -523,6 +558,106 @@ def paint_informants(blocks, ref: str, start: int, end: int, rows: list[str]):
 
 # ------------------------------------------------------------- annotation
 
+def _declared_status(t: dict, which: str) -> str | None:
+    """'complete', 'incomplete' or None from what the fetcher recorded."""
+    v = t.get(f"cds_{which}_status")
+    if v in ("complete", "incomplete"):
+        return v
+    if v in ("cmpl", "incmpl"):
+        return "complete" if v == "cmpl" else "incomplete"
+    if which == "start":
+        fr = t.get("cds_start_frame")
+        if isinstance(fr, int) and fr in (1, 2):
+            return "incomplete"
+    return None
+
+
+def cds_end_status(transcripts: list[dict], seq: str, start: int, end: int,
+                   stops: set[str], mode: str) -> dict:
+    """Decide for every coding transcript whether its CDS is complete at the
+    5' and the 3' end, set ``_partial5`` / ``_partial3`` / ``_frame0`` on
+    the transcript dicts for the painter, and return the ``cds_ends``
+    sidecar record.  ``seq`` is the window's reference sequence (+ strand,
+    starting at ``start``).  The declaration wins where the annotation
+    makes one; where it does not, the sequence decides (mode ``both``);
+    ``declared`` ignores the sequence, ``sequence`` ignores the
+    declaration, ``none`` marks nothing as incomplete."""
+    if mode not in PARTIAL_END_MODES:
+        raise ValueError(f"--partial-ends must be one of {PARTIAL_END_MODES}")
+    declared = {k: 0 for k in ("start_complete", "start_incomplete", "start_undeclared",
+                               "stop_complete", "stop_incomplete", "stop_undeclared")}
+    sequence = {k: 0 for k in ("start_atg", "start_near_cognate", "start_other", "start_outside_window",
+                               "stop_in_cds", "stop_after_cds", "stop_none", "stop_outside_window",
+                               "cds_length_not_multiple_of_3")}
+    partial5, partial3, disagreements, frames = [], [], [], {}
+
+    def window(a: int, b: int) -> str | None:
+        if a < start or b > end:
+            return None
+        return seq[a - start:b - start].upper()
+
+    for t in transcripts:
+        cds = sorted(t.get("cds", []))
+        t["_partial5"] = t["_partial3"] = False
+        fr = t.get("cds_start_frame")
+        t["_frame0"] = fr if isinstance(fr, int) and fr in (0, 1, 2) else 0
+        if not cds:
+            continue
+        minus = t.get("strand", "+") != "+"
+        length = sum(b - a for a, b in cds)
+        if length % 3:
+            sequence["cds_length_not_multiple_of_3"] += 1
+        pieces = [window(a, b) for a, b in cds]
+        cds_seq = None if any(p is None for p in pieces) else "".join(pieces)
+        if cds_seq is not None and minus:
+            cds_seq = cds_seq.translate(COMP)[::-1]
+        # the codon after the CDS, for the stop-excluded convention
+        after = window(cds[0][0] - 3, cds[0][0]) if minus else window(cds[-1][1], cds[-1][1] + 3)
+        if after is not None and minus:
+            after = after.translate(COMP)[::-1]
+        d5, d3 = _declared_status(t, "start"), _declared_status(t, "end")
+        declared["start_" + (d5 or "undeclared")] += 1
+        declared["stop_" + (d3 or "undeclared")] += 1
+        if cds_seq is None or len(cds_seq) < 3:
+            s5 = s3 = "outside_window"
+            sequence["start_outside_window"] += 1
+            sequence["stop_outside_window"] += 1
+        else:
+            first, last = cds_seq[:3], cds_seq[-3:]
+            s5 = "atg" if first == "ATG" else ("near_cognate" if first in NEAR_COGNATE_STARTS else "other")
+            s3 = "in_cds" if last in stops else ("after_cds" if after in stops else "none")
+            sequence["start_" + s5] += 1
+            sequence["stop_" + s3] += 1
+        seq5 = None if s5 == "outside_window" else ("complete" if s5 == "atg" else "incomplete")
+        seq3 = None if s3 == "outside_window" else ("complete" if s3 in ("in_cds", "after_cds") else "incomplete")
+        for which, dec, sq, obs in (("start", d5, seq5, s5), ("stop", d3, seq3, s3)):
+            if dec and sq and dec != sq:
+                disagreements.append({"id": t.get("id"), "end": which, "declared": dec,
+                                      "sequence": obs, "decided": "declared" if mode != "sequence" else "sequence"})
+            if mode == "none":
+                verdict = "complete"
+            elif mode == "declared":
+                verdict = dec or "complete"
+            elif mode == "sequence":
+                verdict = sq or "complete"
+            else:
+                verdict = dec or sq or "complete"
+            if verdict == "incomplete":
+                if which == "start":
+                    t["_partial5"] = True
+                    partial5.append(t.get("id"))
+                else:
+                    t["_partial3"] = True
+                    partial3.append(t.get("id"))
+        if mode == "none":
+            t["_frame0"] = 0
+        elif t["_frame0"]:
+            frames[str(t.get("id"))] = t["_frame0"]
+    return {"policy": mode, "declared": declared, "sequence": sequence,
+            "partial_5prime": partial5, "partial_3prime": partial3,
+            "frame_offsets": frames, "disagreements": disagreements}
+
+
 def paint_labels(start: int, end: int, transcripts: list[dict]):
     """Per-base label, CDS frame, strand and boundary marks.
 
@@ -569,7 +704,7 @@ def paint_labels(start: int, end: int, transcripts: list[dict]):
             for i in range(max(a, start), min(b, end)):
                 cls[i - start] = LABEL["cds"]
         if cds:
-            k = 0
+            k = int(t.get("_frame0") or 0)  # codon position of the first CDS base (0 for a complete 5' end)
             cds_order = cds if s == 1 else [(b, a) for a, b in reversed(cds)]
             for a, b in cds_order:
                 rng = range(a, b) if s == 1 else range(a - 1, b - 1, -1)
@@ -584,10 +719,18 @@ def paint_labels(start: int, end: int, transcripts: list[dict]):
                 strand[i] = s
                 frame[i] = fr[i]
         if cds:
+            # an incomplete end (cds_end_status) has no codon to mark
+            mark_start, mark_stop = not t.get("_partial5"), not t.get("_partial3")
             if s == 1:
-                put(bound, cds[0][0], 1); put(bound, cds[-1][1] - 1, 2)
+                if mark_start:
+                    put(bound, cds[0][0], 1)
+                if mark_stop:
+                    put(bound, cds[-1][1] - 1, 2)
             else:
-                put(bound, cds[-1][1] - 1, 1); put(bound, cds[0][0], 2)
+                if mark_start:
+                    put(bound, cds[-1][1] - 1, 1)
+                if mark_stop:
+                    put(bound, cds[0][0], 2)
         ex = sorted(t.get("exons", []))
         for (a1, b1), (a2, b2) in zip(ex, ex[1:]):
             if b1 >= a2:
@@ -618,10 +761,12 @@ def distinct_sites(transcripts: list[dict]) -> set[tuple[str, int, int]]:
         s = 1 if t.get("strand", "+") == "+" else -1
         cds = sorted(t.get("cds", []))
         if cds:
-            if s == 1:
-                sites.add(("start", s, cds[0][0])); sites.add(("stop", s, cds[-1][1] - 1))
-            else:
-                sites.add(("start", s, cds[-1][1] - 1)); sites.add(("stop", s, cds[0][0]))
+            st = cds[0][0] if s == 1 else cds[-1][1] - 1
+            sp = cds[-1][1] - 1 if s == 1 else cds[0][0]
+            if not t.get("_partial5"):
+                sites.add(("start", s, st))
+            if not t.get("_partial3"):
+                sites.add(("stop", s, sp))
         cds_ends = {b for _, b in cds}
         cds_starts = {a for a, _ in cds}
         ex = sorted(t.get("exons", []))
@@ -671,7 +816,11 @@ def revcomp_example(ex: dict, L: int, K: int) -> dict:
 def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, quiet: bool,
         transcript_types: str = "benchmark", drop_ancestors: bool = False,
         reference_anchored: bool = False, isoforms: str = "union",
-        representatives: set[str] | None = None) -> list[str]:
+        representatives: set[str] | None = None, partial_ends: str = "both",
+        genetic_code: int = 1, stop_codons: set[str] | None = None) -> list[str]:
+    stops = set(stop_codons) if stop_codons else GENETIC_CODE_STOPS.get(genetic_code)
+    if stops is None:
+        raise SystemExit(f"genetic code {genetic_code} is not in the table; pass --stop-codons")
     with open(stem + ".manifest.json") as fh:
         manifest = json.load(fh)
     with open(stem + ".manifest.json", "rb") as fh:
@@ -742,6 +891,7 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
         ann = json.load(fh)
     transcripts = ann.get("transcripts", ann if isinstance(ann, list) else [])
     transcripts, excluded = select_transcripts(transcripts, transcript_types)
+    cds_ends = cds_end_status(transcripts, seq, start, end, stops, partial_ends)
     sites_all = distinct_sites(transcripts)
     transcripts, dropped_iso, fallback_loci = select_isoforms(transcripts, isoforms, representatives)
     sites_kept = distinct_sites(transcripts)
@@ -835,6 +985,9 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
                     "painted": site_counts(sites_kept, start + a, start + b),
                     "dropped": site_counts(sites_all - sites_kept, start + a, start + b),
                 },
+                "genetic_code": genetic_code if not stop_codons else None,
+                "stop_codons": sorted(stops),
+                "cds_ends": cds_ends,
                 "label_counts": {c: sum(1 for v, m in zip(e["label"], e["mask"]) if m and v == i)
                                  for c, i in LABEL.items()},
             }
@@ -853,6 +1006,16 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
 def self_test() -> int:
     import tempfile
     d = tempfile.mkdtemp()
+    # Checks 1-45 test painting geometry on toy sequences whose CDSs open
+    # and close on arbitrary codons, so they run with --partial-ends none;
+    # checks 46 onwards test the incomplete-end rules on a fixture with
+    # real codons and pass the mode explicitly.
+    cut_full = globals()["cut"]
+
+    def cut(*a, **k):
+        k.setdefault("partial_ends", "none")
+        return cut_full(*a, **k)
+
     stem = os.path.join(d, "toy")
     # reference toy.chr1 20 bp; one + transcript with two exons, CDS 4..8 and 12..17
     ref = "ACGTACGTACGTACGTACGT"
@@ -1103,6 +1266,106 @@ def self_test() -> int:
         representatives=read_id_list(os.path.join(d, "reps.tsv")))
     assert json.load(open(os.path.join(d, "iso_r2", "iso.w0.json")))["transcripts"] == ["ta.1", "td"]
     checks += 1
+    # 46-55: incomplete CDS ends.  48 bp reference with four single-exon
+    # CDSs: tA (+, 2-14, ATG AAA CCC TAG, declared complete both ends), tB
+    # (+, 16-25, CCC AAA TGA, nothing declared), tC (-, 27-36, reads CCC AAA
+    # TAA on its strand, declared 5' incomplete with frame 1), tD (+, 38-47,
+    # GGG CCC AAA, declared complete at both ends against the sequence).
+    pe = os.path.join(d, "pe")
+    pref = "GG" + "ATGAAACCCTAG" + "GG" + "CCCAAATGA" + "GG" + "TTAAAAGGG" + "GG" + "GGGCCCAAA" + "G"
+    assert len(pref) == 48
+    with open(pe + ".fa", "w") as fh:
+        fh.write(">pe.chr1:0-48\n" + pref + "\n")
+    with open(pe + ".maf", "w") as fh:
+        fh.write("##maf version=1\na score=0\n"
+                 f"s pe.chr1 0 48 + 48 {pref}\n"
+                 f"s spA.c   0 48 + 48 {pref}\n\n")
+    with open(pe + ".nh", "w") as fh:
+        fh.write("(pe:0.1,spA:0.2);\n")
+    with open(pe + ".manifest.json", "w") as fh:
+        json.dump({"assembly": "pe", "source": "ucsc", "alignment_track": "multizToy",
+                   "window": {"chrom": "chr1", "start": 0, "end": 48}}, fh)
+    with open(pe + ".annotation.json", "w") as fh:
+        json.dump({"transcripts": [
+            {"id": "tA", "strand": "+", "start": 2, "end": 14, "exons": [[2, 14]], "cds": [[2, 14]],
+             "cds_start_status": "complete", "cds_end_status": "complete"},
+            {"id": "tB", "strand": "+", "start": 16, "end": 25, "exons": [[16, 25]], "cds": [[16, 25]]},
+            {"id": "tC", "strand": "-", "start": 27, "end": 36, "exons": [[27, 36]], "cds": [[27, 36]],
+             "cds_start_status": "incomplete", "cds_start_frame": 1},
+            {"id": "tD", "strand": "+", "start": 38, "end": 47, "exons": [[38, 47]], "cds": [[38, 47]],
+             "cds_start_status": "complete", "cds_end_status": "complete"},
+        ]}, fh)
+    # 46: default (both): declaration where stated, sequence where not
+    cut_full(pe, os.path.join(d, "pe_b"), 0, 0, set(), True, True)
+    sb = json.load(open(os.path.join(d, "pe_b", "pe.w0.json")))
+    zb = npz(os.path.join(d, "pe_b", "pe.w0.npz"))
+    ce = sb["cds_ends"]
+    assert ce["policy"] == "both" and ce["partial_5prime"] == ["tB", "tC"] and ce["partial_3prime"] == [], ce
+    checks += 1
+    # 47: marks follow the verdicts: tB and tC lose their start mark, everything else is marked
+    bb = list(zb["bound"])
+    assert bb[2] == 1 and bb[13] == 2 and bb[16] == 0 and bb[24] == 2 and bb[35] == 0 and bb[27] == 2 \
+        and bb[38] == 1 and bb[46] == 2, bb
+    assert sb["distinct_sites"]["all_isoforms"]["start"] == 2 and sb["distinct_sites"]["all_isoforms"]["stop"] == 4
+    checks += 1
+    # 48: the declared frame offsets tC's frame channel (read on -, first CDS base at 35 is codon position 1)
+    fb = [v - 256 if v > 127 else v for v in zb["frame"]]
+    assert fb[35] == 1 and fb[34] == 2 and fb[33] == 0 and fb[27] == 0 and ce["frame_offsets"] == {"tC": 1}, fb
+    assert fb[2:5] == [0, 1, 2] and fb[16] == 0, fb  # complete and undeclared 5' ends start at 0
+    checks += 1
+    # 49: evidence counts and the two tD disagreements are on record, decided by the declaration
+    assert ce["declared"] == {"start_complete": 2, "start_incomplete": 1, "start_undeclared": 1,
+                              "stop_complete": 2, "stop_incomplete": 0, "stop_undeclared": 2}, ce["declared"]
+    assert ce["sequence"] == {"start_atg": 1, "start_near_cognate": 0, "start_other": 3, "start_outside_window": 0,
+                              "stop_in_cds": 3, "stop_after_cds": 0, "stop_none": 1, "stop_outside_window": 0,
+                              "cds_length_not_multiple_of_3": 0}, ce["sequence"]
+    assert [(x["id"], x["end"], x["declared"], x["sequence"], x["decided"]) for x in ce["disagreements"]] == \
+        [("tD", "start", "complete", "other", "declared"), ("tD", "stop", "complete", "none", "declared")], ce
+    checks += 1
+    # 50: the reverse-complement example carries the same record and mirrored marks
+    sr = json.load(open(os.path.join(d, "pe_b", "pe.w0.rc.json")))
+    assert sr["cds_ends"] == ce and list(npz(os.path.join(d, "pe_b", "pe.w0.rc.npz"))["bound"]) == bb[::-1]
+    checks += 1
+    # 51: none paints every end, as before 0.5, and applies no frame offset
+    cut_full(pe, os.path.join(d, "pe_n"), 0, 0, set(), False, True, partial_ends="none")
+    sn = json.load(open(os.path.join(d, "pe_n", "pe.w0.json")))
+    zn = npz(os.path.join(d, "pe_n", "pe.w0.npz"))
+    assert sn["cds_ends"]["partial_5prime"] == [] and list(zn["bound"])[16] == 1 and list(zn["bound"])[35] == 1 \
+        and sn["distinct_sites"]["all_isoforms"]["start"] == 4 and [v - 256 if v > 127 else v for v in zn["frame"]][35] == 0
+    assert sn["cds_ends"]["disagreements"] == ce["disagreements"]  # still reported
+    checks += 1
+    # 52: sequence only: tD loses both marks, tC its start (CCC), tB its start; tA keeps both
+    cut_full(pe, os.path.join(d, "pe_s"), 0, 0, set(), False, True, partial_ends="sequence")
+    ss = json.load(open(os.path.join(d, "pe_s", "pe.w0.json")))
+    assert ss["cds_ends"]["partial_5prime"] == ["tB", "tC", "tD"] and ss["cds_ends"]["partial_3prime"] == ["tD"], ss["cds_ends"]
+    assert list(npz(os.path.join(d, "pe_s", "pe.w0.npz"))["bound"])[38] == 0
+    assert ss["cds_ends"]["disagreements"][0]["decided"] == "sequence"
+    checks += 1
+    # 53: declared only: tB is complete (nothing declared), tC's start incomplete, tD complete
+    cut_full(pe, os.path.join(d, "pe_d"), 0, 0, set(), False, True, partial_ends="declared")
+    sd = json.load(open(os.path.join(d, "pe_d", "pe.w0.json")))
+    assert sd["cds_ends"]["partial_5prime"] == ["tC"] and sd["cds_ends"]["partial_3prime"] == []
+    checks += 1
+    # 54: genetic code 6 (TAA and TAG read Gln): under the sequence rule tA and tC end on a non-stop
+    cut_full(pe, os.path.join(d, "pe_6"), 0, 0, set(), False, True, partial_ends="sequence", genetic_code=6)
+    s6 = json.load(open(os.path.join(d, "pe_6", "pe.w0.json")))
+    assert s6["stop_codons"] == ["TGA"] and s6["cds_ends"]["partial_3prime"] == ["tA", "tC", "tD"], s6["cds_ends"]
+    assert s6["cds_ends"]["sequence"]["stop_in_cds"] == 1 and s6["genetic_code"] == 6
+    checks += 1
+    # 55: a stop-excluded convention (CDS ends just before its stop) reads as complete via the next codon,
+    #     a CDS reaching past the window is outside_window and left complete, and --stop-codons overrides
+    with open(pe + ".annotation.json", "w") as fh:
+        json.dump({"transcripts": [
+            {"id": "tA", "strand": "+", "start": 2, "end": 11, "exons": [[2, 11]], "cds": [[2, 11]]},
+            {"id": "tE", "strand": "+", "start": 44, "end": 60, "exons": [[44, 60]], "cds": [[44, 60]]},
+        ]}, fh)
+    cut_full(pe, os.path.join(d, "pe_x"), 0, 0, set(), False, True, partial_ends="both", stop_codons={"TAG"})
+    sx = json.load(open(os.path.join(d, "pe_x", "pe.w0.json")))
+    assert sx["cds_ends"]["sequence"]["stop_after_cds"] == 1 and sx["cds_ends"]["sequence"]["stop_outside_window"] == 1 \
+        and sx["cds_ends"]["partial_3prime"] == [] and sx["cds_ends"]["partial_5prime"] == [] \
+        and sx["stop_codons"] == ["TAG"] and sx["genetic_code"] is None, sx["cds_ends"]
+    assert list(npz(os.path.join(d, "pe_x", "pe.w0.npz"))["bound"])[10] == 2  # last CDS base still marks the end
+    checks += 1
     print(f"self-test passed ({checks} checks)")
     return 0
 
@@ -1129,6 +1392,14 @@ def main() -> int:
     ap.add_argument("--reference-anchored", action="store_true",
                     help="declare a track the built-in table does not know to be reference-anchored, so dropped "
                          "rows count as exact removal; recorded in the sidecar as the operator's claim")
+    ap.add_argument("--partial-ends", default="both", choices=list(PARTIAL_END_MODES),
+                    help="how an incomplete CDS end is recognised: 'both' (default; the annotation's "
+                         "declaration where it makes one, else the reference sequence), 'declared', "
+                         "'sequence', or 'none' (mark every end as a codon, the pre-0.5 behaviour)")
+    ap.add_argument("--genetic-code", type=int, default=1,
+                    help="NCBI genetic code table for the stop-codon check (1 standard, 6 ciliate, ...)")
+    ap.add_argument("--stop-codons", default=None,
+                    help="comma-separated stop codons, overriding --genetic-code")
     ap.add_argument("--quiet", action="store_true")
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
@@ -1137,6 +1408,7 @@ def main() -> int:
     if not args.stem or not args.out:
         ap.error("--stem and --out are required")
     drop = {s.strip() for s in args.drop_species.split(",") if s.strip()}
+    stop_codons = {c.strip().upper() for c in args.stop_codons.split(",") if c.strip()} if args.stop_codons else None
     reps = read_id_list(args.representatives) if args.representatives else None
     if args.isoforms == "representative" and not reps:
         ap.error("--isoforms representative needs --representatives FILE with at least one id")
@@ -1144,7 +1416,7 @@ def main() -> int:
     for stem in args.stem:
         total += len(cut(stem, args.out, args.length, args.stride, drop, args.both_strands, args.quiet,
                          args.transcript_types, args.drop_ancestors, args.reference_anchored,
-                         args.isoforms, reps))
+                         args.isoforms, reps, args.partial_ends, args.genetic_code, stop_codons))
     print(f"wrote {total} examples to {args.out}")
     return 0
 

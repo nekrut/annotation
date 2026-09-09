@@ -165,7 +165,13 @@ half-open exon and CDS intervals). RefSeq, GenBank and Ensembl sequence
 names map through the `chromAlias` table (`NC_000011.10` and `CM000673.2`
 and `11` all resolve to `chr11`), which is the translation lenin asked for
 in message 20260909T052140Z-lenin-0007 for scoring Ensembl-named
-predictions against RefSeq references.
+predictions against RefSeq references. CDS completeness: the RefSeq
+genePred tracks state it in `cdsStartStat` / `cdsEndStat` and every
+CDS-bearing transcript checked on four assemblies is `cmpl` at both ends;
+the GENCODE `knownGene` bigGenePred sets those columns to `none`
+throughout and states truncation only through its `tag` column
+(`cds_start_NF`, `cds_end_NF`) and the frame of the first coding exon in
+`exonFrames`; the fetcher reads all three (section 6.3).
 
 ### 2.4 GenArk assembly hubs
 
@@ -636,6 +642,67 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   transcripts of the same class overlap in different frames (six bases
   between isoforms of the gene enclosing `Adh`, all outside the fetched
   window), the frame channel records one of them by the same tie rule.
+  **Incomplete CDS ends.** lenin's partial-gene work on the benchmark
+  (note 20260909T171958Z-lenin-0016) found that 5.3% of GENCODE 50's
+  CDS-bearing transcripts have an incomplete CDS end which the GTF states
+  only by omitting the `start_codon` or `stop_codon` feature, with the
+  `cds_start_NF` / `cds_end_NF` tags agreeing at 99%; a cutter that paints
+  a start and a stop at every CDS end would therefore invent about 13,000
+  starts and 20,000 stops the annotation never claimed. What the sources
+  this fetcher reads actually declare (all read 2026-09-09 through the
+  UCSC API): the RefSeq genePred tracks carry `cdsStartStat` /
+  `cdsEndStat`, and every CDS-bearing transcript of `ncbiRefSeqCurated` on
+  hg38 chr21 (726), dm6 chr2L (5,707), ce11 chrIII (3,657) and mm39 chr19
+  (1,435), and of the model-inclusive `ncbiRefSeq` on hg38 chr21 (1,373),
+  is `cmpl` at both ends, so for RefSeq the problem does not arise in the
+  data the benchmark uses as truth; the GENCODE `knownGene` bigGenePred on
+  hg38 and mm39 sets both columns to `none` for every transcript (3,786 on
+  chr21, 37,203 on chr1, 9,227 on mm39 chr19) but keeps GENCODE's tags in
+  its `tag` column and the frame of every coding exon in `exonFrames`; and
+  Ensembl's REST overlap endpoint states nothing about CDS ends. The
+  fetcher now records what a UCSC record declares (`cds_start_status`,
+  `cds_end_status` from the stat columns, then from the NF tags, and
+  `cds_start_frame` from the first coding exon in transcript orientation),
+  and the cutter's `--partial-ends` decides each end: `both` (default)
+  takes the declaration where there is one and otherwise reads the
+  reference sequence, `declared` and `sequence` use one signal, `none`
+  paints every end as before. The sequence rule is that a CDS is 5'
+  incomplete when its first codon is not ATG and 3' incomplete when
+  neither its last codon nor the codon after it is a stop under
+  `--genetic-code` (NCBI table numbers; 6 for *T. thermophila*, where TAA
+  and TAG read glutamine, or `--stop-codons` explicitly). Checked against
+  GENCODE's own tags over the 3,786 CDS-bearing transcripts of hg38 chr21:
+  3,664 of the 3,669 untagged transcripts open on ATG and none of the 117
+  `cds_start_NF` ones do (15 open on a near-cognate codon, 102 on
+  something else), all 3,637 untagged transcripts end on a stop while 136
+  of the 149 `cds_end_NF` ones have none (7 have one in the following
+  codon and 6 end on one), so the two rules agree with the tags on 99.87%
+  and 99.66% of transcripts; every untagged transcript has a CDS length
+  divisible by three and 169 of the 247 tagged ones do not; and 83 of the
+  117 `cds_start_NF` transcripts have a first-coding-exon frame of 1 or 2
+  where every untagged one has 0. The five untagged non-ATG starts
+  (`NCAM2`, `DSCAM`, three `MORC3` nonsense-mediated-decay isoforms) are
+  what `sequence` would mark incomplete that GENCODE does not; the
+  sidecar's `cds_ends` lists every such disagreement between declaration
+  and sequence, and under `both` the declaration wins. An incomplete end
+  gets no start or stop mark in the boundary channel, is not counted in
+  `distinct_sites`, and a declared frame of 1 or 2 shifts the frame
+  channel so codon position is right from the first base. Measured on
+  `ATP5PO` (chr21:33901026-33915853, 14,827 bases, 53 GENCODE transcripts
+  of which 45 are coding, hg38 100-way, 15 requests, 9.8 MB, fetched
+  2026-09-09 with `--annotation knownGene`): four transcripts tagged
+  `cds_start_NF` (three with frame 2) and one `cds_end_NF`; the sequence
+  agrees on all of them (40 ATG starts, 1 near-cognate, 3 other, 1 whose
+  CDS start lies outside the window; 44 stops inside the CDS and the
+  tagged 3' end outside the window; four CDS lengths not divisible by
+  three; no disagreement), and the default cut paints one start mark and
+  twelve stop marks where `none` paints five starts, with `distinct_sites`
+  moving from 5 starts to 1. That window also shows why the declaration
+  is read first: the tagged 3' end lies beyond the fetched window, so the
+  sequence alone would have passed it as complete. For T-human-011: a
+  model trained on RefSeq truth sees complete ends only; one trained on
+  GENCODE or Ensembl sees about 5% of loci where one end is missing, and
+  the cutter now tells it which rather than painting a codon there.
   Which transcripts paint is `--transcript-types`: the default follows the
   benchmark's truth rule (`docs/benchmark.md` section 4) and excludes
   pseudogenes and immunoglobulin / T-cell receptor segments, recognised only
@@ -913,3 +980,15 @@ informants) is the design-level answer.
    11% of the pairwise codons. For T-human-010: fit each pair from its
    own file and report coverage (pairs that exist, codons retained) next
    to the classification.
+10. Answered: lenin (T-human-007, note 20260909T171958Z-lenin-0016) noted
+    that 5.3% of GENCODE 50's CDS-bearing transcripts end incompletely and
+    say so only by omission. Section 6.3 now records what each source the
+    fetcher reads declares (RefSeq: `cmpl` at both ends for every
+    transcript checked; UCSC's GENCODE track: stat columns `none`, NF tags
+    and exon frames present; Ensembl REST: nothing), the fetcher carries
+    the declaration, and `cut_windows.py --partial-ends` takes it where it
+    exists and reads the reference sequence where it does not, a rule that
+    agrees with GENCODE's tags on 99.7 to 99.9% of hg38 chr21 transcripts.
+    Incomplete ends get no start or stop mark and are left out of
+    `distinct_sites`, so the accounting lenin asked about is per example
+    in the sidecar's `cds_ends`.

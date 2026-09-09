@@ -26,6 +26,7 @@ is a prompt to look, not an error.
 | HBB_241 | hg38, locus given as `NC_000011.10` | chr11:5224964-5229895 | cactus241wayBM (bigMaf via API; RefSeq name resolved through chromAlias) | 2517 | 240 | 1 | 68.6 MB / 9 | 67,775,774 | 0753bfed06589869 |
 | Adh_124 | dm6 | chr2L:14615052-14619402 | multiz124way (wigMaf index + Range reads) | 352 | 89 | 12 | 4.6 MB / 11 | 3,398,732 | e4f6282ff8e9043b |
 | TP53_100 | hg38 | chr17:7667921-7687990 | multiz100way (wigMaf index + Range reads) | 1021 | 100 | 28 | 9.1 MB / 14 | 7,252,181 | f6a925b3be471e0d |
+| ATP5PO_kg | hg38 | chr21:33901026-33915853 | multiz100way (wigMaf index + Range reads), `--annotation knownGene` | 998 | 100 | 53 | 9.8 MB / 15 | 7,975,753 | c65620e6d9224180 |
 | GAPDH_sauropsids | gallus_gallus (GRCg7b) | 1:76900098-76906736 | Ensembl EPO sauropsids, with 5 ancestral rows | 2 | 11 | 5 | 0.1 MB / 9 | 54,580 | 6e24cc945abb6fd8 |
 | Gapdh_mammals | mus_musculus (GRCm39) | 6:125134789-125144018 | Ensembl EPO 44 mammals, mouse as query species | 1 | 3 | 65 | 0.2 MB / 6 | 32,258 | 3dc17314f67d2554 |
 | Pf_none | GCF_000002765.6 (GenArk hub) | NC_004325.2:100000-120000 | `--track none`: RefSeq annotation and sequence only | 0 | 0 | 4 | 0.0 MB / 3 | 90 | 2d35a98bb3d5e6a8 |
@@ -103,7 +104,16 @@ listed; the sidecar records the policy and every isoform dropped, with
 its locus and reason, and under `distinct_sites` the distinct start
 codons, stop codons, donors and acceptors over all isoforms against those
 the painted isoforms keep, so the policy's cost in splice sites is on
-record); `--reference-anchored` declares
+record); `--partial-ends` decides whether a CDS end is complete and so
+gets a start or stop mark (`both`, the default: the annotation's
+declaration where the fetcher recorded one, from RefSeq's `cdsStartStat`
+columns, GENCODE's `cds_start_NF` / `cds_end_NF` tags or a non-zero first
+coding-exon frame, else the reference sequence, ATG first and a stop last
+under `--genetic-code` or `--stop-codons`; `declared`; `sequence`; or
+`none`, the pre-0.5 behaviour of marking every end); the sidecar's
+`cds_ends` records the declared and sequence evidence, the transcripts
+judged incomplete at each end, a declared frame offset, and every
+disagreement between the two signals; `--reference-anchored` declares
 a track unknown to the built-in class table to be reference-anchored;
 `--both-strands` adds the reverse-complement example. `--self-test` checks
 labels, frames, boundaries, informant codes, insertions, distances, the
@@ -112,8 +122,12 @@ label counts on a padded window, an EPO-shaped two-block window with
 ancestral rows, a gene nested on the opposite strand inside another gene's
 intron (strand and frame follow the nested gene), byte-identical
 archives from repeated runs, and the three isoform policies on a locus
-with two isoforms plus an unnamed locus clustered by span, and the
-distinct-site accounting under each policy (45 checks). The `.npz` members carry a fixed
+with two isoforms plus an unnamed locus clustered by span, the
+distinct-site accounting under each policy, and the incomplete-end rules
+on a fixture with real codons (declared, undeclared, declared against the
+sequence, a declared frame on the minus strand, the four modes, genetic
+code 6, a stop-excluded convention and a CDS reaching past the window;
+55 checks). The `.npz` members carry a fixed
 timestamp, so an example's checksum depends only on its inputs; the whole
 cutter, the fetcher, `coverage_by_distance.py` and `tree_composition.py`
 were checked to give identical output under `PYTHONHASHSEED` 0, 1, 2 and 42
@@ -125,7 +139,16 @@ order is the defect lenin found in the benchmark scorer, relay note
 python3 scripts/data/cut_windows.py --self-test
 python3 scripts/data/cut_windows.py --stem /tmp/win/Adh/Adh_124 --out /tmp/ex --length 2048 --stride 1024 --drop-species apiMel4 --both-strands
 python3 scripts/data/cut_windows.py --stem /tmp/win/GAPDH/GAPDH_sauropsids --out /tmp/ex --length 0 --both-strands --drop-species taeniopygia_guttata
+python3 scripts/data/fetch_window.py --assembly hg38 --locus chr21:33901026-33915853 --track multiz100way --annotation knownGene --out /tmp/win/ATP5PO --name ATP5PO_kg
+python3 scripts/data/cut_windows.py --stem /tmp/win/ATP5PO/ATP5PO_kg --out /tmp/ex --length 0
 ```
+
+The last two commands are the incomplete-end demonstration (section 6.3
+of the document): a GENCODE window with four `cds_start_NF` and one
+`cds_end_NF` transcript among 45 coding ones, where the sequence rule
+agrees with every tag, the default cut paints one start mark against
+five under `--partial-ends none`, and the tagged 3' end lies outside the
+window so only the declaration catches it.
 
 The third command on the chicken `GAPDH` window (re-fetched 2026-09-09
 after `fetch_window.py` started recording the species set; 14 requests,

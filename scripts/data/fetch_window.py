@@ -46,7 +46,10 @@ Outputs (``<out>/<name>.*``):
   ``.fa``                the reference sequence of the window, + strand
   ``.nh``                Newick tree(s); one line per block for Ensembl
   ``.annotation.json``   transcripts with exon and CDS intervals, 0-based
-                         half-open, on the reference sequence
+                         half-open, on the reference sequence, and what the
+                         record declares about CDS completeness
+                         (``cds_start_status``, ``cds_end_status``,
+                         ``cds_start_frame``; UCSC tracks only)
   ``.conservation.json`` per-base scores (UCSC) or constrained elements (Ensembl)
   ``.manifest.json``     every URL fetched, byte counts, SHA-256 of each output,
                          the sequence-name aliases used, and a per-species
@@ -385,7 +388,40 @@ def ucsc_annotation(fx: Fetcher, genome: str, chrom: str, start: int, end: int, 
         else:
             continue
         tx["cds"] = [(max(a, cs), min(b, ce)) for a, b in tx["exons"] if min(b, ce) > max(a, cs)] if ce > cs else []
+        if tx["cds"]:
+            tx.update(cds_completeness(it, tx["strand"]))
         out.append(tx)
+    return out
+
+
+def cds_completeness(it: dict, strand: str) -> dict:
+    """What a UCSC genePred / bigGenePred record declares about its CDS
+    ends.  ``cdsStartStat`` / ``cdsEndStat`` (``cmpl`` / ``incmpl``; ``unk``
+    and ``none`` declare nothing, and UCSC's GENCODE tracks carry ``none``
+    throughout) come first; GENCODE's ``cds_start_NF`` / ``cds_end_NF``
+    tags in bigGenePred ``tag`` next; and the frame of the first coding
+    exon (``exonFrames``, transcript orientation) is recorded as
+    ``cds_start_frame``, a non-zero value being a third statement of a 5'
+    truncation.  The cutter reads all three (cut_windows.py
+    ``--partial-ends``).  Keys are absent when nothing is declared."""
+    out: dict = {}
+    src = {}
+    for which, col in (("start", "cdsStartStat"), ("end", "cdsEndStat")):
+        v = str(it.get(col) or "").lower()
+        if v in ("cmpl", "incmpl"):
+            out[f"cds_{which}_status"] = "complete" if v == "cmpl" else "incomplete"
+            src[which] = col
+    tags = {t.strip() for t in str(it.get("tag") or "").split(",") if t.strip()}
+    for which, tag in (("start", "cds_start_NF"), ("end", "cds_end_NF")):
+        if tag in tags and f"cds_{which}_status" not in out:
+            out[f"cds_{which}_status"] = "incomplete"
+            src[which] = "tag"
+    frames = [int(x) for x in str(it.get("exonFrames") or "").rstrip(",").split(",") if x.strip().lstrip("-").isdigit()]
+    coding = [f for f in frames if f in (0, 1, 2)]
+    if coding:
+        out["cds_start_frame"] = coding[0] if strand == "+" else coding[-1]
+    if src:
+        out["cds_status_source"] = src
     return out
 
 
