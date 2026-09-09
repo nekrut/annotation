@@ -53,8 +53,11 @@ excluded by type, the distinct start codons, stop codons, donors and
 acceptors the annotation states over all isoforms against those the
 painted isoforms keep (``distinct_sites``, so the cost of an isoform
 policy in splice-site diversity is on record), which CDS ends were judged
-incomplete and on what evidence (``cds_ends``), the source manifest's
-SHA-256 and the tool version.
+incomplete and on what evidence (``cds_ends``), how alignment blocks were
+chosen where the MAF said two things about one base (``block_selection``:
+overlapping blocks and what first-wins lost, minus-strand reference rows
+flipped, duplicate rows for one species and the policy that picked one,
+see --duplicate-rows), the source manifest's SHA-256 and the tool version.
 
 Conventions worth stating once:
 
@@ -143,7 +146,7 @@ import struct
 import sys
 import zipfile
 
-TOOL_VERSION = "0.5"
+TOOL_VERSION = "0.6"
 BASE = {"A": 0, "C": 1, "G": 2, "T": 3}
 # Stop codons by NCBI genetic code table number, for the sequence check of
 # CDS ends.  1 standard; 4 mold/protozoan mitochondrial and Mycoplasma; 6
@@ -500,24 +503,62 @@ def maf_blocks(text: str) -> list[list[list[str]]]:
     return blocks
 
 
-def paint_informants(blocks, ref: str, start: int, end: int, rows: list[str]):
-    """Return inf [K][n], ins [K][n] bytearrays, the count of overlapping blocks
-    and the count of blocks skipped because their reference row is on the - strand."""
+def flip_block(block: list[list[str]]) -> list[list[str]]:
+    """Reverse-complement every row of a MAF block whose reference row is on
+    the - strand, so the reference reads + with its forward start
+    ``srcSize - start - size`` (UCSC MAF: a '-' row's start counts from the
+    end of the reverse-complemented source).  Informant coordinates are not
+    used downstream, so only their sequence and strand symbol are updated."""
+    out = []
+    for r in block:
+        r = list(r)
+        src_size, start, size = int(r[5]), int(r[2]), int(r[3])
+        r[2] = str(src_size - start - size)
+        r[4] = "-" if r[4] == "+" else "+"
+        r[6] = r[6].translate(COMP)[::-1]
+        out.append(r)
+    return out
+
+
+def paint_informants(blocks, ref: str, start: int, end: int, rows: list[str],
+                     duplicate_rows: str = "identity"):
+    """Return inf [K][n], ins [K][n] bytearrays and a dict describing block
+    selection: overlapping blocks (the first block in file order to cover a
+    reference position wins; Cactus can overlap on the reference), the window
+    positions covered more than once, the aligned informant bases the losing
+    blocks carried at those positions, how many of them the winning block did
+    not have (unaligned or gap, so first-wins loses that base), the same
+    count per informant, the blocks whose reference row was on the -
+    strand and were flipped to + before painting, and the rows discarded
+    because one species had several rows in one block (Cactus exports every
+    copy of a duplicated region): ``duplicate_rows`` ``identity`` keeps the
+    copy with the most bases identical to the reference in that block, ties
+    to the first; ``first`` keeps the first row in block order."""
     n = end - start
     K = len(rows)
     row_of = {r: i for i, r in enumerate(rows)}
     inf = [bytearray([INF_UNALIGNED]) * n for _ in range(K)]
     ins = [bytearray(n) for _ in range(K)]
     seen = bytearray(n)
+    twice = bytearray(n)
     overlaps = 0
     minus = 0
+    discarded = 0
+    lost = 0
+    lost_by: dict[str, int] = {}
+    dup_blocks = 0
+    dup_rows = 0
+    dup_bases = 0
+    dup_by: dict[str, int] = {}
+    ref_dups = 0
     for block in blocks:
         rref = next((r for r in block if maf_source(r[1]) == ref), None)
         if rref is None:
             continue
         if rref[4] != "+":
             minus += 1
-            continue
+            block = flip_block(block)
+            rref = next(r for r in block if maf_source(r[1]) == ref)
         rseq, p = rref[6], int(rref[2])
         col_ref = []
         for ch in rseq:
@@ -525,16 +566,43 @@ def paint_informants(blocks, ref: str, start: int, end: int, rows: list[str]):
                 col_ref.append(-1)
             else:
                 col_ref.append(p); p += 1
+        ref_dups += sum(1 for r in block if maf_source(r[1]) == ref) - 1
         # first block to cover a position wins (Cactus can overlap on the reference)
         cover = [q for q in col_ref if start <= q < end]
         if cover and any(seen[q - start] for q in cover):
             overlaps += 1
+        # one row per informant per block
+        by_src: dict[str, list[list[str]]] = {}
         for r in block:
             if r is rref:
                 continue
-            k = row_of.get(maf_source(r[1]))
-            if k is None:
-                continue
+            src = maf_source(r[1])
+            if src in row_of:
+                by_src.setdefault(src, []).append(r)
+        chosen: list[list[str]] = []
+        block_has_dup = False
+        for src, cands in by_src.items():
+            if len(cands) > 1:
+                block_has_dup = True
+                if duplicate_rows == "identity":
+                    def ident(r):
+                        return sum(1 for a, b in zip(r[6].upper(), rseq.upper()) if a == b and a != "-")
+                    best = max(range(len(cands)), key=lambda i: (ident(cands[i]), -i))
+                else:
+                    best = 0
+                for i, r in enumerate(cands):
+                    if i != best:
+                        dup_rows += 1
+                        dup_by[src] = dup_by.get(src, 0) + 1
+                        dup_bases += sum(1 for col, ch in enumerate(r[6])
+                                         if ch != "-" and start <= col_ref[col] < end)
+                chosen.append(cands[best])
+            else:
+                chosen.append(cands[0])
+        if block_has_dup:
+            dup_blocks += 1
+        for r in chosen:
+            k = row_of[maf_source(r[1])]
             seq = r[6]
             last = -1
             for col, q in enumerate(col_ref):
@@ -547,13 +615,35 @@ def paint_informants(blocks, ref: str, start: int, end: int, rows: list[str]):
                     last = q if start <= q < end else -1
                     continue
                 last = q
-                if seen[q - start]:
-                    continue
                 ch = seq[col].upper()
-                inf[k][q - start] = BASE.get(ch, INF_GAP if ch == "-" else INF_OTHER)
+                code = BASE.get(ch, INF_GAP if ch == "-" else INF_OTHER)
+                if seen[q - start]:
+                    if code != INF_GAP:
+                        discarded += 1
+                        if inf[k][q - start] in (INF_UNALIGNED, INF_GAP):
+                            lost += 1
+                            lost_by[rows[k]] = lost_by.get(rows[k], 0) + 1
+                    continue
+                inf[k][q - start] = code
         for q in cover:
+            if seen[q - start]:
+                twice[q - start] = 1
             seen[q - start] = 1
-    return inf, ins, overlaps, minus
+    stats = {
+        "overlapping_blocks": overlaps,
+        "overlap_positions": sum(twice),
+        "overlap_informant_bases_discarded": discarded,
+        "overlap_informant_bases_lost": lost,
+        "overlap_lost_by_informant": dict(sorted(lost_by.items(), key=lambda kv: (-kv[1], kv[0]))),
+        "reference_minus_strand_blocks_flipped": minus,
+        "reference_duplicate_rows": ref_dups,
+        "duplicate_row_policy": duplicate_rows,
+        "duplicate_row_blocks": dup_blocks,
+        "duplicate_rows_discarded": dup_rows,
+        "duplicate_rows_discarded_bases_in_window": dup_bases,
+        "duplicate_rows_by_informant": dict(sorted(dup_by.items(), key=lambda kv: (-kv[1], kv[0]))),
+    }
+    return inf, ins, stats
 
 
 # ------------------------------------------------------------- annotation
@@ -817,7 +907,8 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
         transcript_types: str = "benchmark", drop_ancestors: bool = False,
         reference_anchored: bool = False, isoforms: str = "union",
         representatives: set[str] | None = None, partial_ends: str = "both",
-        genetic_code: int = 1, stop_codons: set[str] | None = None) -> list[str]:
+        genetic_code: int = 1, stop_codons: set[str] | None = None,
+        duplicate_rows: str = "identity") -> list[str]:
     stops = set(stop_codons) if stop_codons else GENETIC_CODE_STOPS.get(genetic_code)
     if stops is None:
         raise SystemExit(f"genetic code {genetic_code} is not in the table; pass --stop-codons")
@@ -886,7 +977,7 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
     rows = [r for r in rows if r not in drop and r not in dropped_anc]
     K = len(rows)
     aln_class, aln_how = classify_alignment(manifest, reference_anchored)
-    inf, ins, overlaps, minus_blocks = paint_informants(blocks, ref_prefix, start, end, rows)
+    inf, ins, block_stats = paint_informants(blocks, ref_prefix, start, end, rows, duplicate_rows)
     with open(stem + ".annotation.json") as fh:
         ann = json.load(fh)
     transcripts = ann.get("transcripts", ann if isinstance(ann, list) else [])
@@ -972,8 +1063,7 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
                 "dropped_species": dropped,
                 "dropped_ancestors": dropped_anc,
                 "dropped_rows_only": bool(dropped or dropped_anc) and aln_class != "reference_anchored",
-                "overlapping_blocks": overlaps,
-                "reference_minus_strand_blocks": minus_blocks,
+                "block_selection": block_stats,
                 "transcripts": [t.get("id") for t in transcripts],
                 "transcript_types": transcript_types,
                 "transcripts_excluded": excluded,
@@ -1366,6 +1456,72 @@ def self_test() -> int:
         and sx["stop_codons"] == ["TAG"] and sx["genetic_code"] is None, sx["cds_ends"]
     assert list(npz(os.path.join(d, "pe_x", "pe.w0.npz"))["bound"])[10] == 2  # last CDS base still marks the end
     checks += 1
+    # 56: overlapping blocks: the first block in file order to cover a position wins,
+    #     and the sidecar counts what the losing block carried there.  Reference
+    #     ACGTTGCA; block 1 covers 1-4 (spA), block 2 covers 3-6 (spA with a gap, spB).
+    ov = os.path.join(d, "ov")
+    with open(ov + ".fa", "w") as fh:
+        fh.write(">ov.chr1:0-8\nACGTTGCA\n")
+    with open(ov + ".nh", "w") as fh:
+        fh.write("((ov:0.1,spA:0.2):0.3,spB:0.5,spC:0.9);\n")
+    with open(ov + ".annotation.json", "w") as fh:
+        json.dump({"transcripts": [{"id": "t1", "strand": "+", "start": 1, "end": 7,
+                                    "exons": [[1, 7]], "cds": [[1, 7]]}]}, fh)
+    with open(ov + ".manifest.json", "w") as fh:
+        json.dump({"assembly": "ov", "source": "ucsc", "alignment_track": "cactusToy",
+                   "window": {"chrom": "chr1", "start": 0, "end": 8}}, fh)
+    with open(ov + ".maf", "w") as fh:
+        fh.write("##maf version=1\n"
+                 "a score=0\n"
+                 "s ov.chr1 0 2 - 8 TG\n"      # reference on the - strand: forward start 8-0-2 = 6, CA
+                 "s spC.c   0 2 - 8 TG\n\n"
+                 "a score=0\n"
+                 "s ov.chr1 1 3 + 8 CGT\n"
+                 "s spA.c   0 3 + 8 CGT\n\n"
+                 "a score=0\n"
+                 "s ov.chr1 3 3 + 8 TTG\n"
+                 "s spA.c   0 2 + 8 T-G\n"
+                 "s spB.c   0 3 + 8 TTG\n\n")
+    cut(ov, os.path.join(d, "ov_out"), 0, 0, set(), False, True)
+    so = json.load(open(os.path.join(d, "ov_out", "ov.w0.json")))
+    zo = npz(os.path.join(d, "ov_out", "ov.w0.npz"))
+    assert so["informants"] == ["spA", "spB", "spC"], so["informants"]
+    bs = so["block_selection"]
+    assert bs["overlapping_blocks"] == 1 and bs["overlap_positions"] == 1, bs
+    # at position 3 the losing block carried spA=T (winner had T: kept) and spB=T (winner had no spB: lost)
+    assert bs["overlap_informant_bases_discarded"] == 2 and bs["overlap_informant_bases_lost"] == 1 \
+        and bs["overlap_lost_by_informant"] == {"spB": 1}, bs
+    inf = list(zo["inf"])
+    U, G = INF_UNALIGNED, INF_GAP
+    assert inf[0:8] == [U, 1, 2, 3, G, 2, U, U], inf[0:8]      # spA: block 1 wins at 3, block 2 gives gap at 4 and G at 5
+    assert inf[8:16] == [U, U, U, U, 3, 2, U, U], inf[8:16]    # spB: position 3 lost to block 1, 4-5 from block 2
+    checks += 1
+    # 57: a block whose reference row is on the - strand is reverse-complemented into
+    #     forward coordinates (srcSize - start - size) rather than skipped: spC aligns CA at 6-8
+    assert bs["reference_minus_strand_blocks_flipped"] == 1, bs
+    assert inf[16:24] == [U, U, U, U, U, U, 1, 0], inf[16:24]  # spC: C at 6, A at 7
+    checks += 1
+    # 58: duplicate rows: two spA copies in one block; identity keeps the copy matching the
+    #     reference (the second), first keeps the first, and the sidecar counts the loser
+    with open(ov + ".maf", "w") as fh:
+        fh.write("##maf version=1\n"
+                 "a score=0\n"
+                 "s ov.chr1 1 4 + 8 CGTT\n"
+                 "s spA.c   0 4 + 8 CAAT\n"
+                 "s spA.d   0 3 + 8 CGT-\n"
+                 "s spB.c   0 4 + 8 CGTT\n\n")
+    cut(ov, os.path.join(d, "dup_i"), 0, 0, set(), False, True)
+    si = json.load(open(os.path.join(d, "dup_i", "ov.w0.json")))
+    bi = si["block_selection"]
+    assert bi["duplicate_row_policy"] == "identity" and bi["duplicate_row_blocks"] == 1 \
+        and bi["duplicate_rows_discarded"] == 1 and bi["duplicate_rows_discarded_bases_in_window"] == 4 \
+        and bi["duplicate_rows_by_informant"] == {"spA": 1} and bi["reference_duplicate_rows"] == 0, bi
+    assert list(npz(os.path.join(d, "dup_i", "ov.w0.npz"))["inf"])[0:8] == [U, 1, 2, 3, G, U, U, U]
+    cut(ov, os.path.join(d, "dup_f"), 0, 0, set(), False, True, duplicate_rows="first")
+    sf = json.load(open(os.path.join(d, "dup_f", "ov.w0.json")))
+    assert sf["block_selection"]["duplicate_rows_discarded_bases_in_window"] == 3
+    assert list(npz(os.path.join(d, "dup_f", "ov.w0.npz"))["inf"])[0:8] == [U, 1, 0, 0, 3, U, U, U]
+    checks += 1
     print(f"self-test passed ({checks} checks)")
     return 0
 
@@ -1392,6 +1548,10 @@ def main() -> int:
     ap.add_argument("--reference-anchored", action="store_true",
                     help="declare a track the built-in table does not know to be reference-anchored, so dropped "
                          "rows count as exact removal; recorded in the sidecar as the operator's claim")
+    ap.add_argument("--duplicate-rows", default="identity", choices=["identity", "first"],
+                    help="when one species has several rows in one block (Cactus exports every copy of a "
+                         "duplicated region): keep the copy with most bases identical to the reference, "
+                         "or the first row; the sidecar counts what was discarded (default identity)")
     ap.add_argument("--partial-ends", default="both", choices=list(PARTIAL_END_MODES),
                     help="how an incomplete CDS end is recognised: 'both' (default; the annotation's "
                          "declaration where it makes one, else the reference sequence), 'declared', "
@@ -1416,7 +1576,8 @@ def main() -> int:
     for stem in args.stem:
         total += len(cut(stem, args.out, args.length, args.stride, drop, args.both_strands, args.quiet,
                          args.transcript_types, args.drop_ancestors, args.reference_anchored,
-                         args.isoforms, reps, args.partial_ends, args.genetic_code, stop_codons))
+                         args.isoforms, reps, args.partial_ends, args.genetic_code, stop_codons,
+                         args.duplicate_rows))
     print(f"wrote {total} examples to {args.out}")
     return 0
 

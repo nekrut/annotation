@@ -205,7 +205,7 @@ def export(stem: str, out_dir: str, transcript: str | None, isoforms: str, infor
         if missing:
             raise SystemExit(f"informants not in the window's rows: {missing}")
         rows = [r for r in rows if r in informants]
-    inf, ins, _, minus_blocks = cw.paint_informants(blocks, ref, start, end, rows)
+    inf, ins, block_stats = cw.paint_informants(blocks, ref, start, end, rows)
     checks = {}
     for ext in (".maf", ".fa", ".annotation.json", ".manifest.json"):
         with open(stem + ext, "rb") as fh:
@@ -277,7 +277,7 @@ def export(stem: str, out_dir: str, transcript: str | None, isoforms: str, infor
                 "reference_stop_removed": stop_removed, "reference_internal_stops": internal_stops,
                 "policy_written": "complete-case" if complete_case else "pairwise",
                 "keep_stops": keep_stops, "isoforms": transcript or isoforms,
-                "dropped_species": sorted(drop), "informants": rows, "minus_strand_blocks_skipped": minus_blocks,
+                "dropped_species": sorted(drop), "informants": rows, "block_selection": block_stats,
                 "complete_case_columns": len(cc_cols), "inputs_sha256": checks, "pairs": table}
         with open(os.path.join(out_dir, f"{name}.{tid}.sidecar.json"), "w") as fh:
             json.dump(side, fh, indent=1, sort_keys=True)

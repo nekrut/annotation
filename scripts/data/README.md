@@ -115,7 +115,13 @@ under `--genetic-code` or `--stop-codons`; `declared`; `sequence`; or
 judged incomplete at each end, a declared frame offset, and every
 disagreement between the two signals; `--reference-anchored` declares
 a track unknown to the built-in class table to be reference-anchored;
-`--both-strands` adds the reverse-complement example. `--self-test` checks
+`--duplicate-rows` chooses the copy when one species has several rows in
+one block, as Cactus exports (`identity`, the default: the copy with most
+bases identical to the reference in that block; or `first`), and the
+sidecar's `block_selection` counts the discarded copies, the positions
+covered by overlapping blocks with what first-wins lost there, and the
+minus-strand reference blocks flipped into forward coordinates (section
+6.3); `--both-strands` adds the reverse-complement example. `--self-test` checks
 labels, frames, boundaries, informant codes, insertions, distances, the
 reverse complement, the transcript filter, the alignment-class table,
 label counts on a padded window, an EPO-shaped two-block window with
@@ -126,8 +132,9 @@ with two isoforms plus an unnamed locus clustered by span, the
 distinct-site accounting under each policy, and the incomplete-end rules
 on a fixture with real codons (declared, undeclared, declared against the
 sequence, a declared frame on the minus strand, the four modes, genetic
-code 6, a stop-excluded convention and a CDS reaching past the window;
-55 checks). The `.npz` members carry a fixed
+code 6, a stop-excluded convention and a CDS reaching past the window),
+overlapping blocks with a lost informant base, a minus-strand reference
+row and two copies of one species under both policies (58 checks). The `.npz` members carry a fixed
 timestamp, so an example's checksum depends only on its inputs; the whole
 cutter, the fetcher, `coverage_by_distance.py` and `tree_composition.py`
 were checked to give identical output under `PYTHONHASHSEED` 0, 1, 2 and 42

@@ -729,6 +729,49 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   gapped. Insertions relative to the reference are not expanded; their
   length after each reference base is kept in a separate channel (clipped
   at 255), so the example keeps a fixed length whatever the alignment did.
+- **Block selection**: a MAF can say two things about one reference base
+  and one species, and the cutter's choice is explicit and counted in the
+  sidecar's `block_selection` rather than left to file order (engels'
+  audit of N-SCAN's `maf_to_align.pl`, relay note
+  20260909T182611Z-engels-0019, found that converter silently skipping a
+  whole block on overlap and misplacing a minus-strand reference row).
+  Three cases. (1) *Blocks overlapping on the reference*: the first block
+  in file order to cover a position wins; the sidecar counts the
+  positions covered twice, the aligned informant bases the losing blocks
+  carried there, and how many of those the winner did not have
+  (`overlap_informant_bases_lost`, the unrecoverable part, per
+  informant). (2) *A reference row on the minus strand*: the block is
+  reverse-complemented into forward coordinates (`srcSize - start -
+  size`, the UCSC MAF rule) and painted, not skipped;
+  `reference_minus_strand_blocks_flipped` counts them. (3) *Several rows
+  for one species in one block*: Cactus exports every copy of a
+  duplicated region, and the old cutter let the last copy overwrite the
+  earlier ones column by column. `--duplicate-rows identity` (default)
+  keeps the copy with the most bases identical to the reference in that
+  block, ties to the first; `first` keeps the first row; the discarded
+  copies are counted in total, in aligned bases inside the window and
+  per informant. Measured on 2026-09-09: the human HBB window on the
+  Cactus 241-way (4,931 bp, 2,517 blocks, 240 informants) has **no**
+  overlapping blocks and no minus-strand reference rows, but 2,513 of
+  its 2,517 blocks carry a duplicated species, up to 17 copies of one
+  species in one block, 322,650 extra rows in all, holding 529,613
+  aligned bases inside the window against 899,732 aligned cells in the
+  example that keeps one copy each. 189 of the 240 informants have a
+  discarded copy; the 51 that do not are the primates, the caviomorph
+  rodents and a few others whose beta-globin cluster is single-copy
+  against human, and the largest counts are ruminants, cetaceans and
+  bats (giraffe 9,945 extra rows, Sowerby's beaked whale 8,441, goat
+  7,353). The two policies differ on 1.5% of the example's cells
+  (18,329 of 1,183,440); `identity` leaves 655,643 cells identical to
+  the reference against 638,479 for `first`, so `first` picks a paralog
+  where a closer copy exists in about one column in sixty. The fly Adh
+  window on the multiz 124-way has none of the three cases, as a
+  single-coverage chain/net alignment should. Which copy is the
+  *ortholog* is a different question from which is most identical, and
+  neither policy answers it; see section 9 item 11. The fetcher's
+  coverage tables (sections 6 and 6.1) count a species as aligned where
+  *any* copy has a base, so on Cactus they read as an upper bound on
+  orthologous alignability.
 - **Geometry**: the patristic distance from the reference to each informant
   on the track tree, and the Newick string in the sidecar. Anything else
   the model wants (an MDS embedding of the tree as in HyphAeon, a
@@ -992,3 +1035,18 @@ informants) is the design-level answer.
     Incomplete ends get no start or stop mark and are left out of
     `distinct_sites`, so the accounting lenin asked about is per example
     in the sidecar's `cds_ends`.
+11. New, from engels' converter audit (relay note
+    20260909T182611Z-engels-0019): section 6.3 now states and counts the
+    cutter's block-selection rules. The finding that matters is not the
+    two hazards engels tested (the HBB Cactus window has no overlapping
+    blocks and no minus-strand reference rows) but a third: nearly every
+    Cactus block carries several rows for one species, and those extra
+    copies hold 59% as many aligned bases as the example keeps. Open for
+    T-human-011: whether the model should see the copies (a paralog
+    channel, or several rows per species) or one chosen copy, and if one,
+    chosen how. `identity` is a stand-in; the defensible rule is synteny
+    (keep the copy that continues the previous block's contig and
+    coordinates), which needs the informant coordinates the cutter now
+    ignores, or the UCSC `--noDupes` style export if the track offers
+    one. Until then, Cactus examples carry `duplicate_row_policy` and
+    the per-informant counts so a result can say which copies it saw.
