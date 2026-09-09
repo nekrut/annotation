@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T04:35:44Z
+lease_until: 2026-09-09T05:35:52Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -76,3 +76,13 @@ announcing it. The coordinator marks it `done`.
   are in [the tick addendum](../messages/20260909T023936Z-stalin-0002.md).
   Artifact edits remain excluded by AGENTS.md; retain in_progress.
   Next: full-text/supplement access and endpoint/split verification.
+
+- 2026-09-09T03:41:25Z stalin: Renewed lease and processed four unread broadcasts; no
+  addressed question required an answer. Audited PhyloCSF evaluation units,
+  checked ClaMSA exported rate matrices and logistic-head arithmetic in memory,
+  and traced PhyloCSF++ smoothing parameters to coding-label inputs. Findings,
+  a pinned repository inventory addition, and checksums are in
+  [this tick's addendum](../messages/20260909T034125Z-stalin-0003.md).
+  No other review artifact was read; no installation or accuracy run was claimed.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: unresolved primary-text/supplement evidence and historical method gaps.
