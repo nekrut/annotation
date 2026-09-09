@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T11:10:00Z
+lease_until: 2026-09-09T12:12:15Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -360,3 +360,46 @@ one species in a fresh clone.
   alignment anywhere) or carry GRCz11 (Ensembl fish EPO) with a declared
   liftover. NEXT: decide that, and Helixer or Tiberius on one vertebrate,
   still the input shape no AUGUSTUS run reaches.
+- 2026-09-09 lenin: run 7. Answered the one item run 6 accepted: marx's
+  `docs/data-sources.md` §7 item 6, GRCz11 versus GRCz12ab for zebrafish.
+  DECIDED: keep GRCz12ab. New `docs/benchmark.md` §2.4 carries the reasoning,
+  §2.3's caveat row and `panel.tsv` `notes` point at it.
+  The argument, all checked today rather than assumed. (1) Moving to GRCz11
+  buys exactly one thing, the Ensembl fish EPO, and that alignment is
+  unusable here: both fish species sets, EPO (32 species) and EPO-extended
+  (65), contain `takifugu_rubripes`
+  (`rest.ensembl.org/info/compara/species_sets/{EPO,EPO_EXTENDED}`), and fugu
+  is the `heldout_paired` species paired with zebrafish. EPO is jointly
+  inferred, so §3.2 channel 3 already requires a rebuild with fugu removed;
+  a dropped row does not qualify. Zebrafish is rebuild-only for the
+  comparative arm on either assembly, so the move buys nothing. The
+  contamination also sits exactly on the axis the pair exists to test, a
+  6.8x median-intron shift inside one subclass.
+  (2) Nothing else is on either assembly. UCSC `danRer11` has no
+  multiz/phastCons/phyloP at all -- 40 tracks from `list/tracks`, none
+  conservation, and no `*way` directory on hgdownload, only vsHg38/vsMm39/
+  vsMm10/vsGalGal6 chains. GRCz12ab has no GenArk hub as of today.
+  (3) Since a rebuild is needed either way, rebuild on the better assembly:
+  GRCz12ab is 25 contigs, N50 59.43 Mb, zero gap bases; GRCz11 is 1,917
+  scaffolds, 19,725 contigs, N50 1.42 Mb, 4,689,282 gap bases (NCBI Datasets
+  `dataset_report`, both accessions). Zebrafish has the panel's third-longest
+  introns (p99 62,699 bp, max 1,090,140 bp), and GRCz11 puts 4.7 Mb of N
+  through them. GRCz11's annotation is also two years older
+  (RS_2024_08, 27,158 coding genes, against RS_2026_07 and 28,415).
+  (4) The liftover option is real and is rejected in §2.4 with the chain it
+  would have used: UCSC ships `danRer11ToGCA_052040795.1.over.chain.gz`
+  (9.4 MB, 2026-05-08) and `GCA_052040795.1` is the GenBank pair of
+  `GCF_052040795.1`. It pays a chain-projection channel and a second assembly
+  per species to buy the alignment §3.2 already forbids.
+  Consequence handed back to T-human-008: zebrafish counts with the twelve
+  species that have no usable public alignment, not with the two on older
+  assemblies, so the number is thirteen of twenty for training. Fugu is
+  unaffected; an informant set at inference on a held-out target is permitted.
+  Verified: `score.py --self-test` 69/69 still passes, `leakage_check.py`
+  still reports 0 violations and the panel is unchanged apart from the
+  `notes` cell. No data fetched beyond metadata JSON and two directory
+  listings.
+  Task stays in `review`; PR #5 updated (commit f23efb9).
+  NOT done, unchanged: open item 2, Helixer or Tiberius on one vertebrate --
+  the input shape no AUGUSTUS run reaches. NEXT: that, and review feedback on
+  PR #5 when it arrives.
