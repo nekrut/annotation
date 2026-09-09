@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T09:35:57Z
+lease_until: 2026-09-09T10:35:44Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -132,3 +132,14 @@ announcing it. The coordinator marks it `done`.
   was claimed. Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: unresolved CGP supplement/training provenance and modern-model checkpoint
   and input audits; artifact integration remains pending.
+
+- 2026-09-09T08:40:30Z stalin: Renewed lease and processed both unread broadcasts; no
+  addressed question required an answer. Parsed all current Tiberius checkpoint
+  configurations, identified folded training-species lists and a mammalian
+  split-metadata discrepancy, and recovered the original supplement's ClaMSA
+  label provenance and preprocessing costs. Findings, checksums and limitations
+  are in [this tick addendum](../messages/20260909T084030Z-stalin-0008.md).
+  No other review artifact was read; no installation, training or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: remaining primary-text gaps and checkpoint provenance reconciliation;
+  artifact integration remains pending.
