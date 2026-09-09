@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T12:12:15Z
+lease_until: 2026-09-09T15:06:03Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -403,3 +403,53 @@ one species in a fresh clone.
   NOT done, unchanged: open item 2, Helixer or Tiberius on one vertebrate --
   the input shape no AUGUSTUS run reaches. NEXT: that, and review feedback on
   PR #5 when it arrives.
+- 2026-09-09 lenin: run 8. Closed the standing item (open item 2, "Helixer or
+  Tiberius on one vertebrate") and open item 10 with it. Ran Helixer 0.3.7
+  from the published container on one consumer GPU: T. rubripes (vertebrate
+  model, 384 Mb, 91.6 min), N. crassa (fungi, 41 Mb, 5.8 min) and
+  S. cerevisiae (fungi, 12 Mb, 1.9 min). That is the input shape no AUGUSTUS
+  run reaches -- gene/mRNA/exon/CDS plus UTRs and NO stop_codon features at
+  all -- so the section 4.5 convention is decided by the genome probe rather
+  than by a feature or a flag. Two defects, both invisible on every earlier
+  run, both fixed with a fixture verified to fail without the fix.
+  (1) THE SECTION 4.3 DECILE STRATIFICATION WAS NOT REPRODUCIBLE. Scoring the
+  same two fugu files twice gave different per-decile donor and acceptor
+  counts while every total was identical. A splice site shared by introns of
+  two lengths kept whichever the internal set yielded last, which depends on
+  the interpreter's hash seed; that is 8,086 of 220,976 fugu donors and 23,387
+  of 189,329 human ones (12.4%), with over 1 Mb between the shortest and the
+  longest intron at one site. The shortest intron now decides and the count of
+  sites the rule touched is reported.
+  (2) THE GENOME WINDOW PLAN WAS MADE BEFORE THE STOP-CODON MERGE. Merging a
+  stop_codon feature that lies across an intron creates a junction the plan
+  never asked for, so its dinucleotide came back `unknown` instead of the
+  GT-AG it is -- one predicted intron of the S. pombe cross-parameter run. The
+  plan is extended after the merge, with a second FASTA pass only when a merge
+  changed a chain.
+  OPEN ITEM 10 ANSWERED: AUGUSTUS's S. cerevisiae donor F1 0.394 is not an
+  AUGUSTUS artefact. Helixer scores 0.378 on the same genome and both get
+  there by over-predicting introns -- 566 and 734 predicted against 281
+  reference ones in a 95.3% single-exon genome, donor precision 0.295 and
+  0.262. Two unrelated architectures agreeing rules out the tool-specific
+  explanation; deciding between "both are bad at not splicing" and
+  "some of those introns are real and unannotated" needs the high-confidence
+  subset (item 3) or RNA-seq junctions (item 6), not a third predictor.
+  Results: N. crassa nucleotide/exon/donor/transcript/locus F1
+  0.962/0.772/0.841/0.686/0.906; S. cerevisiae 0.986/0.825/0.378/0.860/0.948;
+  T. rubripes 0.919/0.776/0.853/0.238/0.887. N. crassa is the only panel
+  species Helixer can be run on without declaring pretraining exposure, so it
+  is the only row that is a measurement rather than an upper bound. Fugu's
+  transcript F1 is the isoform effect: 46,771 reference transcripts over
+  22,090 loci against one prediction per locus.
+  Verified: self-test 104 -> 116 checks, all pass, run under several
+  PYTHONHASHSEED values; identity runs re-checked at F1 1.0 / MCC 1.0 with 0
+  fusions and 0 splits on S. cerevisiae, N. crassa, T. rubripes, C. elegans
+  and human; all six results in benchmark/validation/ regenerated with the
+  fixed scorer and the three AUGUSTUS numbers unchanged to five decimals.
+  docs/benchmark.md sections 3.2, 4.3, 4.5, 6 and 7 rewritten to match.
+  Task stays in `review`; PR #5 updated (commit dedbb1a).
+  NOT done, open item 2: the blind 3 bp extension is still fixture-only,
+  because Helixer's convention is `inside` -- Tiberius is the tool that would
+  exercise it if its GTF excludes the stop; no evidence-based pipeline with
+  alternative isoforms has been scored; degraded-copy runs still cover 2 of
+  20. NEXT: address review feedback on PR #5 when it arrives.
