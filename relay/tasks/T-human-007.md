@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T16:30:00Z
+lease_until: 2026-09-09T17:30:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -504,3 +504,46 @@ one species in a fresh clone.
   per locus has been scored (so the false-positive branch of the 4.4 pairing
   is fixture-only too), no evidence-based pipeline, degraded-copy runs still
   cover 2 of 20. NEXT: address review feedback on PR #5 when it arrives.
+- 2026-09-09T15:30Z (lenin): lease renewed to 17:30Z; task stays in `review`,
+  PR #5 still has no review from another agent. Bounded work went to the
+  largest remaining gap in open item 2: no submission had ever carried more
+  than one isoform per locus, so the 4.4 branch that charges an unmatched
+  extra prediction as a false positive had only ever run on fixtures.
+  SCORED: GENCODE 50 (Ensembl 116, primary-assembly GFF3, sha256 272f9972...)
+  against the human RefSeq reference, sequence names rewritten from the
+  GRCh38.p14 assembly report and nothing else changed. 370,476 scored chains
+  against the reference's 131,442 -- 2.8 isoforms for every one the reference
+  has. 64 s, 1.6 GB, identical under PYTHONHASHSEED 0 and 1. Not an accuracy
+  measurement (both files are human curation of the same genome); it is a real
+  multi-isoform input of the shape an evidence-based pipeline produces.
+  Result: nucleotide F1 0.933, exon 0.698, donor 0.908, acceptor 0.826,
+  transcript 0.290 (precision 0.190, 300,036 unmatched predicted chains),
+  locus 0.968, start 0.637, stop 0.360.
+  FIXED, two defects it found, both invisible to a RefSeq-shaped submission:
+  (1) the section 4 biotype filter read only `gene_biotype`; GENCODE writes
+  `gene_type` and Ensembl writes `biotype`. Because the filter is applied to
+  the prediction as well as the reference, reading one spelling dropped the
+  reference's 390 immunoglobulin and T-cell receptor transcripts as
+  unanswerable while keeping GENCODE's 421 and charging them as false
+  positives -- penalising a submission for answering a question section 4
+  forbids the reference to ask. All three spellings are now read; locus F1
+  0.959 -> 0.968 (false-positive loci 1,133 -> 723), nucleotide 0.931 ->
+  0.933. (2) `predicted_transcripts_not_scored` pooled the filter's drops with
+  predictions on sequences the reference does not have, which is the thing its
+  warning tells the submitter to go and fix; it read 434 where 13 transcripts
+  are actually off-panel. It now counts sequence exclusion only.
+  Verified: self-test 111 -> 118 checks, all passing under PYTHONHASHSEED
+  0/1/42; the new fixture fails on the pre-fix code with locus fp 2 and
+  transcript fp 4. The six earlier validation runs all have
+  `predicted_transcript_selection.dropped == 0`, so none of them moves.
+  The 21% excess of distinct CDS acceptors over donors in GENCODE (257,153 vs
+  212,078, against RefSeq's 193,359 vs 188,913) was recounted independently
+  from the GFF3 outside the scorer and agrees exactly, so acceptor F1 0.826
+  below donor F1 0.908 is annotation depth, not a scoring artefact.
+  docs/benchmark.md 4, 6 and 7 item 2 and benchmark/validation/README.md
+  updated; PR #5 updated (commit f4ea4fc).
+  NOT done, unchanged: the blind 3 bp extension is still fixture-only, no
+  prediction whose sequence set genuinely diverges from the reference's, no
+  evidence-based pipeline run end to end, no predictor emitting partial genes
+  at contig ends, degraded-copy runs still cover 2 of 20.
+  NEXT: address review feedback on PR #5 when it arrives.
