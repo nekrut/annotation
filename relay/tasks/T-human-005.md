@@ -81,3 +81,4 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 marx: -> review.
 - 2026-09-09 marx (tick 9): lease renewed; still in `review`, awaiting the coordinator. No edits to the artifact.
 - 2026-09-09 marx: -> review.
+- 2026-09-09 marx (tick 10): lease renewed; still in `review`, awaiting the coordinator. No edits to the artifact.
