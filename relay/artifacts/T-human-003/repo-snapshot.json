@@ -1,7 +1,7 @@
 {
-  "accessed_utc": "2026-09-09T01:38:53Z",
-  "since": "2025-09-09T01:38:53Z",
-  "until": "2026-09-09T01:38:53Z",
+  "accessed_utc": "2026-09-09T01:59:22Z",
+  "since": "2025-09-09T01:59:22Z",
+  "until": "2026-09-09T01:59:22Z",
   "commit_definition": "Default-branch reachable commits including merges; GitHub since/until filter.",
   "requests": [
     {
@@ -311,6 +311,90 @@
       "accessed_utc": "2026-09-09T01:38:57.296937Z",
       "etag": "W/\"5cab106d23c81a90c06eef8e17161e52e4bc05ff3cbe1877bf6c24a56df4f088\"",
       "rate_limit_remaining": "54"
+    },
+    {
+      "url": "https://api.github.com/repos/cpockrandt/PhyloCSFpp",
+      "sha256": "659bd2be00c3657df9cd0c1d01b44c59267a8a2a6d03ae73de63f86f968cfb26",
+      "accessed_utc": "2026-09-09T01:59:22.585402Z",
+      "etag": "W/\"8e850e049283e1bf7414c20a2b525d108c873ddb1953e7ac5fd1ed13114956f7\"",
+      "rate_limit_remaining": "17"
+    },
+    {
+      "url": "https://api.github.com/repos/cpockrandt/PhyloCSFpp/pulls?state=open&per_page=100&page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:59:23.150990Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "16"
+    },
+    {
+      "url": "https://api.github.com/repos/cpockrandt/PhyloCSFpp/commits?since=2025-09-09T01%3A59%3A22Z&until=2026-09-09T01%3A59%3A22Z&per_page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:59:23.825087Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "15"
+    },
+    {
+      "url": "https://api.github.com/repos/cpockrandt/PhyloCSFpp/commits?per_page=1",
+      "sha256": "b1d712665af296602208aae9816e318edb6cc80760a2c87e891f2fe9fa72895c",
+      "accessed_utc": "2026-09-09T01:59:24.469301Z",
+      "etag": "W/\"8e4b6081c493bf2dc351126f5213408d9e6b4bf07c73a279926b4312943dc32d\"",
+      "rate_limit_remaining": "14"
+    },
+    {
+      "url": "https://api.github.com/repos/gatech-genemark/ProtHint",
+      "sha256": "87806f4177a12c7e8b14d651c14628a94c6952fe1d1b2b6411b9d4368b537012",
+      "accessed_utc": "2026-09-09T01:59:25.218613Z",
+      "etag": "W/\"d10880db1945a3c5be30b9a2ef5a3e898f29d9ca8e7173e31a3598c95ded75ea\"",
+      "rate_limit_remaining": "13"
+    },
+    {
+      "url": "https://api.github.com/repos/gatech-genemark/ProtHint/pulls?state=open&per_page=100&page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:59:25.770411Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "12"
+    },
+    {
+      "url": "https://api.github.com/repos/gatech-genemark/ProtHint/commits?since=2025-09-09T01%3A59%3A22Z&until=2026-09-09T01%3A59%3A22Z&per_page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:59:26.428541Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "11"
+    },
+    {
+      "url": "https://api.github.com/repos/gatech-genemark/ProtHint/commits?per_page=1",
+      "sha256": "643074284e4fa0f9c6cef219fcdf89414f051e5c7996b7dde12817b4f61daf50",
+      "accessed_utc": "2026-09-09T01:59:27.296943Z",
+      "etag": "W/\"2be8ab599bc3ab01f841294011837e4ff717b9fcb3715e8cb5d522a82188e1ba\"",
+      "rate_limit_remaining": "10"
+    },
+    {
+      "url": "https://api.github.com/repos/gatech-genemark/GeneMark-EP-ProtHint-exp",
+      "sha256": "7aa467a4672b1338ad06bb64f45ae8f16fd9104a82512e6d6630c1f3a79eae8e",
+      "accessed_utc": "2026-09-09T01:59:27.896702Z",
+      "etag": "W/\"98b6a51c57ab41faba8a4013ddbe409c0ba35339bef22a2b6740c7a7982466d7\"",
+      "rate_limit_remaining": "9"
+    },
+    {
+      "url": "https://api.github.com/repos/gatech-genemark/GeneMark-EP-ProtHint-exp/pulls?state=open&per_page=100&page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:59:28.451963Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "8"
+    },
+    {
+      "url": "https://api.github.com/repos/gatech-genemark/GeneMark-EP-ProtHint-exp/commits?since=2025-09-09T01%3A59%3A22Z&until=2026-09-09T01%3A59%3A22Z&per_page=1",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "accessed_utc": "2026-09-09T01:59:29.073362Z",
+      "etag": "\"74d1db57f0fec3481bb6b4d9bcdc020d656635ec6c53ee589d27a8831cbbe280\"",
+      "rate_limit_remaining": "7"
+    },
+    {
+      "url": "https://api.github.com/repos/gatech-genemark/GeneMark-EP-ProtHint-exp/commits?per_page=1",
+      "sha256": "42ef2252222fe213f0dea03e65a7acb6f5cd395d1a8b2c10934e7b90155a9dce",
+      "accessed_utc": "2026-09-09T01:59:29.900982Z",
+      "etag": "W/\"e7e995aca6c0c7cc4a783aab40146e30960b95f2caceb6d6c6b525edba5f08d5\"",
+      "rate_limit_remaining": "6"
     }
   ],
   "repositories": [
@@ -329,7 +413,8 @@
       "last_commit_date": "2026-09-07T11:14:18Z",
       "default_branch_sha": "e73844bfc7170665bc6632f1806a05dfe59fae8a",
       "count_since_utc": "2025-09-09T01:26:28Z",
-      "count_until_utc": "2026-09-09T01:26:28Z"
+      "count_until_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "MIT"
     },
     {
       "url": "https://github.com/ncbi/egapx",
@@ -364,7 +449,8 @@
       "last_commit_date": "2026-07-01T14:47:25Z",
       "default_branch_sha": "d17bb496b8842542590644b2437798711c0125d5",
       "count_since_utc": "2025-09-09T01:26:28Z",
-      "count_until_utc": "2026-09-09T01:26:28Z"
+      "count_until_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "GPL-3.0"
     },
     {
       "url": "https://github.com/Gaius-Augustus/Augustus",
@@ -405,24 +491,25 @@
     {
       "url": "https://github.com/gatech-genemark/GeneMark-ETP",
       "readme_install_fresh_env": "not attempted",
-      "notes": "Metadata only; installation and inference untested.",
+      "notes": "Metadata only; installation and inference untested. License audit: https://github.com/gatech-genemark/GeneMark-ETP/blob/8b3dbc2bdb831f02d3eaf697a495a2067a7eb1cf/README.md",
       "snapshot_utc": "2026-09-09T01:26:28Z",
       "default_branch": "main",
       "stars": 31,
       "language": "AMPL",
-      "licence": "unknown",
+      "licence": "CC-BY-NC-SA-4.0 pipeline; separate third-party terms",
       "archived": false,
       "open_issues": 11,
       "commits_last_12_months": 0,
       "last_commit_date": "2025-04-11T17:46:52Z",
       "default_branch_sha": "8b3dbc2bdb831f02d3eaf697a495a2067a7eb1cf",
       "count_since_utc": "2025-09-09T01:26:28Z",
-      "count_until_utc": "2026-09-09T01:26:28Z"
+      "count_until_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "unknown"
     },
     {
       "url": "https://github.com/KorfLab/SNAP",
-      "readme_install_fresh_env": "not attempted",
-      "notes": "Metadata only; installation and inference untested. License audit: https://github.com/KorfLab/SNAP/blob/4ad1e957cd8e68b63857cc1cb3380d39a7b518b1/LICENSE",
+      "readme_install_fresh_env": "PASS: fresh source build and both README example predictions; genome accuracy untested",
+      "notes": "Fresh source/build directory with host compiler, not a fresh OS. Both README examples ran; see snap-build-check.json. License audit: https://github.com/KorfLab/SNAP/blob/4ad1e957cd8e68b63857cc1cb3380d39a7b518b1/LICENSE",
       "snapshot_utc": "2026-09-09T01:26:28Z",
       "default_branch": "master",
       "stars": 72,
@@ -440,19 +527,20 @@
     {
       "url": "https://github.com/Yandell-Lab/maker",
       "readme_install_fresh_env": "not attempted",
-      "notes": "Metadata only; installation and inference untested.",
+      "notes": "Metadata only; installation and inference untested. License audit: https://github.com/Yandell-Lab/maker/blob/4bf3085ae8df4680468646a63c635094a0a3dc2a/LICENSE",
       "snapshot_utc": "2026-09-09T01:26:28Z",
       "default_branch": "master",
       "stars": 47,
       "language": "Perl",
-      "licence": "NOASSERTION",
+      "licence": "Academic use: Artistic-2.0 or GPL; separate commercial license per header",
       "archived": false,
       "open_issues": 10,
       "commits_last_12_months": 0,
       "last_commit_date": "2024-08-20T16:56:05Z",
       "default_branch_sha": "4bf3085ae8df4680468646a63c635094a0a3dc2a",
       "count_since_utc": "2025-09-09T01:26:28Z",
-      "count_until_utc": "2026-09-09T01:26:28Z"
+      "count_until_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "NOASSERTION"
     },
     {
       "url": "https://github.com/Gaius-Augustus/clamsa",
@@ -469,7 +557,8 @@
       "last_commit_date": "2024-07-04T12:26:25Z",
       "default_branch_sha": "95d8d6c07c00f1218eb22545cf54aacfd9603a9e",
       "count_since_utc": "2025-09-09T01:26:28Z",
-      "count_until_utc": "2026-09-09T01:26:28Z"
+      "count_until_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "unknown"
     },
     {
       "url": "https://github.com/mlin/PhyloCSF",
@@ -486,19 +575,22 @@
       "last_commit_date": "2023-10-16T15:11:59Z",
       "default_branch_sha": "3d29221f8a0d408d48a09ad32cb51400daf253f9",
       "count_since_utc": "2025-09-09T01:26:28Z",
-      "count_until_utc": "2026-09-09T01:26:28Z"
+      "count_until_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "AGPL-3.0"
     },
     {
       "url": "https://github.com/nekrut/axomeme",
       "readme_install_fresh_env": "not attempted",
       "notes": "Metadata incomplete: HTTP Error 404: Not Found",
-      "snapshot_utc": "2026-09-09T01:26:28Z"
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "unavailable"
     },
     {
       "url": "https://github.com/nekrut/scalingPaper",
       "readme_install_fresh_env": "not attempted",
       "notes": "Metadata incomplete: HTTP Error 404: Not Found",
-      "snapshot_utc": "2026-09-09T01:26:28Z"
+      "snapshot_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "unavailable"
     },
     {
       "url": "https://github.com/hexagonbio/geneML",
@@ -515,7 +607,8 @@
       "last_commit_date": "2026-04-03T12:59:05Z",
       "default_branch_sha": "0627add6269cd9b9e4c0028748e6802513c6e2d6",
       "count_since_utc": "2025-09-09T01:26:28Z",
-      "count_until_utc": "2026-09-09T01:26:28Z"
+      "count_until_utc": "2026-09-09T01:26:28Z",
+      "github_detected_licence": "GPL-3.0"
     },
     {
       "url": "https://github.com/xjtu-omics/ANNEVO",
@@ -550,7 +643,62 @@
       "last_commit_date": "2025-12-27T14:29:33Z",
       "default_branch_sha": "2dc37b86e16a6970fbc731751f7719d9f676f7f9",
       "count_since_utc": "2025-09-09T01:38:53Z",
-      "count_until_utc": "2026-09-09T01:38:53Z"
+      "count_until_utc": "2026-09-09T01:38:53Z",
+      "github_detected_licence": "NOASSERTION"
+    },
+    {
+      "url": "https://github.com/cpockrandt/PhyloCSFpp",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested. License audit: https://github.com/cpockrandt/PhyloCSFpp/blob/54efa871f041f4091334058179c53d12181f687c/LICENSE.md",
+      "snapshot_utc": "2026-09-09T01:59:22Z",
+      "default_branch": "master",
+      "stars": 31,
+      "language": "C++",
+      "licence": "AGPL-3.0",
+      "archived": false,
+      "open_issues": 8,
+      "commits_last_12_months": 0,
+      "last_commit_date": "2022-01-26T05:13:27Z",
+      "default_branch_sha": "54efa871f041f4091334058179c53d12181f687c",
+      "count_since_utc": "2025-09-09T01:59:22Z",
+      "count_until_utc": "2026-09-09T01:59:22Z",
+      "github_detected_licence": "NOASSERTION"
+    },
+    {
+      "url": "https://github.com/gatech-genemark/ProtHint",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested. License audit: https://github.com/gatech-genemark/ProtHint/blob/103304ce336e6487821eba19fb2f14cf18946e25/LICENSE",
+      "snapshot_utc": "2026-09-09T01:59:22Z",
+      "default_branch": "master",
+      "stars": 62,
+      "language": "Python",
+      "licence": "GeneMark restricted research license; institutional eligibility and use restrictions",
+      "archived": false,
+      "open_issues": 15,
+      "commits_last_12_months": 0,
+      "last_commit_date": "2023-10-27T00:42:32Z",
+      "default_branch_sha": "103304ce336e6487821eba19fb2f14cf18946e25",
+      "count_since_utc": "2025-09-09T01:59:22Z",
+      "count_until_utc": "2026-09-09T01:59:22Z",
+      "github_detected_licence": "NOASSERTION"
+    },
+    {
+      "url": "https://github.com/gatech-genemark/GeneMark-EP-ProtHint-exp",
+      "readme_install_fresh_env": "not attempted",
+      "notes": "Metadata only; installation and inference untested.",
+      "snapshot_utc": "2026-09-09T01:59:22Z",
+      "default_branch": "master",
+      "stars": 4,
+      "language": "Shell",
+      "licence": "unknown",
+      "archived": false,
+      "open_issues": 1,
+      "commits_last_12_months": 0,
+      "last_commit_date": "2020-03-18T23:34:50Z",
+      "default_branch_sha": "82f0186d73e65d190504553f6693344a46d76488",
+      "count_since_utc": "2025-09-09T01:59:22Z",
+      "count_until_utc": "2026-09-09T01:59:22Z",
+      "github_detected_licence": "unknown"
     }
   ],
   "initial_accessed_utc": "2026-09-09T01:26:28Z"

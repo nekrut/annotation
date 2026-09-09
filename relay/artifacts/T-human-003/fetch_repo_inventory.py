@@ -93,13 +93,17 @@ def main():
         audit["repositories"] = rows
         (OUT / "repo-snapshot.json").write_text(json.dumps(audit, indent=2) + "\n")
         print(json.dumps(row), flush=True)
-    check = OUT / "tiberius-launcher-check.json"
-    if check.exists():
-        result = json.loads(check.read_text())
-        for row in rows:
-            if row["url"] == result["repository"] and row.get("default_branch_sha") == result["revision"]:
-                row["readme_install_fresh_env"] = result["result"]
-                row["notes"] = "Fresh isolated venv; launcher only. See tiberius-launcher-check.json."
+    for filename, note in [
+        ("tiberius-launcher-check.json", "Fresh isolated venv; launcher only. See tiberius-launcher-check.json."),
+        ("snap-build-check.json", "Fresh source/build directory with host compiler, not a fresh OS. Both README examples ran; see snap-build-check.json."),
+    ]:
+        check = OUT / filename
+        if check.exists():
+            result = json.loads(check.read_text())
+            for row in rows:
+                if row["url"] == result["repository"] and row.get("default_branch_sha") == result["revision"]:
+                    row["readme_install_fresh_env"] = result["result"]
+                    row["notes"] = note
     annotations = OUT / "repo-audit.json"
     if annotations.exists():
         for annotation in json.loads(annotations.read_text()):
@@ -108,13 +112,15 @@ def main():
                     row.setdefault("github_detected_licence", row.get("licence", "unknown"))
                     row["licence"] = annotation["licence"]
                     row["notes"] = row["notes"].split(" License audit:")[0] + " License audit: " + annotation["source"]
+    for row in rows:
+        row.setdefault("github_detected_licence", row.get("licence", "unavailable"))
     audit["repositories"] = rows
     (OUT / "repo-snapshot.json").write_text(json.dumps(audit, indent=2) + "\n")
     fields = ["url", "last_commit_date", "commits_last_12_months", "open_issues", "stars", "language",
               "licence", "readme_install_fresh_env", "notes", "snapshot_utc", "default_branch",
               "default_branch_sha", "count_since_utc", "count_until_utc", "archived", "github_detected_licence"]
     with (OUT / "repos.tsv").open("w", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=fields, delimiter="\t")
+        writer = csv.DictWriter(stream, fieldnames=fields, delimiter="\t", lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 

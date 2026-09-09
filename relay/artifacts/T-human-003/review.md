@@ -1,11 +1,12 @@
 # Independent review of eukaryotic gene prediction — engels
 
-**Status: first-run working draft, 2026-09-09 UTC. Task T-human-003 remains
+**Status: second-tick working draft, 2026-09-09 UTC. Task T-human-003 remains
 in progress.** This is an independent review; no other agent's review artifact
 has been read. Numerical results below are authors' reports, not measurements
 made in this run. Publication tables distinguish extracted results from pending
-checks. Tiberius's launcher was installed and checked in a fresh virtual
-environment; inference and training have not been attempted.
+checks. Tiberius's launcher was checked in a fresh virtual environment; SNAP
+was compiled in a fresh source directory and ran its packaged examples.
+Neither check measures genome-scale accuracy; no training was attempted.
 
 The most promising starting point is a small comparative coding scorer coupled
 to explicit gene-structure decoding. The claim that this can work across all
@@ -39,13 +40,17 @@ is subscription content; only its public abstract, author repository, and
 available preprint routes are eligible for this review. No paywalled text or
 private repository content is included in these artifacts.
 
-Reading coverage is uneven and explicitly unfinished: Tiberius's original and
+Reading coverage remains uneven and unfinished: Tiberius's original and
 clade-extension main texts, SNAP, and the final Helixer main text were read;
 PhyloCSF and GeneMark-ETP methods/results received a closer pass. BRAKER3
-main-text gaps from truncation were revisited. Other rows currently range from primary
-abstracts and documentation to selected main-text passages. Supplementary
-tables, exact training splits, and old software distributions require another
-pass. Bibliographic metadata is in [refs.bib](refs.bib).
+main-text gaps from truncation were revisited. This tick extracted the original
+AUGUSTUS results/training sections and runtime, GENSCAN's runtime, CONTRAST's
+results/discussion and training procedure, and selected GeneMark-ES/EP+ and
+BRAKER2 results. The RefSeq paper's Gnomon/EGAPx passages were read through
+indexed primary text after its XML endpoint returned 404. Access failures and
+reading scope are logged. Supplementary tables, remaining training splits,
+and old software distributions require another pass. Bibliographic metadata
+is in [refs.bib](refs.bib).
 
 ## 2. Publications table
 
@@ -58,27 +63,27 @@ within a paper retain that paper's evidence restrictions and reference set.
 
 | Method; publication | Class and input | Training / evaluation and transfer evidence | Reported accuracy and benchmark | Runtime / hardware | Code |
 | --- | --- | --- | --- | --- | --- |
-| GENSCAN, 1997; [DOI](https://doi.org/10.1006/jmbi.1997.0951) | GHMM; genomic DNA; composition-specific parameters and duration models | Human-derived model, evaluated on vertebrate gene sets; no universal cross-clade claim | On Burset–Guigó's gene set: exon sensitivity 0.78, exon precision 0.81; 243/570 genes exact (0.43). The paper cautions that small, simple genes bias this figure upward. | Pending full-text extraction | Historical distribution not yet verified |
-| AUGUSTUS, 2003; [DOI](https://doi.org/10.1093/bioinformatics/btg1080) | HMM / duration modeling; DNA; later modes use hints | Human and Drosophila; species-trained models, intron lengths and GC-dependent parameters | Primary abstract reports gains on longer genomic sequences; exact benchmark extraction pending | Pending | [AUGUSTUS](https://github.com/Gaius-Augustus/Augustus) |
+| GENSCAN, 1997; [DOI](https://doi.org/10.1006/jmbi.1997.0951) | GHMM; genomic DNA; composition-specific parameters and duration models | Human-derived model, evaluated on vertebrate gene sets; no universal cross-clade claim | On Burset–Guigó's gene set: exon sensitivity 0.78, exon precision 0.81; 243/570 genes exact (0.43). The paper cautions that small, simple genes bias this figure upward. | Approximately X + 5 seconds for X kb on a Sun Sparc10; historical report, not modern throughput. [Open paper copy](https://www.cs.rice.edu/~devika/comp470/papers/burge97prediction.pdf), Algorithmic issues. | Historical [MIT server](http://genes.mit.edu/GENSCAN.html); current binary retrieval unverified |
+| AUGUSTUS, 2003; [DOI](https://doi.org/10.1093/bioinformatics/btg1080); [author manuscript](https://gobics.de/mario/papers/GenePred2003.pdf) | HMM with explicit short-intron and geometric-tail duration model; DNA | Separate human/fly training. Fly set removes alternative splicing and noncanonical sites; sequence-similarity filtering separates training/test sets. | Human h178: exact gene Sn/precision 46%/45%, exon 80%/80%; fly100: gene 52%/27%. Manuscript Tables 1 and 3; filtered single-gene tests do not establish genome-wide transfer. | About 6 min for 1.6 Mb fly test sequence on a 2.4 GHz PC; original implementation | [AUGUSTUS](https://github.com/Gaius-Augustus/Augustus) |
 | SNAP, 2004; [DOI](https://doi.org/10.1186/1471-2105-5-59) | GHMM; DNA; species parameters or bootstrapped training | Arabidopsis, worm, fly, rice; within-species cross-validation and explicit cross-species tests | Arabidopsis gene sensitivity/precision 54.3%/46.8% in five-fold validation. Training on a different species can severely degrade performance (Table 3). | Approximately 30 CPU seconds and 100 MB per Mb on a 1 GHz machine; historical report, not a current measurement. | [SNAP](https://github.com/KorfLab/SNAP) |
-| GeneMark.hmm-E / ES, 2011 usage paper; [DOI](https://doi.org/10.1002/0471250953.bi0406s35) | Statistical gene finder; DNA; ES iteratively self-trains | Fungal, plant, and animal uses described. Self-training on the target is adaptation, not fixed-weight transfer. | Detailed results and original development papers pending | Pending | GeneMark distribution and component licenses pending |
-| GeneMark-EP+, 2020; [DOI](https://doi.org/10.1093/nargab/lqaa026) | Self-training plus ProtHint protein-derived splice/start/stop hints; EP+ enforces reliable hints during prediction | Detailed species and exclusion rules pending | Primary abstract reports gains over ES/ET, especially in large genomes; numerical extraction pending | Pending | Component source / binary boundary pending |
+| GeneMark.hmm-E / ES, 2005 development [DOI](https://doi.org/10.1093/nar/gki937); 2011 usage [DOI](https://doi.org/10.1002/0471250953.bi0406s35) | Statistical gene finder; DNA; ES alternates Viterbi labeling and parameter estimation | Development tests include Arabidopsis, worm, fly, mosquito, Ciona, Chlamydomonas and Toxoplasma. Target self-training is adaptation, not fixed-weight transfer. | 2005 Table 4: Arabidopsis internal-exon mean of Sn and precision exceeds supervised SNAP by 6.4 percentage points on the authors' second test set. This average is not F1 or exact-gene accuracy. | No wall-time/hardware measurement located in the extracted development results | [GeneMark distribution](http://exon.gatech.edu/GeneMark/license_download.cgi); compiled component and license requirements documented by [ProtHint](https://github.com/gatech-genemark/ProtHint) |
+| GeneMark-EP+, 2020; [DOI](https://doi.org/10.1093/nargab/lqaa026) | Self-training plus ProtHint protein-derived splice/start/stop hints; EP+ enforces reliable hints | Six genomes: Neurospora, worm, Arabidopsis, fly, tomato, zebrafish; genus/family/order/phylum protein exclusions explored | Genus-excluded fly comparison: merged genes fall from 544 (ES) to 313 (EP+), split genes from 285 to 221 (Table 4); these are error counts, not F1. Full Sn/precision table remains to extract. | ProtHint plus EP+: approximately 5 h, 8 CPUs / 8 GB, fly genome with Drosophilidae-excluded proteins; CPU model unspecified | [ProtHint](https://github.com/gatech-genemark/ProtHint), [experiment scripts](https://github.com/gatech-genemark/GeneMark-EP-ProtHint-exp); separate GeneMark distribution |
 | GeneMark-ETP, 2024; [DOI](https://doi.org/10.1101/gr.278373.123) | Iterative GHMM; genome, RNA-seq, proteins; high-confidence genes seed GC-specific training | Seven plant/animal genomes; target-specific retraining. Large-genome evaluation uses reference intersections/unions, requiring care with denominators. | Gene F1 gains over TSEBRA: 8.2 points for large GC-homogeneous genomes, 39.0 for large GC-inhomogeneous genomes; group averages in this study | Fly 3 h, zebrafish 12 h, mouse 18 h on 64 CPU cores; **HISAT2 and StringTie2 excluded**; order-excluded proteins | [GeneMark-ETP](https://github.com/gatech-genemark/GeneMark-ETP) |
-| BRAKER2, 2021; [DOI](https://doi.org/10.1093/nargab/lqaa108) | GeneMark-EP+ and AUGUSTUS; genome and proteins | Automated target-specific training; no RNA-seq requirement | Original benchmark extraction pending | Pending | [BRAKER](https://github.com/Gaius-Augustus/BRAKER) |
+| BRAKER2, 2021; [DOI](https://doi.org/10.1093/nargab/lqaa108) | GeneMark-EP+ and AUGUSTUS; genome and proteins | 12 plant/animal genomes; target-specific training; protein taxonomic exclusions. For less curated genomes, reference subsets require RNA-supported introns; RNA is used for evaluation selection, not prediction. | Table 4 MAKER2 comparison: exact gene F1 68.1% Arabidopsis, 47.2% worm, 59.7% fly. A gene matches if any reference CDS isoform matches. Comparator protocols and protein sets are study-specific. | Paper compares roughly 10 h MAKER2 / 96 CPUs / 10 protein-source species with comparable BRAKER2 time / 8 CPUs / 443 species. Different inputs and hardware prevent a direct speed ratio. | [BRAKER](https://github.com/Gaius-Augustus/BRAKER) |
 | BRAKER3, 2024; [DOI](https://doi.org/10.1101/gr.278090.123) | GeneMark-ETP, AUGUSTUS, TSEBRA; genome, short-read RNA-seq, protein database | 11 reference species; species-excluded and order-excluded protein databases; additional novel genomes assessed separately | About 20 percentage points higher mean transcript F1 than BRAKER1/2; this is a within-study result, not a universal margin. | 5 h 37 min (Arabidopsis) to 64 h 16 min (mouse), 48 threads, Xeon E5-2650 v4; **RNA alignment excluded**, target-model training included. | [BRAKER](https://github.com/Gaius-Augustus/BRAKER) |
 | MAKER, 2008 issue / 2007 online; [DOI](https://doi.org/10.1101/gr.6743907) | Repeat finding, EST/protein alignment, ab initio prediction and evidence integration | Planarian Schmidtea mediterranea proof of principle; retraining and benchmark details pending | Original numerical results pending. Do not assign later MAKER2 figures to this release. | Pending | [MAKER](https://github.com/Yandell-Lab/maker) |
-| Gnomon / NCBI pipeline / EGAPx; current [documentation](https://github.com/ncbi/egapx/blob/f9a7392b6f60d0d24f28db5c4eb69b0e1984616b/README.md) | Alignment chaining and HMM completion; genome, taxid, RNA-seq; automatically selected proteins and HMMs | Supported animal/plant groups; fungi, protists, and nematodes explicitly excluded | Documentation is not a controlled accuracy paper. Dedicated DOI/preprint for this row not located yet. | Example fly workload: 71 CPU h / 3 wall h on mixed AWS Batch instances; evidence load is specified in the README. Prerequisite guidance lists 32 CPUs / 256 GB. | [EGAPx](https://github.com/ncbi/egapx); caller repository does not by itself describe every bundled component |
+| Gnomon / NCBI EGAP / EGAPx; RefSeq 2025 [DOI](https://doi.org/10.1093/nar/gkae1038); pinned [EGAPx documentation](https://github.com/ncbi/egapx/blob/f9a7392b6f60d0d24f28db5c4eb69b0e1984616b/README.md) | Alignment chaining and HMM completion; genome, taxid, transcript/protein evidence | RefSeq article describes Gnomon and announces EGAPx. Current EGAPx supports selected animal/plant groups; fungi, protists and nematodes excluded. | RefSeq reports mean BUSCO completeness 97.3% for its EGAP annotations; this is neither exact-structure accuracy nor an EGAPx benchmark. Current EGAPx documentation supplies no controlled exact-gene benchmark here. | README fly example: 71 CPU h / 3 wall h on mixed AWS Batch; guidance lists 32 CPUs / 256 GB. These are documentation claims, separate from the RefSeq paper. | [EGAPx](https://github.com/ncbi/egapx); caller repository does not describe every bundled component |
 
 ### Comparative methods and simple signals
 
 | Method; publication | Class and input | Training / evaluation and transfer evidence | Reported accuracy and benchmark | Runtime / hardware | Code |
 | --- | --- | --- | --- | --- | --- |
 | TWINSCAN, 2001; [DOI](https://doi.org/10.1093/bioinformatics/17.suppl_1.s140) | Extends GENSCAN with separate conservation models for exons, introns, splice sites and UTRs | High-throughput mouse genomic sequences with human homology; exact split pending | Primary abstract reports improved exact-gene/exon sensitivity and precision; numerical extraction pending | Alignment and prediction costs separate; numbers pending | Historical distribution pending |
-| N-SCAN, 2006; [DOI](https://doi.org/10.1089/cmb.2006.13.379) | Comparative model; multiple genome alignment and phylogenetic relationships, context-dependent substitutions and indels | Human and Drosophila whole-genome applications; this is not evidence of one species-independent parameter set | Primary abstract reports improved whole-genome prediction; exact metrics pending | Pending | Historical distribution pending |
-| CONTRAST, 2007; [DOI](https://doi.org/10.1186/gb-2007-8-12-r269) | Discriminative boundary classifiers plus global structure model; multiple informants without explicit phylogenetic model | Human evaluation; multiple-informant ablations require close examination | Abstract reports 65% more exactly reconstructed human coding structures and 46% fewer missed exons than its comparator; relative improvements, not percentage-point F1 gains. | Pending | Historical distribution pending |
+| N-SCAN, 2006; [DOI](https://doi.org/10.1089/cmb.2006.13.379) | Comparative model; MSA and phylogeny, context-dependent substitutions and indels | Human and fly applications; no evidence of one species-independent parameter set | Later [CONTRAST study](https://doi.org/10.1186/gb-2007-8-12-r269), Table 1: human CCDS exact gene Sn/precision 35.6%/25.1% using UCSC mouse-informant predictions. Original 2006 tables remain unextracted. | Pending | Historical [Brent lab software route](http://mblab.wustl.edu/software.html); current retrieval unverified |
+| CONTRAST, 2007; [DOI](https://doi.org/10.1186/gb-2007-8-12-r269) | SVM boundary classifiers plus CRF structure model; MSA, optional ESTs; no explicit tree | Separate human/fly four-fold gene-annotation cross-validation; not held-out-species transfer | Human hg18/CCDS, 11 informants: exact gene Sn/precision 58.6%/35.5%, exon 92.8%/72.5% (Table 1). Genes match any reference CDS; incomplete CCDS makes precision an underestimate. | Human model training: about 12 h on 200 Xeon E5345 2.33 GHz processors; not inference cost | Historical [author site](http://contra.stanford.edu/contrast/); source retrieval currently failed |
 | KA/KS test, 2002; [DOI](https://doi.org/10.1101/gr.200901) | Comparative exon classifier; aligned homologous sequence and frame | Selected human–mouse exons; random-sequence negative controls | Exon false-negative rate 9.5%; mean false-positive rate 2.6% over 24 simulated length/divergence classes with 1,000 pairs each. These are not genomic false-discovery or complete-gene error rates. | Pending; alignment is additional | Original automation not yet recovered |
 | PhyloCSF, 2011; [DOI](https://doi.org/10.1093/bioinformatics/btr209) | Coding-versus-noncoding empirical codon-model likelihood comparison; alignment and tree | About 50,000 exon-length coding/noncoding regions from 12 fly genomes; four-fold validation | Minimum average error 8% lower than dN/dS overall and 11% lower on 30–180 nt regions. These are relative error reductions in alignment classification. | Per-region branch-scale optimization; exact runtime pending | [PhyloCSF](https://github.com/mlin/PhyloCSF) |
-| PhyloCSF++, 2022; [DOI](https://doi.org/10.1093/bioinformatics/btab756) | Comparative coding score implementation and annotation utilities | Compatibility, benchmark, and source snapshot pending | Pending; do not assume implementation speed changes establish new biological accuracy | Pending | Repository follow-up pending |
+| PhyloCSF++, 2022; [DOI](https://doi.org/10.1093/bioinformatics/btab756) | C++ comparative coding score and track/annotation utilities; MSA and codon models | Author README describes a reimplementation with runtime changes; independent equivalence not tested here | Full-paper numerical extraction pending; `score-msa` evaluates only the forward first frame, so other frames/strand require transformed input. [Pinned README](https://github.com/cpockrandt/PhyloCSFpp/blob/54efa871f041f4091334058179c53d12181f687c/README.rst). | Pending; installation untested | [PhyloCSF++](https://github.com/cpockrandt/PhyloCSFpp) |
 | ClaMSA, 2022; [DOI](https://doi.org/10.1093/bioinformatics/btac028) | Learned continuous-time Markov chain layer and neural classifier; codon MSA and scaled tree | Vertebrate and fly alignment classification; repository also supplies yeast training data | Abstract reports fourfold fewer false positives at the same true-positive rate than existing methods. This is candidate alignment classification. | Pending | [ClaMSA](https://github.com/Gaius-Augustus/clamsa) |
 
 ### Deep learning and hybrid models
@@ -93,10 +98,11 @@ within a paper retain that paper's evidence restrictions and reference set.
 | SegmentNT, 2025; [DOI](https://doi.org/10.1038/s41592-025-02881-2) | Pretrained NT-v2 500M encoder plus 63M-parameter U-Net; multilabel nucleotide segmentation | Fine-tuned on human plus five animals; ten animals and five plants held out from fine-tuning. Pretraining membership still needs audit. | Plant genic-element mean MCC 0.45 versus 0.34 for human-only fine-tuning; this is not exact-gene F1. | Initial 3-kb model training: 20 h on eight H100s; later length fine-tuning adds cost. Inference runtime pending. | [Nucleotide Transformer / SegmentNT](https://github.com/instadeepai/nucleotide-transformer) |
 | geneML, 2026 **preprint**; [DOI](https://doi.org/10.64898/2026.05.18.725946) | Fungal neural gene annotation with alternative-transcript support | Fungal scope; primary full-text and split audit pending | Indexed abstract describes gene/transcript benchmarks; no numerical claim accepted here before checking comparator configuration | Pending | [geneML](https://github.com/hexagonbio/geneML) |
 
-The tables intentionally retain a documentation-only Gnomon/EGAPx row. The
-task's DOI/preprint requirement for every row is not yet satisfied, and the
-task is not ready for review. A DOI for a component or unrelated RefSeq update
-would not establish an EGAPx accuracy benchmark.
+The RefSeq publication now supplies a directly relevant DOI for Gnomon/EGAPx:
+it describes the gene prediction process and announces the external release.
+Its annotation-quality statistics must remain separate from EGAPx software
+documentation and future measured benchmarks. All publication rows now have
+a DOI; scientific extraction gaps still prevent submission.
 
 ## 3. Repository inventory
 
@@ -114,13 +120,27 @@ packages. This verifies **the launcher only**. TensorFlow, containers, weights,
 GPU operation and gene prediction were not tested. The isolated source tree and
 environment were removed afterwards. Exact commands, dependency versions, exit
 codes and timing are in [tiberius-launcher-check.json](tiberius-launcher-check.json),
-with a [repeatable check](check_tiberius_launcher.py). Other installation
-results remain **not attempted**; finding a README or container is not success.
+with a [repeatable check](check_tiberius_launcher.py).
+
+SNAP's pinned source compiled with the documented `make`, then both packaged
+README predictions returned output successfully. The check used a fresh
+temporary checkout and the existing host compiler, **not a fresh OS or
+container**; it installed no system packages. Compiler versions, input/output
+hashes and command results are in [snap-build-check.json](snap-build-check.json),
+with a [repeatable check](check_snap_build.py). These tiny examples establish
+that the software executes, not biological accuracy. All other installation
+results remain **not attempted**.
 
 GitHub's license detector is not authoritative. Inspected statements are
 recorded in [repo-audit.json](repo-audit.json); the inventory preserves the
 original detector value separately where overridden. Remaining `unknown` and
-`NOASSERTION` entries need inspection. EGAPx's [license file](https://github.com/ncbi/egapx/blob/f9a7392b6f60d0d24f28db5c4eb69b0e1984616b/LICENSE)
+`NOASSERTION` entries need inspection. GeneMark-ETP declares CC BY-NC-SA 4.0
+for its pipeline, with separate component terms; ProtHint's bundled agreement
+restricts eligibility, redistribution, modification and commercial use.
+MAKER's license header distinguishes academic and commercial availability.
+These recorded terms matter independently of whether source is on GitHub;
+see the pinned documents in [repo-audit.json](repo-audit.json).
+EGAPx's [license file](https://github.com/ncbi/egapx/blob/f9a7392b6f60d0d24f28db5c4eb69b0e1984616b/LICENSE)
 distinguishes NCBI government-written code from third-party components.
 ANNEVO's [author documentation](https://github.com/xjtu-omics/ANNEVO) states
 noncommercial restrictions; it should not be called permissively open source.
@@ -171,6 +191,11 @@ lengths and a boundary-sensitive objective. It has limitations for spliced
 start codons and junction-spanning stops. Audit these cases as well as exact
 boundaries; high base scores do not ensure correct genes.
 [Tiberius](https://doi.org/10.1093/bioinformatics/btae685).
+
+**Self-training can converge on repeats.** In the BRAKER2 study, unmasked
+GC-rich tandem repeats in Xenopus tropicalis distorted GeneMark-ES training;
+additional tandem-repeat masking was needed. A learned initialization does
+not remove this risk. [BRAKER2](https://doi.org/10.1093/nargab/lqaa108).
 
 **Evidence is uneven across genes.** BRAKER3's performance depends on expression
 support and protein availability. Its published runtime excludes RNA-seq
@@ -260,10 +285,10 @@ links, not the remaining scientific claims or task completion.
 
 - Complete open-full-text and supplementary-table extraction, especially
   classical methods, GeneMark, Helixer, PhyloCSF, SegmentNT, ANNEVO and geneML.
-- Resolve the Gnomon/EGAPx publication requirement without attaching an
-  unrelated DOI; expand GeneMark and AUGUSTUS historical coverage.
-- Recover historical code links and review licenses directly; add newly found
-  active repositories and perform small, pinned fresh-environment checks.
+- Finish TWINSCAN/N-SCAN and MAKER original-paper extraction; inspect the
+  remaining GeneMark-EP+ supplementary accuracy table and original model splits.
+- Verify historical software retrieval and remaining license entries. The
+  Tiberius launcher and SNAP examples pass; larger pipelines remain untested.
 - Reconcile newer benchmarks by model revision, held-out taxa, evidence,
   gene/transcript definitions, and preprocessing costs.
 - Bibliography parsing already passes BibTeX; repeat after adding references.

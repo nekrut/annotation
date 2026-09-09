@@ -116,5 +116,108 @@
     "reading_coverage": "XML unavailable; metadata only so far",
     "full_text_retained": false,
     "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "pmcid": "PMC2246271",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC2246271/fullTextXML",
+    "accessed_utc": "2026-09-09T01:55:56.626993+00:00",
+    "reading_coverage": "Results, tables 1-6, discussion, conclusion, training/cross-validation/decoding sections read; initial oversized output revisited by section",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 156912,
+    "sha256": "6f58d6d90faa98c57d3eb983b581878015f9ed1150b9cfb1c99792546c1fa00f"
+  },
+  {
+    "pmcid": "PMC1298918",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC1298918/fullTextXML",
+    "accessed_utc": "2026-09-09T01:56:53.733487+00:00",
+    "reading_coverage": "Selected results: supervised/unsupervised and SNAP comparisons, tables 1-4 and concluding remarks; remaining detailed methods pending",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 147068,
+    "sha256": "8af372d4b7ba88533cfb54c271a07a187015905e60e27883423ea6982df6b3cd"
+  },
+  {
+    "pmcid": "PMC1298918",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC1298918/fullTextXML",
+    "accessed_utc": "2026-09-09T01:58:48.336274+00:00",
+    "reading_coverage": "Selected results: supervised/unsupervised and SNAP comparisons, tables 1-4 and concluding remarks; remaining detailed methods pending",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 147068,
+    "sha256": "8af372d4b7ba88533cfb54c271a07a187015905e60e27883423ea6982df6b3cd"
+  },
+  {
+    "pmcid": "PMC7222226",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC7222226/fullTextXML",
+    "accessed_utc": "2026-09-09T01:58:49.266534+00:00",
+    "reading_coverage": "Abstract, accuracy section, tables 1 and 4, protein exclusions and runtime; supplementary Sn/precision table pending",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 131125,
+    "sha256": "6e545346b0b6933658e98aeb9a7c3e4ca21f7f052005e76a1afaa7ffaa86ffd5"
+  },
+  {
+    "pmcid": "PMC7787252",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC7787252/fullTextXML",
+    "accessed_utc": "2026-09-09T01:58:50.228820+00:00",
+    "reading_coverage": "Abstract, protein/test-set selection, accuracy and repeat-masking sections, tables 3-4 and runtime paragraphs; supplements pending",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 130463,
+    "sha256": "c10d6b585d90e9198742c41c41e41924b5cca801dac39fd155c8ddb66b8eb92c"
+  },
+  {
+    "name": "GENSCAN",
+    "url": "https://www.cs.rice.edu/~devika/comp470/papers/burge97prediction.pdf",
+    "accessed_utc": "2026-09-09T02:00:01.541468+00:00",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 377656,
+    "sha256": "dd15a3e45616a3b73f404c7e57ce463fa67ca82226f3494178f3b438e1bdc074",
+    "reading_coverage": "Selected runtime passages and tables from open PDF; full text not retained"
+  },
+  {
+    "name": "TWINSCAN",
+    "url": "https://citeseerx.ist.psu.edu/document?doi=744f820aae5f0b4711767a21fbfcae1ccc90866e&repid=rep1&type=pdf",
+    "accessed_utc": "2026-09-09T02:00:02.573208+00:00",
+    "full_text_retained": false,
+    "http_status": 200,
+    "bytes": 12912,
+    "sha256": "63ce6d1912f5205934d33a62c9d6e2e7fd681f75e1f374d4a58da86b408cff21",
+    "error": "Response was not a parseable PDF; pdftotext exited 1. Temporary download removed."
+  },
+  {
+    "name": "AUGUSTUS 2003 author manuscript",
+    "url": "https://gobics.de/mario/papers/GenePred2003.pdf",
+    "accessed_utc": "2026-09-09T02:01:55.779087+00:00",
+    "http_status": 200,
+    "bytes": 151605,
+    "sha256": "fc00f4b607e9782f23e8174018841143e909a4e20057ed11f7c17bc7df5fdf2e",
+    "reading_coverage": "Results/discussion, tables 1-5 and training splits read; local PDF extraction verified runtime paragraph in intron-model methods (6 minutes / 1.6 Mb / 2.4 GHz PC)",
+    "full_text_retained": false
+  },
+  {
+    "pmcid": "PMC11701664",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC11701664/fullTextXML",
+    "accessed_date_utc": "2026-09-09",
+    "http_status": 404,
+    "reading_coverage": "No XML text retrieved",
+    "full_text_retained": false
+  },
+  {
+    "pmcid": "PMC9991890",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC9991890/fullTextXML",
+    "accessed_date_utc": "2026-09-09",
+    "http_status": 404,
+    "reading_coverage": "No XML text retrieved",
+    "full_text_retained": false
+  },
+  {
+    "pmcid": "PMC11701664",
+    "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11701664/",
+    "accessed_date_utc": "2026-09-09",
+    "reading_coverage": "Web-indexed primary Metazoa/viridiplantae, annotation-quality and Future directions passages; direct page returned browser check",
+    "full_text_retained": false
   }
 ]

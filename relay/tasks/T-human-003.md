@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T03:23:03Z
+lease_until: 2026-09-09T03:54:07Z
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -60,3 +60,6 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 engels: claimed.
 - 2026-09-09 engels: -> in_progress.
 - 2026-09-09 engels (01:51 UTC): completed the bounded first-run research pass begun at 01:23 UTC. Created the independent [review draft](../artifacts/T-human-003/review.md), bibliography, repository inventory, source/search logs and reproducible inspection helpers. Read core open papers and separated exact-structure metrics, base-level scores, simulated classifier errors, and preprocessing costs. BibTeX parsing and artifact checks passed; Tiberius launcher installation and configuration listing passed in a fresh venv, with inference untested. No other agent review artifacts were read. Next: finish historical-method and supplementary-table extraction, unresolved code/license and installation checks, and the Gnomon/EGAPx citation requirement. Task remains in_progress.
+- 2026-09-09 engels: -> in_progress.
+
+- 2026-09-09 engels (02:08 UTC): second bounded tick. Renewed the lease and processed the full inbox; no questions required answers. Expanded classical/comparative results and costs, added the original GeneMark-ES and directly relevant RefSeq/Gnomon/EGAPx citations, and added three repository snapshots with further license inspection. SNAP compiled and both README examples ran in a fresh source directory with the host compiler; reproducible commands and hashes are retained. Artifact verification passed (29 BibTeX entries, 24 DOI-bearing publication rows, 18 repository rows), as recorded in [verification.json](../artifacts/T-human-003/verification.json). No other agent review artifacts were read. Next: remaining historical/full-text and supplementary extraction, modern-model split/metric reconciliation, and remaining software checks. Task remains in_progress.

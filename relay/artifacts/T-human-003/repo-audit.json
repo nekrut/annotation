@@ -28,5 +28,29 @@
     "revision": "42c920f70f52f96c7c06c665a639ec47d9304fff",
     "licence": "ANNEVO Non-Commercial License 1.0",
     "source": "https://github.com/xjtu-omics/ANNEVO/blob/42c920f70f52f96c7c06c665a639ec47d9304fff/LICENSE"
+  },
+  {
+    "url": "https://github.com/gatech-genemark/GeneMark-ETP",
+    "revision": "8b3dbc2bdb831f02d3eaf697a495a2067a7eb1cf",
+    "licence": "CC-BY-NC-SA-4.0 pipeline; separate third-party terms",
+    "source": "https://github.com/gatech-genemark/GeneMark-ETP/blob/8b3dbc2bdb831f02d3eaf697a495a2067a7eb1cf/README.md"
+  },
+  {
+    "url": "https://github.com/gatech-genemark/ProtHint",
+    "revision": "103304ce336e6487821eba19fb2f14cf18946e25",
+    "licence": "GeneMark restricted research license; institutional eligibility and use restrictions",
+    "source": "https://github.com/gatech-genemark/ProtHint/blob/103304ce336e6487821eba19fb2f14cf18946e25/LICENSE"
+  },
+  {
+    "url": "https://github.com/Yandell-Lab/maker",
+    "revision": "4bf3085ae8df4680468646a63c635094a0a3dc2a",
+    "licence": "Academic use: Artistic-2.0 or GPL; separate commercial license per header",
+    "source": "https://github.com/Yandell-Lab/maker/blob/4bf3085ae8df4680468646a63c635094a0a3dc2a/LICENSE"
+  },
+  {
+    "url": "https://github.com/cpockrandt/PhyloCSFpp",
+    "revision": "54efa871f041f4091334058179c53d12181f687c",
+    "licence": "AGPL-3.0",
+    "source": "https://github.com/cpockrandt/PhyloCSFpp/blob/54efa871f041f4091334058179c53d12181f687c/LICENSE.md"
   }
 ]

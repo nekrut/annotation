@@ -14948,5 +14948,682 @@
       }
     ],
     "note": "Exact DOI record retrieved to read the primary abstract; corresponding bibliographic metadata already archived from earlier title search."
+  },
+  {
+    "query": "DOI:\"10.1093/nar/gkae1038\"",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI%3A%2210.1093%2Fnar%2Fgkae1038%22&format=json&pageSize=20&resultType=core",
+    "accessed_utc": "2026-09-09T01:56:33.023105+00:00",
+    "hit_count": 1,
+    "results": [
+      {
+        "id": "39526381",
+        "source": "MED",
+        "pmid": "39526381",
+        "pmcid": "PMC11701664",
+        "doi": "10.1093/nar/gkae1038",
+        "title": "NCBI RefSeq: reference sequence standards through 25 years of curation and annotation.",
+        "authorString": "Goldfarb T, Kodali VK, Pujar S, Brover V, Robbertse B, Farrell CM, Oh DH, Astashyn A, Ermolaeva O, Haddad D, Hlavina W, Hoffman J, Jackson JD, Joardar VS, Kristensen D, Masterson P, McGarvey KM, McVeigh R, Mozes E, Murphy MR, Schafer SS, Souvorov A, Spurrier B, Strope PK, Sun H, Vatsan AR, Wallin C, Webb D, Brister JR, Hatcher E, Kimchi A, Klimke W, Marchler-Bauer A, Pruitt KD, Thibaud-Nissen F, Murphy TD.",
+        "authorList": {
+          "author": [
+            {
+              "fullName": "Goldfarb T",
+              "firstName": "Tamara",
+              "lastName": "Goldfarb",
+              "initials": "T",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0009-0001-0352-9212"
+              },
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Kodali VK",
+              "firstName": "Vamsi K",
+              "lastName": "Kodali",
+              "initials": "VK",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Pujar S",
+              "firstName": "Shashikant",
+              "lastName": "Pujar",
+              "initials": "S",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Brover V",
+              "firstName": "Vyacheslav",
+              "lastName": "Brover",
+              "initials": "V",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0000-0002-4980-7150"
+              },
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Robbertse B",
+              "firstName": "Barbara",
+              "lastName": "Robbertse",
+              "initials": "B",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Farrell CM",
+              "firstName": "Catherine M",
+              "lastName": "Farrell",
+              "initials": "CM",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0009-0003-3804-8528"
+              },
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  },
+                  {
+                    "affiliation": "Division of Extramural Programs, National Library of Medicine, National Institutes of Health, 8600 Rockville Pike, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Oh DH",
+              "firstName": "Dong-Ha",
+              "lastName": "Oh",
+              "initials": "DH",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0000-0003-1526-9814"
+              },
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Astashyn A",
+              "firstName": "Alexander",
+              "lastName": "Astashyn",
+              "initials": "A",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Ermolaeva O",
+              "firstName": "Olga",
+              "lastName": "Ermolaeva",
+              "initials": "O",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Haddad D",
+              "firstName": "Diana",
+              "lastName": "Haddad",
+              "initials": "D",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Hlavina W",
+              "firstName": "Wratko",
+              "lastName": "Hlavina",
+              "initials": "W",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Hoffman J",
+              "firstName": "Jinna",
+              "lastName": "Hoffman",
+              "initials": "J",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Jackson JD",
+              "firstName": "John D",
+              "lastName": "Jackson",
+              "initials": "JD",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Joardar VS",
+              "firstName": "Vinita S",
+              "lastName": "Joardar",
+              "initials": "VS",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Kristensen D",
+              "firstName": "David",
+              "lastName": "Kristensen",
+              "initials": "D",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Masterson P",
+              "firstName": "Patrick",
+              "lastName": "Masterson",
+              "initials": "P",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "McGarvey KM",
+              "firstName": "Kelly M",
+              "lastName": "McGarvey",
+              "initials": "KM",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0009-0002-1055-996X"
+              },
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "McVeigh R",
+              "firstName": "Richard",
+              "lastName": "McVeigh",
+              "initials": "R",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Mozes E",
+              "firstName": "Eyal",
+              "lastName": "Mozes",
+              "initials": "E",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Murphy MR",
+              "firstName": "Michael R",
+              "lastName": "Murphy",
+              "initials": "MR",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Schafer SS",
+              "firstName": "Susan S",
+              "lastName": "Schafer",
+              "initials": "SS",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Souvorov A",
+              "firstName": "Alexander",
+              "lastName": "Souvorov",
+              "initials": "A",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Spurrier B",
+              "firstName": "Brett",
+              "lastName": "Spurrier",
+              "initials": "B",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Strope PK",
+              "firstName": "Pooja K",
+              "lastName": "Strope",
+              "initials": "PK",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Sun H",
+              "firstName": "Hanzhen",
+              "lastName": "Sun",
+              "initials": "H",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Vatsan AR",
+              "firstName": "Anjana R",
+              "lastName": "Vatsan",
+              "initials": "AR",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Wallin C",
+              "firstName": "Craig",
+              "lastName": "Wallin",
+              "initials": "C",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Webb D",
+              "firstName": "David",
+              "lastName": "Webb",
+              "initials": "D",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Brister JR",
+              "firstName": "J Rodney",
+              "lastName": "Brister",
+              "initials": "JR",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Hatcher E",
+              "firstName": "Eneida",
+              "lastName": "Hatcher",
+              "initials": "E",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Kimchi A",
+              "firstName": "Avi",
+              "lastName": "Kimchi",
+              "initials": "A",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Klimke W",
+              "firstName": "William",
+              "lastName": "Klimke",
+              "initials": "W",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Marchler-Bauer A",
+              "firstName": "Aron",
+              "lastName": "Marchler-Bauer",
+              "initials": "A",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0000-0003-1516-0712"
+              },
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Pruitt KD",
+              "firstName": "Kim D",
+              "lastName": "Pruitt",
+              "initials": "KD",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Thibaud-Nissen F",
+              "firstName": "Françoise",
+              "lastName": "Thibaud-Nissen",
+              "initials": "F",
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Murphy TD",
+              "firstName": "Terence D",
+              "lastName": "Murphy",
+              "initials": "TD",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0000-0001-9311-9745"
+              },
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "National Center for Biotechnology Information, National Library of Medicine, National Institutes of Health, 45 Center Drive, Bethesda, MD 20894, USA."
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "pubYear": "2025",
+        "firstPublicationDate": "2025-01-01",
+        "journalInfo": {
+          "issue": "D1",
+          "volume": "53",
+          "journalIssueId": 3884742,
+          "dateOfPublication": "2025 Jan",
+          "monthOfPublication": 1,
+          "yearOfPublication": 2025,
+          "printPublicationDate": "2025-01-01",
+          "journal": {
+            "title": "Nucleic acids research",
+            "medlineAbbreviation": "Nucleic Acids Res",
+            "essn": "1362-4962",
+            "issn": "0305-1048",
+            "isoabbreviation": "Nucleic Acids Res",
+            "nlmid": "0411011"
+          }
+        },
+        "isOpenAccess": "N",
+        "fullTextUrlList": {
+          "fullTextUrl": [
+            {
+              "availability": "Subscription required",
+              "availabilityCode": "S",
+              "documentStyle": "doi",
+              "site": "DOI",
+              "url": "https://doi.org/10.1093/nar/gkae1038"
+            },
+            {
+              "availability": "Free",
+              "availabilityCode": "F",
+              "documentStyle": "html",
+              "site": "Europe_PMC",
+              "url": "https://europepmc.org/articles/PMC11701664"
+            },
+            {
+              "availability": "Free",
+              "availabilityCode": "F",
+              "documentStyle": "pdf",
+              "site": "Europe_PMC",
+              "url": "https://europepmc.org/articles/PMC11701664?pdf=render"
+            },
+            {
+              "availability": "Free",
+              "availabilityCode": "F",
+              "documentStyle": "doi",
+              "site": "DOI",
+              "url": "https://doi.org/10.1093/nar/gkae1038"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "query": "TITLE:\"Gene identification in novel eukaryotic genomes by self-training algorithm\"",
+    "url": "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=TITLE%3A%22Gene+identification+in+novel+eukaryotic+genomes+by+self-training+algorithm%22&format=json&pageSize=20&resultType=core",
+    "accessed_utc": "2026-09-09T01:56:34.093819+00:00",
+    "hit_count": 1,
+    "results": [
+      {
+        "id": "16314312",
+        "source": "MED",
+        "pmid": "16314312",
+        "pmcid": "PMC1298918",
+        "doi": "10.1093/nar/gki937",
+        "title": "Gene identification in novel eukaryotic genomes by self-training algorithm.",
+        "authorString": "Lomsadze A, Ter-Hovhannisyan V, Chernoff YO, Borodovsky M.",
+        "authorList": {
+          "author": [
+            {
+              "fullName": "Lomsadze A",
+              "firstName": "Alexandre",
+              "lastName": "Lomsadze",
+              "initials": "A",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0000-0003-0491-1648"
+              },
+              "authorAffiliationDetailsList": {
+                "authorAffiliation": [
+                  {
+                    "affiliation": "School of Biology, Georgia Institute of Technology, Atlanta, GA 30332-0230, USA."
+                  }
+                ]
+              }
+            },
+            {
+              "fullName": "Ter-Hovhannisyan V",
+              "firstName": "Vardges",
+              "lastName": "Ter-Hovhannisyan",
+              "initials": "V"
+            },
+            {
+              "fullName": "Chernoff YO",
+              "firstName": "Yury O",
+              "lastName": "Chernoff",
+              "initials": "YO",
+              "authorId": {
+                "type": "ORCID",
+                "value": "0000-0002-8934-9051"
+              }
+            },
+            {
+              "fullName": "Borodovsky M",
+              "firstName": "Mark",
+              "lastName": "Borodovsky",
+              "initials": "M"
+            }
+          ]
+        },
+        "pubYear": "2005",
+        "firstPublicationDate": "2005-11-28",
+        "journalInfo": {
+          "issue": "20",
+          "volume": "33",
+          "journalIssueId": 1269077,
+          "dateOfPublication": "2005 ",
+          "monthOfPublication": 0,
+          "yearOfPublication": 2005,
+          "printPublicationDate": "2005-01-01",
+          "journal": {
+            "title": "Nucleic acids research",
+            "medlineAbbreviation": "Nucleic Acids Res",
+            "isoabbreviation": "Nucleic Acids Res",
+            "essn": "1362-4962",
+            "issn": "0305-1048",
+            "nlmid": "0411011"
+          }
+        },
+        "isOpenAccess": "Y",
+        "fullTextUrlList": {
+          "fullTextUrl": [
+            {
+              "availability": "Subscription required",
+              "availabilityCode": "S",
+              "documentStyle": "doi",
+              "site": "DOI",
+              "url": "https://doi.org/10.1093/nar/gki937"
+            },
+            {
+              "availability": "Open access",
+              "availabilityCode": "OA",
+              "documentStyle": "html",
+              "site": "Europe_PMC",
+              "url": "https://europepmc.org/articles/PMC1298918"
+            },
+            {
+              "availability": "Open access",
+              "availabilityCode": "OA",
+              "documentStyle": "pdf",
+              "site": "Europe_PMC",
+              "url": "https://europepmc.org/articles/PMC1298918?pdf=render"
+            }
+          ]
+        }
+      }
+    ]
   }
 ]

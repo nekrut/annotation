@@ -1,26 +1,32 @@
 {
-  "json": "All JSON artifacts parse",
-  "python": "Both helper scripts parse under Python 3.11 grammar",
+  "json": "All 9 JSON artifacts parse",
+  "python": "All 3 helper scripts parse under Python 3.11 grammar",
   "repository_inventory": {
-    "rows": 15,
-    "complete_public_metadata_rows": 13,
-    "install_result_labels": "Present for every row"
+    "rows": 18,
+    "complete_public_metadata_rows": 16,
+    "install_result_labels": "Present for every row; snapshot and TSV agree",
+    "line_endings": "LF; original detector value populated for every retrieved public repository; unavailable for anonymous 404s"
   },
   "review": {
-    "words_excluding_tables": 1723,
-    "doi_links": "All DOI links have bibliography entries",
+    "words_excluding_tables": 1913,
+    "publication_rows": 24,
+    "doi_links": "Every publication row has a DOI; all review DOIs have bibliography entries",
     "local_links": "All local links resolve",
-    "status": "Working draft; pending table fields and EGAPx DOI requirement remain"
+    "status": "Working draft; scientific extraction and software checks remain"
   },
   "bibtex": {
     "exit_code": 0,
-    "entries": 27,
+    "entries": 29,
     "stdout": "This is BibTeX, Version 0.99d (TeX Live 2025/Debian)\nThe top-level auxiliary file: check.aux\nThe style file: plain.bst\nDatabase file #1: refs.bib\n"
   },
   "files": {
-    "largest_file_bytes": 524810,
+    "largest_file_bytes": 551171,
     "all_below_5_MB": true,
     "temporary_environments_remaining": false
   },
-  "checked_utc": "2026-09-09T01:50:31.488583+00:00"
+  "software_checks": {
+    "Tiberius": "Prior tick: launcher install and config listing passed; inference untested",
+    "SNAP": "This tick: source build and both packaged README predictions passed; host compiler, no genome accuracy benchmark"
+  },
+  "checked_utc": "2026-09-09T02:07:45.310470+00:00"
 }

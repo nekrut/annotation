@@ -33,5 +33,64 @@
     "url": "https://raw.githubusercontent.com/instadeepai/nucleotide-transformer/2dc37b86e16a6970fbc731751f7719d9f676f7f9/LICENSE",
     "accessed_utc": "2026-09-09T01:45:47.137730+00:00",
     "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/gatech-genemark/GeneMark-ETP/8b3dbc2bdb831f02d3eaf697a495a2067a7eb1cf/README.md",
+    "accessed_utc": "2026-09-09T02:00:56.067097+00:00",
+    "http_status": 200,
+    "sha256": "57d088ec882dfa1c525f10546b028ad9a46864d7754849b34a922dfd4f8470a9",
+    "bytes": 1243
+  },
+  {
+    "url": "https://raw.githubusercontent.com/Yandell-Lab/maker/4bf3085ae8df4680468646a63c635094a0a3dc2a/LICENSE",
+    "accessed_utc": "2026-09-09T02:00:56.067595+00:00",
+    "http_status": 200,
+    "sha256": "373dbf5f933e0f6ce7d09ae2a4025a234b569fa70fbd7f6f4ccdc7720765e0f6",
+    "bytes": 44552
+  },
+  {
+    "url": "https://raw.githubusercontent.com/Gaius-Augustus/clamsa/95d8d6c07c00f1218eb22545cf54aacfd9603a9e/README.md",
+    "accessed_utc": "2026-09-09T02:00:56.068238+00:00",
+    "http_status": 200,
+    "sha256": "880ed6e6ae75721e6cf5566dd952c5279af206e33e6a6b70bf027d0062b24a3c",
+    "bytes": 3594
+  },
+  {
+    "url": "https://raw.githubusercontent.com/cpockrandt/PhyloCSFpp/54efa871f041f4091334058179c53d12181f687c/LICENSE",
+    "accessed_utc": "2026-09-09T02:00:56.612158+00:00",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/cpockrandt/PhyloCSFpp/54efa871f041f4091334058179c53d12181f687c/README.md",
+    "accessed_utc": "2026-09-09T02:00:56.664797+00:00",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/gatech-genemark/ProtHint/103304ce336e6487821eba19fb2f14cf18946e25/LICENSE",
+    "accessed_utc": "2026-09-09T02:00:56.993969+00:00",
+    "http_status": 200,
+    "sha256": "3b58b4d3c687156a3e4578a126e402728eb68a22293ef177eaa3001abd861d4f",
+    "bytes": 2548
+  },
+  {
+    "url": "https://raw.githubusercontent.com/gatech-genemark/ProtHint/103304ce336e6487821eba19fb2f14cf18946e25/README.md",
+    "accessed_utc": "2026-09-09T02:00:56.994392+00:00",
+    "http_status": 200,
+    "sha256": "fda65350f7a8a5a66c2147c6b9b5542cf24b0fe90ca910f6d9e3506928482c55",
+    "bytes": 6072
+  },
+  {
+    "url": "https://raw.githubusercontent.com/cpockrandt/PhyloCSFpp/54efa871f041f4091334058179c53d12181f687c/LICENSE.md",
+    "accessed_utc": "2026-09-09T02:01:54.247168+00:00",
+    "http_status": 200,
+    "bytes": 72335,
+    "sha256": "36c6471cc2b82df88fa070e661d4e769ec3c49febc9787e0327e797284921c5b"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/cpockrandt/PhyloCSFpp/54efa871f041f4091334058179c53d12181f687c/README.rst",
+    "accessed_utc": "2026-09-09T02:01:54.474633+00:00",
+    "http_status": 200,
+    "bytes": 8943,
+    "sha256": "e97788d16a292125bca1e993fc2e93a887dbaeb98f0662ddd43bddf1115c148c"
   }
 ]

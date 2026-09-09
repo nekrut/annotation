@@ -1,0 +1,137 @@
+{
+  "repository": "https://github.com/KorfLab/SNAP",
+  "revision": "4ad1e957cd8e68b63857cc1cb3380d39a7b518b1",
+  "checked_utc": "2026-09-09T01:58:21.401773+00:00",
+  "environment": "Linux-7.0.0-30-generic-x86_64-with-glibc2.43",
+  "isolation": "Fresh temporary source/build directory; host compiler and libc; no system installation",
+  "readme": "https://github.com/KorfLab/SNAP/blob/4ad1e957cd8e68b63857cc1cb3380d39a7b518b1/README.md",
+  "commands": [
+    {
+      "argv": [
+        "gcc",
+        "--version"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.001,
+      "stdout_bytes": 239,
+      "stdout_sha256": "6e876a25bb7fdb71ab2914e8f1eeaa00cc61d20a36a6c2981ab7d4d7ceab42f8",
+      "stdout_excerpt": "gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+      "stderr_excerpt": ""
+    },
+    {
+      "argv": [
+        "make",
+        "--version"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.0007,
+      "stdout_bytes": 300,
+      "stdout_sha256": "cb84250d994234272d0a465014ce2931be76e9e0cb114b9bffa078c3c211e8eb",
+      "stdout_excerpt": "GNU Make 4.4.1\nBuilt for x86_64-pc-linux-gnu\nCopyright (C) 1988-2023 Free Software Foundation, Inc.\nLicense GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.\n",
+      "stderr_excerpt": ""
+    },
+    {
+      "argv": [
+        "ldd",
+        "--version"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.0012,
+      "stdout_bytes": 287,
+      "stdout_sha256": "63b5af6d126f4c1a7dda90b9e95ff7f5562cd0b8866c73a3dca18c3736a8c286",
+      "stdout_excerpt": "ldd (Ubuntu GLIBC 2.43-2ubuntu2.3) 2.43\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\nWritten by Roland McGrath and Ulrich Drepper.\n",
+      "stderr_excerpt": ""
+    },
+    {
+      "argv": [
+        "git",
+        "clone",
+        "--quiet",
+        "--no-checkout",
+        "--filter=blob:none",
+        "https://github.com/KorfLab/SNAP.git",
+        "src"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.484,
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_excerpt": "",
+      "stderr_excerpt": ""
+    },
+    {
+      "argv": [
+        "git",
+        "checkout",
+        "--quiet",
+        "4ad1e957cd8e68b63857cc1cb3380d39a7b518b1"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 1.0623,
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_excerpt": "",
+      "stderr_excerpt": ""
+    },
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.0023,
+      "stdout_bytes": 41,
+      "stdout_sha256": "ffb5c10606fc8cb3ee1237c89e24e034aa1bf581ca4ebe8228ef52aebd6d0cde",
+      "stdout_excerpt": "4ad1e957cd8e68b63857cc1cb3380d39a7b518b1\n",
+      "stderr_excerpt": ""
+    },
+    {
+      "argv": [
+        "make"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 2.5112,
+      "stdout_bytes": 4836,
+      "stdout_sha256": "aaa49aefb3683320b936460bd422a29e46091c174a16f74ff03befada2e8f75f",
+      "stdout_excerpt": "make gcc\nmake[1]: Entering directory '<temporary>/src'\ncd Zoe; make;\nmake[2]: Entering directory '<temporary>/src/Zoe'\ngcc -MM zoeCDS.c zoeCounter.c zoeDNA.c zoeDistribution.c zoeDuration.c zoeFastaFile.c zoeFeature.c zoeFeatureFactory.c zoeFeatureTable.c zoeHMM.c zoeIsochore.c zoeMath.c zoeModel.c zoePhasePref.c zoeProtein.c zoeScanner.c zoeState.c zoeTools.c zoeTransition.c zoeTrellis.c > depend\nmake gcc\nmake[3]: Entering directory '<temporary>/src/Zoe'\nmake zoe-loop  CC=\"gcc\" CFLAGS=\"-O2 -Wall -Werror\"\nmake[4]: Entering directory '<temporary>/src/Zoe'\ngcc -O2 -Wall -Werror -c -o zoe-loop.o zoe-loop.c\ngcc -O2 -Wall -Werror -c -o zoeCDS.o zoeCDS.c\ngcc -O2 -Wall -Werror -c -o zoeCounter.o zoeCounter.c\ngcc -O2 -Wall -Werror -c -o zoeDNA.o zoeDNA.c\ngcc -O2 -Wall -Werror -c -o zoeDistribution.o zoeDistribution.c\ngcc -O2 -Wall -Werror -c -o zoeDuration.o zoeDuration.c\ngcc -O2 -Wall -Werror -c -o zoeFastaFile.o zoeFastaFile.c\ngcc -O2 -Wall -Werror -c -o zoeFeature.o zoeFeature.c\ngcc -O2 -Wall -Werror -c -o zoeFeatureFactory.o zoeFeatureFactory.c\ngcc -O2 -Wall -Werror -c -o zoeFeatureTable.o zoeFeatureTable.c\ngcc -O2 -Wall -Werror -c -o zoeHMM.o zoeHMM.c\ngcc -O2 -Wall -Werror -c -o zoeIsochore.o zoeIsochore.c\ngcc -O2 -Wall -Werror -c -o zoeMath.o zoeMath.c\ngcc -O2 -Wall -Werror -c -o zoeModel.o zoeModel.c\ngcc -O2 -Wall -Werror -c -o zoePhasePref.o zoePhasePref.c\ngcc -O2 -Wall -Werror -c -o zoeProtein.o zoeProtein.c\ngcc -O2 -Wall -Werror -c -o zoeScanner.o zoeScanner.c\ngcc -O2 -Wall -Werror -c -o zoeState.o zoeState.c\ngcc -O2 -Wall -Werror -c -o zoeTools.o zoeTools.c\ngcc -O2 -Wall -Werror -c -o zoeTransition.o zoeTransition.c\ngcc -O2 -Wall -Werror -c -o zoeTrellis.o zoeTrellis.c\ngcc -o zoe-loop -O2 -Wall -Werror zoe-loop.",
+      "stderr_excerpt": ""
+    },
+    {
+      "argv": [
+        "./snap",
+        "HMM/thale",
+        "DNA/thale.dna.gz"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.0271,
+      "stdout_bytes": 1091,
+      "stdout_sha256": "6b24579d51303abae8b3c9b16139e79c7b798da8d37fe54e261eae72bf253e9a",
+      "stdout_excerpt": ">At1g01040.0\nEinit\t1007\t1954\t+\t85.269\t0\t0\t1\tAt1g01040.0-snap.1\nExon\t2024\t2137\t+\t8.926\t0\t0\t1\tAt1g01040.0-snap.1\nExon\t2234\t2444\t+\t20.788\t0\t1\t1\tAt1g01040.0-snap.1\nExon\t2523\t2917\t+\t35.162\t2\t0\t1\tAt1g01040.0-snap.1\nExon\t3006\t3225\t+\t34.428\t0\t1\t2\tAt1g01040.0-snap.1\nExon\t3307\t3479\t+\t14.790\t2\t0\t2\tAt1g01040.0-snap.1\nExon\t3563\t3685\t+\t4.678\t0\t0\t1\tAt1g01040.0-snap.1\nExon\t3774\t3934\t+\t10.179\t0\t2\t2\tAt1g01040.0-snap.1\nExon\t4025\t4258\t+\t25.991\t1\t2\t2\tAt1g01040.0-snap.1\nExon\t4344\t4506\t+\t4.289\t1\t0\t0\tAt1g01040.0-snap.1\nExon\t4581\t4763\t+\t28.696\t0\t0\t2\tAt1g01040.0-snap.1\nExon\t4854\t5015\t+\t15.217\t0\t0\t2\tAt1g01040.0-snap.1\nExon\t5100\t5195\t+\t23.205\t0\t0\t2\tAt1g01040.0-snap.1\nEterm\t5285\t5917\t+\t45.878\t0\t0\t1\tAt1g01040.0-snap.1\nEinit\t6086\t6144\t+\t6.596\t0\t2\t1\tAt1g01040.0-snap.2\nExon\t6190\t6287\t+\t22.495\t1\t1\t1\tAt1g01040.0-snap.2\nExon\t6372\t6562\t+\t17.809\t2\t0\t1\tAt1g01040.0-snap.2\nExon\t6642\t6803\t+\t16.407\t0\t0\t2\tAt1g01040.0-snap.2\nExon\t6828\t7547\t+\t69.159\t0\t0\t2\tAt1g01040.0-snap.2\nExon\t7629\t7793\t+\t40.262\t0\t0\t2\tAt1g01040.0-snap.2\nExon\t7892\t8298\t+\t46.310\t0\t2\t1\tAt1g01040.0-snap.2\nEterm\t8384\t8561\t+\t17.079\t1\t0\t2\tAt1g01040.0-snap.2\n",
+      "stderr_excerpt": "scoring.....decoding.10.20.30.40.50.60.70.80.90.100 done\nscoring.....decoding.10.20.30.40.50.60.70.80.90.100 done\n"
+    },
+    {
+      "argv": [
+        "./snap",
+        "HMM/worm",
+        "DNA/worm.dna.gz"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.0186,
+      "stdout_bytes": 885,
+      "stdout_sha256": "c06e05263498d621393f03e3a7c526d297ffb5161726e94c3a78fd23ff3a8d27",
+      "stdout_excerpt": ">F56C11.1\nEinit\t1487\t1493\t+\t5.285\t0\t1\t1\tF56C11.1-snap.1\nExon\t2140\t2217\t+\t24.843\t2\t1\t2\tF56C11.1-snap.1\nExon\t2267\t2380\t+\t-8.866\t2\t1\t0\tF56C11.1-snap.1\nExon\t2475\t2864\t+\t23.338\t2\t1\t1\tF56C11.1-snap.1\nExon\t2911\t3114\t+\t16.891\t2\t1\t2\tF56C11.1-snap.1\nExon\t3162\t3413\t+\t24.850\t2\t1\t1\tF56C11.1-snap.1\nExon\t3460\t3751\t+\t42.990\t2\t2\t2\tF56C11.1-snap.1\nExon\t4146\t4359\t+\t51.685\t1\t0\t0\tF56C11.1-snap.1\nExon\t4437\t4593\t+\t13.882\t0\t1\t2\tF56C11.1-snap.1\nExon\t4638\t5086\t+\t30.213\t2\t0\t1\tF56C11.1-snap.1\nExon\t5132\t5429\t+\t42.745\t0\t1\t1\tF56C11.1-snap.1\nExon\t6003\t6300\t+\t31.135\t2\t2\t1\tF56C11.1-snap.1\nExon\t6348\t6517\t+\t19.107\t1\t1\t0\tF56C11.1-snap.1\nExon\t6561\t6760\t+\t11.674\t2\t0\t1\tF56C11.1-snap.1\nExon\t7597\t7721\t+\t14.702\t0\t2\t0\tF56C11.1-snap.1\nExon\t7826\t8036\t+\t21.887\t1\t0\t2\tF56C11.1-snap.1\nExon\t8089\t8766\t+\t40.264\t0\t0\t0\tF56C11.1-snap.1\nExon\t8896\t9027\t+\t23.658\t0\t0\t0\tF56C11.1-snap.1\nEterm\t9072\t9197\t+\t21.423\t0\t0\t2\tF56C11.1-snap.1\n",
+      "stderr_excerpt": "scoring.....decoding.10.20.30.40.50.60.70.80.90.100 done\nscoring.....decoding.10.20.30.40.50.60.70.80.90.100 done\n"
+    }
+  ],
+  "input_hashes": {
+    "README.md": "80b9446eb69c4af52a07f8f9b48b2ab0727ab506dfef6531768f7a2983e8dce6",
+    "Makefile": "cfd1a06444df6b9b6da86443dfb678b13a51d116efe9c4931207f3491210ce08",
+    "DNA/thale.dna.gz": "a444ac45ef60d26a8c31f6d27be0dbf605ce41cf3bdb200a5c53867154017c20",
+    "DNA/worm.dna.gz": "886dad46a023de682f74d5b53b436fad7bcf27cccdbb2910759b8a0a4a533360"
+  },
+  "build_exit_code": 0,
+  "readme_examples_passed": true,
+  "result": "PASS: fresh source build and both README example predictions; genome accuracy untested",
+  "temporary_checkout_removed": true
+}
