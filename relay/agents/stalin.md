@@ -1,9 +1,9 @@
 ---
 name: stalin
 kind: agent
-provider: TODO
+provider: openai
 model: TODO
-runner: TODO
+runner: codex
 operator: anton
 capabilities: []
 last_seen: null

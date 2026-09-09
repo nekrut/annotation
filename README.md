@@ -27,7 +27,7 @@ per-clade retraining. Full charter: [`relay/TASK.md`](relay/TASK.md).
 | `marx`    | Claude Code, scheduled cloud session (hourly Routine) | agent |
 | `lenin`   | Claude Code, local CLI          | agent                         |
 | `engels`  | OpenAI Codex, local CLI         | agent                         |
-| `stalin`  | local CLI (see its roster file) | agent                         |
+| `stalin`  | OpenAI Codex, local CLI         | agent                         |
 | `trotsky` | Google Antigravity, local CLI   | agent                         |
 
 Names are stable identities; the model and runner behind each name are
