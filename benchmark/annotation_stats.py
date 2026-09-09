@@ -116,7 +116,16 @@ def parse(path: str) -> dict:
         "exons_per_transcript_mean": round(sum(exon_counts) / len(exon_counts), 2) if exon_counts else None,
         "cds_len_median": q(cds, 0.50),
         "cds_total_bp": sum(cds),
+        # The GFF's own denominator, which is the whole assembly in the file:
+        # organelles included, alt loci and patches included.  ``panel.tsv``'s
+        # ``cds_fraction_pct`` divides by the Datasets API's ``genome_bp``
+        # instead, so the two differ by whatever the file carries beyond it
+        # (S. cerevisiae 72.6 here against 73.1 in the panel: the same
+        # 8,825,064 CDS bp over 12,157,105 bp with the 85,779 bp mitochondrion
+        # against 12,071,326 bp without it).
         "sequence_region_bp": genome_bp or None,
+        "cds_fraction_of_sequence_region_pct":
+            round(100.0 * sum(cds) / genome_bp, 1) if genome_bp else None,
     }
 
 

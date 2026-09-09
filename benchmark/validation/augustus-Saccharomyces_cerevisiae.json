@@ -1,20 +1,24 @@
 {
  "codon": {
+  "predicted_partial_3prime": 0,
+  "predicted_partial_5prime": 0,
+  "reference_partial_3prime": 0,
+  "reference_partial_5prime": 0,
   "start": {
-   "f1": 0.81425,
-   "fn": 1440,
-   "fp": 625,
-   "precision": 0.87866,
-   "sensitivity": 0.75863,
-   "tp": 4526
+   "f1": 0.81415,
+   "fn": 1437,
+   "fp": 628,
+   "precision": 0.87808,
+   "sensitivity": 0.75889,
+   "tp": 4523
   },
   "stop": {
-   "f1": 0.91235,
-   "fn": 917,
-   "fp": 61,
-   "precision": 0.98816,
-   "sensitivity": 0.84734,
-   "tp": 5090
+   "f1": 0.91212,
+   "fn": 915,
+   "fp": 65,
+   "precision": 0.98738,
+   "sensitivity": 0.84753,
+   "tp": 5086
   },
   "stop_codon_convention_detected": "outside",
   "stop_codon_inside_cds": false,
@@ -26,16 +30,16 @@
  },
  "declaration": {
   "model": "AUGUSTUS 3.5.0 (bioconda augustus-3.5.0-pl5321h5653ebf_10), --species=saccharomyces_cerevisiae_S288C --gff3=on --genemodel=complete --UTR=off",
-  "path": "decl-augustus-sc.yaml",
-  "sha256": "ffa862b7f8a0b12f202a5a6f39c1d36ef92d8df85fcba2d753dd0e28db8eba14"
+  "path": "augustus-Saccharomyces_cerevisiae.yaml",
+  "sha256": "8bd9b1fe88169a6b28bef7eb0cab740d7ec07dfb8d39650d4811a1b202bd7009"
  },
  "exon": {
   "all": {
-   "f1": 0.75699,
-   "fn": 1774,
+   "f1": 0.75737,
+   "fn": 1768,
    "fp": 1155,
    "precision": 0.79797,
-   "sensitivity": 0.72001,
+   "sensitivity": 0.7207,
    "tp": 4562
   },
   "by_type": {
@@ -56,11 +60,11 @@
     "tp": 7
    },
    "single": {
-    "f1": 0.80943,
-    "fn": 1485,
+    "f1": 0.8099,
+    "fn": 1479,
     "fp": 495,
     "precision": 0.89468,
-    "sensitivity": 0.73902,
+    "sensitivity": 0.7398,
     "tp": 4205
    },
    "terminal": {
@@ -72,40 +76,54 @@
     "tp": 194
    }
   },
-  "predicted_overlap_no_boundary": 188,
-  "predicted_overlap_no_boundary_frac": 0.03288
+  "predicted_overlap_no_boundary": 186,
+  "predicted_overlap_no_boundary_frac": 0.03253
  },
  "locus": {
-  "f1": 0.91872,
-  "fn": 882,
-  "fp": 25,
+  "f1": 0.9185,
+  "fn": 880,
+  "fp": 29,
   "fusion": 106,
-  "precision": 0.99515,
+  "precision": 0.99437,
   "predicted_loci": 5151,
-  "reference_loci": 6008,
+  "reference_loci": 6002,
   "reference_overlapping_locus_pairs": 69,
-  "sensitivity": 0.8532,
-  "split": 8,
-  "tp": 5126
+  "sensitivity": 0.85338,
+  "split": 7,
+  "tp": 5122
  },
  "nucleotide": {
-  "f1": 0.95859,
-  "fn": 657779,
-  "fp": 40659,
-  "mcc": 0.93789,
-  "precision": 0.995,
+  "f1": 0.95839,
+  "fn": 655889,
+  "fp": 45690,
+  "mcc": 0.93756,
+  "precision": 0.99438,
   "predicted_cds_bp": 8125539,
-  "reference_cds_bp": 8742659,
+  "reference_cds_bp": 8735738,
   "scored_bp": 12071326,
-  "sensitivity": 0.92476,
-  "tp": 8084880
+  "sensitivity": 0.92492,
+  "tp": 8079849
  },
+ "predicted_conflicting_transcript_ids": 0,
  "predicted_sequences_absent_from_reference": 0,
+ "predicted_transcript_selection": {
+  "dropped": 0,
+  "dropped_by_reason": {},
+  "kept": 5151
+ },
  "predicted_transcripts": 5151,
  "predicted_transcripts_not_scored": 3,
  "prediction": "sc_augustus.gff3",
  "reference": "GCF_000146045.2_R64_genomic.gff.gz",
- "reference_transcripts": 6008,
+ "reference_conflicting_transcript_ids": 0,
+ "reference_transcript_selection": {
+  "dropped": 6,
+  "dropped_by_reason": {
+   "pseudogene": 6
+  },
+  "kept": 6002
+ },
+ "reference_transcripts": 6002,
  "scored_bp": 12071326,
  "scored_sequences": 16,
  "sequence_selection": {
@@ -379,12 +397,12 @@
   "reference_introns": 281
  },
  "transcript": {
-  "f1": 0.78018,
-  "fn": 1655,
+  "f1": 0.7806,
+  "fn": 1649,
   "fp": 798,
   "precision": 0.84508,
-  "sensitivity": 0.72453,
+  "sensitivity": 0.72526,
   "tp": 4353,
-  "unmatched_reference_loci": 882
+  "unmatched_reference_loci": 880
  }
 }

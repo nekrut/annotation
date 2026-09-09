@@ -48,6 +48,7 @@ DECLARATION_KEYS = [
     "heldout_seen_in_pretraining",
     "protein_db",
     "alignment",
+    "alignment_rows_dropped",
     "informants",
     "rnaseq",
     "hardware",
@@ -120,6 +121,14 @@ class Annotation:
         self.seq_len = {}                 # seqid -> length
         self.region_attrs = {}            # seqid -> attribute string
         self.explicit_genes = False
+        # Section 4.  Reference rows that are not a complete protein-coding
+        # gene: a pseudogene is truth for "there is no gene here", and a
+        # partial CDS has no correct start or stop to hit.
+        self.pseudo = set()               # tids with pseudo=true, or a
+                                          # pseudogene parent
+        self.biotype = {}                 # tid -> gene_biotype, when stated
+        self.partial5 = set()             # tids whose CDS 5' end is incomplete
+        self.partial3 = set()             # tids whose CDS 3' end is incomplete
         # Transcript ids that appear on more than one sequence or strand.
         # Concatenating per-chromosome predictor output produces exactly this,
         # because AUGUSTUS restarts its gene numbering at g1 in every run, and
@@ -232,6 +241,8 @@ def load_gff(path):
     """
     ann = Annotation()
     tx_gene = {}
+    gene_biotype = {}   # gene id -> gene_biotype (or "pseudogene" by feature)
+    tx_pseudo = set()   # tids marked pseudo on their own transcript row
     max_end = defaultdict(int)
     with _open(path) as fh:
         for line in fh:
@@ -255,13 +266,26 @@ def load_gff(path):
                 continue
             if end > max_end[seqid]:
                 max_end[seqid] = end
-            if ftype in TX_TYPES:
+            if ftype in ("gene", "pseudogene"):
+                gid = _attr(attrs, "ID") or _attr(attrs, "gene_id")
+                if gid:
+                    gene_biotype[gid] = (_attr(attrs, "gene_biotype")
+                                         or ("pseudogene" if ftype == "pseudogene"
+                                             else None))
+            elif ftype not in ("CDS", "stop_codon", "exon"):
+                # Anything else with an ID may be the parent of a CDS.  Not
+                # only mRNA: RefSeq gives immunoglobulin and T-cell receptor
+                # segments their own feature types (``V_gene_segment``,
+                # ``C_gene_segment``), and their CDS rows would otherwise have
+                # no path to the gene row that says what they are.
                 tid = _attr(attrs, "ID") or _attr(attrs, "transcript_id")
                 gid = _attr(attrs, "Parent") or _attr(attrs, "gene_id")
                 if tid:
                     tx_gene[tid] = gid or tid
-                    if gid:
+                    if gid and ftype in TX_TYPES:
                         ann.explicit_genes = True
+                    if _attr(attrs, "pseudo") == "true":
+                        tx_pseudo.add(tid)
             elif ftype == "CDS":
                 tid = (_attr(attrs, "Parent") or _attr(attrs, "transcript_id")
                        or _attr(attrs, "ID"))
@@ -273,13 +297,40 @@ def load_gff(path):
                     ann.id_conflicts.add(tid)
                 ann.cds[tid].append((start, end))
                 ann.where[tid] = (seqid, f[6])
+                if _attr(attrs, "pseudo") == "true":
+                    ann.pseudo.add(tid)
+                # RefSeq marks an incomplete CDS end with start_range= or
+                # end_range=, in genome coordinates, so which *biological* end
+                # is missing depends on the strand.  ``partial=true`` with
+                # neither range attribute says only that something is missing;
+                # both ends are then treated as unknown.  These attributes sit
+                # on the CDS row: on pombe's mRNA rows 788 of 5,166 carry
+                # partial=true, describing incomplete UTRs, while only 6 CDS
+                # rows do.
+                sr = _attr(attrs, "start_range") is not None
+                er = _attr(attrs, "end_range") is not None
+                if f[6] == "-":
+                    sr, er = er, sr
+                if sr:
+                    ann.partial5.add(tid)
+                if er:
+                    ann.partial3.add(tid)
+                if not sr and not er and _attr(attrs, "partial") == "true":
+                    ann.partial5.add(tid)
+                    ann.partial3.add(tid)
             elif ftype == "stop_codon":
                 tid = (_attr(attrs, "Parent") or _attr(attrs, "transcript_id")
                        or _attr(attrs, "ID"))
                 if tid:
                     ann.stops[tid.split(",")[0]].append((start, end))
     for tid in ann.cds:
-        ann.gene_of[tid] = tx_gene.get(tid, tid)
+        gid = tx_gene.get(tid, tid)
+        ann.gene_of[tid] = gid
+        bt = gene_biotype.get(gid)
+        if bt:
+            ann.biotype[tid] = bt
+        if tid in tx_pseudo or (bt and bt.endswith("pseudogene")):
+            ann.pseudo.add(tid)
     for seqid, end in max_end.items():
         ann.seq_len.setdefault(seqid, end)
     return ann
@@ -344,6 +395,45 @@ def select_seqids(ref, whitelist=None, min_len=MIN_SEQ_LEN, reasons=None):
                 reasons[seqid] = "alt locus or patch (sequence name)"
                 continue
         keep.add(seqid)
+    return keep
+
+
+def select_transcripts(chains, ann, keep_all=False, reasons=None):
+    """Transcripts the run is scored on (section 4: complete protein-coding).
+
+    A reference CDS row is not automatically a protein-coding gene.  RefSeq
+    annotates pseudogenes with real CDS blocks carrying ``pseudo=true`` --
+    32 transcripts in *S. pombe*, one of them described as "malic enzyme with
+    2 frameshifts", 314 in GRCh38.p14 -- and a predictor that correctly
+    declines to call a frameshifted pseudogene is otherwise charged a false
+    negative at nucleotide, exon, locus and transcript level.  Immunoglobulin
+    and T-cell receptor segments (``gene_biotype=V_segment`` and friends, 891
+    transcripts in GRCh38.p14) are the other case: they are gene *fragments*
+    with no start or stop codon of their own.
+
+    Both are dropped by default and counted by reason.  The filter is applied
+    to the prediction as well as the reference, so an identity run still
+    scores 1.0, and it only ever acts on evidence the file states: a
+    prediction without ``pseudo=`` or ``gene_biotype=`` loses nothing.
+
+    ``--score-all-transcripts`` restores the old behaviour for auditing.
+
+    ``reasons``, if given, is a dict that receives ``tid -> reason``.
+    """
+    if reasons is None:
+        reasons = {}
+    if keep_all:
+        return dict(chains)
+    keep = {}
+    for tid, chain in chains.items():
+        if tid in ann.pseudo:
+            reasons[tid] = "pseudogene"
+            continue
+        bt = ann.biotype.get(tid)
+        if bt is not None and bt != "protein_coding":
+            reasons[tid] = "biotype=%s" % bt
+            continue
+        keep[tid] = chain
     return keep
 
 
@@ -853,29 +943,90 @@ def _transcripts(ref_loci, pred_loci, ref_chains, pred_chains, matches):
 
 
 def codons(ref_chains, pred_chains, seqids, stop_in_cds=True,
-           detected="unknown", detected_counts=None, merge_stats=None):
-    """Section 4.5.  Start and stop codon positions, reported separately."""
-    def ends(chains):
+           detected="unknown", detected_counts=None, merge_stats=None,
+           ref_ann=None, pred_ann=None):
+    """Section 4.5.  Start and stop codon positions, reported separately.
+
+    A CDS annotated as incomplete at one end contributes no codon at that end.
+    RefSeq states this with ``start_range=``/``end_range=`` on the CDS row:
+    1,415 human and 194 maize transcripts are partial this way.  A 5'-partial
+    gene has no annotated start codon to hit, so counting its first base as a
+    reference start codon charges every predictor a false negative it cannot
+    avoid; the 3' end is the mirror image.  The two ends are excluded
+    independently.
+
+    Dropping the reference position alone would only move the charge: the
+    predictor's own start, somewhere inside that gene, would then be a false
+    positive.  So a predicted position inside the span of a reference
+    transcript that is partial at that end is dropped from the denominator
+    too -- unless it coincides with a reference position that survived, which
+    is a real match and stays a true positive.
+    """
+    r5 = getattr(ref_ann, "partial5", set()) if ref_ann else set()
+    r3 = getattr(ref_ann, "partial3", set()) if ref_ann else set()
+    p5 = getattr(pred_ann, "partial5", set()) if pred_ann else set()
+    p3 = getattr(pred_ann, "partial3", set()) if pred_ann else set()
+
+    def ends(chains, skip5, skip3):
         starts, stops = set(), set()
         for tid, (seqid, strand, blocks) in chains.items():
             if seqid not in seqids or not blocks:
                 continue
+            if tid in skip5 and tid in skip3:
+                continue
             if strand == "+":
-                starts.add((seqid, blocks[0][0], strand))
-                stops.add((seqid, blocks[-1][1], strand))
+                first, last = blocks[0][0], blocks[-1][1]
             else:
-                starts.add((seqid, blocks[-1][1], strand))
-                stops.add((seqid, blocks[0][0], strand))
+                first, last = blocks[-1][1], blocks[0][0]
+            if tid not in skip5:
+                starts.add((seqid, first, strand))
+            if tid not in skip3:
+                stops.add((seqid, last, strand))
         return starts, stops
 
-    r_start, r_stop = ends(ref_chains)
-    p_start, p_stop = ends(pred_chains)
+    def spans(tids):
+        """(seqid, strand) -> sorted list of (lo, hi) CDS spans."""
+        out = defaultdict(list)
+        for tid in tids:
+            chain = ref_chains.get(tid)
+            if not chain or not chain[2]:
+                continue
+            seqid, strand, blocks = chain
+            out[(seqid, strand)].append((blocks[0][0], blocks[-1][1]))
+        # Merged, so one bisect answers "is this position inside a span".
+        return {k: merge_intervals(v) for k, v in out.items()}
+
+    def outside(positions, unscorable, keep):
+        """Predicted positions not inside an unscorable reference span."""
+        out = set()
+        for pos in positions:
+            if pos in keep:
+                out.add(pos)
+                continue
+            seqid, coord, strand = pos
+            spanlist = unscorable.get((seqid, strand))
+            if not spanlist:
+                out.add(pos)
+                continue
+            i = bisect.bisect_right(spanlist, (coord, float("inf"))) - 1
+            if i < 0 or spanlist[i][1] < coord:
+                out.add(pos)
+        return out
+
+    r_start, r_stop = ends(ref_chains, r5, r3)
+    p_start, p_stop = ends(pred_chains, p5, p3)
+    p_start = outside(p_start, spans(r5), r_start)
+    p_stop = outside(p_stop, spans(r3), r_stop)
     out = {}
     for name, r, p in (("start", r_start, p_start), ("stop", r_stop, p_stop)):
         tp = len(r & p)
         out[name] = prf(tp, len(p) - tp, len(r) - tp)
     # What the run was told, what the prediction file actually shows, and
     # what was done about it.
+    out["reference_partial_5prime"] = len(r5 & set(ref_chains))
+    out["reference_partial_3prime"] = len(r3 & set(ref_chains))
+    out["predicted_partial_5prime"] = len(p5 & set(pred_chains))
+    out["predicted_partial_3prime"] = len(p3 & set(pred_chains))
     out["stop_codon_inside_cds"] = bool(stop_in_cds)
     out["stop_codon_convention_detected"] = detected
     out.update(detected_counts or {})
@@ -1029,8 +1180,16 @@ def selection_summary(ref, keep, dropped):
     }
 
 
+def transcript_selection_summary(dropped, kept):
+    by_reason = defaultdict(int)
+    for reason in dropped.values():
+        by_reason[reason] += 1
+    return {"kept": kept, "dropped": len(dropped),
+            "dropped_by_reason": dict(sorted(by_reason.items()))}
+
+
 def score(reference, prediction, species, genome=None, seqids=None,
-          stop_in_cds=True):
+          stop_in_cds=True, all_transcripts=False):
     ref = load_gff(reference)
     pred = load_gff(prediction)
     # Section 4.5.  Detected from the file, not taken on trust: a prediction
@@ -1047,6 +1206,14 @@ def score(reference, prediction, species, genome=None, seqids=None,
     keep = select_seqids(ref, whitelist=seqids, reasons=dropped)
     ref_chains = {t: c for t, c in ref.chains().items() if c[0] in keep}
     pred_chains = {t: c for t, c in pred.chains().items() if c[0] in keep}
+    # Section 4: pseudogenes and gene fragments are not scored as truth, and
+    # the same filter is applied to the prediction so that an identity run is
+    # still exactly 1.0.
+    ref_dropped_tx, pred_dropped_tx = {}, {}
+    ref_chains = select_transcripts(ref_chains, ref, all_transcripts,
+                                    ref_dropped_tx)
+    pred_chains = select_transcripts(pred_chains, pred, all_transcripts,
+                                     pred_dropped_tx)
     scored_bp = sum(ref.seq_len[s] for s in keep)
 
     fetch = None
@@ -1063,6 +1230,12 @@ def score(reference, prediction, species, genome=None, seqids=None,
         "sequence_selection": selection_summary(ref, keep, dropped),
         "reference_transcripts": len(ref_chains),
         "predicted_transcripts": len(pred_chains),
+        # Reference rows that carry a CDS but are not a complete
+        # protein-coding gene, grouped by why they were dropped.
+        "reference_transcript_selection":
+            transcript_selection_summary(ref_dropped_tx, len(ref_chains)),
+        "predicted_transcript_selection":
+            transcript_selection_summary(pred_dropped_tx, len(pred_chains)),
         # Predictions on sequences the filter excluded, or on sequence names
         # the reference does not have at all, are not scored.  A large count
         # here means the prediction was made against a different assembly or
@@ -1082,7 +1255,8 @@ def score(reference, prediction, species, genome=None, seqids=None,
         "transcript": tx,
         "locus": locus,
         "codon": codons(ref_chains, pred_chains, keep, stop_in_cds,
-                        pred_convention, convention_counts, merge_stats),
+                        pred_convention, convention_counts, merge_stats,
+                        ref, pred),
     }
 
 
@@ -1185,6 +1359,50 @@ chr1\t.\tstop_codon\t9298\t9300\t.\t+\t0\tParent=p3
 # be detected and the 3 bp have to be guessed back.
 STOP_PRED_BARE = "\n".join(
     l for l in STOP_PRED.splitlines() if "\tstop_codon\t" not in l) + "\n"
+
+
+# Section 4 transcript selection, in the shapes RefSeq actually writes:
+# a normal gene; a pseudogene whose CDS carries pseudo=true under a
+# gene_biotype=pseudogene parent; an immunoglobulin V segment; a 5'-partial
+# CDS on the plus strand (start_range=); and a partial CDS on the minus
+# strand whose start_range= is its *3'* end.
+PSEUDO_REF = """##gff-version 3
+##sequence-region chr1 1 20000
+chr1\t.\tregion\t1\t20000\t.\t+\t.\tID=chr1;genome=chromosome
+chr1\t.\tgene\t1000\t2100\t.\t+\t.\tID=g1;gene_biotype=protein_coding
+chr1\t.\tmRNA\t1000\t2100\t.\t+\t.\tID=t1;Parent=g1
+chr1\t.\tCDS\t1000\t1100\t.\t+\t0\tID=c1;Parent=t1
+chr1\t.\tCDS\t2000\t2100\t.\t+\t0\tID=c2;Parent=t1
+chr1\t.\tpseudogene\t4000\t4300\t.\t+\t.\tID=g2;gene_biotype=pseudogene
+chr1\t.\tmRNA\t4000\t4300\t.\t+\t.\tID=t2;Parent=g2
+chr1\t.\tCDS\t4000\t4300\t.\t+\t0\tID=c3;Parent=t2;pseudo=true
+chr1\t.\tgene\t5000\t5200\t.\t+\t.\tID=g3;gene_biotype=V_segment
+chr1\t.\tV_gene_segment\t5000\t5200\t.\t+\t.\tID=t3;Parent=g3
+chr1\t.\tCDS\t5000\t5200\t.\t+\t0\tID=c4;Parent=t3
+chr1\t.\tgene\t7000\t7300\t.\t+\t.\tID=g4;gene_biotype=protein_coding
+chr1\t.\tmRNA\t7000\t7300\t.\t+\t.\tID=t4;Parent=g4
+chr1\t.\tCDS\t7000\t7300\t.\t+\t0\tID=c5;Parent=t4;partial=true;start_range=.,7000
+chr1\t.\tgene\t9000\t9300\t.\t-\t.\tID=g5;gene_biotype=protein_coding
+chr1\t.\tmRNA\t9000\t9300\t.\t-\t.\tID=t5;Parent=g5
+chr1\t.\tCDS\t9000\t9300\t.\t-\t0\tID=c6;Parent=t5;partial=true;start_range=.,9000
+"""
+
+# A predictor's view of the same locus set: it calls the two complete genes
+# exactly, calls each partial one with an end it invented 60 bp inside the
+# annotated span -- the 5' end of t4 and, on the minus strand, the 3' end of
+# t5 -- and does not call the pseudogene or the V segment at all.
+PSEUDO_PRED = """##gff-version 3
+chr1\t.\tgene\t1000\t2100\t.\t+\t.\tID=pg1
+chr1\t.\tmRNA\t1000\t2100\t.\t+\t.\tID=p1;Parent=pg1
+chr1\t.\tCDS\t1000\t1100\t.\t+\t0\tParent=p1
+chr1\t.\tCDS\t2000\t2100\t.\t+\t0\tParent=p1
+chr1\t.\tgene\t7060\t7300\t.\t+\t.\tID=pg2
+chr1\t.\tmRNA\t7060\t7300\t.\t+\t.\tID=p2;Parent=pg2
+chr1\t.\tCDS\t7060\t7300\t.\t+\t0\tParent=p2
+chr1\t.\tgene\t9060\t9300\t.\t-\t.\tID=pg3
+chr1\t.\tmRNA\t9060\t9300\t.\t-\t.\tID=p3;Parent=pg3
+chr1\t.\tCDS\t9060\t9300\t.\t-\t0\tParent=p3
+"""
 
 
 # Section 4 sequence selection.  Every line is a shape taken from a real panel
@@ -1390,6 +1608,44 @@ def self_test():
     check("ref id conflicts", cr["reference_conflicting_transcript_ids"], 0)
     os.unlink(cpred)
 
+    # Section 4 transcript selection: pseudogenes and gene fragments are not
+    # truth, and the ends of a partial CDS are not scorable at either side.
+    pref = os.path.join(d, "pref.gff3")
+    ppred = os.path.join(d, "ppred.gff3")
+    open(pref, "w").write(PSEUDO_REF)
+    open(ppred, "w").write(PSEUDO_PRED)
+    pr = score(pref, ppred, "fixture")
+    check("pseudo ref kept", pr["reference_transcripts"], 3)
+    check("pseudo ref dropped",
+          pr["reference_transcript_selection"]["dropped_by_reason"],
+          {"biotype=V_segment": 1, "pseudogene": 1})
+    check("pseudo pred dropped",
+          pr["predicted_transcript_selection"]["dropped"], 0)
+    # Neither the pseudogene nor the V segment is a false negative now.
+    check("pseudo locus fn", pr["locus"]["fn"], 0)
+    check("pseudo locus tp", pr["locus"]["tp"], 3)
+    # t4 has no annotated start and t5 no annotated stop, so each contributes
+    # to one denominator and not the other; the predictor's invented start
+    # inside t4 is not charged as a false positive either.
+    check("partial 5prime", pr["codon"]["reference_partial_5prime"], 1)
+    check("partial 3prime", pr["codon"]["reference_partial_3prime"], 1)
+    check("partial start tp", pr["codon"]["start"]["tp"], 2)
+    check("partial start fp", pr["codon"]["start"]["fp"], 0)
+    check("partial start fn", pr["codon"]["start"]["fn"], 0)
+    check("partial stop tp", pr["codon"]["stop"]["tp"], 2)
+    check("partial stop fp", pr["codon"]["stop"]["fp"], 0)
+    # An identical file must still be exactly 1.0 with the filter on, and the
+    # audit flag must put the dropped rows back.
+    pid = score(pref, pref, "fixture")
+    check("pseudo identity locus f1", pid["locus"]["f1"], 1.0)
+    check("pseudo identity tx f1", pid["transcript"]["f1"], 1.0)
+    check("pseudo identity start f1", pid["codon"]["start"]["f1"], 1.0)
+    pall = score(pref, ppred, "fixture", all_transcripts=True)
+    check("all-transcripts ref kept", pall["reference_transcripts"], 5)
+    check("all-transcripts locus fn", pall["locus"]["fn"], 2)
+    os.unlink(pref)
+    os.unlink(ppred)
+
     select_test(check)
 
     # The window fetcher must return the same bases as a plain read.
@@ -1451,6 +1707,9 @@ def main():
                                      "over 10 kb that is not an alt locus or patch")
     ap.add_argument("--stop-outside-cds", action="store_true",
                     help="the prediction excludes the stop codon from its CDS")
+    ap.add_argument("--score-all-transcripts", action="store_true",
+                    help="score pseudogene and gene-fragment CDS rows as "
+                         "protein-coding truth (section 4; for auditing only)")
     ap.add_argument("--out", help="write JSON here instead of stdout")
     ap.add_argument("--self-test", action="store_true",
                     help="score built-in fixtures and check the answers")
@@ -1477,7 +1736,8 @@ def main():
 
     row = score(args.reference, args.prediction, args.species,
                 genome=args.genome, seqids=seqids,
-                stop_in_cds=not args.stop_outside_cds)
+                stop_in_cds=not args.stop_outside_cds,
+                all_transcripts=args.score_all_transcripts)
     row["declaration"] = {"path": os.path.basename(args.declaration),
                           "sha256": decl_sha,
                           "model": decl.get("model")}

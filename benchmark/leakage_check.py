@@ -86,6 +86,33 @@ def named_rank(a: list, b: list) -> tuple[str, str]:
     return "DOMAIN", node[2]
 
 
+def nearest_training(lineages, species, train):
+    """Every training species tied at the deepest MRCA rank, and that rank.
+
+    Ties are the normal case, not an edge case: chicken shares Sarcopterygii
+    with mouse and with *Xenopus*, and printing only the first row of
+    ``panel.tsv`` that reaches that rank would name mouse and hide the frog,
+    which is the closer relative in time.  The rule is a floor on the *rank*,
+    so it is the whole tied set that has to satisfy it.
+    """
+    best, names = None, []
+    for t in train:
+        rank, name = named_rank(lineages[species], lineages[t])
+        if best is None or RANK_DEPTH[rank] > RANK_DEPTH[best[0]]:
+            best, names = (rank, name), [t]
+        elif RANK_DEPTH[rank] == RANK_DEPTH[best[0]]:
+            names.append(t)
+    return names, best[0], best[1]
+
+
+def fmt_nearest(names, shown=3):
+    """The tied set, abbreviated: at Eukaryota every training species ties."""
+    names = sorted(names)
+    if len(names) <= shown:
+        return ",".join(names)
+    return "%s,+%d more" % (",".join(names[:shown]), len(names) - shown)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--panel", default=PANEL)
@@ -109,28 +136,20 @@ def main() -> int:
     violations = 0
     print(f"# split separation: MRCA(held-out, nearest training species) must be at or above {args.min_rank}")
     for h in heldout:
-        closest, rank, name = None, None, None
-        for t in train:
-            r, n = named_rank(lineages[h], lineages[t])
-            if closest is None or RANK_DEPTH[r] > RANK_DEPTH[rank]:
-                closest, rank, name = t, r, n
+        closest, rank, name = nearest_training(lineages, h, train)
         status = "ok"
         if RANK_DEPTH[rank] > limit:
             status = "VIOLATION"
             violations += 1
-        print(f"{status}\t{h}\tnearest={closest}\tmrca={name} ({rank})")
+        print(f"{status}\t{h}\tnearest={fmt_nearest(closest)}\tmrca={name} ({rank})")
 
     if paired:
         print("\n# paired held-out species: a close relative is in training on purpose.\n"
               "# These measure regime shift inside a clade and are reported separately;\n"
               "# they are never averaged into the cross-clade number.")
         for h in paired:
-            closest, rank, name = None, None, None
-            for t in train:
-                r, n = named_rank(lineages[h], lineages[t])
-                if closest is None or RANK_DEPTH[r] > RANK_DEPTH[rank]:
-                    closest, rank, name = t, r, n
-            print(f"paired\t{h}\tnearest={closest}\tmrca={name} ({rank})")
+            closest, rank, name = nearest_training(lineages, h, train)
+            print(f"paired\t{h}\tnearest={fmt_nearest(closest)}\tmrca={name} ({rank})")
 
     if args.informants:
         print(f"\n# informant separation for comparative runs ({args.informants})")

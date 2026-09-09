@@ -1,20 +1,24 @@
 {
  "codon": {
+  "predicted_partial_3prime": 0,
+  "predicted_partial_5prime": 0,
+  "reference_partial_3prime": 1,
+  "reference_partial_5prime": 2,
   "start": {
-   "f1": 0.5216,
-   "fn": 2839,
-   "fp": 1402,
-   "precision": 0.62251,
-   "sensitivity": 0.44884,
-   "tp": 2312
+   "f1": 0.52299,
+   "fn": 2808,
+   "fp": 1404,
+   "precision": 0.62187,
+   "sensitivity": 0.45124,
+   "tp": 2309
   },
   "stop": {
-   "f1": 0.74763,
-   "fn": 1834,
-   "fp": 402,
-   "precision": 0.89176,
-   "sensitivity": 0.64361,
-   "tp": 3312
+   "f1": 0.74892,
+   "fn": 1808,
+   "fp": 408,
+   "precision": 0.89012,
+   "sensitivity": 0.64639,
+   "tp": 3305
   },
   "stop_codon_convention_detected": "outside",
   "stop_codon_inside_cds": false,
@@ -26,88 +30,100 @@
  },
  "declaration": {
   "model": "AUGUSTUS 3.5.0 (bioconda augustus-3.5.0-pl5321h5653ebf_10), --species=saccharomyces_cerevisiae_S288C --gff3=on --genemodel=complete --UTR=off",
-  "path": "decl-sp-cross.yaml",
-  "sha256": "42d10f1222b1a1d5057c6de97272cff21172ef9c8494865f79e7440811b461ff"
+  "path": "augustus-Schizosaccharomyces_pombe-crossparam.yaml",
+  "sha256": "636d569f27ce6089f0711b02896a80b50b9c4d682d8dbfcba2f44292c8597fb5"
  },
  "exon": {
   "all": {
-   "f1": 0.29405,
-   "fn": 7989,
+   "f1": 0.29552,
+   "fn": 7912,
    "fp": 2930,
    "precision": 0.43697,
-   "sensitivity": 0.22157,
+   "sensitivity": 0.22325,
    "tp": 2274
   },
   "by_type": {
    "initial": {
-    "f1": 0.15461,
-    "fn": 2144,
+    "f1": 0.15529,
+    "fn": 2129,
     "fp": 743,
     "precision": 0.26216,
-    "sensitivity": 0.10963,
+    "sensitivity": 0.11032,
     "tp": 264
    },
    "internal": {
-    "f1": 0.03761,
-    "fn": 2648,
+    "f1": 0.03796,
+    "fn": 2618,
     "fp": 423,
     "precision": 0.12422,
-    "sensitivity": 0.02216,
+    "sensitivity": 0.0224,
     "tp": 60
    },
    "single": {
-    "f1": 0.60367,
-    "fn": 1098,
+    "f1": 0.60556,
+    "fn": 1081,
     "fp": 1062,
     "precision": 0.60768,
-    "sensitivity": 0.59971,
+    "sensitivity": 0.60345,
     "tp": 1645
    },
    "terminal": {
-    "f1": 0.17532,
-    "fn": 2105,
+    "f1": 0.17609,
+    "fn": 2090,
     "fp": 708,
     "precision": 0.29692,
-    "sensitivity": 0.12438,
+    "sensitivity": 0.12516,
     "tp": 299
    }
   },
-  "predicted_overlap_no_boundary": 683,
-  "predicted_overlap_no_boundary_frac": 0.13125
+  "predicted_overlap_no_boundary": 673,
+  "predicted_overlap_no_boundary_frac": 0.12932
  },
  "locus": {
-  "f1": 0.82583,
-  "fn": 1487,
-  "fp": 56,
-  "fusion": 157,
-  "precision": 0.98492,
+  "f1": 0.82678,
+  "fn": 1464,
+  "fp": 65,
+  "fusion": 153,
+  "precision": 0.9825,
   "predicted_loci": 3714,
-  "reference_loci": 5145,
+  "reference_loci": 5113,
   "reference_overlapping_locus_pairs": 2,
-  "sensitivity": 0.71098,
-  "split": 48,
-  "tp": 3658
+  "sensitivity": 0.71367,
+  "split": 44,
+  "tp": 3649
  },
  "nucleotide": {
-  "f1": 0.86738,
-  "fn": 1654359,
-  "fp": 34981,
-  "mcc": 0.83542,
-  "precision": 0.99371,
+  "f1": 0.86767,
+  "fn": 1636438,
+  "fp": 45480,
+  "mcc": 0.83552,
+  "precision": 0.99182,
   "predicted_cds_bp": 5559480,
-  "reference_cds_bp": 7178858,
+  "reference_cds_bp": 7150438,
   "scored_bp": 12571820,
-  "sensitivity": 0.76955,
-  "tp": 5524499
+  "sensitivity": 0.77114,
+  "tp": 5514000
  },
  "predicted_conflicting_transcript_ids": 0,
  "predicted_sequences_absent_from_reference": 0,
+ "predicted_transcript_selection": {
+  "dropped": 0,
+  "dropped_by_reason": {},
+  "kept": 3714
+ },
  "predicted_transcripts": 3714,
  "predicted_transcripts_not_scored": 4,
  "prediction": "sp_saccharomyces_cerevisiae_S288C.gff3",
  "reference": "GCF_000002945.2_ASM294v3_genomic.gff.gz",
  "reference_conflicting_transcript_ids": 0,
- "reference_transcripts": 5155,
+ "reference_transcript_selection": {
+  "dropped": 32,
+  "dropped_by_reason": {
+   "pseudogene": 32
+  },
+  "kept": 5123
+ },
+ "reference_transcripts": 5123,
  "scored_bp": 12571820,
  "scored_sequences": 3,
  "sequence_selection": {
@@ -127,7 +143,7 @@
    "by_intron_length_decile": [
     {
      "f1": 0.0,
-     "fn": 591,
+     "fn": 582,
      "fp": 0,
      "precision": null,
      "sensitivity": 0.0,
@@ -135,7 +151,7 @@
     },
     {
      "f1": 0.0,
-     "fn": 433,
+     "fn": 432,
      "fp": 0,
      "precision": null,
      "sensitivity": 0.0,
@@ -143,7 +159,7 @@
     },
     {
      "f1": 0.0,
-     "fn": 623,
+     "fn": 619,
      "fp": 0,
      "precision": null,
      "sensitivity": 0.0,
@@ -151,7 +167,7 @@
     },
     {
      "f1": 0.0,
-     "fn": 441,
+     "fn": 431,
      "fp": 0,
      "precision": null,
      "sensitivity": 0.0,
@@ -159,7 +175,7 @@
     },
     {
      "f1": 0.0,
-     "fn": 552,
+     "fn": 549,
      "fp": 0,
      "precision": null,
      "sensitivity": 0.0,
@@ -190,27 +206,27 @@
      "tp": 64
     },
     {
-     "f1": 0.18543,
-     "fn": 421,
-     "fp": 194,
-     "precision": 0.26515,
-     "sensitivity": 0.14257,
-     "tp": 70
+     "f1": 0.18354,
+     "fn": 413,
+     "fp": 192,
+     "precision": 0.26154,
+     "sensitivity": 0.14137,
+     "tp": 68
     },
     {
-     "f1": 0.13262,
-     "fn": 415,
-     "fp": 723,
-     "precision": 0.10741,
-     "sensitivity": 0.17331,
-     "tp": 87
+     "f1": 0.13516,
+     "fn": 414,
+     "fp": 725,
+     "precision": 0.10934,
+     "sensitivity": 0.17694,
+     "tp": 89
     }
    ],
-   "f1": 0.14866,
-   "fn": 4575,
+   "f1": 0.14948,
+   "fn": 4539,
    "fp": 1003,
    "precision": 0.32685,
-   "sensitivity": 0.09621,
+   "sensitivity": 0.0969,
    "tp": 487
   },
   "by_dinucleotide": {
@@ -223,16 +239,16 @@
     "tp": 0
    },
    "GT-AG": {
-    "f1": 0.07427,
-    "fn": 4811,
+    "f1": 0.07467,
+    "fn": 4776,
     "fp": 1247,
     "precision": 0.16309,
-    "sensitivity": 0.04808,
+    "sensitivity": 0.04842,
     "tp": 243
    },
    "other": {
     "f1": 0.0,
-    "fn": 2,
+    "fn": 1,
     "fp": 0,
     "precision": null,
     "sensitivity": 0.0,
@@ -249,19 +265,19 @@
     "tp": 29
    },
    "1": {
-    "f1": 0.17758,
-    "fn": 3804,
+    "f1": 0.17872,
+    "fn": 3769,
     "fp": 716,
     "precision": 0.40532,
-    "sensitivity": 0.1137,
+    "sensitivity": 0.11463,
     "tp": 488
    },
    "2": {
-    "f1": 0.20037,
-    "fn": 296,
+    "f1": 0.20074,
+    "fn": 295,
     "fp": 135,
     "precision": 0.28571,
-    "sensitivity": 0.15429,
+    "sensitivity": 0.15473,
     "tp": 54
    },
    "3": {
@@ -277,7 +293,7 @@
    "by_intron_length_decile": [
     {
      "f1": 0.0,
-     "fn": 591,
+     "fn": 582,
      "fp": 0,
      "precision": null,
      "sensitivity": 0.0,
@@ -285,7 +301,7 @@
     },
     {
      "f1": 0.0,
-     "fn": 433,
+     "fn": 432,
      "fp": 0,
      "precision": null,
      "sensitivity": 0.0,
@@ -293,7 +309,7 @@
     },
     {
      "f1": 0.0,
-     "fn": 623,
+     "fn": 619,
      "fp": 0,
      "precision": null,
      "sensitivity": 0.0,
@@ -301,7 +317,7 @@
     },
     {
      "f1": 0.0,
-     "fn": 441,
+     "fn": 431,
      "fp": 0,
      "precision": null,
      "sensitivity": 0.0,
@@ -309,7 +325,7 @@
     },
     {
      "f1": 0.0,
-     "fn": 552,
+     "fn": 549,
      "fp": 0,
      "precision": null,
      "sensitivity": 0.0,
@@ -340,27 +356,27 @@
      "tp": 63
     },
     {
-     "f1": 0.19073,
-     "fn": 419,
-     "fp": 192,
-     "precision": 0.27273,
-     "sensitivity": 0.14664,
-     "tp": 72
+     "f1": 0.18893,
+     "fn": 411,
+     "fp": 190,
+     "precision": 0.26923,
+     "sensitivity": 0.14553,
+     "tp": 70
     },
     {
-     "f1": 0.13415,
-     "fn": 414,
-     "fp": 722,
-     "precision": 0.10864,
-     "sensitivity": 0.1753,
-     "tp": 88
+     "f1": 0.13667,
+     "fn": 413,
+     "fp": 724,
+     "precision": 0.11057,
+     "sensitivity": 0.17893,
+     "tp": 90
     }
    ],
-   "f1": 0.1743,
-   "fn": 4491,
+   "f1": 0.17526,
+   "fn": 4455,
    "fp": 919,
    "precision": 0.38322,
-   "sensitivity": 0.1128,
+   "sensitivity": 0.11361,
    "tp": 571
   },
   "intron_length_decile_cuts": [
@@ -372,21 +388,21 @@
    62,
    74,
    101,
-   158
+   157
   ],
   "min_intron": 20,
   "predicted_cds_gaps_below_min": 0,
   "predicted_introns": 1490,
-  "reference_cds_gaps_below_min": 28,
-  "reference_introns": 5062
+  "reference_cds_gaps_below_min": 19,
+  "reference_introns": 5026
  },
  "transcript": {
-  "f1": 0.39124,
-  "fn": 3412,
+  "f1": 0.39266,
+  "fn": 3380,
   "fp": 1981,
   "precision": 0.46661,
-  "sensitivity": 0.33683,
+  "sensitivity": 0.33894,
   "tp": 1733,
-  "unmatched_reference_loci": 1487
+  "unmatched_reference_loci": 1464
  }
 }

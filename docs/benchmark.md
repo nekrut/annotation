@@ -183,6 +183,17 @@ Three picks need their own justification.
 accession in the row. Introns are derived from the exons of `mRNA` features
 and de-duplicated by (seqid, start, end, strand), so an intron shared by
 several isoforms counts once; quantiles are nearest-rank on that unique list.
+`cds_fraction_pct` is the one column `annotation_stats.py` does not reproduce
+on its own: its numerator is the script's `cds_total_bp`, but its denominator
+is the Datasets API's `genome_bp`, not the total of the GFF's own
+`##sequence-region` lines, which also counts the organelles. For
+*S. cerevisiae* that is 8,825,064 bp over 12,071,326 bp = 73.1% in the panel
+against 8,825,064 over 12,157,105 = 72.6% from the file, the difference being
+the 85,779 bp mitochondrion (*S. pombe*: 57.3 against 57.2). The script now
+prints `cds_fraction_of_sequence_region_pct` beside `sequence_region_bp` so
+both denominators are visible. Neither is the denominator §4 scores against,
+which is the selected sequence set reported in `sequence_selection`.
+
 `protein_coding_genes` in Table 1 is NCBI's own count from the Datasets API;
 `gff_gene_features` in `panel.tsv` is the count of `protein_coding` gene
 features in the GFF, which is larger for assemblies carrying alt loci and
@@ -269,13 +280,19 @@ This is checked mechanically, not asserted:
 ```
 $ python3 benchmark/leakage_check.py
 # split separation: MRCA(held-out, nearest training species) must be at or above CLASS
-ok	Gallus_gallus	nearest=Mus_musculus	mrca=Sarcopterygii (SUPERCLASS)
-ok	Ciona_intestinalis	nearest=Mus_musculus	mrca=Chordata (PHYLUM)
-ok	Nematostella_vectensis	nearest=Mus_musculus	mrca=Metazoa (KINGDOM)
-ok	Schizosaccharomyces_pombe	nearest=Saccharomyces_cerevisiae	mrca=Ascomycota (PHYLUM)
-ok	Plasmodium_falciparum	nearest=Mus_musculus	mrca=Eukaryota (DOMAIN)
-ok	Tetrahymena_thermophila	nearest=Mus_musculus	mrca=Eukaryota (DOMAIN)
+ok	Gallus_gallus	nearest=Mus_musculus,Xenopus_tropicalis	mrca=Sarcopterygii (SUPERCLASS)
+ok	Ciona_intestinalis	nearest=Danio_rerio,Mus_musculus,Xenopus_tropicalis	mrca=Chordata (PHYLUM)
+ok	Nematostella_vectensis	nearest=Caenorhabditis_elegans,Danio_rerio,Drosophila_melanogaster,+2 more	mrca=Metazoa (KINGDOM)
+ok	Schizosaccharomyces_pombe	nearest=Neurospora_crassa,Saccharomyces_cerevisiae	mrca=Ascomycota (PHYLUM)
+ok	Plasmodium_falciparum	nearest=Arabidopsis_thaliana,Caenorhabditis_elegans,Danio_rerio,+7 more	mrca=Eukaryota (DOMAIN)
+ok	Tetrahymena_thermophila	nearest=Arabidopsis_thaliana,Caenorhabditis_elegans,Danio_rerio,+7 more	mrca=Eukaryota (DOMAIN)
 ```
+
+`nearest` is every training species tied at the deepest rank, not one of them.
+Ties are the normal case and naming only the first row of `panel.tsv` that
+reaches the rank is misleading: chicken ties with mouse *and* with
+*X. tropicalis*, and the frog is the closer relative in time. At Eukaryota all
+ten training species tie, so the list is truncated with a count.
 
 The lineages come from `benchmark/taxonomy.tsv`, a cache of NCBI Taxonomy
 lineages fetched on 2026-09-09, so the check is reproducible offline and does
@@ -345,9 +362,20 @@ Phylogenetic distance is one channel of four, and it is the least dangerous.
    built to include a held-out species leaks that species' *sequence* into
    every training window that overlaps it, and if the alignment was filtered,
    scored, or projected using annotation, it leaks labels too. Rules:
-   - Training alignments must be rebuilt with held-out species removed from
-     the taxon set, not merely masked at read time. A row dropped after the
-     alignment was computed still shaped the columns.
+   - **Jointly inferred alignments** — Cactus, Ensembl EPO, anything whose
+     columns and ancestral sequences were estimated over the whole taxon set
+     at once — must be *rebuilt* with the held-out species removed. A row
+     dropped after the fact still shaped the columns it was dropped from.
+   - **Reference-anchored alignments** — multiz, which stacks pairwise
+     to-reference alignments in guide-tree order — may instead have the row
+     dropped at cut time, because dropping a row there is a filter and not a
+     realignment. The run declares which rows were dropped, in
+     `alignment_rows_dropped` (§3.3). This matters for exactly two panel
+     alignments: dm6 multiz124way contains honey bee (`apiMel4`,
+     `heldout_paired`) and mm39 multiz35way contains human. Rebuilding either
+     is a cluster job; dropping the row is free. The distinction is marx's,
+     from `docs/data-sources.md` §7, and a submission that cannot say which
+     kind its alignment is must assume the stricter rule.
    - An informant set used at *inference* on a held-out target is permitted
      and must be declared: `benchmark/leakage_check.py --informants` takes a
      `target<TAB>informant` TSV and reports each informant's MRCA with the
@@ -375,7 +403,10 @@ training_species: [...]            # every genome whose sequence or annotation w
 pretraining_corpus: <name/version> # or "none"
 heldout_seen_in_pretraining: {Gallus_gallus: no, Homo_sapiens: yes, ...}
 protein_db: <release>              # or "none"; state held-out removal
-alignment: <how built, which taxa> # or "none"
+alignment: <how built, which taxa> # or "none"; say whether it is jointly
+                                   # inferred (Cactus, EPO) or
+                                   # reference-anchored (multiz)
+alignment_rows_dropped: [...]      # rows removed at cut time, per §3.2; or "none"
 informants: <path to target/informant TSV>  # or "none"
 rnaseq: {species: [accessions]}    # or "none"
 hardware: <CPU model, cores, RAM, GPU model, VRAM>
@@ -425,6 +456,31 @@ when more than half the prediction falls outside the scored set, because a
 prediction in the wrong naming convention otherwise scores 0.0 everywhere and
 is indistinguishable from a bad predictor: Ensembl calls *C. elegans*
 chromosome I `I` and RefSeq calls it `NC_003279.8`.
+
+**A CDS row in the reference is not automatically a protein-coding gene.**
+Two classes are excluded from truth, counted by reason in
+`reference_transcript_selection`, and excluded from the prediction by the same
+test so that an identity run still scores exactly 1.0:
+
+- **Pseudogenes.** RefSeq annotates them with real CDS blocks carrying
+  `pseudo=true`, under a `gene_biotype=pseudogene` parent: 32 transcripts in
+  *S. pombe* — one of them described as "malic enzyme with 2 frameshifts" —
+  and 314 in GRCh38.p14, of which 198 sit on a sequence this benchmark scores. A predictor that correctly declines to call a
+  frameshifted pseudogene would otherwise be charged a false negative at
+  nucleotide, exon, locus and transcript level. The `MIN_INTRON` rule (§4.3)
+  already kept their frameshift gaps out of the splice metrics; this is the
+  other half.
+- **Gene fragments.** Immunoglobulin and T-cell receptor segments
+  (`gene_biotype=V_segment`, `D_segment`, `J_segment`, `C_region`: 891
+  transcripts in GRCh38.p14, 390 of them on a scored sequence) are pieces of a
+  gene assembled somatically, with no start or stop codon of their own. The panel's other 18 species have
+  none.
+
+Both are recognised only from what the file states, so a prediction that
+carries neither attribute loses nothing, and `--score-all-transcripts`
+restores the old behaviour for auditing. On the human reference the filter
+drops 588 of 132,030 transcripts and the identity run stays at 1.0 on every
+metric.
 
 Predictions are compared on the CDS, not the transcript, unless a metric
 says otherwise; UTRs are out of scope for this charter and a model that does
@@ -515,11 +571,20 @@ Two numbers, because they answer different questions.
   Fusions are the failure mode manual curation of
   *P. pacificus* found most of ([10.64898/2026.02.18.706511](https://doi.org/10.64898/2026.02.18.706511)).
 
+Matching is **greedy, not optimal**, at both levels, and the tie-break is part
+of the specification so that a second implementation of this document agrees
+with `score.py` on the same input: candidate pairs are taken in descending
+order of shared CDS bases, ties broken by reference id then predicted id
+ascending, and a pair is kept only if neither side is already used. Optimal
+bipartite matching would score marginally differently in the rare case where
+a locally best pair blocks two better ones; greedy is cheap, deterministic and
+what is implemented.
+
 Isoform rule: a predictor emitting one transcript per locus is scored against
 the **single best-matching annotated isoform** per locus, and the remaining
 annotated isoforms are not counted as false negatives. A predictor emitting
-several isoforms is scored with an optimal one-to-one matching within the
-locus, and unmatched predictions are false positives. Without this rule,
+several isoforms is matched the same greedy way within the locus, and
+unmatched predictions are false positives. Without this rule,
 species with deep isoform annotation (human, zebrafish) are systematically
 penalized against species with one transcript per gene (*P. falciparum*).
 
@@ -531,6 +596,21 @@ sensitivity and precision for start codons and for stop codons. *Tetrahymena*
 is the diagnostic — under genetic code 6 a model that has hard-coded TAA/TAG
 as terminators will show near-zero stop-codon precision there and normal
 numbers everywhere else, which is a signature no aggregate score would show.
+
+**An incomplete CDS end contributes no codon.** RefSeq marks one with
+`start_range=` or `end_range=` on the CDS row — which biological end that is
+depends on the strand — and 1,415 human, 194 maize and 6 *S. pombe*
+transcripts are partial this way. A 5'-partial gene has no annotated start
+codon to hit, so counting its first base as a reference start codon charges
+every predictor a false negative it cannot avoid. The two ends are excluded
+independently, and dropping the reference position alone would only move the
+charge, so a predicted position inside the span of a reference transcript
+partial at that end is dropped from the denominator too — unless it coincides
+with a surviving reference position, which is a real match and stays a true
+positive. The counts are reported as `reference_partial_5prime` and
+`reference_partial_3prime`. Note that this reads the **CDS** row, not the
+mRNA: 788 of *S. pombe*'s 5,166 mRNA rows carry `partial=true`, describing
+incomplete UTRs, while only 6 of its CDS rows do.
 
 **The stop codon is inside the CDS here, and half the field disagrees.** GFF3
 says a CDS chain includes its stop codon, and every reference in Table 3 does.
@@ -565,7 +645,7 @@ Translate the predicted CDS and run BUSCO in protein mode
 ([10.1093/molbev/msab199](https://doi.org/10.1093/molbev/msab199)) against
 the deepest lineage dataset that applies to the species, reporting complete,
 duplicated, fragmented and missing. Run it on the *reference* proteome too
-and report both: BUSCO scores a proteome against a expectation, not against
+and report both: BUSCO scores a proteome against an expectation, not against
 this panel's truth, so the reference value is the ceiling and the number that
 matters is the gap. OMArk
 ([10.1038/s41587-024-02147-w](https://doi.org/10.1038/s41587-024-02147-w)) is
@@ -651,10 +731,12 @@ and the two aggregates. It refuses to print an aggregate over an incomplete
 panel unless `--partial` says so, because an unweighted mean over a subset is
 a different number wearing the same name.
 
-Three decisions the implementation forced, all above: the intron-length
+Four decisions the implementation forced, all above: the intron-length
 deciles are computed from the reference at score time (§4.3), a CDS gap under
-20 bp is not a splice junction (§4.3), and the stop-codon convention is
-detected from the prediction rather than trusted to a flag (§4.5).
+20 bp is not a splice junction (§4.3), the stop-codon convention is detected
+from the prediction rather than trusted to a flag (§4.5), and a reference CDS
+row is not truth until it has been checked for `pseudo=true`, a
+non-`protein_coding` `gene_biotype` and an incomplete end (§4, §4.5).
 
 Verification so far:
 
@@ -684,8 +766,9 @@ Verification so far:
   (*Z. mays*, 2.18 Gb); human is 38 s / 0.92 GB over 3.10 Gb. The filter keeps
   3 sequences (*S. pombe*) to 685 (*Z. mays*); human is 102 scored sequences
   and 3,101,538,863 bp (24 chromosomes plus 78 scaffolds; 511 alt loci and
-  patches, 91 sub-10 kb scaffolds and the mitochondrion dropped), 132,030
-  transcripts, 20,520 loci. Every one of the twenty took the RefSeq `region`
+  patches, 91 sub-10 kb scaffolds and the mitochondrion dropped), 131,442
+  transcripts of 132,030 (198 pseudogene and 390 gene-fragment transcripts
+  dropped, §4), 19,932 loci. Every one of the twenty took the RefSeq `region`
   path (`reference_has_region_features: true`).
 - **`--genome` across six species and at vertebrate scale.** The §4.3
   dinucleotide and local-GC strata now run on *T. rubripes* (384 Mb, 230,048
@@ -749,9 +832,9 @@ Verification so far:
 
   | run | nucleotide F1 | exon F1 | donor F1 | transcript F1 | locus F1 |
   |---|---|---|---|---|---|
-  | *S. cerevisiae*, own parameters | 0.959 | 0.757 | 0.394 | 0.780 | 0.919 |
-  | *S. pombe*, own parameters | 0.955 | 0.773 | 0.853 | 0.700 | 0.924 |
-  | *S. pombe*, *S. cerevisiae* parameters | 0.867 | **0.294** | **0.174** | 0.391 | 0.826 |
+  | *S. cerevisiae*, own parameters | 0.958 | 0.757 | 0.394 | 0.781 | 0.919 |
+  | *S. pombe*, own parameters | 0.955 | 0.774 | 0.854 | 0.702 | 0.923 |
+  | *S. pombe*, *S. cerevisiae* parameters | 0.868 | **0.296** | **0.175** | 0.393 | 0.827 |
 
   Swapping the parameter set between two ascomycete yeasts of nearly the same
   size and GC costs **62% of exon F1 and 80% of donor F1 while nucleotide F1
@@ -761,6 +844,27 @@ Verification so far:
   claim — any model claiming it has to beat a parameter swap between two
   yeasts before a mammal-to-fungus claim means anything. The declarations and
   full results are in `benchmark/validation/`.
+- **Review feedback from marx (PR #5), acted on.** Pseudogene and
+  gene-fragment CDS rows are no longer scored as truth and incomplete CDS ends
+  no longer enter the §4.5 denominators (§4, §4.5); the self-test gained a
+  fixture built from those RefSeq shapes, including a minus-strand
+  `start_range=` that is a *3'* end, and now runs 86 checks, up from 69. Every number in
+  this section was recomputed afterwards: the three AUGUSTUS results moved by
+  at most 0.002 F1 (the yeasts have 6 and 32 pseudogenes and no partial CDS on
+  a scored sequence), and identity runs on human, *C. elegans*,
+  *A. thaliana*, *Z. mays*, *Tetrahymena*, *P. falciparum*, *Nematostella*,
+  *S. cerevisiae* and *S. pombe* are still 1.0 and MCC 1.0 on every metric
+  with 0 fusions and 0 splits. The size of the correction is species-specific
+  and not always small: *C. elegans* has **1,958** pseudogene transcripts with
+  CDS rows, 6.4% of its 30,548, against none at all in the *Arabidopsis*,
+  maize, *Tetrahymena*, *P. falciparum* and *Nematostella* references, which
+  annotate pseudogenes without CDS. Partial CDS ends are commonest in
+  *Tetrahymena* (253 at the 5' end, 191 at the 3'), human (712 and 1,048 in
+  the file) and maize. The committed JSON under `benchmark/validation/` is
+  the regenerated output, not the earlier one. `leakage_check.py` now prints
+  every training species tied at the deepest MRCA rank (§3.1), the alignment
+  leakage rule is split by alignment type (§3.2), and the greedy matching in
+  §4.4 is now documented as greedy.
 - **Ensembl input.** `Caenorhabditis_elegans.WBcel235.gff3.gz` from the
   Ensembl FTP site — no `region` features at all, `gene:`/`transcript:`
   ID prefixes — parses and scores: 6 nuclear chromosomes kept, `MtDNA`
@@ -832,7 +936,7 @@ Verification so far:
    exercised at 3 Gb scale.
 10. **AUGUSTUS over-predicts introns in *S. cerevisiae* and the benchmark
    cannot yet say by how much it should.** Donor F1 is 0.394 there against
-   0.853 on *S. pombe*, from 571 predicted introns against 281 scored
+   0.854 on *S. pombe*, from 566 predicted introns against 281 scored
    reference ones in a genome that is 95.3% single-exon (Table 2). Whether
    that is a real weakness or an artefact of scoring a near-intronless genome
    at splice-site level is not decidable from one tool; it needs the second
@@ -844,3 +948,20 @@ Verification so far:
    *S. pombe* donors in `30-40%`. Read that column across species, not within
    one. Per-species GC quantile bins would be the alternative and would not be
    comparable; this is a documented limitation, not a defect.
+12. **Which non-`protein_coding` biotypes to exclude is a judgement call.**
+   §4 drops immunoglobulin and T-cell receptor segments along with
+   pseudogenes, because they are gene fragments assembled somatically and
+   have no start or stop codon of their own. That is 390 of the 132,030 human
+   transcripts on a scored sequence and nothing at all in the other 19 species, so the decision
+   costs almost nothing today; it is recorded because the alternative —
+   scoring them and accepting that no predictor can produce them — is one
+   `--score-all-transcripts` run away, and because a proteome-completeness
+   number (§4.6) may turn out to depend on it.
+13. **Partial-CDS handling is untested against a predictor that emits partial
+   genes.** §4.5 excludes an incomplete reference end from the codon
+   denominators and excludes any predicted codon inside that span. It is
+   covered by a self-test fixture and it changes nothing on the two yeasts
+   (no partial CDS on a scored sequence), but the case that matters — a
+   fragmented assembly where the *prediction* is also truncated at contig
+   ends — has not been run. `predicted_partial_5prime` and
+   `predicted_partial_3prime` are reported for when it is.

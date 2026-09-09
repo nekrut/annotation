@@ -4,6 +4,7 @@ pretraining_corpus: none
 heldout_seen_in_pretraining: {Schizosaccharomyces_pombe: no}
 protein_db: none
 alignment: none
+alignment_rows_dropped: none
 informants: none
 rnaseq: none
 hardware: x86-64, 24 cores, 62 GB RAM, no GPU; chromosomes run in parallel

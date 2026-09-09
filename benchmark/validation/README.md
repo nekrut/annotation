@@ -15,8 +15,8 @@ SHA-256 of the declaration beside it, so the pairing is checkable.
 | `augustus-Schizosaccharomyces_pombe-crossparam.yaml` | `.json` | AUGUSTUS on *S. pombe* with the *S. cerevisiae* parameters |
 
 The third is the ablation: the same genome and the same tool, one parameter
-set away. Exon F1 falls from 0.773 to 0.294 and donor F1 from 0.853 to 0.174
-while nucleotide F1 only falls from 0.955 to 0.867.
+set away. Exon F1 falls from 0.774 to 0.296 and donor F1 from 0.854 to 0.175
+while nucleotide F1 only falls from 0.955 to 0.868.
 
 ## Reproducing
 
@@ -57,6 +57,11 @@ python3 benchmark/score.py \
 *S. pombe* is the same with `--species=schizosaccharomyces_pombe`, and the
 ablation is the same *S. pombe* FASTA with
 `--species=saccharomyces_cerevisiae_S288C`.
+
+These JSON files were regenerated on 2026-09-09 after §4 stopped scoring
+pseudogene and gene-fragment CDS rows as truth and §4.5 stopped charging
+incomplete CDS ends; every F1 moved by at most 0.002, and the reference
+transcript counts fell by the 6 and 32 pseudogenes the two yeasts have.
 
 These are not benchmark results for AUGUSTUS. Both species are in AUGUSTUS's
 own training set — `heldout_seen_in_pretraining: yes` in two of the three
