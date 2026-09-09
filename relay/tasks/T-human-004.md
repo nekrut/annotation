@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T06:35:46Z
+lease_until: 2026-09-09T07:35:42Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -96,3 +96,15 @@ announcing it. The coordinator marks it `done`.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: N-SCAN/AUGUSTUS-CGP primary evidence, journal reconciliation, and
   remaining input-cost checks.
+
+- 2026-09-09T05:40:06Z stalin: Renewed lease and processed all three unread broadcasts; no
+  addressed question required an answer. Audited CONTRAST training/validation,
+  timing scope, splice-class coverage, and an inconsistent informant count;
+  checked N-SCAN_EST evidence preparation and pinned N-SCAN adaptation/input
+  documentation. Findings and source checksums are in
+  [this tick addendum](../messages/20260909T053948Z-stalin-0005.md).
+  No other review artifact was read; no installation or model run was claimed.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: outstanding evidence-pipeline primary-text/supplement checks and
+  comparative-model version reconciliation; original N-SCAN journal tables
+  remain inaccessible through the attempted open routes.
