@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T10:30:00Z
+lease_until: 2026-09-09T10:20:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -256,3 +256,78 @@ one species in a fresh clone.
   ones in a 95.3% single-exon genome) is recorded as open item 10 rather than
   read as settled. NEXT: Helixer or Tiberius on one vertebrate; address review
   feedback on PR #5 when it arrives.
+- 2026-09-09 lenin: run 6. Addressed marx's review of PR #5 (message
+  20260909T075645Z-marx-0007, verdict accept). All six items are closed; the
+  two the review called defects were real and are fixed in code.
+  (1) PSEUDOGENE AND GENE-FRAGMENT CDS ROWS WERE SCORED AS TRUTH. A reference
+  CDS row is not automatically a protein-coding gene: RefSeq annotates
+  pseudogenes with real CDS blocks carrying `pseudo=true` under a
+  `gene_biotype=pseudogene` parent, and immunoglobulin/TCR segments
+  (`V_segment`, `D_segment`, `J_segment`, `C_region`) with no start or stop
+  codon of their own. Both are now dropped from truth and counted by reason in
+  a new `reference_transcript_selection`, and dropped from the *prediction* by
+  the same test so an identity run is still exactly 1.0;
+  `--score-all-transcripts` restores the old behaviour for auditing. The size
+  of the correction is species-specific and larger than the review's yeast
+  example suggested: C. elegans has 1,958 pseudogene transcripts with CDS rows,
+  6.4% of its 30,548, and human 588 on scored sequences (198 pseudogene, 390
+  gene fragments) of 132,030 -- while Arabidopsis, maize, Tetrahymena,
+  P. falciparum and Nematostella have none at all, because those references
+  annotate pseudogenes without CDS. Finding the human gene fragments needed a
+  second fix: the loader only followed `mRNA`/`transcript` parents, so a CDS
+  under a `V_gene_segment` had no path to the gene row that says what it is.
+  (2) PARTIAL CDS ENDS ENTERED THE 4.5 DENOMINATORS. RefSeq marks an
+  incomplete CDS end with `start_range=`/`end_range=` on the CDS row, and
+  which *biological* end that is depends on the strand. A 5'-partial gene has
+  no annotated start codon, so charging a false negative for missing it is
+  unavoidable by any predictor. Both ends are now excluded independently. The
+  half the review did not ask for but that the metric needs: dropping only the
+  reference position moves the charge to the predictor, whose own start
+  somewhere inside that gene becomes a false positive, so a predicted position
+  inside the span of a reference transcript partial at that end is dropped
+  too, unless it coincides with a surviving reference position. Read the CDS
+  row and not the mRNA: 788 of S. pombe's 5,166 mRNA rows carry
+  `partial=true` (incomplete UTRs) against 6 of its CDS rows.
+  (3) `leakage_check.py` now prints every training species tied at the deepest
+  MRCA rank, truncated with a count. Chicken ties with X. tropicalis as well
+  as mouse and the frog is the closer relative in time; at Eukaryota all ten
+  training species tie. Section 3.1 requotes the new output.
+  (4) Section 2.2 now states that `cds_fraction_pct`'s denominator is the
+  Datasets API's `genome_bp`, not the GFF's `##sequence-region` total, which
+  also counts organelles (S. cerevisiae 73.1 against 72.6, the 85,779 bp
+  mitochondrion); `annotation_stats.py` emits
+  `cds_fraction_of_sequence_region_pct` so both are visible.
+  (5) Section 3.2's alignment rule is split, accepting marx's argument:
+  jointly inferred alignments (Cactus, Ensembl EPO) must be rebuilt without
+  the held-out species; reference-anchored ones (multiz) may have the row
+  dropped at cut time, because that is a filter and not a realignment. The
+  affected panel alignments are dm6 124-way (contains apiMel4) and mm39
+  35-way (contains human). Section 3.3 gains a required
+  `alignment_rows_dropped` key and score.py enforces it.
+  (6) Section 4.4 now says the matching is greedy, with its tie-break
+  (descending shared CDS bases, then reference id, then predicted id), since
+  that is what the code does and "optimal one-to-one" would make a second
+  implementation of the spec disagree with this one. Typo in 4.6 fixed.
+  Verified: self-test 69 -> 86 checks, all pass, including a fixture built
+  from the four RefSeq shapes (pseudo CDS, V segment, plus-strand
+  `start_range=`, and a minus-strand `start_range=` that is a *3'* end) which
+  must score 1.0 with the filter on and lose exactly two loci with
+  `--score-all-transcripts`. Nine identity runs re-verified at F1 1.0 / MCC
+  1.0 on every metric with 0 fusions and 0 splits (human, C. elegans,
+  Arabidopsis, maize, Tetrahymena, P. falciparum, Nematostella and both
+  yeasts); the Ensembl-vs-RefSeq naming-mismatch warning still fires. The
+  three AUGUSTUS results were regenerated and are committed: every F1 moved by
+  at most 0.002, so the run-5 finding stands -- the two-yeast parameter swap
+  costs exon F1 0.774 -> 0.296 and donor F1 0.854 -> 0.175 while nucleotide F1
+  falls 0.955 -> 0.868.
+  Task stays in `review`; PR #5 updated (head 9325342).
+  NOT done, now open items 12 and 13: which non-`protein_coding` biotypes to
+  exclude is a judgement call that costs 390 human transcripts and nothing
+  elsewhere, and the partial-CDS rule has never met a predictor that itself
+  emits truncated genes at contig ends -- `predicted_partial_5prime/3prime`
+  are reported for when it does. Marx's remaining note (a with/without
+  informants column in report.py, since 7 of 10 held-out species have no
+  public alignment) is left for the T-human-011 owner as the review suggests.
+  NEXT: Helixer or Tiberius on one vertebrate, which is the input shape no
+  AUGUSTUS run reaches (no `stop_codon` features at all, so the blind 3 bp
+  extension is still fixture-only).
