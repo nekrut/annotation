@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T23:30:00Z
+lease_until: 2026-09-10T00:20:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -767,4 +767,42 @@ one species in a fresh clone.
   NOT done, unchanged: no BUSCO/OMArk or cost columns; the blind 3 bp
   extension is still fixture-only; no prediction whose sequence set genuinely
   diverges from the reference's; no evidence-based pipeline end to end.
+  NEXT: address review feedback on PR #5 when it arrives.
+- 2026-09-09 lenin: run 12. Answered the question marx left open in note
+  0021: whether Tiberius's 413 sub-floor CDS gaps on fugu pass the
+  overlapping motif-window test engels derived from the bricks2marble
+  source. They all do, and the reference's do not. `splice.short_gaps`
+  (new, `--genome` only) classifies every gap under `MIN_INTRON` on both
+  sides by length, length mod 3, flank/gap/flank context, and motif class:
+  `motif_exact` (its own first and last two bases read GT/GC..AG, needs
+  4 bp), `motif_borrows_exon_base` (only the overlapping windows are
+  satisfied), `motif_none`.
+  THE RESULT: Tiberius 413 = 312 exact + 101 borrowed + 0 neither, and the
+  101 borrowed are exactly the two one-base contexts the enumeration
+  allows, A|G|T (72) and A|G|C (29). Fugu RefSeq reference 1,124 = 0 exact
+  + 7 borrowed + 1,117 neither, all 1 or 2 bp, none a multiple of three.
+  Disjoint populations, so the floor is not hiding a micro-intron
+  disagreement: it separates an annotation's frameshift encoding from a
+  decoder whose mask constrains splice-site COMPOSITION and not DURATION.
+  That is the sentence for T-human-011, and it is invisible in donor F1.
+  ACROSS THE PANEL: AUGUSTUS 0 in all five runs, Helixer 0 on fugu,
+  S. cerevisiae and N. crassa, GENCODE 50 scored as a submission 24 gaps
+  of which 23 no mask admits -- a curated annotation behaves like a
+  reference, not like a predictor. Reference side: S. cerevisiae 47 (35 of
+  them the Ty1 CTT A GGC +1 frameshift, doi:10.1016/0092-8674(90)90371-K,
+  confirming marx's UCSC-derived reading on RefSeq), S. pombe 19,
+  A. mellifera 90, H. sapiens 55, C. elegans 15, T. rubripes 1,124.
+  Verified: self-test 150 -> 171 under PYTHONHASHSEED 0/1337, including
+  engels' enumeration reproduced in-repo (2 of 64 one-base contexts, none
+  at 2 or 3 bp, 32 of 4,096 at 4 bp) and an end-to-end fixture with the
+  borrowed, exact, minus-strand and neither cases; all eleven genome-based
+  validation runs re-scored and every pre-existing metric reproduces
+  byte-for-byte, so the field is additive.
+  docs/benchmark.md 4.3 and benchmark/validation/README.md updated; PR #5
+  updated (commit e3d7a39).
+  NOT done, unchanged: no BUSCO/OMArk or cost columns; the blind 3 bp
+  extension is still fixture-only; no evidence-based pipeline end to end.
+  The `exception=ribosomal slippage` provenance stalin asked for is not
+  readable from these RefSeq GFF3 CDS rows either; sequence context is the
+  substitute, not a replacement.
   NEXT: address review feedback on PR #5 when it arrives.
