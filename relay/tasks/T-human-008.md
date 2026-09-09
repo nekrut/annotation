@@ -1,14 +1,14 @@
 ---
 id: T-human-008
 title: Inventory usable data: alignments, conservation, expression, annotations
-status: in_progress
+status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T08:21:08Z
+lease_until: 2026-09-09T09:11:41Z
 depends_on: []
 touches: [docs/data-sources.md, scripts/data/]
-pr: work/T-human-008-marx
+pr: https://github.com/nekrut/annotation/pull/8
 ---
 
 ## Goal
@@ -45,3 +45,6 @@ clone for both demonstrated loci without committing data over 5 MB.
 - 2026-09-09 marx: claimed (previous lease by trotsky expired).
 - 2026-09-09 marx (tick 1 on this task): claimed after trotsky's lease expired with no logged work or branch (note 20260909T055335Z-marx-0005). Probed UCSC API/hgdownload, Ensembl REST/FTP, NCBI, Zoonomia and GenArk from the runner; wrote `docs/data-sources.md` (inventory with measured sizes, access, licences, rate limits; measured non-coding alignability on three windows; training-versus-held-out assessment under the T-007 leakage rules: 12 of 20 panel species have no public multiple alignment, 7 of the 10 held-out ones) and `scripts/data/fetch_window.py` (stdlib; UCSC bigMaf via API, wigMaf via HTTP Range reads on the uncompressed /gbdb MAF, Ensembl EPO with ancestral rows; MAF + Newick + FASTA + annotation + conservation + manifest with per-species coverage by CDS/UTR/intron/intergenic). Demonstrated on human HBB (470-way and Cactus 241-way), fly Adh (124-way), chicken GAPDH (Ensembl sauropsids), mouse Gapdh (Ensembl mammals, mouse as query) and a GenArk-only Plasmodium window; table with checksums in `scripts/data/README.md`. Branch `work/T-human-008-marx` pushed; no PR yet. Next: aggregate the coverage measurement over the benchmark gene sample, draft the window-cutting convention for training examples, re-read the Ensembl licence text, then open the PR and move to review with a note.
 - 2026-09-09 marx: -> in_progress (work/T-human-008-marx).
+- 2026-09-09 marx: -> in_progress.
+- 2026-09-09 marx: -> review (https://github.com/nekrut/annotation/pull/8).
+- 2026-09-09 marx (tick 2 on this task): closed open items 1, 2 and 5 of section 9. Aggregated non-coding alignability over a fixed-seed gene sample (12 fly windows on dm6 124-way, 10 human on hg38 100-way, 122.6 MB in 258 requests) binned by patristic distance with new `scripts/data/coverage_by_distance.py`: introns/UTR/intergenic are mostly aligned below 0.5 substitutions per site and essentially unaligned past 1 in both clades, CDS persists (0.73 fly, 0.48 human beyond 2); 110 of 123 fly and 34 of 99 human informants are past that horizon. Wrote the window-cutting convention as `scripts/data/cut_windows.py` (stdlib `.npz`, gap/unaligned states, insertion channel, frame, boundaries, `--drop-species`, reverse complement, 12-check self-test) and section 6.3. Re-read and quoted the Ensembl licence. `hgdownload.soe.ucsc.edu` reset every connection for several minutes mid-run; `fetch_window.py` now rotates mirrors and takes `--download-host`. Opened PR #8, moved to review. Next: answer review comments; remaining section 9 items (mouse/worm aggregation, 470-way clade counts) are optional follow-ups.
