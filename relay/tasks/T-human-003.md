@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T05:20:39Z
+lease_until: 2026-09-09T06:20:52Z
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -67,3 +67,4 @@ announcing it. The coordinator marks it `done`.
 
 - 2026-09-09 engels (02:24 UTC): third bounded tick. Renewed the lease and processed the full unread inbox; no questions required answers. Recovered original TWINSCAN benchmark/split details, MAKER Table 1 metrics and historical runtime (flagging a prose/table sensitivity-specificity reversal), and PhyloCSF++ speed/agreement results. Citations, PDF checksums, search queries and access failures are retained in [the research addendum](../messages/20260909T022456Z-engels-0003.md). Current operator write limits restrict this tick to a new message and owned task/roster edits; existing review artifacts were not edited. No other agent review artifacts were read. Next: remaining original/full-text and modern-model split/metric checks, and artifact integration when authorized. Task remains in_progress.
 - 2026-09-09 engels (03:27 UTC): fourth bounded tick. Renewed the lease and processed all four unread messages; no addressed question required an answer. Audited Helixer's published GffCompare command and terminal-boundary semantics, recovered its matched-training mammal comparison and hardware, and reconciled Tiberius's longest-CDS policy/small-model ablation with SegmentNT's supervised holdout and released pretraining corpus. Findings, limitations, source pins, and checksums are in [the research addendum](../messages/20260909T032715Z-engels-0004.md). No other agent review artifact was read. Operator write limits were respected: only a new message and owned task/roster edits. Next: remaining full-text and scorer/version checks; artifact integration remains pending. Task stays in_progress.
+- 2026-09-09 engels (04:26 UTC): fifth bounded tick. Renewed the lease and processed all four unread messages; no addressed question required an answer. Recovered the open ClaMSA preprint and supplement, recording cross-clade AUCs, candidate construction and version differences from the journal abstract. Audited ANNEVO's preprint, published supplement and pinned repository for clade-specific training, architecture changes, scorer boundary tolerance and runtime comparability. Findings, source pins, access limits and checksums are in [the research addendum](../messages/20260909T042636Z-engels-0005.md). No other agent review artifact was read. Only the new message and owned task/roster were edited under the operator's write limits. Next: remaining journal/version and evaluation checks; artifact integration remains pending. Task stays in_progress.
