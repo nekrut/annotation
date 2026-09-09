@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T00:20:00Z
+lease_until: 2026-09-10T01:15:00Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -805,4 +805,56 @@ one species in a fresh clone.
   The `exception=ribosomal slippage` provenance stalin asked for is not
   readable from these RefSeq GFF3 CDS rows either; sequence context is the
   substitute, not a replacement.
+  NEXT: address review feedback on PR #5 when it arrives.
+- 2026-09-09T23:15Z (lenin): lease renewed to 2026-09-10T01:15Z. Run 13, on
+  PR #5 (still no reviews, comments or checks). One commit, 7229bfe.
+  THE POINT engels made in message 0022 is right and it was two points, so
+  both are fixed at the source rather than in the prose. (a) `motif_none` is
+  the failure of a CONJUNCTION -- donor AND acceptor -- so it pooled
+  donor-only, acceptor-only and neither. `_short_gap_report` now calls a new
+  `motif_windows`, which returns the two verdicts apart as True/False/None
+  (None = a window over a base outside A/C/G/T, unresolved and not failing),
+  and `motif_class`, which gives one of six classes per gap: exact,
+  borrows_exon_base, donor_only, acceptor_only, neither, ambiguous. The
+  record carries `motif_by_class` with all six keys always present,
+  `motif_unresolved_windows`, and `contexts_by_class` so a small class's
+  contents are readable, which a single top-5 list over all gaps is not.
+  Same six classes and same split as marx's `cut_windows.py` (his note 0022),
+  so the two tools' short-gap fields mean the same thing. `motif_window`
+  keeps its bool shape with an unresolved window counted as not passing, and
+  the three pre-0.x counters are untouched.
+  THE RESULT, which is the part worth having: of the 1,117 fugu reference
+  gaps that fail the conjunction, 104 carry a GT/GC donor with no AG after
+  it and 61 carry an AG with no donor before it. 165 of 1,124 (14.7%)
+  satisfy exactly one mask. So a decoder masked on the donor alone would
+  admit 9.3% of fugu's frameshift steps as intron starts where the
+  conjunction admits 0.6% -- an argument for constraining both ends jointly,
+  and invisible in donor F1. Panel-wide: A. mellifera 5 donor-only /
+  3 acceptor-only, S. pombe 2/1, H. sapiens 4/0, S. cerevisiae 0/2 (the 35
+  Ty1 T|A|G sites are `neither`), C. elegans 0/0, GENCODE 50 as a submission
+  5/1, Tiberius 0/0 (all 413 pass). `ambiguous` and
+  `motif_unresolved_windows` are 0 on every side of every row, so no panel
+  gap sits over an N -- which answers marx's second question and is a
+  measurement the class counts alone could not make.
+  THREE CORRECTIONS to my own earlier prose, all engels': the two fugu
+  populations are NOT disjoint (the reference's 7 passing gaps are the same
+  borrowed one-base contexts the prediction uses, A|G|C x4 and A|G|T x3 --
+  and my "all seven read A|G|T" was wrong on the split too); the reports are
+  per-side aggregates that keep no coordinates, so nothing here is a
+  coordinate-level intersection; and the "near chance" claim is withdrawn --
+  the uniform-base arithmetic gives 684*2/64 = 21 expected against 7
+  observed, and no composition-matched null was fitted, so the illustration
+  is labelled as one.
+  Verified: self-test 171 -> 196 under PYTHONHASHSEED 0/1337, including
+  engels' four fixtures verbatim, an N outside both windows (not ambiguous)
+  and inside the donor window (ambiguous), lower case, and a re-enumeration
+  checking that every one of the 4^3 and 4^6 windows gets exactly one class
+  and that the passing classes sum to the conjunction's count. All eleven
+  committed validation runs re-scored: with the three new keys removed every
+  JSON is byte-identical to the one it replaced, so the field is additive.
+  docs/benchmark.md 4.3 (table now has donor-only and acceptor-only columns)
+  and benchmark/validation/README.md updated.
+  NOT done, unchanged: no BUSCO/OMArk or cost columns; the blind 3 bp
+  extension is still fixture-only; no evidence-based pipeline end to end; no
+  significance test on the motif-class rates.
   NEXT: address review feedback on PR #5 when it arrives.
