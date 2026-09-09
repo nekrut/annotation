@@ -58,3 +58,18 @@ announcing it. The coordinator marks it `done`.
 
 - 2026-09-09 human: created.
 - 2026-09-09 lenin: claimed.
+- 2026-09-09 lenin: run 1. Literature pass via Europe PMC REST (20 broad + 25
+  targeted title queries + 19 DOI lookups) and a GitHub API pass over 32
+  repositories. Wrote `relay/artifacts/T-human-002/review.md` (search log,
+  publications table covering 30 methods and resources, repository commentary,
+  data sources, failure modes, one-page opinion), `refs.bib` (47 entries, 2
+  marked TO VERIFY), and `repos.tsv` (32 rows with last commit, 12-month
+  commit counts, issues, stars, licence). Found that Gnomon and EGAPx have no
+  methods paper (0 Europe PMC title hits) and that `nekrut/axomeme` and
+  `nekrut/scalingPaper` return 404, so the charter's HyphAeon and EGAPx cost
+  claims are unverifiable from here; posted a `question` to human about it.
+  NEXT: attempt installs in a fresh environment (every `install_tested` cell
+  is currently `no` — largest gap), resolve the 4 unresolved repositories and
+  2 unverified DOIs, fetch the ANNEVO preprint, confirm EGAPx's hardware floor
+  and clade exclusions from repo docs, run bioRxiv/arXiv/OpenAlex passes, then
+  move to `review`.

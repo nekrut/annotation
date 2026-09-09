@@ -1,0 +1,33 @@
+url	last_commit	commits_12m	open_issues	stars	language	licence	archived	install_tested	notes
+https://github.com/Gaius-Augustus/Tiberius	2026-09-07	174	21	138	Python	MIT	false	no	Primary target. End-to-end CNN+LSTM+differentiable HMM. TensorFlow. Lineage-specific models (2026 preprint) for 6 clades. Web server available.
+https://github.com/ncbi/egapx	2026-09-04	26	18	207	Nextflow	NOASSERTION	false	no	NCBI EGAPx, Nextflow/Cromwell wrapper around miniprot, ProSplign, STAR, minimap2, Gnomon. Docs state 32 CPU / 256 GB RAM; fungi, protists, nematodes out of scope.
+https://github.com/Gaius-Augustus/BRAKER	2026-06-17	11	103	467	Perl	NOASSERTION	false	no	BRAKER1/2/3. Perl driver over GeneMark-* + AUGUSTUS + TSEBRA. GeneMark components historically non-free; licence NOASSERTION.
+https://github.com/Gaius-Augustus/Augustus	2026-05-30	5	175	339	C++	None	false	no	GHMM core still used by BRAKER/GALBA. Low commit rate but heavily depended on. No SPDX licence detected (Artistic-like in tree).
+https://github.com/Gaius-Augustus/GALBA	2026-04-13	1	14	149	Perl	NOASSERTION	false	no	miniprot/AUGUSTUS protein-only pipeline. Near-dormant (1 commit/12mo).
+https://github.com/usadellab/Helixer	2026-07-22	49	32	305	Python	GPL-3.0	false	no	CNN+bLSTM base-wise, HMM post-processor. GPL-3.0. Nat Methods 2026 version ships fungal/plant/vertebrate/invertebrate models.
+https://github.com/gpertea/stringtie	2026-08-09	14	273	531	C++	MIT	false	no	RNA-seq transcript assembly; evidence input, not a gene finder. High open-issue count.
+https://github.com/Illumina/SpliceAI	2026-04-03	2	36	507	Python	NOASSERTION	true	no	ARCHIVED. Splice-site CNN, 10 kb context. Still the de facto splice-site reference; forks (Pangolin, OpenSpliceAI) are the live line.
+https://github.com/lh3/miniprot	2026-01-05	2	6	418	C	MIT	false	no	Protein-to-genome aligner used by EGAPx and GALBA. Stable, low churn by design.
+https://github.com/hillerlab/TOGA	2025-11-23	1	3	211	Python	MIT	false	no	Comparative annotation + orthology from whole-genome alignments. Needs a chain/HAL alignment. Near-dormant repo but widely used (Zoonomia, 488 mammals).
+https://github.com/ComparativeGenomicsToolkit/cactus	2026-09-08	485	596	704	Python	NOASSERTION	false	no	Most active repo in the inventory. Source of the whole-genome alignments a comparative model would consume.
+https://github.com/ComparativeGenomicsToolkit/Comparative-Annotation-Toolkit	2025-05-22	0	116	190	Python	Apache-2.0	false	no	CAT: projects annotation through a HAL alignment. No commits in 12 months, 116 open issues; effectively unmaintained.
+https://github.com/agshumate/Liftoff	2023-08-01	0	78	552	Python	GPL-3.0	false	no	Annotation lift-over, not prediction. Unmaintained since 2023 but widely used.
+https://github.com/KorfLab/SNAP	2022-10-22	0	16	72	C	NOASSERTION	false	no	Historic semi-HMM gene finder. Unmaintained since 2022; still a MAKER dependency.
+https://github.com/gmod/maker	NA	NA	NA	NA	NA	NA	NA	no	404 via API. MAKER is distributed from Yandell-Lab / SourceForge, not gmod. Find canonical repo next run.
+https://github.com/pedronachtigall/CodAn	2025-03-05	0	7	22	Python	NOASSERTION	false	no	Coding-region prediction on transcripts (not genomic). Dormant.
+https://github.com/gpertea/gffcompare	2026-07-07	1	50	288	C++	MIT	false	no	Evaluation tooling; likely our metric implementation for the benchmark.
+https://github.com/ucdavis-bioinformatics/proc10xG	2019-10-27	0	3	28	Python	Apache-2.0	false	no	Not relevant; retrieved in error, drop next run.
+https://github.com/EBI-Metagenomics/genomes-catalogue-pipeline	2026-09-08	189	17	115	Python	NOASSERTION	false	no	Prokaryote-focused; listed only as a scale/pipeline comparator.
+https://github.com/ArcInstitute/evo2	2026-06-19	7	55	4196	Jupyter Notebook	Apache-2.0	false	no	7B/40B DNA foundation model, 1M-token context. Reports learned exon-intron boundary features. Comparator for 'do foundation models already do this'.
+https://github.com/instadeepai/nucleotide-transformer	2026-02-24	3	14	917	Jupyter Notebook	NOASSERTION	false	no	DNA LM family incl. Segment-NT genomic-element segmentation. Low churn.
+https://github.com/google-deepmind/alphagenome	2026-09-08	89	6	2022	Python	Apache-2.0	false	no	Regulatory-track prediction, 1 Mb context. Not gene structure, but the geometry/scale comparator.
+https://github.com/calico/borzoi	2025-08-28	0	13	262	Python	Apache-2.0	false	no	RNA-seq coverage prediction from sequence. No commits in 12 months.
+https://github.com/lucidrains/enformer-pytorch	2026-06-26	2	18	573	Python	MIT	false	no	Third-party reimplementation; useful as an architecture reference only.
+https://github.com/salzberg-lab/glimmerhmm	2026-08-21	7	0	0	Elixir	NOASSERTION	false	no	Suspect mirror: language reported as Elixir, 0 stars. Verify canonical GlimmerHMM location (ccb.jhu.edu) next run.
+https://github.com/guigolab/geneid	2026-07-18	105	3	18	C	None	false	no	Surprisingly active (105 commits/12mo) for a 1990s-lineage GHMM. Small, fast, C.
+https://github.com/nekrut/axomeme	NA	NA	NA	NA	NA	NA	NA	no	404: private or renamed. Charter cites it as the HyphAeon design pattern. Need access from the coordinator.
+https://github.com/nekrut/scalingPaper	NA	NA	NA	NA	NA	NA	NA	no	404: private or renamed. Charter cites its EGAPx cost figures. Need access from the coordinator.
+https://github.com/Gaius-Augustus/TSEBRA	2026-04-07	3	14	52	Python	None	false	no	Transcript selector combining BRAKER1/2 outputs.
+https://github.com/ncbi/datasets	2026-08-21	?	27	556	Jupyter Notebook	NOASSERTION	false	no	Assembly and annotation retrieval CLI; data-plumbing dependency for the benchmark.
+https://github.com/EnsemblGenomes/ensembl-anno	NA	NA	NA	NA	NA	NA	NA	no	Not fetched: GitHub API rate limit hit at end of run. Retry next run.
+https://github.com/Ensembl/ensembl-anno	NA	NA	NA	NA	NA	NA	NA	no	Not fetched: GitHub API rate limit hit at end of run. Retry next run.
