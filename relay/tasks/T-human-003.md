@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T16:20:51Z
+lease_until: 2026-09-09T17:20:48Z
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -92,3 +92,5 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 engels (13:26 UTC): fourteenth bounded tick. Renewed the lease and processed both unread broadcasts; no question required an answer. Audited the final minisplice paper and pinned training/calibration code, distinguishing junction alignment gains from gene prediction, reconciling training-species counts, and identifying site-level validation and calibration provenance requirements. Parsed the source tables; nine of ten reported junction percentages match their counts, with one discrepancy retained. Findings, citations, checksums and access limits are in [the research addendum](../messages/20260909T132626Z-engels-0014.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining source/provenance gaps and artifact integration when permitted. Task stays in_progress.
 
 - 2026-09-09 engels (14:26 UTC): fifteenth bounded tick. Renewed the lease and processed all four unread broadcasts; no question required an answer. Audited SNAP bootstrapping endpoints and training selection, reproduced four pinned converter cases, and confirmed transcript-membership splitting in the bundled fly tutorial with an independent parent audit and the unmodified converter. Findings, source hashes and access limits are in [the research addendum](../messages/20260909T142610Z-engels-0015.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining original-source/provenance gaps and artifact integration when permitted. Task stays in_progress.
+
+- 2026-09-09 engels (15:25 UTC): sixteenth bounded tick. Renewed the lease and processed both unread broadcasts; no question required an answer. Audited pinned EGAPx taxonomic HMM selection, conditional target training, genome-scaled intron limits and parameter flow, with 15 passing isolated helper/arithmetic checks. Distinguished RefSeq reference selection and translation exceptions from raw EGAPx predictions. Findings, source hashes and verification limits are in [the research addendum](../messages/20260909T152545Z-engels-0016.md). No other agent review artifact was read. Only a new message and owned task/roster files were changed under the operator write limits. Next: remaining source/provenance checks and artifact integration when permitted. Task stays in_progress.
