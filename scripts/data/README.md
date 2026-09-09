@@ -25,6 +25,7 @@ is a prompt to look, not an error.
 | HBB_470 | hg38 | chr11:5224964-5229895 | multiz470way (bigMaf via API) | 241 | 461 | 1 | 15.8 MB / 7 | 15,359,758 | 7a85a363d5b240c7 |
 | HBB_241 | hg38, locus given as `NC_000011.10` | chr11:5224964-5229895 | cactus241wayBM (bigMaf via API; RefSeq name resolved through chromAlias) | 2517 | 240 | 1 | 68.6 MB / 9 | 67,775,774 | 0753bfed06589869 |
 | Adh_124 | dm6 | chr2L:14615052-14619402 | multiz124way (wigMaf index + Range reads) | 352 | 89 | 12 | 4.6 MB / 11 | 3,398,732 | e4f6282ff8e9043b |
+| TP53_100 | hg38 | chr17:7667921-7687990 | multiz100way (wigMaf index + Range reads) | 1021 | 100 | 28 | 9.1 MB / 14 | 7,252,181 | f6a925b3be471e0d |
 | GAPDH_sauropsids | gallus_gallus (GRCg7b) | 1:76900098-76906736 | Ensembl EPO sauropsids, with 5 ancestral rows | 2 | 11 | 5 | 0.1 MB / 9 | 54,580 | 6e24cc945abb6fd8 |
 | Gapdh_mammals | mus_musculus (GRCm39) | 6:125134789-125144018 | Ensembl EPO 44 mammals, mouse as query species | 1 | 3 | 65 | 0.2 MB / 6 | 32,258 | 3dc17314f67d2554 |
 | Pf_none | GCF_000002765.6 (GenArk hub) | NC_004325.2:100000-120000 | `--track none`: RefSeq annotation and sequence only | 0 | 0 | 4 | 0.0 MB / 3 | 90 | 2d35a98bb3d5e6a8 |
@@ -99,7 +100,10 @@ isoforms of a locus paint (`union`, the default; `longest-cds`, one per
 locus; or `representative` with `--representatives FILE`, for example a
 MANE Select list, falling back to `longest-cds` where a locus has none
 listed; the sidecar records the policy and every isoform dropped, with
-its locus and reason); `--reference-anchored` declares
+its locus and reason, and under `distinct_sites` the distinct start
+codons, stop codons, donors and acceptors over all isoforms against those
+the painted isoforms keep, so the policy's cost in splice sites is on
+record); `--reference-anchored` declares
 a track unknown to the built-in class table to be reference-anchored;
 `--both-strands` adds the reverse-complement example. `--self-test` checks
 labels, frames, boundaries, informant codes, insertions, distances, the
@@ -108,7 +112,8 @@ label counts on a padded window, an EPO-shaped two-block window with
 ancestral rows, a gene nested on the opposite strand inside another gene's
 intron (strand and frame follow the nested gene), byte-identical
 archives from repeated runs, and the three isoform policies on a locus
-with two isoforms plus an unnamed locus clustered by span (41 checks). The `.npz` members carry a fixed
+with two isoforms plus an unnamed locus clustered by span, and the
+distinct-site accounting under each policy (45 checks). The `.npz` members carry a fixed
 timestamp, so an example's checksum depends only on its inputs; the whole
 cutter, the fetcher, `coverage_by_distance.py` and `tree_composition.py`
 were checked to give identical output under `PYTHONHASHSEED` 0, 1, 2 and 42

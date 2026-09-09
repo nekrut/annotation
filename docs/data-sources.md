@@ -597,10 +597,39 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   1,590 / 664 / 2,096 (CDS / UTR / intron) to 1,590 / 490 / 2,270: the 174
   bases that only a dropped isoform's UTR exon covered become intron, one
   boundary mark of a dropped first exon disappears, and no CDS, strand or
-  frame value changes. That is the general shape of the cost in RefSeq:
-  alternative UTR exons are far more common than alternative CDS, so the
-  policy mostly decides what a model is told about UTRs, which the
-  transcript-level score does not look at. MANE Select exists for human and mouse only
+  frame value changes. What a policy discards deserves more than a
+  boundary-mark count, because the splice sites a reference states are not
+  shared equally between donors and acceptors: lenin counted 257,153
+  distinct CDS acceptors against 212,078 donors in GENCODE 50 and 193,359
+  against 188,913 in human RefSeq (note 20260909T152910Z-lenin-0015), so
+  a one-isoform target throws away acceptors first. The sidecar therefore
+  records `distinct_sites`: the distinct start codons, stop codons, donors
+  and acceptors the annotation states over all isoforms in the example,
+  the same counted over the painted isoforms, and the difference, with a
+  donor or acceptor whose intron lies between two CDS segments counted
+  again as `cds_donor` / `cds_acceptor`. On `Adh` the cost is one UTR
+  acceptor: 5 donors and 6 acceptors over all isoforms, 5 and 5 painted,
+  and all four CDS donors and four CDS acceptors kept. On human `TP53`
+  (chr17:7667921-7687990 on the hg38 100-way, 28 RefSeq transcripts at two
+  loci with the antisense `WRAP53`, fetched 2026-09-09, 9.1 MB in 14
+  requests) the annotation states 14 donors, 14 acceptors, 4 starts and 3
+  stops, of which 9 donors and 11 acceptors are CDS-internal;
+  `longest-cds` keeps 12 donors, 11 acceptors, 1 start and 1 stop, so it
+  drops 2 CDS acceptors (alternative CDS exons that only shorter-CDS
+  isoforms use), 3 alternative starts, 2 stops and no CDS donor, and the
+  CDS label loses 81 bases (1,263 to 1,182). It also does not pick the
+  MANE Select transcript: five `TP53` transcripts including `NM_000546.6`
+  tie at 1,182 CDS bases with the same CDS, and the tie goes to the
+  longest exonic span, `NM_001407262.1`, which has one more 5' UTR exon.
+  So `longest-cds` keeps the curated protein but not necessarily the
+  curated transcript; on human and mouse, `representative` with the MANE
+  list is the policy that keeps both. That is the general shape of the
+  cost in RefSeq: alternative UTR exons are far more common than
+  alternative CDS, so the policy mostly decides what a model is told about
+  UTRs, which the transcript-level score does not look at; where isoforms
+  do differ in CDS the loss falls on acceptors and starts, and the sidecar
+  counts it per example so that T-human-011 can sum it over a training
+  set rather than estimate it. MANE Select exists for human and mouse only
   (UCSC `mane` track, NCBI RefSeq `MANE` tag); for the other panel species
   `representative` needs a list the operator supplies, and `longest-cds`
   is the policy that works everywhere. A second caveat: where two

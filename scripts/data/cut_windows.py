@@ -47,7 +47,11 @@ how that order was chosen (``row_order``), which rows are inferred ancestors
 and which leaves each ancestor summarises, which species and ancestors were
 dropped for leakage (``--drop-species``), the alignment class the leakage
 rule was applied under, the transcripts painted and the transcripts
-excluded by type, the source manifest's SHA-256 and the tool version.
+excluded by type, the distinct start codons, stop codons, donors and
+acceptors the annotation states over all isoforms against those the
+painted isoforms keep (``distinct_sites``, so the cost of an isoform
+policy in splice-site diversity is on record), the source manifest's
+SHA-256 and the tool version.
 
 Conventions worth stating once:
 
@@ -119,7 +123,7 @@ import struct
 import sys
 import zipfile
 
-TOOL_VERSION = "0.3"
+TOOL_VERSION = "0.4"
 BASE = {"A": 0, "C": 1, "G": 2, "T": 3}
 INF_GAP, INF_UNALIGNED, INF_OTHER = 4, 5, 6
 LABEL = {"intergenic": 0, "intron": 1, "utr": 2, "cds": 3}
@@ -595,6 +599,46 @@ def paint_labels(start: int, end: int, transcripts: list[dict]):
     return label, frame, strand, bound
 
 
+SITE_KINDS = ("start", "stop", "donor", "acceptor", "cds_donor", "cds_acceptor")
+
+
+def distinct_sites(transcripts: list[dict]) -> set[tuple[str, int, int]]:
+    """Every distinct (kind, strand, position) the transcripts state, with
+    the positions and kinds of the ``bound`` channel: start is the first
+    base of the start codon, stop the last base of the stop codon, donor
+    the first intron base and acceptor the last, all at + strand
+    coordinates.  A donor or acceptor whose intron lies between two CDS
+    segments is counted again as ``cds_donor`` / ``cds_acceptor``, which
+    is the count a transcript-level CDS score sees.  Two isoforms sharing a
+    site contribute it once, so the difference between the set over all
+    isoforms and the set over the painted ones is what an isoform policy
+    discards."""
+    sites: set[tuple[str, int, int]] = set()
+    for t in transcripts:
+        s = 1 if t.get("strand", "+") == "+" else -1
+        cds = sorted(t.get("cds", []))
+        if cds:
+            if s == 1:
+                sites.add(("start", s, cds[0][0])); sites.add(("stop", s, cds[-1][1] - 1))
+            else:
+                sites.add(("start", s, cds[-1][1] - 1)); sites.add(("stop", s, cds[0][0]))
+        cds_ends = {b for _, b in cds}
+        cds_starts = {a for a, _ in cds}
+        ex = sorted(t.get("exons", []))
+        for (a1, b1), (a2, b2) in zip(ex, ex[1:]):
+            if b1 >= a2:
+                continue
+            donor, acceptor = (b1, a2 - 1) if s == 1 else (a2 - 1, b1)
+            sites.add(("donor", s, donor)); sites.add(("acceptor", s, acceptor))
+            if b1 in cds_ends and a2 in cds_starts:
+                sites.add(("cds_donor", s, donor)); sites.add(("cds_acceptor", s, acceptor))
+    return sites
+
+
+def site_counts(sites: set[tuple[str, int, int]], lo: int, hi: int) -> dict[str, int]:
+    return {k: sum(1 for kind, _, pos in sites if kind == k and lo <= pos < hi) for k in SITE_KINDS}
+
+
 # ---------------------------------------------------------------- cutting
 
 def revcomp_example(ex: dict, L: int, K: int) -> dict:
@@ -698,7 +742,9 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
         ann = json.load(fh)
     transcripts = ann.get("transcripts", ann if isinstance(ann, list) else [])
     transcripts, excluded = select_transcripts(transcripts, transcript_types)
+    sites_all = distinct_sites(transcripts)
     transcripts, dropped_iso, fallback_loci = select_isoforms(transcripts, isoforms, representatives)
+    sites_kept = distinct_sites(transcripts)
     label, frame, strand, bound = paint_labels(start, end, transcripts)
     cons = [math.nan] * (end - start)
     if os.path.exists(stem + ".conservation.json"):
@@ -784,6 +830,11 @@ def cut(stem: str, out_dir: str, L: int, S: int, drop: set[str], both: bool, qui
                 "isoform_policy": isoforms,
                 "transcripts_dropped_isoforms": dropped_iso,
                 "representative_fallback_loci": fallback_loci,
+                "distinct_sites": {
+                    "all_isoforms": site_counts(sites_all, start + a, start + b),
+                    "painted": site_counts(sites_kept, start + a, start + b),
+                    "dropped": site_counts(sites_all - sites_kept, start + a, start + b),
+                },
                 "label_counts": {c: sum(1 for v, m in zip(e["label"], e["mask"]) if m and v == i)
                                  for c, i in LABEL.items()},
             }
@@ -1007,6 +1058,13 @@ def self_test() -> int:
         and su["transcripts"] == ["ta.1", "tb.2", "tc", "td"], su
     assert lu[10:12] == [3, 3] and lu[14:17] == [3, 3, 3] and lu[0:3] == [3, 3, 3], lu  # union: tb's CDS and ta's CDS both paint
     checks += 1
+    # distinct sites over all isoforms: one shared start (4) and donor (8), two
+    # acceptors (11 and 9) and two + stops (16, 13), both introns CDS-flanked;
+    # td adds a - start at 2 and stop at 0; tc has no CDS and no intron
+    all_sites = {"start": 2, "stop": 3, "donor": 1, "acceptor": 2, "cds_donor": 1, "cds_acceptor": 2}
+    assert su["distinct_sites"] == {"all_isoforms": all_sites, "painted": all_sites,
+                                    "dropped": dict.fromkeys(SITE_KINDS, 0)}, su["distinct_sites"]
+    checks += 1
     cut(iso, os.path.join(d, "iso_l"), 0, 0, set(), False, True, isoforms="longest-cds")
     sl = json.load(open(os.path.join(d, "iso_l", "iso.w0.json")))
     ll = list(npz(os.path.join(d, "iso_l", "iso.w0.npz"))["label"])
@@ -1015,6 +1073,16 @@ def self_test() -> int:
                                                   {"id": "tc", "locus": "-0-3", "reason": "shorter-cds"}], sl["transcripts_dropped_isoforms"]
     assert ll[10:12] == [1, 1] and ll[14:17] == [3, 3, 3] and ll[0:3] == [3, 3, 3], ll
     checks += 2
+    # longest-cds keeps ta: tb's acceptor at 9 and stop at 13 are the loss, the shared start and donor are not
+    assert sl["distinct_sites"]["all_isoforms"] == all_sites and sl["distinct_sites"]["painted"] == \
+        {"start": 2, "stop": 2, "donor": 1, "acceptor": 1, "cds_donor": 1, "cds_acceptor": 1} and \
+        sl["distinct_sites"]["dropped"] == {"start": 0, "stop": 1, "donor": 0, "acceptor": 1,
+                                            "cds_donor": 0, "cds_acceptor": 1}, sl["distinct_sites"]
+    checks += 1
+    # a UTR-only alternative intron is a donor/acceptor but not a cds_donor/cds_acceptor
+    assert site_counts(distinct_sites([{"strand": "+", "start": 0, "end": 20, "exons": [[0, 4], [8, 20]], "cds": [[10, 16]]}]), 0, 20) == \
+        {"start": 1, "stop": 1, "donor": 1, "acceptor": 1, "cds_donor": 0, "cds_acceptor": 0}
+    checks += 1
     # a representative list names tb without its version; the unnamed - locus falls back to longest-cds
     cut(iso, os.path.join(d, "iso_r"), 0, 0, set(), False, True, isoforms="representative", representatives={"tb"})
     sr = json.load(open(os.path.join(d, "iso_r", "iso.w0.json")))
@@ -1024,6 +1092,9 @@ def self_test() -> int:
                                                   {"id": "tc", "locus": "-0-3", "reason": "shorter-cds"}], sr["transcripts_dropped_isoforms"]
     assert lr[10:12] == [3, 3] and lr[14:17] == [2, 2, 2], lr
     checks += 2
+    assert sr["distinct_sites"]["dropped"] == {"start": 0, "stop": 1, "donor": 0, "acceptor": 1,
+                                               "cds_donor": 0, "cds_acceptor": 1}, sr["distinct_sites"]
+    checks += 1
     # the id file reader: comments, blank lines, first column of a TSV, versioned ids
     with open(os.path.join(d, "reps.tsv"), "w") as fh:
         fh.write("# MANE-like list\n\nta.1\tG\tMANE Select\n")
