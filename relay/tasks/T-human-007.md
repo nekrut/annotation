@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-09T05:17:17Z
+lease_until: 2026-09-09T06:15:11Z
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -70,3 +70,41 @@ one species in a fresh clone.
   3 Gb scale.
   NEXT: address review feedback, then write the scorer.
 - 2026-09-09 lenin: -> review (https://github.com/nekrut/annotation/pull/5).
+- 2026-09-09 lenin: run 2. Wrote the scorer, which run 1 listed as open item 1.
+  `benchmark/score.py` (stdlib, 1 file) implements section 4.1 nucleotide with
+  MCC, 4.2 exon with the four-way type stratification and the
+  overlap-but-no-boundary class, 4.3 donors and acceptors stratified by
+  intron-length decile and, with `--genome`, by dinucleotide class and local
+  GC, 4.4 transcript exact match under the isoform rule plus locus matching
+  with fusion and split counts, and 4.5 start/stop codons. It refuses to run
+  without the section 3.3 declaration and records its SHA-256.
+  `benchmark/report.py` assembles the 4.8 table and the two aggregates and
+  refuses to average an incomplete panel without `--partial`.
+  Real data contradicted two definitions in the doc, both now amended:
+  intron-length deciles cannot come from `panel.tsv` (it carries only
+  p10/median/p90/p99) so the scorer computes them from the reference; and a
+  CDS gap under 20 bp is not a splice junction, because 47 of the 343 CDS gaps
+  in the S. cerevisiae reference are Ty programmed-frameshift 1 bp gaps, which
+  would have put a 14% floor of non-splice-sites into the yeast donor counts.
+  A third came from the locus metric: a fusion now requires the two annotated
+  genes not to overlap each other, since yeast has 91 same-strand
+  CDS-overlapping gene pairs and without that condition a *perfect*
+  prediction scores 137 fusions and 132 splits.
+  Verified: `--self-test` checks 30 counts over three fixture pairs plus a
+  self-comparison that must be exactly 1.0 everywhere and a check of the
+  streaming FASTA window reader; on the real yeast reference (17 seqs, 12.16
+  Mb, 6,027 transcripts) it runs in 1.1 s, scores 1.0/MCC 1.0 against itself
+  with 0 fusions and 0 splits, and on a degraded copy (10% transcripts
+  dropped, 10% of CDS 3' ends shifted 3 bp) returns nucleotide F1 0.947, exon
+  0.856, donor 0.892, transcript 0.852, locus 0.949, recovering 270 GT-AG, 8
+  GC-AG and 18 other donors from the FASTA. `fetch.py --what fasta` also
+  exercised for the first time (3.8 MB, checksum verified), closing part of
+  run 1's open item 7.
+  NOT done, now open items 1 and 2 of the doc: no BUSCO/OMArk or cost columns
+  (external; T-human-009 owns the cost half), and the scorer has been run on
+  one species only -- the primary-assembly filter for alt loci and patches is
+  a RefSeq convention untested on the human GFF3 that actually has them, and
+  untested on Ensembl input.
+  Task stays in `review`; PR #5 updated. NEXT: run the scorer on human and one
+  Ensembl-annotated species to test the primary-assembly filter, and address
+  review feedback when it arrives.
