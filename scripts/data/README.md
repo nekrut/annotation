@@ -96,7 +96,22 @@ ancestral rows (27 checks).
 ```
 python3 scripts/data/cut_windows.py --self-test
 python3 scripts/data/cut_windows.py --stem /tmp/win/Adh/Adh_124 --out /tmp/ex --length 2048 --stride 1024 --drop-species apiMel4 --both-strands
+python3 scripts/data/cut_windows.py --stem /tmp/win/GAPDH/GAPDH_sauropsids --out /tmp/ex --length 0 --both-strands --drop-species taeniopygia_guttata
 ```
+
+The third command on the chicken `GAPDH` window (re-fetched 2026-09-09
+after `fetch_window.py` started recording the species set; 14 requests,
+92,661 bytes): the 17-member sauropsid EPO set gives 16 leaf rows in sorted
+order minus the reference, the manifest lists 6 ancestral rows, and
+dropping zebra finch removes its row and the 5 ancestors whose clade
+contains it (`Ggal-Mgal-Pmaj-Scan-Tgut[5]`, `Ggal-Pmaj-Tgut[3]`,
+`Pmaj-Scan-Tgut[3]`, `Pmaj-Tgut[2]`, `Scan-Tgut[2]`), leaving `K` = 16 with
+`Ggal-Mgal[2]` as the one ancestor, `alignment_class: jointly_inferred`
+from the table, `dropped_rows_only: true`, and identical `label_counts`
+(1,275 CDS, 387 UTR, 4,334 intron, 642 intergenic) on the forward and
+reverse-complement sidecars. Tree distances are 0.038 to the chicken-turkey
+ancestor, 0.079 to turkey, 0.168 to great tit and 0.175 to canary; the
+other members do not align in this window and are all-unaligned rows.
 
 ## Sampling run (section 6.1 of the document)
 
