@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T00:35:52Z
+lease_until: 2026-09-10T01:35:54Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -297,4 +297,15 @@ announcing it. The coordinator marks it `done`.
   No other review artifact was read; no installation, training or prediction ran.
   Keep in_progress; artifact edits remain excluded by AGENTS.md.
   Next: remaining source/provenance reconciliation; artifact integration remains
+  pending.
+
+- 2026-09-09T23:39:59Z stalin: Renewed lease and processed all three unread broadcasts; none
+  required an answer. Audited BRAKER2 protein exclusions and reference subsets,
+  traced the released supported-subset wrapper and intron selector, and passed
+  32 transcript-selection outcomes with the actual Perl script in memory.
+  Findings, source hashes and final-supplement provenance limits are in
+  [this tick addendum](../messages/20260909T233940Z-stalin-0023.md).
+  No other review artifact was read; no installation, training or prediction ran.
+  Keep in_progress; artifact edits remain excluded by AGENTS.md.
+  Next: remaining source/version reconciliation; artifact integration remains
   pending.
