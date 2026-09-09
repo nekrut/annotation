@@ -27,13 +27,19 @@ them: `train`, `heldout`, `heldout_paired`.
 
 The headline: **public multiple alignments exist only for vertebrates,
 flies, nematodes and yeasts, and only on a few reference assemblies.** For
-twelve of the twenty panel species (frog, honey bee, sea anemone, ciona,
+thirteen of the twenty panel species there is no multiple alignment that
+can be used as it stands: twelve (frog, honey bee, sea anemone, ciona,
 thale cress, rice, maize, fission yeast, Neurospora, slime mould,
-Plasmodium, Tetrahymena) there is no public multiple alignment at all, and
-for two more (zebrafish, fugu) the alignment is on an older assembly than
-the panel's. Any comparative model evaluated on those species must either
-run without informants or on alignments we build ourselves. Section 8
-costs this.
+Plasmodium, Tetrahymena) have no public multiple alignment at all, and
+zebrafish, a training species, has only the Ensembl fish EPO, which is on
+the older GRCz11 and was inferred jointly with the held-out fugu, so under
+`docs/benchmark.md` section 3.2 it is rebuild-only whichever assembly the
+panel uses (the panel stays on GRCz12ab; `docs/benchmark.md` section 2.4,
+decided in note 20260909T101258Z-lenin-0012). Fugu's alignment is on an
+older assembly than the panel's but is usable as a declared informant set
+at inference. Any comparative model trained or evaluated on those thirteen
+must either run without informants or on alignments we build ourselves.
+Section 8 costs this.
 
 ## 2. UCSC Genome Browser
 
@@ -528,7 +534,7 @@ Applying them to what exists:
 | human | heldout_paired | hg38 100/30/470-way, Cactus 241/447, Ensembl mammals/primates/amniotes | phyloP, phastCons | evaluation only; any of these is a declarable informant set at inference. Not usable to train, because training on human windows means training on human labels |
 | mouse | train | mm39 35-way; Ensembl 44/92-mammal EPO and 22-murinae re-referenced on mouse | mm39 phyloP35way | training source, but every one of these alignments contains human (held-out) sequence. For the 35-way (multiz) drop the `hg38` row at cut time and declare it in `alignment_rows_dropped`; the EPO sets are jointly inferred, so dropping the row is not enough and they would have to be rebuilt |
 | chicken | heldout | Ensembl sauropsids EPO on GRCg7b (exact panel assembly); galGal6 77-way (older assembly, liftover needed) | galGal6 phyloP77way only | evaluation with a declared informant set; the sauropsid set contains no other panel species |
-| zebrafish | train | Ensembl fish EPO on GRCz11 (panel is GRCz12ab) | none | training only after lifting coordinates, or by evaluating on GRCz11 instead; fish set contains fugu (held-out) and is jointly inferred, so under section 3.2 it must be rebuilt without fugu before it can train; dropping the row is a declared compromise, not compliance |
+| zebrafish | train | Ensembl fish EPO on GRCz11 (panel is GRCz12ab; `docs/benchmark.md` section 2.4 keeps it there) | none on either assembly (danRer11 has no `*way`, phyloP or phastCons track; GRCz12ab has no hub yet) | no usable training alignment: both fish EPO sets (32 and 65 species) contain fugu (held-out) and are jointly inferred, so under section 3.2 they must be rebuilt without fugu whichever assembly zebrafish sits on; dropping the row does not qualify. Lifting to GRCz11 through UCSC's `danRer11ToGCA_052040795.1.over.chain.gz` buys only that same unusable alignment and was rejected in section 2.4. Counts with the thirteen in section 8 |
 | fugu | heldout_paired | Ensembl fish EPO on fTakRub1.2 (panel 1.3) | none | evaluation; informant set contains zebrafish (train), which the rules allow at inference if declared |
 | fruit fly | train | dm6 124-way and 27-way | dm6 phyloP124way | training; the 124-way contains honey bee (`apiMel4`, held-out): drop that row at cut time and declare `alignment_rows_dropped: [apiMel4]` |
 | C. elegans | train | ce11 135-way (raw MAF only) | ce11 phyloP135way | training; no panel species among informants |
@@ -538,7 +544,9 @@ Applying them to what exists:
 Two consequences for the design:
 
 - **Every clade-general claim will be tested without informants** on seven
-  of the ten held-out species, whatever the model. The comparative branch of the
+  of the ten held-out species, whatever the model, and on the training side
+  zebrafish joins the twelve alignment-less species until a fish alignment
+  without fugu is built (thirteen of twenty for training windows). The comparative branch of the
   model must be optional at inference, and the benchmark must report the
   with- and without-informant numbers separately (a `question` for lenin on
   whether `benchmark/report.py` should carry that column is in section 9).
@@ -557,7 +565,9 @@ Two consequences for the design:
 
 ## 8. What we would have to build, with costs
 
-For the twelve species without a usable public alignment, the options are:
+For the thirteen species without a usable public alignment (the twelve with
+none, plus zebrafish, whose only alignment is jointly inferred with held-out
+fugu), the options are:
 
 1. **No informants**: zero cost; tests the single-genome half of the model.
 2. **Pairwise informant alignments** (lastz/chain/net, or minimap2 for
@@ -573,6 +583,12 @@ For the twelve species without a usable public alignment, the options are:
    a cluster; for 5 to 10 genomes under 500 Mb it is a multi-core
    laptop-scale job of hours, but a 2 Gb plant clade is not. Under the
    charter this is an `alert` with an estimate, not something to run.
+   Zebrafish is the one training species in this list, and the natural
+   job for it: a fish clade on GRCz12ab (contig N50 59 Mb, no gaps;
+   `docs/benchmark.md` section 2.4) with fugu left out, so the result is
+   compliant with section 3.2 by construction rather than by dropping a
+   row. Its genome is 1.4 Gb, so the cost sits between the two cases
+   above.
 
 None of this is needed for the Phase 1 to 3 deliverables. It is a Phase 4
 cost, and section 7's first consequence (the model must run without
@@ -604,10 +620,15 @@ informants) is the design-level answer.
    470-way species composition is in `hg38.470way.scientificNames.nh` next
    to the bigMaf (listing read 2026-09-09); a per-clade count of its leaves
    has not been made.
-6. GRCz12ab (zebrafish) has no GenArk hub and no Ensembl alignment yet; the
-   panel may be better served by GRCz11 for zebrafish until the new assembly
-   propagates. lenin took this in review 20260909T090919Z-lenin-0011 and
-   will answer in T-human-007.
+6. Answered: lenin (T-human-007, note 20260909T101258Z-lenin-0012,
+   `docs/benchmark.md` section 2.4 on PR #5) keeps zebrafish on GRCz12ab.
+   Moving to GRCz11 would buy only the Ensembl fish EPO, and both fish
+   species sets contain the held-out fugu, so under section 3.2 that
+   alignment is rebuild-only on either assembly; GRCz12ab is the better
+   assembly to rebuild on (25 contigs, no gap bases, versus 19,725 contigs
+   and 4.69 Mb of N in GRCz11, which matters for the panel's third-longest
+   introns). Sections 1, 7 and 8 now count zebrafish with the species that
+   have no usable alignment: thirteen of twenty for training windows.
 7. New: `hgdownload.soe.ucsc.edu` reset every connection for several
    minutes during the sampling run while `hgdownload2` served the same
    files. The fetcher now rotates mirrors, but a training pipeline that
