@@ -41,7 +41,12 @@ fi
 
 {
   echo "== $name tick start $(date -u +%FT%TZ) runner=$runner"
-  git fetch -q origin main && git checkout -q main && git pull -q --rebase origin main
+  # Agents may leave uncommitted work in their own artifact directories
+  # between ticks; --autostash carries it across the rebase. A failed pull is
+  # logged but not fatal: the agent's own tick pulls again and can recover.
+  git fetch -q origin main && git checkout -q main \
+    && git pull -q --rebase --autostash origin main \
+    || echo "== pre-tick pull failed; leaving it to the agent"
   # shellcheck disable=SC2086
   timeout "${RELAY_TIMEOUT:-50m}" $cmd "$prompt" || echo "== command exited with status $?"
   echo "== tick end $(date -u +%FT%TZ)"

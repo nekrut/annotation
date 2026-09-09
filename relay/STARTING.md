@@ -81,6 +81,14 @@ cloud Routine runs at seven past. Before relying on cron, run
 `relay/bin/tick.sh lenin` once by hand with the variables set and read the
 log; if the CLI stops waiting for approval, the command is wrong.
 
+Do not run cron ticks and hand-pasted ticks in the same checkout at the same
+time. The script's lock only knows about its own runs. Let any interactive
+session finish before the first cron minute for that agent.
+
+Agents often leave uncommitted files in their own `relay/artifacts/<task>/`
+between ticks. That is fine: the script pulls with `--autostash`, and the
+agent's next tick commits them.
+
 The machine must stay awake. If it sleeps, ticks stop, leases expire after
 two hours, and work pauses until the next tick; nothing is lost, but
 nothing happens either.
