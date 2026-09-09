@@ -144,6 +144,11 @@ several isoforms per locus: *T. rubripes* F1 0.23782 -> 0.25248 (tp 5,564 ->
 AUGUSTUS runs and the *S. cerevisiae* Helixer run are byte-identical apart
 from their regeneration timestamps.
 
+All eleven were regenerated once more the same day when `splice.short_gaps`
+gained `motif_by_class`, `motif_unresolved_windows` and `contexts_by_class`
+(§4.3). The change is additive: with the three new keys removed, every
+regenerated JSON is identical to the one it replaced.
+
 `gencode50-Homo_sapiens` is not a predictor run at all: it is one human
 annotation scored against another, and it is here because it is the only
 submission so far with more than one isoform per locus (370,476 scored chains
@@ -289,15 +294,36 @@ genome probe, which finds 23,946 of 23,948 chains ending on a stop).
 
 This run is also what `splice.short_gaps` (§4.3) was added for. Tiberius emits
 413 CDS gaps below the 20 bp intron floor on fugu; the reference has 1,124.
-Read against the genome the two sets have nothing in common. All 413 predicted
-gaps satisfy the donor and acceptor motif masks — 312 on their own bases,
-101 by borrowing an exon base at each end, and those 101 are exactly the two
-one-base contexts the masks allow, `A|G|T` (72) and `A|G|C` (29). Of the
-1,124 reference gaps, 1,117 satisfy neither mask, every one is 1 or 2 bp, and
-none is a multiple of three. Helixer on the same genome emits none. The floor
-is therefore not hiding a disagreement about micro-introns: it is separating
-an annotation's frameshift encoding from a decoder that constrains splice-site
-composition without constraining intron duration.
+All 413 predicted gaps satisfy the donor and acceptor motif masks — 312 on
+their own bases, 101 by borrowing an exon base at each end, and those 101 are
+exactly the two one-base contexts the masks allow, `A|G|T` (72) and `A|G|C`
+(29). Of the 1,124 reference gaps, 7 pass the same combined test — the same
+two borrowed contexts, `A|G|C` ×4 and `A|G|T` ×3 — and 1,117 fail it; every
+one is 1 or 2 bp and none is a multiple of three. Helixer on the same genome
+emits none.
+
+Two things that earlier wording here got wrong, both raised by engels in
+`relay/messages/20260909T222452Z-engels-0022.md`:
+
+- **These are two aggregates, not an intersection.** Both sides are counted
+  from their own gaps and the report keeps no coordinates, so it cannot say
+  whether any predicted gap sits at a reference gap. The distributions differ
+  strongly; they are not disjoint in motif class, since both sides contain
+  `A|G|T` and `A|G|C` gaps.
+- **Failing the combined test is not "satisfying neither mask."** The test is
+  a conjunction, so its failure covers three cases, and `motif_by_class` now
+  reports them apart. Of the 1,117 fugu reference gaps that fail, **104 carry
+  a GT/GC donor with no AG after it**, **61 carry an AG with no donor before
+  it**, and 952 fail both windows. `motif_unresolved_windows` is 0 on every
+  side of every committed run, so no gap on this panel sits over an `N`: the
+  class counts are measurements and not silent ambiguity.
+
+The floor is therefore not hiding a disagreement about micro-introns: it is
+separating an annotation's frameshift encoding from a decoder that constrains
+splice-site composition without constraining intron duration. It also puts a
+number on a half-masked decoder: a donor-only mask would admit 104 of the
+1,124 fugu reference frameshift steps (9.3%) as intron starts, against 7 for
+the conjunction.
 
 The `heldout_seen_in_pretraining: no` in that declaration is a set operation,
 not a judgement, and it can be rechecked without the container:

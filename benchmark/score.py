@@ -884,6 +884,62 @@ def _sites_multiple_dinuc_classes(introns, seqfetch):
     return tuple(sum(1 for v in m.values() if len(v) > 1) for m in seen)
 
 
+MOTIF_CLASSES = ("exact", "borrows_exon_base", "donor_only", "acceptor_only",
+                 "neither", "ambiguous")
+
+
+def motif_windows(left, gap, right):
+    """The donor and acceptor verdicts of a short CDS gap, kept apart.
+
+    ``motif_window`` below answers the decoder's question -- could a
+    GT/GC..AG-masked decoder have emitted this gap -- and that question is a
+    conjunction, so its ``False`` covers three different things: a donor that
+    reads GT with no AG after it, an AG with no GT before it, and neither.
+    engels made that point about the fugu table (message
+    ``20260909T222452Z-engels-0022``) and marx split the same test at its
+    source in ``benchmark/cut_windows.py``; this is the same split here, in
+    the same six classes, so the two tools' short-gap fields mean the same
+    thing.
+
+    Returns ``(donor, acceptor)``, each ``True``, ``False``, or ``None`` when
+    that window holds a base outside A/C/G/T -- a window over an assembly gap
+    is unresolved, not failing, and the two must not be counted together.
+    The windows are ``s[1:3]`` and ``s[n-1:n+1]`` of the window string
+    ``left[-1] + gap + right[0]``; for a gap of 1 or 2 bp they overlap or
+    coincide, which is why no 2 bp gap can pass both.
+    """
+    s = (left[-1] + gap + right[0]).upper()
+    n = len(gap)
+    def verdict(w, hits):
+        return None if any(b not in "ACGT" for b in w) else w in hits
+    return verdict(s[1:3], ("GT", "GC")), verdict(s[n - 1:n + 1], ("AG",))
+
+
+def motif_class(left, gap, right):
+    """One of ``MOTIF_CLASSES`` for a short CDS gap.
+
+    ``exact`` is a gap whose *own* first and last two bases read GT/GC..AG,
+    which needs at least 4 bp; ``borrows_exon_base`` passes both windows only
+    because the masks overlap the exon (see ``motif_window``).  ``ambiguous``
+    is any gap with an unresolved window: the conjunction may still be
+    decided ``False`` by the other window, and the pre-existing
+    ``motif_none`` counter keeps that verdict, so nothing is lost -- the
+    class describes the per-window evidence, not the conjunction.
+    """
+    donor, acceptor = motif_windows(left, gap, right)
+    if donor is None or acceptor is None:
+        return "ambiguous"
+    if donor and acceptor:
+        g = gap.upper()
+        exact = len(gap) >= 4 and g[:2] in ("GT", "GC") and g[-2:] == "AG"
+        return "exact" if exact else "borrows_exon_base"
+    if donor:
+        return "donor_only"
+    if acceptor:
+        return "acceptor_only"
+    return "neither"
+
+
 def motif_window(left, gap, right):
     """Does a sub-threshold CDS gap read GT/GC..AG with one exon base to spare?
 
@@ -898,10 +954,12 @@ def motif_window(left, gap, right):
     string is ``left[-1] + gap + right[0]`` and the two masks are read off it
     at their own offsets -- so the answer says whether a masked decoder
     *could* have emitted the gap, not whether the gap is an intron.
+
+    The value is the conjunction, with an unresolved window counted as not
+    passing.  Use ``motif_windows`` when the two halves have to stay apart.
     """
-    s = (left[-1] + gap + right[0]).upper()
-    n = len(gap)
-    return s[1:3] in ("GT", "GC") and s[n - 1:n + 1] == "AG"
+    donor, acceptor = motif_windows(left, gap, right)
+    return bool(donor) and bool(acceptor)
 
 
 def _short_gap_report(gaps, seqfetch, top=5):
@@ -918,9 +976,25 @@ def _short_gap_report(gaps, seqfetch, top=5):
     because the masks overlap the exon (see ``motif_window``);
     ``motif_exact`` is a gap whose own first and last two bases read
     GT/GC..AG, which needs at least 4 bp.
+
+    Those three counters are the conjunction ``motif_window`` computes, and
+    they are unchanged.  ``motif_by_class`` is the split engels asked for:
+    every class in ``MOTIF_CLASSES``, always all six keys, so a zero is a
+    measurement and not an absent field, and a failing gap is reported as
+    ``donor_only``, ``acceptor_only`` or ``neither`` rather than as one
+    undifferentiated "none".  ``motif_unresolved_windows`` counts the donor
+    and acceptor *windows* holding a base outside A/C/G/T, so a zero there
+    says every tested window was resolved -- which ``motif_unknown``, a count
+    of gaps whose sequence could not be fetched at all, does not say.
+    ``contexts_by_class`` gives the top contexts inside each class, because
+    one top-``top`` list over all gaps cannot show what a small class is
+    made of.
     """
     counts = Counter()
+    classes = Counter()
+    unresolved = 0
     lengths, mod3, ctx = Counter(), Counter(), Counter()
+    ctx_by_class = defaultdict(Counter)
     for seqid, s, e, strand in gaps:
         n = e - s + 1
         lengths[n] += 1
@@ -933,25 +1007,36 @@ def _short_gap_report(gaps, seqfetch, top=5):
         if strand == "-":
             w = _revcomp(w)
         gap = w[1:-1]
-        if n >= 4 and gap[:2] in ("GT", "GC") and gap[-2:] == "AG":
+        cls = motif_class(w[0], gap, w[-1])
+        classes[cls] += 1
+        unresolved += sum(v is None for v in motif_windows(w[0], gap, w[-1]))
+        if cls == "exact":
             counts["motif_exact"] += 1
-        elif motif_window(w[0], gap, w[-1]):
+        elif cls == "borrows_exon_base":
             counts["motif_borrows_exon_base"] += 1
         else:
             counts["motif_none"] += 1
-        ctx[w[0] + "|" + gap + "|" + w[-1]] += 1
-    # Sorted by count then string, so the list does not move between runs
+        context = w[0] + "|" + gap + "|" + w[-1]
+        ctx[context] += 1
+        ctx_by_class[cls][context] += 1
+    # Sorted by count then string, so the lists do not move between runs
     # when two contexts tie.
-    common = sorted(ctx.items(), key=lambda kv: (-kv[1], kv[0]))[:top]
+    def commonest(counter):
+        pairs = sorted(counter.items(), key=lambda kv: (-kv[1], kv[0]))[:top]
+        return [[c, n] for c, n in pairs]
     return {"count": len(gaps),
             "motif_exact": counts["motif_exact"],
             "motif_borrows_exon_base": counts["motif_borrows_exon_base"],
             "motif_none": counts["motif_none"],
             "motif_unknown": counts["motif_unknown"],
+            "motif_by_class": {c: classes[c] for c in MOTIF_CLASSES},
+            "motif_unresolved_windows": unresolved,
             "by_length": {str(k): lengths[k] for k in sorted(lengths)},
             "length_mod_3": {str(k): mod3[k] for k in sorted(mod3)},
             "distinct_contexts": len(ctx),
-            "most_common_contexts": [[c, n] for c, n in common]}
+            "most_common_contexts": commonest(ctx),
+            "contexts_by_class": {c: commonest(ctx_by_class[c])
+                                  for c in MOTIF_CLASSES if ctx_by_class[c]}}
 
 
 def gc_bin(seqfetch, seqid, pos):
@@ -2282,6 +2367,51 @@ def self_test():
     check("motif window exact GTAG", motif_window("C", "GTAG", "C"), True)
     check("motif window ATAC", motif_window("C", "ATAC", "C"), False)
     check("motif window frameshift", motif_window("T", "A", "A"), False)
+    # The split, on engels' four cases (message 20260909T222452Z-engels-0022),
+    # which the conjunction alone reports as one "none": donor only, acceptor
+    # only, neither, and an unresolved acceptor window.  ``motif_window``
+    # still answers False for all four, so the old field is unchanged.
+    check("motif windows donor only", motif_windows("A", "GTAA", "C"),
+          (True, False))
+    check("motif windows acceptor only", motif_windows("A", "AAAG", "C"),
+          (False, True))
+    check("motif windows neither", motif_windows("A", "ATAC", "C"),
+          (False, False))
+    check("motif windows ambiguous", motif_windows("N", "G", "T"),
+          (True, None))
+    check("motif class donor only", motif_class("A", "GTAA", "C"),
+          "donor_only")
+    check("motif class acceptor only", motif_class("A", "AAAG", "C"),
+          "acceptor_only")
+    check("motif class neither", motif_class("A", "ATAC", "C"), "neither")
+    check("motif class ambiguous", motif_class("N", "G", "T"), "ambiguous")
+    check("motif class borrows", motif_class("A", "G", "T"),
+          "borrows_exon_base")
+    check("motif class exact", motif_class("C", "GTAG", "C"), "exact")
+    # An N outside both windows does not make the gap ambiguous, and an N
+    # inside the gap that a window reads does.
+    check("motif class N outside windows", motif_class("C", "GTNNAG", "C"),
+          "exact")
+    check("motif class N in donor window", motif_class("A", "GNAG", "C"),
+          "ambiguous")
+    check("motif window ambiguous is not a pass",
+          motif_window("N", "G", "T"), False)
+    # Lower case reads the same as upper.
+    check("motif class lower case", motif_class("a", "g", "t"),
+          "borrows_exon_base")
+    # Every one of the 4**(n+2) enumerated windows gets exactly one class,
+    # and the two that pass at 1 bp are the two the conjunction counts.
+    for n in (1, 4):
+        seen = Counter()
+        for i in range(4 ** (n + 2)):
+            w = ""
+            for k in range(n + 2):
+                w = bases[(i >> (2 * k)) & 3] + w
+            seen[motif_class(w[0], w[1:-1], w[-1])] += 1
+        check("motif class total %d bp" % n, sum(seen.values()), 4 ** (n + 2))
+        check("motif class ambiguous none %d bp" % n, seen["ambiguous"], 0)
+        check("motif class passes %d bp" % n,
+              seen["exact"] + seen["borrows_exon_base"], enum[n])
 
     # Then end to end, through the scorer, with a genome: the class of each
     # gap has to survive chain building, the window plan and the minus-strand
@@ -2305,6 +2435,19 @@ def self_test():
     check("short gap exact", sgr["motif_exact"], 1)
     check("short gap none", sgr["motif_none"], 1)
     check("short gap unknown", sgr["motif_unknown"], 0)
+    # The class column carries the same four gaps, and says how the failing
+    # one fails; the 15 bp gap in the fixture reads AT..AC, so neither.
+    check("short gap classes", sgr["motif_by_class"],
+          {"exact": 1, "borrows_exon_base": 2, "donor_only": 0,
+           "acceptor_only": 0, "neither": 1, "ambiguous": 0})
+    check("short gap class total", sum(sgr["motif_by_class"].values()),
+          sgr["count"] - sgr["motif_unknown"])
+    check("short gap unresolved windows", sgr["motif_unresolved_windows"], 0)
+    check("short gap contexts by class",
+          sgr["contexts_by_class"]["borrows_exon_base"], [["A|G|T", 2]])
+    check("short gap contexts by class keys",
+          sorted(sgr["contexts_by_class"]),
+          ["borrows_exon_base", "exact", "neither"])
     check("short gap lengths", sgr["by_length"], {"1": 3, "15": 1})
     check("short gap mod 3", sgr["length_mod_3"], {"0": 1, "1": 3})
     # The minus-strand gap is read on its strand, so it lands in the same

@@ -456,25 +456,45 @@
   "short_gaps": {
    "predicted": {
     "by_length": {},
+    "contexts_by_class": {},
     "count": 0,
     "distinct_contexts": 0,
     "length_mod_3": {},
     "most_common_contexts": [],
     "motif_borrows_exon_base": 0,
+    "motif_by_class": {
+     "acceptor_only": 0,
+     "ambiguous": 0,
+     "borrows_exon_base": 0,
+     "donor_only": 0,
+     "exact": 0,
+     "neither": 0
+    },
     "motif_exact": 0,
     "motif_none": 0,
-    "motif_unknown": 0
+    "motif_unknown": 0,
+    "motif_unresolved_windows": 0
    },
    "reference": {
     "by_length": {},
+    "contexts_by_class": {},
     "count": 0,
     "distinct_contexts": 0,
     "length_mod_3": {},
     "most_common_contexts": [],
     "motif_borrows_exon_base": 0,
+    "motif_by_class": {
+     "acceptor_only": 0,
+     "ambiguous": 0,
+     "borrows_exon_base": 0,
+     "donor_only": 0,
+     "exact": 0,
+     "neither": 0
+    },
     "motif_exact": 0,
     "motif_none": 0,
-    "motif_unknown": 0
+    "motif_unknown": 0,
+    "motif_unresolved_windows": 0
    }
   },
   "strata_units": {

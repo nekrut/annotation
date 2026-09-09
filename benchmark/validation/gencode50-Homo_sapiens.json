@@ -501,6 +501,64 @@
      "4": 2,
      "5": 1
     },
+    "contexts_by_class": {
+     "acceptor_only": [
+      [
+       "G|ATAG|A",
+       1
+      ]
+     ],
+     "borrows_exon_base": [
+      [
+       "A|G|C",
+       1
+      ]
+     ],
+     "donor_only": [
+      [
+       "C|G|C",
+       1
+      ],
+      [
+       "G|GCCCC|G",
+       1
+      ],
+      [
+       "G|GC|G",
+       1
+      ],
+      [
+       "G|GT|A",
+       1
+      ],
+      [
+       "G|G|C",
+       1
+      ]
+     ],
+     "neither": [
+      [
+       "C|T|G",
+       4
+      ],
+      [
+       "A|CC|C",
+       1
+      ],
+      [
+       "A|CT|T",
+       1
+      ],
+      [
+       "A|GA|A",
+       1
+      ],
+      [
+       "C|C|T",
+       1
+      ]
+     ]
+    },
     "count": 24,
     "distinct_contexts": 21,
     "length_mod_3": {
@@ -531,15 +589,68 @@
      ]
     ],
     "motif_borrows_exon_base": 1,
+    "motif_by_class": {
+     "acceptor_only": 1,
+     "ambiguous": 0,
+     "borrows_exon_base": 1,
+     "donor_only": 5,
+     "exact": 0,
+     "neither": 17
+    },
     "motif_exact": 0,
     "motif_none": 23,
-    "motif_unknown": 0
+    "motif_unknown": 0,
+    "motif_unresolved_windows": 0
    },
    "reference": {
     "by_length": {
      "1": 37,
      "19": 1,
      "2": 17
+    },
+    "contexts_by_class": {
+     "borrows_exon_base": [
+      [
+       "A|G|C",
+       1
+      ]
+     ],
+     "donor_only": [
+      [
+       "C|GC|G",
+       2
+      ],
+      [
+       "G|G|C",
+       1
+      ],
+      [
+       "G|G|T",
+       1
+      ]
+     ],
+     "neither": [
+      [
+       "C|C|A",
+       6
+      ],
+      [
+       "C|C|C",
+       4
+      ],
+      [
+       "C|T|G",
+       4
+      ],
+      [
+       "A|A|C",
+       3
+      ],
+      [
+       "C|T|A",
+       2
+      ]
+     ]
     },
     "count": 55,
     "distinct_contexts": 39,
@@ -570,9 +681,18 @@
      ]
     ],
     "motif_borrows_exon_base": 1,
+    "motif_by_class": {
+     "acceptor_only": 0,
+     "ambiguous": 0,
+     "borrows_exon_base": 1,
+     "donor_only": 4,
+     "exact": 0,
+     "neither": 50
+    },
     "motif_exact": 0,
     "motif_none": 54,
-    "motif_unknown": 0
+    "motif_unknown": 0,
+    "motif_unresolved_windows": 0
    }
   },
   "strata_units": {

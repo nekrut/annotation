@@ -450,20 +450,70 @@
   "short_gaps": {
    "predicted": {
     "by_length": {},
+    "contexts_by_class": {},
     "count": 0,
     "distinct_contexts": 0,
     "length_mod_3": {},
     "most_common_contexts": [],
     "motif_borrows_exon_base": 0,
+    "motif_by_class": {
+     "acceptor_only": 0,
+     "ambiguous": 0,
+     "borrows_exon_base": 0,
+     "donor_only": 0,
+     "exact": 0,
+     "neither": 0
+    },
     "motif_exact": 0,
     "motif_none": 0,
-    "motif_unknown": 0
+    "motif_unknown": 0,
+    "motif_unresolved_windows": 0
    },
    "reference": {
     "by_length": {
      "1": 12,
      "11": 1,
      "2": 6
+    },
+    "contexts_by_class": {
+     "acceptor_only": [
+      [
+       "A|AG|T",
+       1
+      ]
+     ],
+     "donor_only": [
+      [
+       "C|G|T",
+       1
+      ],
+      [
+       "T|G|T",
+       1
+      ]
+     ],
+     "neither": [
+      [
+       "A|AA|A",
+       1
+      ],
+      [
+       "A|A|C",
+       1
+      ],
+      [
+       "A|A|G",
+       1
+      ],
+      [
+       "A|TG|A",
+       1
+      ],
+      [
+       "A|TT|T",
+       1
+      ]
+     ]
     },
     "count": 19,
     "distinct_contexts": 19,
@@ -494,9 +544,18 @@
      ]
     ],
     "motif_borrows_exon_base": 0,
+    "motif_by_class": {
+     "acceptor_only": 1,
+     "ambiguous": 0,
+     "borrows_exon_base": 0,
+     "donor_only": 2,
+     "exact": 0,
+     "neither": 16
+    },
     "motif_exact": 0,
     "motif_none": 19,
-    "motif_unknown": 0
+    "motif_unknown": 0,
+    "motif_unresolved_windows": 0
    }
   },
   "strata_units": {

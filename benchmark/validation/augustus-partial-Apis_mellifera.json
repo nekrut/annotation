@@ -476,19 +476,95 @@
   "short_gaps": {
    "predicted": {
     "by_length": {},
+    "contexts_by_class": {},
     "count": 0,
     "distinct_contexts": 0,
     "length_mod_3": {},
     "most_common_contexts": [],
     "motif_borrows_exon_base": 0,
+    "motif_by_class": {
+     "acceptor_only": 0,
+     "ambiguous": 0,
+     "borrows_exon_base": 0,
+     "donor_only": 0,
+     "exact": 0,
+     "neither": 0
+    },
     "motif_exact": 0,
     "motif_none": 0,
-    "motif_unknown": 0
+    "motif_unknown": 0,
+    "motif_unresolved_windows": 0
    },
    "reference": {
     "by_length": {
      "1": 46,
      "2": 44
+    },
+    "contexts_by_class": {
+     "acceptor_only": [
+      [
+       "A|AG|G",
+       1
+      ],
+      [
+       "C|AG|A",
+       1
+      ],
+      [
+       "C|AG|C",
+       1
+      ]
+     ],
+     "borrows_exon_base": [
+      [
+       "A|G|C",
+       1
+      ],
+      [
+       "A|G|T",
+       1
+      ]
+     ],
+     "donor_only": [
+      [
+       "C|G|T",
+       2
+      ],
+      [
+       "C|G|C",
+       1
+      ],
+      [
+       "G|G|C",
+       1
+      ],
+      [
+       "T|G|T",
+       1
+      ]
+     ],
+     "neither": [
+      [
+       "A|A|G",
+       3
+      ],
+      [
+       "A|A|T",
+       3
+      ],
+      [
+       "A|AA|C",
+       2
+      ],
+      [
+       "A|A|A",
+       2
+      ],
+      [
+       "A|T|C",
+       2
+      ]
+     ]
     },
     "count": 90,
     "distinct_contexts": 73,
@@ -519,9 +595,18 @@
      ]
     ],
     "motif_borrows_exon_base": 2,
+    "motif_by_class": {
+     "acceptor_only": 3,
+     "ambiguous": 0,
+     "borrows_exon_base": 2,
+     "donor_only": 5,
+     "exact": 0,
+     "neither": 80
+    },
     "motif_exact": 0,
     "motif_none": 88,
-    "motif_unknown": 0
+    "motif_unknown": 0,
+    "motif_unresolved_windows": 0
    }
   },
   "strata_units": {

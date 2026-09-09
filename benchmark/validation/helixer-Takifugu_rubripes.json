@@ -470,19 +470,107 @@
   "short_gaps": {
    "predicted": {
     "by_length": {},
+    "contexts_by_class": {},
     "count": 0,
     "distinct_contexts": 0,
     "length_mod_3": {},
     "most_common_contexts": [],
     "motif_borrows_exon_base": 0,
+    "motif_by_class": {
+     "acceptor_only": 0,
+     "ambiguous": 0,
+     "borrows_exon_base": 0,
+     "donor_only": 0,
+     "exact": 0,
+     "neither": 0
+    },
     "motif_exact": 0,
     "motif_none": 0,
-    "motif_unknown": 0
+    "motif_unknown": 0,
+    "motif_unresolved_windows": 0
    },
    "reference": {
     "by_length": {
      "1": 684,
      "2": 440
+    },
+    "contexts_by_class": {
+     "acceptor_only": [
+      [
+       "A|G|G",
+       22
+      ],
+      [
+       "A|AG|A",
+       6
+      ],
+      [
+       "A|G|A",
+       6
+      ],
+      [
+       "A|AG|G",
+       5
+      ],
+      [
+       "G|AG|A",
+       4
+      ]
+     ],
+     "borrows_exon_base": [
+      [
+       "A|G|C",
+       4
+      ],
+      [
+       "A|G|T",
+       3
+      ]
+     ],
+     "donor_only": [
+      [
+       "G|G|C",
+       23
+      ],
+      [
+       "C|G|C",
+       9
+      ],
+      [
+       "G|G|T",
+       9
+      ],
+      [
+       "T|G|T",
+       8
+      ],
+      [
+       "C|GC|T",
+       5
+      ]
+     ],
+     "neither": [
+      [
+       "C|C|C",
+       90
+      ],
+      [
+       "G|G|G",
+       70
+      ],
+      [
+       "C|A|A",
+       26
+      ],
+      [
+       "C|C|A",
+       25
+      ],
+      [
+       "G|C|C",
+       25
+      ]
+     ]
     },
     "count": 1124,
     "distinct_contexts": 258,
@@ -513,9 +601,18 @@
      ]
     ],
     "motif_borrows_exon_base": 7,
+    "motif_by_class": {
+     "acceptor_only": 61,
+     "ambiguous": 0,
+     "borrows_exon_base": 7,
+     "donor_only": 104,
+     "exact": 0,
+     "neither": 952
+    },
     "motif_exact": 0,
     "motif_none": 1117,
-    "motif_unknown": 0
+    "motif_unknown": 0,
+    "motif_unresolved_windows": 0
    }
   },
   "strata_units": {

@@ -744,38 +744,82 @@ acceptor with a one-base intron. Exhaustively, only 2 of the 64 one-base
 contexts pass that way, no 2 or 3 bp gap passes at all, and 32 of the 4,096
 four-base contexts pass; `score.py --self-test` reproduces that enumeration.
 
-On the panel this separates the two populations cleanly, and they do not
-overlap:
+**The combined test is a conjunction, so its failure has to be split.** A gap
+that reads GT with no AG after it and a gap that reads neither are both
+"fails", and they are not the same evidence: the first is what a decoder
+masked on the donor alone would admit. `motif_by_class` therefore reports one
+class per gap over the two windows read apart — `exact`,
+`borrows_exon_base`, `donor_only`, `acceptor_only`, `neither` (both windows
+decided, both fail), and `ambiguous` (a window holding a base outside
+A/C/G/T, which is unresolved rather than failing) — with all six keys always
+present, so a zero is a measurement. `motif_unresolved_windows` counts those
+unresolved windows, which the class counts alone cannot distinguish from
+absence. The same six classes and the same window split are what
+`benchmark/cut_windows.py` reports for §6.3 of `docs/data-sources.md`, so the
+two tools' short-gap fields mean the same thing. The three original counters
+(`motif_exact`, `motif_borrows_exon_base`, `motif_none`) are the conjunction
+and are unchanged.
 
-| Sub-floor gaps in | Count | Lengths | exact | borrows | neither |
-|---|---:|---|---:|---:|---:|
-| *S. cerevisiae* RefSeq reference | 47 | 1 bp ×47 | 0 | 0 | 47 |
-| *S. pombe* RefSeq reference | 19 | 1 bp ×12, 2 bp ×6, 11 bp ×1 | 0 | 0 | 19 |
-| *A. mellifera* RefSeq reference | 90 | 1 bp ×46, 2 bp ×44 | 0 | 2 | 88 |
-| *H. sapiens* RefSeq reference | 55 | 1 bp ×37, 2 bp ×17, 19 bp ×1 | 0 | 1 | 54 |
-| *T. rubripes* RefSeq reference | 1,124 | 1 bp ×684, 2 bp ×440 | 0 | 7 | 1,117 |
-| *C. elegans* RefSeq reference | 15 | 1–4 bp | 0 | 0 | 15 |
-| GENCODE 50 scored as a prediction | 24 | 1–5 bp | 0 | 1 | 23 |
-| AUGUSTUS 3.5.0, all five runs | 0 | — | — | — | — |
-| Helixer 0.3.7 on *T. rubripes*, *S. cerevisiae*, *N. crassa* | 0 | — | — | — | — |
-| Tiberius 2.0.7 on *T. rubripes* | 413 | 1 bp ×101, 4–19 bp ×312 | 312 | 101 | 0 |
+On the panel the two populations differ strongly:
 
-Every row but the last two comes from a committed run under
+| Sub-floor gaps in | Count | Lengths | exact | borrows | donor only | acceptor only | neither |
+|---|---:|---|---:|---:|---:|---:|---:|
+| *S. cerevisiae* RefSeq reference | 47 | 1 bp ×47 | 0 | 0 | 0 | 2 | 45 |
+| *S. pombe* RefSeq reference | 19 | 1 bp ×12, 2 bp ×6, 11 bp ×1 | 0 | 0 | 2 | 1 | 16 |
+| *A. mellifera* RefSeq reference | 90 | 1 bp ×46, 2 bp ×44 | 0 | 2 | 5 | 3 | 80 |
+| *H. sapiens* RefSeq reference | 55 | 1 bp ×37, 2 bp ×17, 19 bp ×1 | 0 | 1 | 4 | 0 | 50 |
+| *T. rubripes* RefSeq reference | 1,124 | 1 bp ×684, 2 bp ×440 | 0 | 7 | 104 | 61 | 952 |
+| *C. elegans* RefSeq reference | 15 | 1–4 bp | 0 | 0 | 0 | 0 | 15 |
+| GENCODE 50 scored as a prediction | 24 | 1–5 bp | 0 | 1 | 5 | 1 | 17 |
+| AUGUSTUS 3.5.0, all five runs | 0 | — | — | — | — | — | — |
+| Helixer 0.3.7 on *T. rubripes*, *S. cerevisiae*, *N. crassa* | 0 | — | — | — | — | — | — |
+| Tiberius 2.0.7 on *T. rubripes* | 413 | 1 bp ×101, 4–19 bp ×312 | 312 | 101 | 0 | 0 | 0 |
+
+`ambiguous` is 0 and `motif_unresolved_windows` is 0 on every side of every
+row, so no gap on this panel sits over an `N` and every window in the table
+was resolved.
+
+Every row but the last three comes from a committed run under
 `benchmark/validation/`; the *C. elegans* line is the reference scored against
 itself, which is the same reference-side computation without a prediction to
 go with it. Every fugu reference gap is a frameshift-shaped 1 or 2 bp step,
 never a multiple of three and so never a clean codon deletion, and 1,117 of
-the 1,124 fail the motif test; the 7 that pass are one-base gaps whose flanks
-happen to read `A|G|T`, near the rate the enumeration predicts by chance
-(2 of 64 contexts, 684 one-base gaps). In yeast the single most common context
-is `T|A|G` at 35 of 47, which is the Ty1 `CTT A GGC` +1 programmed frameshift
+the 1,124 fail the combined test. In yeast the single most common context is
+`T|A|G` at 35 of 47, which is the Ty1 `CTT A GGC` +1 programmed frameshift
 site
 ([10.1016/0092-8674(90)90371-K](https://doi.org/10.1016/0092-8674%2890%2990371-K)).
 GENCODE 50, a curated annotation scored as a submission, behaves like the
-references rather than like a predictor: 24 gaps, 23 of which no mask admits.
-Every one of Tiberius's 413 passes: 312 on their own bases and 101 by
-borrowing, and those 101 are exactly the two contexts the enumeration allows,
-`A|G|T` (72) and `A|G|C` (29). AUGUSTUS and Helixer produce none at all.
+references rather than like a predictor: 24 gaps, 23 of which fail the
+combined test. Every one of Tiberius's 413 passes: 312 on their own bases and
+101 by borrowing, and those 101 are exactly the two contexts the enumeration
+allows, `A|G|T` (72) and `A|G|C` (29). AUGUSTUS and Helixer produce none at
+all.
+
+**The two sides are not disjoint, and these are aggregates and not an
+intersection.** The 7 fugu reference gaps that pass are the same two borrowed
+one-base contexts the prediction uses, `A|G|C` ×4 and `A|G|T` ×3, so the
+motif-class supports overlap; the earlier wording here said the populations
+had nothing in common and said all 7 read `A|G|T`, and both were wrong
+(engels, `relay/messages/20260909T222452Z-engels-0022.md`). The report also
+counts each side's gaps separately and keeps no coordinates, so it cannot
+say whether any predicted gap sits at a reference gap; nothing in this table
+is a coordinate-level comparison. No composition-matched null was fitted
+either. Under a uniform independent base model the 684 one-base fugu
+reference gaps would give 684 × 2 / 64 ≈ 21 passes rather than the 7
+observed, but enumerating the admissible strings gives no frequencies for
+selected annotation gaps, so that arithmetic is an illustration and not a
+significance test; the earlier claim that 7 was "near chance" is withdrawn.
+
+**The half-masks are where the reference sides differ most.** 104 of the
+1,124 fugu reference gaps carry a GT/GC donor with no AG after it and 61
+carry an AG with no donor before it: 165 gaps, 14.7%, that satisfy exactly
+one of the two masks. A decoder masked on the donor alone would admit 9.3%
+of fugu's frameshift steps as intron starts where the conjunction admits
+0.6%. The same asymmetry is visible small on the other references — 5
+donor-only and 3 acceptor-only in *A. mellifera*, 4 and 0 in human — and
+GENCODE 50 scored as a prediction has 5 and 1. This is the argument for
+constraining both ends jointly rather than scoring donors and acceptors as
+independent signals, and it is invisible in donor F1.
 
 So the floor is doing two different jobs on the two sides, and both are
 needed. On the reference side it keeps 1,335 frameshift and
