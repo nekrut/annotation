@@ -1,0 +1,16 @@
+{
+  "cds_seen": 311893,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 31007,
+  "cds_shifted_minus": 15268,
+  "cds_shifted_plus": 15739,
+  "child_lines_dropped": 84140,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Zea_mays.degraded.gff3",
+  "reference": "/tmp/panel/Zea_mays//GCF_902167145.1_Zm-B73-REFERENCE-NAM-5.0_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 687,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 7764,
+  "transcripts_seen": 78519
+}

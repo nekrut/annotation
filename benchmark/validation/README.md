@@ -1,6 +1,7 @@
 # benchmark/validation/
 
-Scored runs of a real gene predictor, kept because they are the evidence for
+Scored runs of real gene predictors, plus the panel-wide degraded-copy
+control in `degraded/`, kept because they are the evidence for
 the claims in [`docs/benchmark.md`](../../docs/benchmark.md) §6 and because
 they are what found the defects in `score.py` and `report.py` that
 section records.
@@ -20,6 +21,7 @@ SHA-256 of the declaration beside it, so the pairing is checkable.
 | `gencode50-Homo_sapiens.yaml` | `.json` | GENCODE 50 scored as a submission against the human RefSeq reference |
 | `augustus-partial-Tetrahymena_thermophila.yaml` | `.json` | AUGUSTUS `--genemodel=partial` over 1,158 scaffolds, ids concatenated without renaming, genetic code 6 |
 | `augustus-partial-Apis_mellifera.yaml` | `.json` | AUGUSTUS `--genemodel=partial` with `honeybee1`, which excludes the stop codon from the CDS |
+| `degraded/` | the panel-wide control: all 20 references scored against a known degraded copy of themselves ([README](degraded/README.md)) |
 
 The three Helixer runs are the second tool and the second output shape: no
 `stop_codon` features at all, UTRs present, and two species (*T. rubripes*,

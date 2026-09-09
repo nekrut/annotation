@@ -1,0 +1,16 @@
+{
+  "cds_seen": 1669162,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 167057,
+  "cds_shifted_minus": 83420,
+  "cds_shifted_plus": 83637,
+  "child_lines_dropped": 408714,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Homo_sapiens.degraded.gff3",
+  "reference": "/tmp/panel/Homo_sapiens//GCF_000001405.40_GRCh38.p14_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 705,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 19882,
+  "transcripts_seen": 202395
+}

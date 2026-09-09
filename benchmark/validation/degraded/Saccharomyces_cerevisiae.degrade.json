@@ -1,0 +1,16 @@
+{
+  "cds_seen": 5705,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 599,
+  "cds_shifted_minus": 303,
+  "cds_shifted_plus": 296,
+  "child_lines_dropped": 1414,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Saccharomyces_cerevisiae.degraded.gff3",
+  "reference": "/tmp/panel/Saccharomyces_cerevisiae//GCF_000146045.2_R64_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 17,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 691,
+  "transcripts_seen": 6477
+}

@@ -1,0 +1,16 @@
+{
+  "cds_seen": 25851,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 2669,
+  "cds_shifted_minus": 1289,
+  "cds_shifted_plus": 1380,
+  "child_lines_dropped": 5967,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Neurospora_crassa.degraded.gff3",
+  "reference": "/tmp/panel/Neurospora_crassa//GCF_000182925.2_NC12_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 21,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 1187,
+  "transcripts_seen": 11643
+}

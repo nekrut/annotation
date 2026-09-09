@@ -1,0 +1,16 @@
+{
+  "cds_seen": 578324,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 57703,
+  "cds_shifted_minus": 29349,
+  "cds_shifted_plus": 28354,
+  "child_lines_dropped": 129206,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Takifugu_rubripes.degraded.gff3",
+  "reference": "/tmp/panel/Takifugu_rubripes//GCF_901000725.3_fTakRub1.3_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 127,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 4928,
+  "transcripts_seen": 50246
+}

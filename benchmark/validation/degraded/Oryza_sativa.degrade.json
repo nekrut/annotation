@@ -1,0 +1,16 @@
+{
+  "cds_seen": 218696,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 21813,
+  "cds_shifted_minus": 10834,
+  "cds_shifted_plus": 10979,
+  "child_lines_dropped": 56837,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Oryza_sativa.degraded.gff3",
+  "reference": "/tmp/panel/Oryza_sativa//GCF_034140825.1_ASM3414082v1_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 15,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 5595,
+  "transcripts_seen": 56557
+}

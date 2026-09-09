@@ -1267,17 +1267,109 @@ Locus F1
   F1 0.0 with `predicted_transcripts_not_scored: 31865`,
   `predicted_sequences_absent_from_reference: 7` and a stderr warning, rather
   than a silent zero.
-- Against a synthetically degraded copy of a reference (10% of transcripts
-  deleted, 10% of CDS 3' boundaries shifted by 3 bp): on *S. cerevisiae*,
-  nucleotide F1 0.947, exon F1 0.856, donor F1 0.892, transcript F1 0.852,
-  locus F1 0.949, recovering 270 GT-AG, 8 GC-AG and 18 other donor
-  dinucleotides from the genome FASTA; on human, nucleotide F1 0.984, exon F1
-  0.821, donor F1 0.891, acceptor F1 0.895, transcript F1 0.366, locus F1
-  0.986 with 0 fusions and 7 splits, start F1 0.912, stop F1 0.907. Human
-  transcript F1 falls that far because it averages 13.9 CDS exons per
-  transcript, so a 10% per-exon boundary shift breaks about three quarters of
-  the chains; that sensitivity is the point of reporting the transcript level
-  separately from the nucleotide level.
+- **Against a synthetically degraded copy of the reference, on all 20 panel
+  species** (`benchmark/degrade.py`, seed 20260909, 10% of transcripts deleted
+  and the downstream boundary in transcription order of 10% of CDS segments
+  moved 3 bp further downstream). This is the control an identity run cannot
+  be. An identity run makes every metric 1.0 by construction, so a scorer that
+  dropped the same thing from both sides would still pass it; a degraded copy
+  has a *known* perturbation, so the direction and the rough size of every
+  metric's response can be written down before the run and checked afterwards.
+  Full results in `benchmark/validation/degraded/`, one scored JSON and one
+  `degrade.py` summary per species.
+
+  The perturbation is deliberately asymmetric, and that asymmetry is the test.
+  Which coordinate a "downstream" shift moves depends on the strand -- `end`
+  on `+`, `start` on `-` -- so it lands on stop codons and **donor** sites and
+  never touches start codons or **acceptor** sites. A scorer whose splice-site
+  or codon assignment is not strand-aware cannot reproduce that. The panel
+  reproduces it on every species: donor F1 0.811 to 0.870 against acceptor F1
+  0.934 to 0.989, with the acceptor and start-codon losses accounted for by
+  the deleted transcripts alone.
+
+  | species | nucl | exon | donor | acceptor | transcript | locus | start | stop |
+  |---|---|---|---|---|---|---|---|---|
+  | *H. sapiens* | 0.985 | 0.820 | 0.811 | 0.989 | 0.378 | 0.986 | 0.975 | 0.844 |
+  | *M. musculus* | 0.981 | 0.835 | 0.830 | 0.987 | 0.400 | 0.981 | 0.973 | 0.851 |
+  | *G. gallus* | 0.979 | 0.840 | 0.837 | 0.983 | 0.369 | 0.978 | 0.971 | 0.854 |
+  | *D. rerio* | 0.976 | 0.844 | 0.841 | 0.980 | 0.377 | 0.976 | 0.970 | 0.857 |
+  | *T. rubripes* | 0.972 | 0.860 | 0.859 | 0.975 | 0.365 | 0.971 | 0.966 | 0.861 |
+  | *X. tropicalis* | 0.971 | 0.859 | 0.859 | 0.975 | 0.399 | 0.969 | 0.964 | 0.864 |
+  | *C. intestinalis* | 0.955 | 0.859 | 0.859 | 0.957 | 0.445 | 0.955 | 0.954 | 0.857 |
+  | *N. vectensis* | 0.966 | 0.864 | 0.864 | 0.971 | 0.472 | 0.964 | 0.960 | 0.863 |
+  | *D. melanogaster* | 0.976 | 0.862 | 0.859 | 0.978 | 0.621 | 0.972 | 0.969 | 0.869 |
+  | *A. mellifera* | 0.976 | 0.856 | 0.855 | 0.977 | 0.454 | 0.973 | 0.966 | 0.856 |
+  | *C. elegans* | 0.961 | 0.859 | 0.859 | 0.960 | 0.524 | 0.958 | 0.952 | 0.858 |
+  | *A. thaliana* | 0.969 | 0.868 | 0.870 | 0.974 | 0.590 | 0.967 | 0.963 | 0.864 |
+  | *O. sativa* | 0.961 | 0.864 | 0.866 | 0.965 | 0.601 | 0.960 | 0.958 | 0.859 |
+  | *Z. mays* | 0.964 | 0.863 | 0.863 | 0.969 | 0.585 | 0.962 | 0.960 | 0.860 |
+  | *S. cerevisiae* | 0.943 | 0.845 | 0.854 | 0.934 | 0.841 | 0.944 | 0.944 | 0.845 |
+  | *S. pombe* | 0.946 | 0.849 | 0.847 | 0.949 | 0.771 | 0.948 | 0.948 | 0.851 |
+  | *N. crassa* | 0.951 | 0.854 | 0.856 | 0.955 | 0.725 | 0.951 | 0.951 | 0.852 |
+  | *P. falciparum* | 0.945 | 0.843 | 0.842 | 0.941 | 0.730 | 0.945 | 0.945 | 0.845 |
+  | *D. discoideum* | 0.946 | 0.850 | 0.849 | 0.946 | 0.749 | 0.946 | 0.946 | 0.851 |
+  | *T. thermophila* | 0.947 | 0.852 | 0.851 | 0.947 | 0.649 | 0.948 | 0.948 | 0.856 |
+
+  Four things the panel-wide control establishes that the two-species one did
+  not:
+
+  1. **Locus precision is exactly 1.0 and start-codon precision is exactly 1.0
+     on all 20 species** -- zero false-positive loci and zero false-positive
+     start codons across 775,253 scored reference transcripts. Deleting
+     and 3'-shifting can only lose things and move stops, so anything else
+     would be the scorer inventing them. The earlier two-species run reported
+     human start F1 0.912 *with* false positives, which was correct for the
+     ad-hoc script that produced it: it moved the `end` field regardless of
+     strand, so on roughly half the annotation it was perturbing start codons
+     while the text said stop codons. `degrade.py` exists so that the
+     perturbation is a reviewable file rather than a shell one-liner.
+  2. **The transcript level is the metric that responds to per-segment error,
+     and it does so across the whole panel in the order the panel predicts.**
+     Transcript F1 runs from 0.841 on *S. cerevisiae* (1.05 exons per
+     transcript) to 0.365 on *T. rubripes* (14.4), while nucleotide F1 over
+     the same species moves only from 0.943 to 0.972 -- and *upwards*, because
+     an intron-rich genome has more CDS bases to absorb the same 3 bp. A chain
+     of `n` segments survives a per-segment shift with probability
+     `(1-P)**n`, so the crude floor for transcript sensitivity is
+     `0.9 * 0.9**n`. Measured against the `exons_per_tx_mean` column of
+     `panel.tsv` the floor is tight where CDS and exon counts nearly coincide
+     -- 0.99 to 1.04 of predicted on *S. cerevisiae*, *S. pombe*,
+     *D. discoideum*, *P. falciparum* and *N. crassa* -- and is exceeded by up
+     to 2.0x in the vertebrates, where that column counts UTR exons the
+     perturbation never touches and where the §4.4 isoform rule lets a broken
+     chain still match a different reference isoform. Read the ratio as a
+     check on ordering, not as a fit.
+  3. **Fusion and split counts are not invariant under a perturbation that is
+     neither a fusion nor a split.** Six species report 1 or 2 fusions and six
+     report 1 to 8 splits, on input that only deletes transcripts and moves
+     boundaries 3 bp. Running each perturbation alone at the same seed
+     separates the two cleanly and exactly reproduces the combined counts:
+     *every* split comes from the deletions (human 8, *A. mellifera* 2,
+     *X. tropicalis* 1, *T. rubripes* 0) and *every* fusion from the 3 bp
+     shifts (human 1, *A. mellifera* 1, *X. tropicalis* 0, *T. rubripes* 0).
+     Both are real and both are §4.4 behaving as specified -- deleting an
+     isoform can pull a gene out of the prediction's own CDS-overlap graph and
+     split the component it was holding together, and a 3 bp extension can
+     bridge a same-strand gene pair that the reference kept 1 to 3 bp apart --
+     but the practical consequence is that a fusion or split count in the low
+     single digits is inside the noise a structurally *correct* submission can
+     produce on a 20,000-gene annotation. Report it; do not rank on it.
+  4. **A defect in `degrade.py` itself, found by the ablation and not by the
+     combined run.** The first version drew the per-segment shift only for CDS
+     lines that survived the deletion pass, which makes the shift stream a
+     function of the drop rate: at one seed, a drop-only run and a combined run
+     shifted different segments, so the ablation was not a decomposition of the
+     combined run at all. *T. rubripes* is where it showed -- the combined run
+     reported 1 fusion that neither single perturbation could produce, which is
+     impossible, since a combined prediction's CDS blocks are a subset of the
+     shift-only one's. The shift is now drawn for every CDS line and applied
+     only to the survivors, and the self-test asserts over four seeds that the
+     surviving CDS coordinates of a combined run equal the shift-only run's on
+     the same segments. The check fails on the pre-fix code.
+
+  Scoring cost, one laptop core per species: 0.68 s and 44 MB on *S. pombe*
+  to 52 s and 1.04 GB on *D. rerio* (1.16 M CDS segments); human 43 s and
+  1.06 GB. `degrade.py`'s own cost was not measured separately.
 - `benchmark/fetch.py --what fasta` is now exercised: it downloads and
   checksum-verifies the 3.8 MB *S. cerevisiae* FASTA. It is still untested at
   3 Gb (§7).
@@ -1436,9 +1528,13 @@ Locus F1
    the divergence is zero); and an *evidence-based pipeline* run end to end,
    which is what would make the multi-isoform case a measurement rather than
    the annotation comparison the GENCODE run is.
-   Degraded-copy runs still cover only *S. cerevisiae* and *H. sapiens*.
-   Tiberius is the obvious next tool: it is the one that would exercise the
-   blind extension if its GTF turns out to exclude the stop.
+   Degraded-copy control runs now cover **20 of 20** species (§6), which
+   closes the coverage half of this item: every metric has been checked
+   against a known perturbation on every panel genome, and the scorer's
+   strand-awareness is pinned by the donor/acceptor and start/stop asymmetry
+   that control produces. What remains open is real predictor output, not
+   coverage. Tiberius is the obvious next tool: it is the one that would
+   exercise the blind extension if its GTF turns out to exclude the stop.
 3. **No high-confidence subset** (§2.3). Needed before any accuracy above
    roughly the annotation error rate means anything. Candidate construction:
    loci with MANE Select support in human, community-curated loci elsewhere,

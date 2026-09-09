@@ -1,0 +1,16 @@
+{
+  "cds_seen": 530593,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 52858,
+  "cds_shifted_minus": 25643,
+  "cds_shifted_plus": 27215,
+  "child_lines_dropped": 123176,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Xenopus_tropicalis.degraded.gff3",
+  "reference": "/tmp/panel/Xenopus_tropicalis//GCF_000004195.4_UCB_Xtro_10.0_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 167,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 5279,
+  "transcripts_seen": 53243
+}

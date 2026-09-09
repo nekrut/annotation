@@ -1,0 +1,16 @@
+{
+  "cds_seen": 185190,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 18440,
+  "cds_shifted_minus": 8690,
+  "cds_shifted_plus": 9750,
+  "child_lines_dropped": 43355,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Ciona_intestinalis.degraded.gff3",
+  "reference": "/tmp/panel/Ciona_intestinalis//GCF_018327825.1_ASM1832782v2_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 36,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 2405,
+  "transcripts_seen": 24145
+}

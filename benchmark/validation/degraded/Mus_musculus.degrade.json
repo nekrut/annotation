@@ -1,0 +1,16 @@
+{
+  "cds_seen": 1087339,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 108641,
+  "cds_shifted_minus": 54359,
+  "cds_shifted_plus": 54282,
+  "child_lines_dropped": 271825,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Mus_musculus.degraded.gff3",
+  "reference": "/tmp/panel/Mus_musculus//GCF_000001635.27_GRCm39_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 61,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 13702,
+  "transcripts_seen": 139444
+}

@@ -1,0 +1,10 @@
+model: benchmark/degrade.py at seed 20260909, --drop-transcripts 0.10 --shift-cds 0.10 (synthetic control, not a predictor)
+training_species: [none]
+pretraining_corpus: none
+heldout_seen_in_pretraining: {all: n/a -- the input is a perturbed copy of the reference itself}
+protein_db: none
+alignment: none
+alignment_rows_dropped: none
+informants: none
+rnaseq: none
+hardware: AMD/Intel x86-64, 24 cores, 62 GB RAM, no GPU; one core per species

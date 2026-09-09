@@ -1,0 +1,16 @@
+{
+  "cds_seen": 108839,
+  "cds_shift_refused_at_sequence_end": 1,
+  "cds_shifted": 10917,
+  "cds_shifted_minus": 5289,
+  "cds_shifted_plus": 5628,
+  "child_lines_dropped": 24381,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Tetrahymena_thermophila.degraded.gff3",
+  "reference": "/tmp/panel/Tetrahymena_thermophila//GCF_000189635.1_JCVI-TTA1-2.2_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 1158,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 2679,
+  "transcripts_seen": 26996
+}
