@@ -1,0 +1,69 @@
+# scripts/data
+
+Data-access tools for the gene prediction project (task T-human-008). The
+inventory of sources, sizes, licences and rate limits is in
+`docs/data-sources.md`. Standard library only; Python 3.11.
+
+## fetch_window.py
+
+Fetch one locus window with its multiple alignment, tree, reference
+sequence, annotation and conservation scores. Run `--help` for the
+argument list; the module docstring describes the two backends (UCSC API
+plus HTTP range reads into the uncompressed MAF, and Ensembl Compara REST)
+and the output files. Nothing is written inside the repository; point
+`--out` at a scratch directory.
+
+Demonstration runs on 2026-09-09 from a cloud runner with no cached data
+(the definition of done asks for one human and one non-mammal locus; the
+other rows exercise the remaining code paths). Sizes are what the runner
+downloaded; the SHA-256 prefix is of the `.maf` written, so a rerun can be
+compared. Alignments change when the sources update, so a differing hash
+is a prompt to look, not an error.
+
+| Run | Assembly | Window (0-based, half-open, flank 500 included) | Alignment | Blocks | Sources | Transcripts | Download / requests | MAF bytes | MAF sha256[:16] |
+|---|---|---|---|---|---|---|---|---|---|
+| HBB_470 | hg38 | chr11:5224964-5229895 | multiz470way (bigMaf via API) | 241 | 461 | 1 | 15.8 MB / 7 | 15,359,758 | 7a85a363d5b240c7 |
+| HBB_241 | hg38, locus given as `NC_000011.10` | chr11:5224964-5229895 | cactus241wayBM (bigMaf via API; RefSeq name resolved through chromAlias) | 2517 | 240 | 1 | 68.6 MB / 9 | 67,775,774 | 0753bfed06589869 |
+| Adh_124 | dm6 | chr2L:14615052-14619402 | multiz124way (wigMaf index + Range reads) | 352 | 89 | 12 | 4.6 MB / 11 | 3,398,732 | e4f6282ff8e9043b |
+| GAPDH_sauropsids | gallus_gallus (GRCg7b) | 1:76900098-76906736 | Ensembl EPO sauropsids, with 5 ancestral rows | 2 | 11 | 5 | 0.1 MB / 9 | 54,580 | 6e24cc945abb6fd8 |
+| Gapdh_mammals | mus_musculus (GRCm39) | 6:125134789-125144018 | Ensembl EPO 44 mammals, mouse as query species | 1 | 3 | 65 | 0.2 MB / 6 | 32,258 | 3dc17314f67d2554 |
+| Pf_none | GCF_000002765.6 (GenArk hub) | NC_004325.2:100000-120000 | `--track none`: RefSeq annotation and sequence only | 0 | 0 | 4 | 0.0 MB / 3 | 90 | 2d35a98bb3d5e6a8 |
+
+The commands, in the same order:
+
+```
+python3 scripts/data/fetch_window.py --assembly hg38 --locus chr11:5225464-5229395 --flank 500 --track multiz470way --out /tmp/win/HBB --name HBB_470
+python3 scripts/data/fetch_window.py --assembly hg38 --locus NC_000011.10:5225464-5229395 --flank 500 --track cactus241wayBM --out /tmp/win/HBB241 --name HBB_241
+python3 scripts/data/fetch_window.py --assembly dm6 --locus chr2L:14615552-14618902 --flank 500 --track multiz124way --out /tmp/win/Adh --name Adh_124
+python3 scripts/data/fetch_window.py --source ensembl --assembly gallus_gallus --locus 1:76900598-76906236 --flank 500 --species-set sauropsids --out /tmp/win/GAPDH --name GAPDH_sauropsids
+python3 scripts/data/fetch_window.py --source ensembl --assembly mus_musculus --locus 6:125135289-125143518 --flank 500 --species-set mammals --out /tmp/win/mm --name Gapdh_mammals
+python3 scripts/data/fetch_window.py --assembly GCF_000002765.6 --locus NC_004325.2:100000-120000 --track none --out /tmp/win/Pf --name Pf_none
+```
+
+Notes from the runs:
+
+- Every source in the fetched blocks was a leaf of the tree fetched next
+  to the track (461 of 461 for the 470-way, 240 of 240 for the 241-way
+  Cactus, 89 of 89 for the fly 124-way).
+- The fly window took 358 requests when each block was fetched by its own
+  range request; coalescing the contiguous index offsets into 1 MiB reads
+  brought it to 11 requests, which is the current behaviour.
+- Ensembl's `mammals` EPO block at mouse `Gapdh` holds only mouse, rat and
+  their ancestor; the same locus under `murinae` returns 43 rows. Which
+  species set answers depends on how Compara partitioned the region, so a
+  training pipeline on Ensembl should query the largest set that contains
+  the reference and fall back.
+- Mouse `Hbb-bs` (7:103475730-103482989) has no block at all in the
+  `mammals` EPO set and 43 plus 15 rows in `murinae`; duplicated loci are
+  where EPO coverage is patchiest.
+- The per-species coverage tables (`coverage` in each manifest) are the
+  source of the numbers in `docs/data-sources.md` section 6.
+
+## Politeness
+
+The fetcher spaces requests at least 0.34 s apart by default (`--pause`),
+retries 429 and 5xx with backoff, sends a descriptive User-Agent, and logs
+every request with its byte count into the manifest. UCSC asks for about
+one request per second on the API and NCBI for at most three per second
+on E-utilities; Ensembl's limit was 55,000 requests per hour on the day of
+the runs.
