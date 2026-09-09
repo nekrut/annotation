@@ -419,12 +419,12 @@
   "reference_introns": 229939
  },
  "transcript": {
-  "f1": 0.23782,
-  "fn": 16526,
-  "fp": 19137,
-  "precision": 0.22525,
-  "sensitivity": 0.25188,
-  "tp": 5564,
+  "f1": 0.25248,
+  "fn": 16183,
+  "fp": 18794,
+  "precision": 0.23914,
+  "sensitivity": 0.26741,
+  "tp": 5907,
   "unmatched_reference_loci": 1341
  }
 }

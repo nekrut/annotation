@@ -947,9 +947,22 @@ def _transcripts(ref_loci, pred_loci, ref_chains, pred_chains, matches):
     """Section 4.4 transcript exact match, under the isoform rule.
 
     Within a matched locus, predicted transcripts are matched one-to-one to
-    annotated isoforms by shared CDS bases; unmatched annotated isoforms are
-    not counted as false negatives, so deeply annotated species are not
-    penalized against one-transcript-per-gene species.
+    annotated isoforms, exact chain matches first and the rest by shared CDS
+    bases; unmatched annotated isoforms are not counted as false negatives, so
+    deeply annotated species are not penalized against one-transcript-per-gene
+    species.
+
+    Exactness has to outrank shared bases, not just break ties inside it.  An
+    isoform that contains the prediction's whole CDS shares exactly as many
+    bases with it as the isoform the prediction *equals*, so ordering on
+    shared bases alone leaves the winner to the id tie-break -- and the
+    accession that sorts first is not the one that matches.  Fugu is the
+    demonstration: the prediction of `rab44` is `rna-XM_029826178.1` base for
+    base, but `rna-XM_011613896.2` is that chain plus 51 more bases at one
+    end, so both share 10,749, `011` sorts before `029`, and an exact hit is
+    scored as a miss.  343 of 5,907 exact fugu matches (5.8%) were lost that
+    way.  Ranking exactness first is also the only order that keeps the metric
+    a property of the two annotations rather than of their accession strings.
     """
     tp = fp = fn = 0
     for rid, pid in matches:
@@ -961,9 +974,10 @@ def _transcripts(ref_loci, pred_loci, ref_chains, pred_chains, matches):
             for rt in r_tids:
                 n = isect_len(list(pb), list(ref_chains[rt][2]))
                 if n > 0:
-                    cand.append((n, rt, pt))
+                    exact = ref_chains[rt] == pred_chains[pt]
+                    cand.append((0 if exact else 1, -n, rt, pt))
         used_r, used_p = set(), set()
-        for n, rt, pt in sorted(cand, key=lambda x: (-x[0], x[1], x[2])):
+        for _, _, rt, pt in sorted(cand):
             if rt in used_r or pt in used_p:
                 continue
             used_r.add(rt)
@@ -1619,6 +1633,32 @@ chr1\t.\tCDS\t8000\t9000\t.\t+\t2\tID=c4;Parent=t2
 """
 
 
+# The fugu case in miniature (see ``_transcripts``): the prediction equals
+# isoform ``rna-t9`` base for base, while ``rna-t1`` is that same chain with
+# 51 extra bases at the 3' end, so both share every one of the prediction's
+# bases and the accession that sorts first is the one that does not match.
+CONTAINED_ISOFORM_REF = """##gff-version 3
+##sequence-region chr1 1 20000
+chr1\t.\tregion\t1\t20000\t.\t+\t.\tID=chr1;genome=chromosome
+chr1\t.\tgene\t1000\t2251\t.\t+\t.\tID=g1;gene_biotype=protein_coding
+chr1\t.\tmRNA\t1000\t2251\t.\t+\t.\tID=rna-t1;Parent=g1
+chr1\t.\tCDS\t1000\t1099\t.\t+\t0\tID=c1;Parent=rna-t1
+chr1\t.\tCDS\t1200\t2251\t.\t+\t2\tID=c2;Parent=rna-t1
+chr1\t.\tmRNA\t1000\t2200\t.\t+\t.\tID=rna-t9;Parent=g1
+chr1\t.\tCDS\t1000\t1099\t.\t+\t0\tID=c3;Parent=rna-t9
+chr1\t.\tCDS\t1200\t2200\t.\t+\t2\tID=c4;Parent=rna-t9
+"""
+
+
+CONTAINED_ISOFORM_PRED = """##gff-version 3
+##sequence-region chr1 1 20000
+chr1\t.\tgene\t1000\t2200\t.\t+\t.\tID=pg1
+chr1\t.\tmRNA\t1000\t2200\t.\t+\t.\tID=pt1;Parent=pg1
+chr1\t.\tCDS\t1000\t1099\t.\t+\t0\tID=pc1;Parent=pt1
+chr1\t.\tCDS\t1200\t2200\t.\t+\t2\tID=pc2;Parent=pt1
+"""
+
+
 SELECT_FIXTURE = """##gff-version 3
 chr1\t.\tregion\t1\t248956422\t.\t+\t.\tID=r1;chromosome=1;genome=chromosome
 alt1\t.\tregion\t1\t200000\t.\t+\t.\tID=r2;chromosome=1;genome=genomic;map=19q13.42
@@ -1688,7 +1728,10 @@ def self_test():
 
     fails = []
 
+    n_checks = [0]
+
     def check(name, got, want):
+        n_checks[0] += 1
         if got != want:
             fails.append("%s: got %r, want %r" % (name, got, want))
 
@@ -1968,6 +2011,29 @@ def self_test():
     os.unlink(sspred)
     os.unlink(ssfa)
 
+    # An annotated isoform that contains the prediction's whole CDS shares
+    # exactly as many bases with it as the isoform the prediction equals, so
+    # ordering the within-locus pairing on shared bases alone leaves the
+    # winner to the id tie-break, and `rna-t1` sorts before `rna-t9`.  That
+    # scored 343 exact fugu matches as misses.  Exactness outranks overlap.
+    ciref = os.path.join(d, "ciref.gff3")
+    cipred = os.path.join(d, "cipred.gff3")
+    open(ciref, "w").write(CONTAINED_ISOFORM_REF)
+    open(cipred, "w").write(CONTAINED_ISOFORM_PRED)
+    ci = score(ciref, cipred, "fixture")
+    check("contained isoform tx tp", ci["transcript"]["tp"], 1)
+    check("contained isoform tx fp", ci["transcript"]["fp"], 0)
+    check("contained isoform tx fn", ci["transcript"]["fn"], 0)
+    check("contained isoform tx f1", ci["transcript"]["f1"], 1.0)
+    check("contained isoform locus tp", ci["locus"]["tp"], 1)
+    # The identity run must stay 1.0: every prediction now has an exact
+    # partner, and the contained isoform must not steal the other's.
+    ciid = score(ciref, ciref, "fixture")
+    check("contained isoform identity tx f1", ciid["transcript"]["f1"], 1.0)
+    check("contained isoform identity tx tp", ciid["transcript"]["tp"], 2)
+    os.unlink(ciref)
+    os.unlink(cipred)
+
     select_test(check)
 
     # The window fetcher must return the same bases as a plain read.
@@ -2011,7 +2077,7 @@ def self_test():
         for f in fails:
             print("FAIL " + f, file=sys.stderr)
         return 1
-    print("self-test: all checks passed")
+    print("self-test: %d checks passed" % n_checks[0])
     return 0
 
 

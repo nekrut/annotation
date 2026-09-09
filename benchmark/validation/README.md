@@ -113,6 +113,14 @@ pseudogene and gene-fragment CDS rows as truth and §4.5 stopped charging
 incomplete CDS ends; every F1 moved by at most 0.002, and the reference
 transcript counts fell by the 6 and 32 pseudogenes the two yeasts have.
 
+They were regenerated again the same day after §4.4 made an exact chain match
+outrank shared CDS bases in the within-locus isoform pairing. Only the
+`transcript` block moved, and only in the two runs against a reference with
+several isoforms per locus: *T. rubripes* F1 0.23782 -> 0.25248 (tp 5,564 ->
+5,907) and *N. crassa* 0.68609 -> 0.68947 (tp 6,889 -> 6,923). The three
+AUGUSTUS runs and the *S. cerevisiae* Helixer run are byte-identical apart
+from their regeneration timestamps.
+
 These are not benchmark results for AUGUSTUS. Both species are in AUGUSTUS's
 own training set — `heldout_seen_in_pretraining: yes` in two of the three
 declarations — so the first two rows are an upper bound, not a measurement.

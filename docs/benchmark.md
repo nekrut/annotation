@@ -719,6 +719,34 @@ unmatched predictions are false positives. Without this rule,
 species with deep isoform annotation (human, zebrafish) are systematically
 penalized against species with one transcript per gene (*P. falciparum*).
 
+Within a locus, **an exact chain match outranks shared bases**, and this is
+not the same as breaking ties on shared bases. An annotated isoform that
+*contains* the prediction's whole CDS shares exactly as many bases with it as
+the isoform the prediction *equals*, so on shared bases alone the two are
+tied and the accession that sorts first wins — which is not, in general, the
+one that matches. *T. rubripes* `rab44` is the case: the Helixer prediction is
+`rna-XM_029826178.1` base for base, `rna-XM_011613896.2` is that chain plus 51
+bases at one end, both share 10,749, and `011` sorts before `029`. Under the
+old order 343 of 5,907 exact fugu matches (5.8%) and 34 of 6,923 *N. crassa*
+ones were scored as misses; fugu's transcript F1 was 0.238 and is 0.252
+(§6). Exactness-first is also the only order that makes the metric a property
+of the two annotations rather than of their accession strings. Pairs are
+therefore taken in ascending order of (0 if the chains are identical else 1,
+then descending shared CDS bases, then reference id, then predicted id).
+
+The benchmark deliberately does **not** designate one representative isoform
+per locus as truth. Doing so would pick a winner the reference does not pick,
+and the isoform rule already removes the penalty deep annotation would
+otherwise carry. A model that needs a single target per locus — a
+per-base labelling of a genome window, for instance — is making a *training*
+decision, not a scoring one, and it is free to take the union over isoforms,
+the longest CDS, or MANE Select where it exists; the benchmark scores whatever
+it emits against the best-matching annotated isoform either way. What such a
+model cannot do is claim the transcript-level column measures isoform choice:
+against a one-prediction-per-locus model, that column is bounded by how close
+the chosen target is to *some* annotated isoform, and fugu's 0.252 against
+*S. cerevisiae*'s 0.860 is mostly that bound moving, not the model.
+
 ### 4.5 Start and stop codons
 
 Reported separately from exon boundaries, because they are the part of the
@@ -923,7 +951,9 @@ non-`protein_coding` `gene_biotype` and an incomplete end (§4, §4.5).
 Verification so far:
 
 - `python3 benchmark/score.py --self-test` scores built-in fixture pairs and
-  checks 116 expected values: a prediction with one exact transcript, one
+  checks 111 expected values — it prints the count it ran, so this sentence
+  cannot drift from the code again; it said 116 while the code ran 104: a
+  prediction with one exact transcript, one
   shifted minus-strand boundary, one overlapping-but-unaligned locus and one
   spurious locus; a fusion-and-split pair; a self-comparison that must score
   exactly 1.0 on every metric; two sequence-selection fixtures, one in RefSeq
@@ -950,10 +980,14 @@ Verification so far:
   land in the decile of the shorter one and be reported as ambiguous (§4.3);
   a prediction whose `stop_codon` feature sits across an intron from its last
   CDS block, whose merged-in junction must still get a dinucleotide class
-  (§4.5); and a prediction that reuses transcript ids across two sequences.
+  (§4.5); a two-isoform gene in which one isoform is the other plus 51 bases
+  at one end and the prediction equals the shorter, where the containing
+  isoform must not take the pairing and the same file against itself must
+  still be 1.0 (§4.4); and a prediction that reuses transcript ids across two
+  sequences.
   The self-test is run under several `PYTHONHASHSEED` values, because two of
   its checks exist to catch results that depended on it.
-- **Identity runs re-verified after the two fixes above** on
+- **Identity runs re-verified after the fixes above** on
   *S. cerevisiae*, *N. crassa*, *T. rubripes*, *C. elegans* and human: F1 1.0
   and MCC 1.0 on every metric with 0 fusions and 0 splits, and 0, 73, 8,086,
   2,120 and 23,387 donors respectively whose decile came from the
@@ -1080,16 +1114,18 @@ Verification so far:
 
   | run | nucleotide F1 | exon F1 | donor F1 | transcript F1 | locus F1 | start F1 | stop F1 |
   |---|---|---|---|---|---|---|---|
-  | *N. crassa*, fungi model | 0.962 | 0.772 | 0.841 | 0.686 | 0.906 | 0.795 | 0.842 |
+  | *N. crassa*, fungi model | 0.962 | 0.772 | 0.841 | 0.689 | 0.906 | 0.795 | 0.842 |
   | *S. cerevisiae*, fungi model | 0.986 | 0.825 | **0.378** | 0.860 | 0.948 | 0.896 | 0.938 |
-  | *T. rubripes*, vertebrate model | 0.919 | 0.776 | 0.853 | **0.238** | 0.887 | 0.499 | 0.742 |
+  | *T. rubripes*, vertebrate model | 0.919 | 0.776 | 0.853 | **0.252** | 0.887 | 0.499 | 0.742 |
 
   *N. crassa* is the one species on this panel Helixer can be run on without
   declaring pretraining exposure (§3.2 channel 2), so it is the only one of
   the three whose numbers are a measurement rather than an upper bound. Fugu's transcript F1 is not a fugu failure so much as a
   reminder of what the metric measures: the RefSeq reference has 46,771
   transcripts over 22,090 loci and Helixer emits exactly one per locus, so
-  three quarters of the reference chains have no candidate to match. Locus F1
+  three quarters of the reference chains have no candidate to match. It is also
+the run that found the third defect below, which was worth 0.014 of it.
+Locus F1
   0.887 on the same run is the number to compare against AUGUSTUS's, and the
   1,154 splits (against 32 in *N. crassa*) are where a one-isoform-per-locus
   predictor meets a vertebrate reference. Fugu is also *in the vertebrate
@@ -1097,7 +1133,7 @@ Verification so far:
   there is an upper bound, as is every column of the *S. cerevisiae* row;
   §3.3's `heldout_seen_in_pretraining` says so in both declarations.
 
-  Two defects, both found by these runs and both invisible on every earlier
+  Three defects, all found by these runs and all invisible on every earlier
   one:
   1. **The §4.3 decile stratification was not reproducible.** Scoring the
      same two fugu files twice gave different per-decile donor and acceptor
@@ -1111,8 +1147,21 @@ Verification so far:
      plan never asked for, and its dinucleotide was reported as `unknown`
      rather than the GT-AG it is — one predicted intron of the *S. pombe*
      cross-parameter run. The plan is now extended after the merge (§4.5).
+  3. **An exact transcript match could lose the within-locus pairing to an
+     isoform that merely contains it.** The pairing ordered candidates by
+     shared CDS bases with the accession as tie-break, and a containing
+     isoform ties with the one the prediction equals, so the tie-break — an
+     accession string — decided a scored outcome. 343 of fugu's 5,907 exact
+     matches and 34 of *N. crassa*'s 6,923 went to the wrong isoform and were
+     counted as a false positive and a false negative each. Exactness now
+     outranks overlap (§4.4). This is the one defect so far that a deeply
+     annotated reference is required to see: it cannot occur where every
+     locus has one isoform, which is why the two yeasts and all three
+     AUGUSTUS runs are unaffected, and it moved only the transcript column.
   All six results in `benchmark/validation/` were regenerated with the fixed
-  scorer; the three AUGUSTUS numbers above are unchanged to five decimals.
+  scorer; the three AUGUSTUS numbers above are unchanged to five decimals,
+  as are all of the *S. cerevisiae* Helixer ones and every non-transcript
+  column of the other two.
 
   The *S. cerevisiae* row is there to answer item 10, and it does. AUGUSTUS's
   yeast donor F1 of 0.394 is **not** an AUGUSTUS artefact: Helixer, a
@@ -1163,15 +1212,19 @@ Verification so far:
 2. **Real predictor output covers four species, two tools and six runs.**
    AUGUSTUS on the two yeasts and Helixer on *T. rubripes*, *N. crassa* and
    *S. cerevisiae* (§6) between them cover both stop-codon conventions, both detection routes (feature and
-   genome), a prediction with UTRs, and a 384 Mb genome with 105 unplaced
-   scaffolds. Four defects came out of those four runs. What is still not
+   genome), a prediction with UTRs, a reference with several isoforms per
+   locus, and a 384 Mb genome with 105 unplaced
+   scaffolds. Five defects came out of those runs. What is still not
    covered: the §4.5 **blind 3 bp extension** — the fallback for a prediction
    that has no `stop_codon` feature *and* whose genome says `outside` — is
    still fixture-only, because Helixer's convention is `inside`; a prediction
    whose sequence set genuinely diverges from the reference's (both tools were
    run on the reference assembly, so the divergence is zero); any
-   evidence-based pipeline, whose GFF3 carries alternative isoforms, which is
-   where fugu's transcript F1 0.238 says the metric has the most to say; and
+   evidence-based pipeline, whose GFF3 carries alternative isoforms — no run
+   yet has a *prediction* with more than one isoform per locus, so the §4.4
+   pairing has only ever been exercised one predicted transcript at a time and
+   the branch charging an unmatched extra prediction as a false positive is
+   fixture-only; and
    any predictor that emits partial genes at contig ends (item 13).
    Degraded-copy runs still cover only *S. cerevisiae* and *H. sapiens*.
    Tiberius is the obvious third tool: it is the one that would exercise the
