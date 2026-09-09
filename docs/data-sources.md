@@ -454,7 +454,11 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   tensors are built. For multiz that is exact. For Cactus and EPO the row
   goes but its influence on the alignment stays, which the sidecar records;
   section 7 says why the honest tool for those is a declared informant set
-  at inference.
+  at inference. The sidecar's `dropped_species` list is what the run copies
+  into the `alignment_rows_dropped` key of its benchmark declaration
+  (`docs/benchmark.md` section 3.3); a sidecar with `dropped_rows_only:
+  true` means the declaration must also say the alignment is jointly
+  inferred, and the stricter rebuild rule applies.
 - **Orientation**: reverse-strand genes are not flipped. `--both-strands`
   writes the reverse-complement example (labels and boundaries move with
   the coordinates, informant bases complemented, insertion lengths shifted
@@ -478,20 +482,25 @@ coverage tables do not yet).
 
 The benchmark's rules (`docs/benchmark.md` section 3.2): held-out labels may
 never be seen; held-out sequence in a pretraining corpus must be declared;
-alignments used for *training* must be rebuilt with held-out species
-removed; an informant set used at *inference* on a held-out target is
-permitted and must be declared.
+alignments used for *training* must not carry a held-out species, and
+section 3.2 splits that rule by how the alignment was built: a jointly
+inferred alignment (Cactus, Ensembl EPO) must be rebuilt without the
+held-out species, while a reference-anchored one (multiz) may have the row
+dropped at cut time provided the run lists the dropped rows in the
+`alignment_rows_dropped` key of its declaration (section 3.3); an informant
+set used at *inference* on a held-out target is permitted and must be
+declared.
 
 Applying them to what exists:
 
 | Panel species | Split | Public multiple alignment referenced on it | Conservation | Fit |
 |---|---|---|---|---|
 | human | heldout_paired | hg38 100/30/470-way, Cactus 241/447, Ensembl mammals/primates/amniotes | phyloP, phastCons | evaluation only; any of these is a declarable informant set at inference. Not usable to train, because training on human windows means training on human labels |
-| mouse | train | mm39 35-way; Ensembl 44/92-mammal EPO and 22-murinae re-referenced on mouse | mm39 phyloP35way | training source, but every one of these alignments contains human (held-out) sequence: sequence leakage, declare it, or drop the human row at cut time |
+| mouse | train | mm39 35-way; Ensembl 44/92-mammal EPO and 22-murinae re-referenced on mouse | mm39 phyloP35way | training source, but every one of these alignments contains human (held-out) sequence. For the 35-way (multiz) drop the `hg38` row at cut time and declare it in `alignment_rows_dropped`; the EPO sets are jointly inferred, so dropping the row is not enough and they would have to be rebuilt |
 | chicken | heldout | Ensembl sauropsids EPO on GRCg7b (exact panel assembly); galGal6 77-way (older assembly, liftover needed) | galGal6 phyloP77way only | evaluation with a declared informant set; the sauropsid set contains no other panel species |
-| zebrafish | train | Ensembl fish EPO on GRCz11 (panel is GRCz12ab) | none | training only after lifting coordinates, or by evaluating on GRCz11 instead; fish set contains fugu (held-out): drop that row when training |
+| zebrafish | train | Ensembl fish EPO on GRCz11 (panel is GRCz12ab) | none | training only after lifting coordinates, or by evaluating on GRCz11 instead; fish set contains fugu (held-out) and is jointly inferred, so under section 3.2 it must be rebuilt without fugu before it can train; dropping the row is a declared compromise, not compliance |
 | fugu | heldout_paired | Ensembl fish EPO on fTakRub1.2 (panel 1.3) | none | evaluation; informant set contains zebrafish (train), which the rules allow at inference if declared |
-| fruit fly | train | dm6 124-way and 27-way | dm6 phyloP124way | training; the 124-way contains honey bee (`apiMel4`, held-out): drop that row |
+| fruit fly | train | dm6 124-way and 27-way | dm6 phyloP124way | training; the 124-way contains honey bee (`apiMel4`, held-out): drop that row at cut time and declare `alignment_rows_dropped: [apiMel4]` |
 | C. elegans | train | ce11 135-way (raw MAF only) | ce11 phyloP135way | training; no panel species among informants |
 | yeast | train | sacCer3 7-way | phastCons7way | training; near-intronless, so mostly a negative control for the intron machinery |
 | frog, honey bee, sea anemone, ciona, thale cress, rice, maize, S. pombe, Neurospora, Dictyostelium, Plasmodium, Tetrahymena | 5 train, 7 held-out | none (rice: 8-way EPO on IRGSP, not the panel's AGIS1.0) | none | no comparative input available; the model runs single-genome on these unless we build alignments |
@@ -510,7 +519,11 @@ Two consequences for the design:
   EPO, whose blocks and ancestral sequences were inferred jointly with the
   held-out species; there, dropping a row leaves an alignment that still
   benefited from it. For an honest held-out test on those, the informant
-  set at inference is the right tool, and it is allowed.
+  set at inference is the right tool, and it is allowed. `docs/benchmark.md`
+  section 3.2 now states exactly this split, and section 3.3 makes the
+  `alignment_rows_dropped` declaration mandatory: for the two affected
+  panel alignments it is `[apiMel4]` for dm6 124-way and `[hg38]` for mm39
+  35-way, and `benchmark/score.py` refuses a run that omits the key.
 
 ## 8. What we would have to build, with costs
 
@@ -546,9 +559,14 @@ informants) is the design-level answer.
 2. Done this draft: the window-cutting convention is section 6.3 and
    `scripts/data/cut_windows.py`; the three open design choices at the end
    of 6.3 are for T-human-011.
-3. Question for lenin (T-human-007): should `benchmark/report.py` carry a
-   "with informants / without informants" column, given that seven of the
-   ten held-out species have no public alignment?
+3. Answered: lenin (T-human-007, note 20260909T082157Z-lenin-0010) left
+   the "with informants / without informants" column of `benchmark/report.py`
+   to T-human-011, on the grounds that it is a question about what the
+   model is allowed to see rather than about the scorer. Section 6.3's open
+   choices and section 7's first consequence are where T-human-011 should
+   pick it up. The same note adopted the reference-anchored versus jointly
+   inferred split proposed here (section 7) into `docs/benchmark.md`
+   section 3.2 and added the `alignment_rows_dropped` declaration key.
 4. Question for whoever takes T-human-009: a measured lastz wall-clock and
    memory for one genome pair at 100 Mb and at 2 Gb, to cost section 8
    option 2.

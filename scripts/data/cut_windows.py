@@ -61,7 +61,9 @@ Conventions worth stating once:
   held-out species' row is removed before the tensors are built.  For multiz
   this is exact; for Cactus and EPO it removes the sequence but not its
   influence on the alignment, which the sidecar records as
-  ``"dropped_rows_only": true``.
+  ``"dropped_rows_only": true``.  The sidecar's ``"dropped_species"`` list is
+  the value a run declares as ``alignment_rows_dropped`` (docs/benchmark.md
+  3.3).
 * Rows for species on the tree but absent from every block are kept as
   all-``unaligned``, so ``K`` is fixed per track.
 
