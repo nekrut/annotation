@@ -59,6 +59,53 @@ Notes from the runs:
 - The per-species coverage tables (`coverage` in each manifest) are the
   source of the numbers in `docs/data-sources.md` section 6.
 
+## coverage_by_distance.py
+
+Aggregates the per-informant coverage tables from many `fetch_window.py`
+manifests, binned by patristic distance from the reference on the track's
+tree (`--bins` gives the upper edges in substitutions per site). Reports
+base-weighted coverage per annotation class and the share of
+informant-window pairs above 0.5; `--tsv` writes every pair. The numbers in
+`docs/data-sources.md` section 6.1 come from:
+
+```
+python3 scripts/data/coverage_by_distance.py /tmp/cov/fly --reference dm6 --markdown --bins 0.1,0.25,0.5,1.0,2.0
+python3 scripts/data/coverage_by_distance.py /tmp/cov/human --reference hg38 --markdown --bins 0.1,0.25,0.5,1.0,2.0
+```
+
+## cut_windows.py
+
+Turns one fetched locus into fixed-length training examples (`.npz` plus a
+JSON sidecar) following the convention in `docs/data-sources.md` section
+6.3: reference one-hot codes, per-base labels, CDS frame, strand, boundary
+marks, one row per informant with explicit `gap` and `unaligned` states, an
+insertion-length channel, tree distances, conservation. Standard library
+only; the `.npz` is written by hand and reads with `numpy.load`.
+`--drop-species` removes held-out informants (the benchmark leakage rule),
+`--both-strands` adds the reverse-complement example, `--self-test` checks
+labels, frames, boundaries, informant codes, insertions, distances and the
+reverse complement on a synthetic locus (12 checks).
+
+```
+python3 scripts/data/cut_windows.py --self-test
+python3 scripts/data/cut_windows.py --stem /tmp/win/Adh/Adh_124 --out /tmp/ex --length 2048 --stride 1024 --drop-species apiMel4 --both-strands
+```
+
+## Sampling run (section 6.1 of the document)
+
+`docs/data-sources.md` section 6.1 aggregates 12 fly and 10 human windows.
+The genes were drawn with a fixed seed from `ncbiRefSeqCurated` on dm6
+chr2L and hg38 chr11 (NM_ transcripts, complete CDS, at least 3 exons,
+transcript length 2 to 8 kb for fly and 3 to 12 kb for human, one per gene,
+non-overlapping), so the human sample is biased to short genes; the list
+is in the document. Midway through the run `hgdownload.soe.ucsc.edu` reset
+every connection for several minutes while the API host and
+`hgdownload2.soe.ucsc.edu` kept serving; the fetcher now rotates through
+the mirrors on connection errors and `--download-host` sets the primary,
+and the remaining windows were fetched with
+`--download-host https://hgdownload2.soe.ucsc.edu`. Requests that fell back
+carry `mirror_for` in the manifest log.
+
 ## Politeness
 
 The fetcher spaces requests at least 0.34 s apart by default (`--pause`),

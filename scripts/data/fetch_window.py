@@ -94,6 +94,11 @@ import urllib.request
 
 UCSC_API = "https://api.genome.ucsc.edu"
 UCSC_DL = "https://hgdownload.soe.ucsc.edu"
+# hgdownload mirrors, tried in order when a host resets or times out; the
+# primary reset every connection for several minutes on 2026-09-09 while
+# hgdownload2 served the same files.  Override the primary with --download-host.
+UCSC_DL_MIRRORS = ["https://hgdownload.soe.ucsc.edu", "https://hgdownload2.soe.ucsc.edu",
+                   "https://hgdownload2.gi.ucsc.edu"]
 ENSEMBL = "https://rest.ensembl.org"
 UA = "relay-annotation-fetch-window/0.1 (https://github.com/nekrut/annotation)"
 
@@ -121,23 +126,32 @@ class Fetcher:
         wait = self.pause - (time.monotonic() - self._last)
         if wait > 0:
             time.sleep(wait)
-        req = urllib.request.Request(url, headers={"User-Agent": UA, **(headers or {})})
         last_err: Exception | None = None
+        # mirror rotation for hgdownload URLs: attempt k uses mirror k (mod n)
+        host = next((m for m in UCSC_DL_MIRRORS if url.startswith(m + "/")), None)
+        mirrors = ([host] + [m for m in UCSC_DL_MIRRORS if m != host]) if host else [None]
         for attempt in range(4):
+            attempt_url = url
+            if host and attempt:
+                attempt_url = mirrors[attempt % len(mirrors)] + url[len(host):]
+            req = urllib.request.Request(attempt_url, headers={"User-Agent": UA, **(headers or {})})
             try:
                 t0 = time.monotonic()
                 with urllib.request.urlopen(req, timeout=self.timeout) as r:
                     data = r.read()
                     status = r.status
                 self._last = time.monotonic()
-                self.log.append({"url": url, "what": what, "status": status, "bytes": len(data),
-                                 "seconds": round(self._last - t0, 2),
-                                 "range": (headers or {}).get("Range")})
+                entry = {"url": attempt_url, "what": what, "status": status, "bytes": len(data),
+                         "seconds": round(self._last - t0, 2),
+                         "range": (headers or {}).get("Range")}
+                if attempt_url != url:
+                    entry["mirror_for"] = url
+                self.log.append(entry)
                 return data
             except urllib.error.HTTPError as e:
                 self._last = time.monotonic()
                 body = e.read()[:400].decode("utf-8", "replace")
-                self.log.append({"url": url, "what": what, "status": e.code, "bytes": 0, "error": body})
+                self.log.append({"url": attempt_url, "what": what, "status": e.code, "bytes": 0, "error": body})
                 if e.code in (429, 500, 502, 503, 504) and attempt < 3:
                     time.sleep(2 ** attempt)
                     last_err = e
@@ -145,6 +159,7 @@ class Fetcher:
                 raise RuntimeError(f"HTTP {e.code} for {url}: {body}") from e
             except (urllib.error.URLError, TimeoutError, OSError) as e:
                 last_err = e
+                self.log.append({"url": attempt_url, "what": what, "status": 0, "bytes": 0, "error": str(e)[:200]})
                 time.sleep(2 ** attempt)
         raise RuntimeError(f"failed after retries: {url}: {last_err}")
 
@@ -567,8 +582,16 @@ def main() -> int:
     ap.add_argument("--max-items", type=int, default=100000, help="UCSC maxItemsOutput for alignment blocks (API maximum 1000000)")
     ap.add_argument("--timeout", type=float, default=120.0)
     ap.add_argument("--pause", type=float, default=0.34, help="minimum seconds between requests (NCBI/UCSC politeness)")
+    ap.add_argument("--download-host", default=None,
+                    help="primary hgdownload host, e.g. https://hgdownload2.soe.ucsc.edu (mirrors are tried on connection errors)")
     ap.add_argument("--dry-run", action="store_true", help="print what would be fetched and exit")
     args = ap.parse_args()
+    if args.download_host:
+        global UCSC_DL
+        UCSC_DL = args.download_host.rstrip("/")
+        if UCSC_DL in UCSC_DL_MIRRORS:
+            UCSC_DL_MIRRORS.remove(UCSC_DL)
+        UCSC_DL_MIRRORS.insert(0, UCSC_DL)
 
     chrom, s, e = parse_locus(args.locus)
     start, end = max(0, s - args.flank), e + args.flank
