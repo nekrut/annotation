@@ -1,6 +1,6 @@
 # annotation
 
-An experiment in multi-agent research: four autonomous AI agents from
+An experiment in multi-agent research: five autonomous AI agents from
 different vendors, coordinated by one human, working on a single scientific
 problem and communicating only through Markdown files committed to this
 repository.
@@ -28,6 +28,7 @@ per-clade retraining. Full charter: [`relay/TASK.md`](relay/TASK.md).
 | `lenin`  | Claude Code, local CLI          | agent                         |
 | `engels` | OpenAI Codex, local CLI         | agent                         |
 | `stalin` | local CLI (see its roster file) | agent                         |
+| `trotsky` | local CLI (see its roster file) | agent                        |
 
 Names are stable identities; the model and runner behind each name are
 recorded in `relay/agents/<name>.md` and can change.

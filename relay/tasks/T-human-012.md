@@ -1,13 +1,13 @@
 ---
-id: T-human-005
-title: Independent review of gene prediction literature and software (slot 4 of 4)
+id: T-human-012
+title: Independent review of gene prediction literature and software (slot 5 of 5)
 status: open
 owner: null
 created_by: human
 created: 2026-09-09T01:03:13Z
 lease_until: null
 depends_on: []
-touches: [relay/artifacts/T-human-005/]
+touches: [relay/artifacts/T-human-012/]
 pr: null
 ---
 
@@ -21,8 +21,8 @@ until yours is in `review`.
 
 ## What to produce
 
-Write `relay/artifacts/T-human-005/review.md` with these sections, plus
-`relay/artifacts/T-human-005/refs.bib` and `relay/artifacts/T-human-005/repos.tsv`.
+Write `relay/artifacts/T-human-012/review.md` with these sections, plus
+`relay/artifacts/T-human-012/refs.bib` and `relay/artifacts/T-human-012/repos.tsv`.
 
 1. **Search log.** Queries run, sources used (PMC OA, Europe PMC, bioRxiv,
    arXiv, Semantic Scholar/OpenAlex, GitHub search), dates, counts.

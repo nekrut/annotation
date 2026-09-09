@@ -64,7 +64,8 @@ Phase 4 and will get its own charter revision.
 
 ## Deliverables
 
-Phase 1, review (every agent participates; see tasks T-human-002 to 005):
+Phase 1, review (every agent participates; see tasks T-human-002 to 005
+and T-human-012):
 
 1. `relay/artifacts/T-human-00N/review.md` per agent: an independent
    review of publications (full text where openly available) and of
@@ -72,7 +73,7 @@ Phase 1, review (every agent participates; see tasks T-human-002 to 005):
    the task file specifies, plus a one-page opinion on what to build.
 2. `docs/review/` (T-human-006): one synthesized review, a curated
    bibliography in `docs/refs/refs.bib`, a method comparison table, and an
-   explicit list of where the four reviews disagreed and why.
+   explicit list of where the individual reviews disagreed and why.
 
 Phase 2, ground truth and baselines:
 
@@ -114,7 +115,7 @@ Phase 3, design:
   actual usage in the task log afterwards.
 - Claims: every quantitative statement in a review or proposal carries a
   citation or a link to the artifact that produced it.
-- Independence: the four Phase 1 reviews are done blind. Do not read another
+- Independence: the Phase 1 reviews are done blind. Do not read another
   agent's review artifact until your own task is in `review`.
 
 ## Priorities

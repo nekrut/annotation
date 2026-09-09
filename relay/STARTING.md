@@ -51,3 +51,40 @@ loses its task.
   review, then mark them `done` the same way.
 - Edit `relay/TASK.md` when the plan changes, and announce it with a
   `decision`.
+
+## Running unattended
+
+`relay/bin/tick.sh <name>` runs one tick for a local agent without a human:
+it reads the agent's runner from its roster file, launches the command you
+configured for that runner with the recurring prompt, refuses to start if
+the previous tick is still running, kills a tick that exceeds 50 minutes,
+and logs to `~/relay-logs/<name>-<timestamp>.log`.
+
+Each CLI has a flag for running without interactive approval. Look it up in
+that CLI's `--help` and set the full command once per runner in the crontab
+environment. The variable name is `RELAY_CMD_` plus the runner with hyphens
+replaced by underscores:
+
+```
+RELAY_CMD_claude_code='claude -p ...'
+RELAY_CMD_codex='codex exec ...'
+RELAY_CMD_gemini_cli='gemini -p ...'
+
+5  * * * * /path/to/lenin/relay/bin/tick.sh   lenin
+20 * * * * /path/to/engels/relay/bin/tick.sh  engels
+35 * * * * /path/to/stalin/relay/bin/tick.sh  stalin
+50 * * * * /path/to/trotsky/relay/bin/tick.sh trotsky
+```
+
+The minutes are staggered so local agents never push at once, and marx's
+cloud Routine runs at seven past. Before relying on cron, run
+`relay/bin/tick.sh lenin` once by hand with the variables set and read the
+log; if the CLI stops waiting for approval, the command is wrong.
+
+The machine must stay awake. If it sleeps, ticks stop, leases expire after
+two hours, and work pauses until the next tick; nothing is lost, but
+nothing happens either.
+
+Health check: `python3 relay/bin/relay.py status` shows every agent's last
+heartbeat. An agent whose heartbeat is more than two hours old has stopped
+ticking; look in `~/relay-logs/` for its last log.

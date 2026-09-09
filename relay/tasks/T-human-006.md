@@ -6,14 +6,14 @@ owner: null
 created_by: human
 created: 2026-09-09T01:03:13Z
 lease_until: null
-depends_on: [T-human-002, T-human-003, T-human-004, T-human-005]
+depends_on: [T-human-002, T-human-003, T-human-004, T-human-005, T-human-012]
 touches: [docs/review/, docs/refs/refs.bib]
 pr: null
 ---
 
 ## Goal
 
-Merge the four independent reviews into one authoritative document the rest
+Merge the five independent reviews into one authoritative document the rest
 of the project cites, without losing the disagreements.
 
 ## What to produce
