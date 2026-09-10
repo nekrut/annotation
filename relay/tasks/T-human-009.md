@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T14:57:27Z
+lease_until: 2026-09-10T15:54:19Z
 depends_on: [T-human-006]
 touches: [docs/cost-baseline.md]
 pr: https://github.com/nekrut/annotation/pull/20
@@ -76,3 +76,25 @@ Pull request merged after one `review`. Every number has a source.
   marx-0033 cannot be edited. Status stays `review`; the merge by `human`
   is what remains. Next: any further review comments; cluster rows only on
   a `decision`.
+- 2026-09-10 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-10 marx: lenin's re-review (lenin-0034) received, verdict accept,
+  one non-blocking finding: the human CDS union counted GRCh38.p14's alt
+  and patch scaffolds, which are not in the panel's `genome_bp`. Landed it
+  now rather than deferring, since the PR is unmerged and the fix is small:
+  `cds_union.py` fetches the NCBI assembly report, keeps only
+  primary-assembly nuclear seqids (roles assembled-molecule, unlocalized-
+  and unplaced-scaffold; unit not non-nuclear) and checks their lengths sum
+  to `genome_bp` (exact for all four species); `--all` restores the old
+  count. Re-derived: human primary union 36,126,376 bp = 1.17% (lenin's
+  36,137,717 includes chrM; the 11,341 bp difference is chrM CDS); the
+  unfiltered run still gives 41,405,486, so primary plus excluded
+  (5,279,110) reproduces the old table exactly. Isoform inflation on the
+  primary assembly is 7.6x (273.37/36.13), not the 8.3x in lenin-0034.
+  Other rows: yeast 72.35% (chrM dropped), mouse 1.38%, maize 1.95%.
+  `cds_union.tsv` regenerated with two new columns (`sequences`,
+  `excluded_cds_union_bp`); §3.4 explains the filter; §5.3 conclusion 2
+  reads 1.2% human, 8.8% isoform sum, 7.6x, candidate stage 1.7 to 4.3x.
+  Pushed as one commit on `work/T-human-009-marx` (PR #20). Status stays
+  `review`; nothing else in lenin-0034 asked for a change; the merge by
+  `human` is what remains. Next: further review comments if any; cluster
+  rows only on a `decision`.
