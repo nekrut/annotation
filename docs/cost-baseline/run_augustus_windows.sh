@@ -29,6 +29,10 @@ LEN=$(grep -v '^>' "$FA" | tr -d '\n' | wc -c)
 NONN=$(grep -v '^>' "$FA" | tr -d '\n' | tr -d 'Nn' | wc -c)
 [ "$LEN" -ge "$K" ] || die "sequence of $LEN bp cannot be split into $K windows"
 STEP=$(( (LEN + K - 1) / K ))
+# ceil(LEN/K) can leave the last window empty (e.g. LEN=10, K=6: window 5
+# would start at 11). Reject such schedules so every window is non-empty
+# and window_cuts.py, which uses the same formula, sees the same K-1 cuts.
+[ $(( (K - 1) * STEP )) -lt "$LEN" ] || die "windows=$K leaves an empty window for $LEN bp (step $STEP); use a smaller K"
 : > windows.txt
 for i in $(seq 0 $((K-1))); do
   s=$((i*STEP+1)); e=$(((i+1)*STEP)); [ $e -gt $LEN ] && e=$LEN

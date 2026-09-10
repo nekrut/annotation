@@ -271,10 +271,12 @@ way and recorded by md5 (`62e278490b49d50f79ad1379580fd0a6`, 46,709,983 bp,
 per-window exit status, CPU, memory, genes), 1,225.5 user CPU-s
 (26 CPU-s/Mb), 359 s wall, 1.69 GB peak, and the predictions are identical
 to the row's, gene for gene: 308 genes, nucleotide F1 0.69286, locus F1
-0.57509, transcript F1 0.10989, 20 fusions, 9 splits. So the reported run
-had no failed window, the accuracy figures are reproducible, and the 6%
-CPU difference between the two instances is the run-to-run and
-machine-to-machine spread to expect at this scale.
+0.57509, transcript F1 0.10989, 20 fusions, 9 splits. The audited
+replicate completed every window and reproduced the original predictions
+and accuracy figures. Its user CPU time was 6.16% higher than the original
+measurement (1,225.45 against 1,154.3 CPU-s); these two runs do not
+characterize expected timing variability or recover the original workers'
+exit statuses.
 
 CPU-s/Mb is the sum of user CPU time over all processes of the run divided
 by the genome length in megabases, so it is the same whether the sequences
@@ -332,7 +334,9 @@ memory is the largest resident set of any single process.
   with the `human` parameter set, on the genome it was trained on,
   nucleotide F1 0.693, locus F1 0.575 and transcript F1 0.110; 308
   predicted loci against 238 reference loci, 20 fusions, 9 splits, 81
-  reference loci missed. Windowing accounts for little of that.
+  reference loci missed. Only two retained reference-locus CDS spans
+  intersect a cut; the contribution of windowing to the measured error
+  remains unquantified.
   `docs/cost-baseline/window_cuts.py` reproduces the seven cut positions
   from the sequence length and window count (last base of one window |
   first of the next: 5,838,748|749; 11,677,496|497; 17,516,244|245;

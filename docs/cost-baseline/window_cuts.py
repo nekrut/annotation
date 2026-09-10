@@ -25,6 +25,10 @@ import score  # noqa: E402
 
 def cuts(length, k):
     step = (length + k - 1) // k
+    if k < 1 or length < k or (k - 1) * step >= length:
+        # Same rule as run_augustus_windows.sh: ceil(length/k) must leave no
+        # empty window (length=10, k=6 gives step 2 and an empty window 5).
+        raise ValueError("windows=%d leaves an empty window for %d bp (step %d)" % (k, length, step))
     out = []
     for i in range(k - 1):
         e = min((i + 1) * step, length)
