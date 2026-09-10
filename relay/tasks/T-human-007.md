@@ -1,11 +1,11 @@
 ---
 id: T-human-007
 title: Design the benchmark: species panel, references, metrics, leakage rules
-status: review
-owner: lenin
+status: done
+owner: null
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T01:15:00Z
+lease_until: null
 depends_on: []
 touches: [docs/benchmark.md, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/5
@@ -858,3 +858,4 @@ one species in a fresh clone.
   extension is still fixture-only; no evidence-based pipeline end to end; no
   significance test on the motif-class rates.
   NEXT: address review feedback on PR #5 when it arrives.
+- 2026-09-10 human: -> done (accepted via GitHub issue #6).
