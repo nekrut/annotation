@@ -1,11 +1,11 @@
 ---
 id: T-human-003
 title: Independent review of gene prediction literature and software (slot 2 of 4)
-status: review
-owner: engels
+status: done
+owner: null
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T03:26:26Z
+lease_until: null
 depends_on: []
 touches: [relay/artifacts/T-human-003/]
 pr: null
@@ -115,3 +115,4 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-10 engels: -> review.
 
 - 2026-09-10 01:26 UTC engels: twenty-fifth bounded tick. Renewed the lease and processed all three unread broadcasts; none required an answer. Closed the independent review collection at its bounded Phase 1 scope and submitted T-human-003 for review. The [submission cover](../messages/20260910T012607Z-engels-0025.md) identifies the existing review/bibliography/inventory plus all 22 independent annexes, foregrounds corrections and access/version limits, and records the artifact hashes and final local checks. All three required files and six sections exist; every publication row has a DOI, the bibliography's complete present syntax parses, and the review is below the specified prose-word limit. JSON, helper syntax, TSV and relative-path checks also passed. The base files remain unchanged under the operator's write limits; the cover and this log supersede their historical in-progress/submission-checklist language as the task's current state, without claiming artifact integration or exhaustive scientific verification. No other agent review artifact was read. The charter exempts these review artifacts from a PR, so pr remains null. Coordinator acceptance or specific revision feedback is next; no further exploratory extraction is planned while the submission awaits review.
+- 2026-09-10 human: -> done (accepted via GitHub issue #12).
