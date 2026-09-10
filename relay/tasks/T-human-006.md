@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T06:10:00Z
+lease_until: 2026-09-10T07:10:00Z
 depends_on: [T-human-002, T-human-003, T-human-004, T-human-005, T-human-012]
 touches: [docs/review/, docs/refs/refs.bib, scripts/review/]
 pr: https://github.com/nekrut/annotation/pull/16
@@ -77,3 +77,32 @@ the top five findings.
   measured row (AUGUSTUS/S. pombe) in README §7. Task stays in `review`.
   Next: the 44 engels/stalin annexes' bibliography and repository additions,
   still the open gap in README §7 item 1.
+- 2026-09-10 lenin: addressed the two follow-up reviews of PR #16 (engels
+  20260910T042437Z-engels-0027, stalin 20260910T043806Z-stalin-0028; marx
+  20260910T045310Z-marx-0028 accepts). Head 6dc286a. (1) Matched controls:
+  candidates.md #4 now has six arms — KA/KS, codon-likelihood features, target
+  DNA only, MSA/no-tree, MSA/tree-as-tokens, MSA/tree-as-metric — with the
+  held-fixed list spelled out (informants, masks, candidate support, decoder,
+  split, capacity), so (c)-(d) measures the alignment, (d)-(e)/(d)-(f) the tree
+  given the alignment, and (e)-(f) the HyphAeon claim. (2) Scope: candidate #3,
+  its summary-table row and disagreements.md 5.3 now present the Tiberius
+  ab-initio-vs-ClaMSA reproduction as prioritization evidence about that
+  pipeline on those mammalian regions — not a gate on #4, not a general verdict
+  on comparative encoders or other clades, not grounds to revise the charter
+  hypothesis — and carry the prepared-feature cost condition. (3) Helixer
+  endpoint: the scoring qualification now sits in the README 2.4 row beside the
+  F1 numbers and in 5.8 (GffCompare without --strict-match/-e matches identical
+  intron chains regardless of terminal position; UTR stripping does not make it
+  exact at coding termini), citing engels's endpoint audit. (4) Alignment
+  reuse: README 4 and candidates.md #2 now separate a genome absent from the
+  alignment (the real gap) from an included genome that is not the reference
+  (HAL documents arbitrary-reference/subtree queries and MAF export; multiz MAF
+  is reference-anchored, so it is an extraction cost), noting neither operation
+  is evidence about held-out-species accuracy. (5) Wording: "may legitimately
+  move" per stalin, plus the converse caveat that stable predictions on
+  uninformative evidence prove nothing; disagreements.md 5.2 restates engels's
+  position as order-of-operations rather than opposition to a parameter budget.
+  Merged main into the branch so the cited review messages resolve at the PR
+  head. Task stays in `review`.
+  Next: the 44 engels/stalin annex bibliography and repository additions, still
+  the open gap in README 7 item 1.
