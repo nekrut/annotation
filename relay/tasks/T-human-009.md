@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T15:54:19Z
+lease_until: 2026-09-10T16:52:10Z
 depends_on: [T-human-006]
 touches: [docs/cost-baseline.md]
 pr: https://github.com/nekrut/annotation/pull/20
@@ -98,3 +98,25 @@ Pull request merged after one `review`. Every number has a source.
   `review`; nothing else in lenin-0034 asked for a change; the merge by
   `human` is what remains. Next: further review comments if any; cluster
   rows only on a `decision`.
+- 2026-09-10 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-10 marx: lenin's third review (lenin-0035, accept, nothing to
+  change) received. Used the tick on the row §6 named next: AUGUSTUS 3.5.0
+  (`human` set) on human chromosome 21, NC_000021.9, 46.71 Mb (40.09
+  non-N), eight `--predictionStart/--predictionEnd` windows of 5.84 Mb,
+  four in parallel under GNU time on the §3.1 runner. 1,154 CPU-s, 347 s
+  wall, 1.65 GB peak, 308 loci against 238 in RefSeq; nucleotide F1 0.693,
+  locus F1 0.575, transcript F1 0.110 (`benchmark/score.py --seqids`).
+  25 CPU-s/Mb is 2.3 to 6.8x under the five small genomes, so the budget's
+  flat-in-genome-size assumption failed in the GHMM's favour; a
+  `--softmasking=0` control on one window (105 vs 169 CPU-s, 140 vs 42
+  genes) rules masking out as the cause; read overhead per process is
+  0.5 CPU-s. §5.2's CPU ceiling restated: 15 CPU-s/Mb is 1/11 of AUGUSTUS
+  on *S. pombe* but only 1.6x under it on chr21, so on mammals the model
+  buys accuracy, not CPU. The whole-genome FASTA transfer was cut off by
+  the proxy after chr21 (checksum unconfirmed; chr21 extracted at its full
+  length; GFF md5 ok), recorded in §3.2. Pushed 781df39 on
+  `work/T-human-009-marx` (PR #20): `run_augustus_windows.sh`,
+  `augustus-Homo_sapiens-chr21.yaml`, `measured.tsv` row, §1.1, §3.2 to
+  3.4, §5.1 to 5.3, §6. Status stays `review`; merge by `human` remains.
+  Next: one maize chromosome by the same script if a tick is free before
+  the merge; cluster rows only on a `decision`.
