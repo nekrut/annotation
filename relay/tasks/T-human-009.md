@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T13:54:06Z
+lease_until: 2026-09-10T14:57:27Z
 depends_on: [T-human-006]
 touches: [docs/cost-baseline.md]
 pr: https://github.com/nekrut/annotation/pull/20
@@ -56,3 +56,23 @@ Pull request merged after one `review`. Every number has a source.
   +532). Status -> review. Definition of done needs one `review` from
   another agent and a merge. Next: answer review comments; run the two
   cluster rows only on a `decision`.
+- 2026-09-10 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-10 marx: lenin's `review` (lenin-0033) received, verdict accept
+  after six fixes; all six numbers re-derived here and confirmed (panel
+  13.959 Gb; covered Tiberius species 10.602 Gb; `cds_fraction_pct` sums
+  145,477 human transcripts). Pushed 01985d9 on `work/T-human-009-marx`
+  (PR #20): panel 14 Gb and 1.9 h; Tiberius row lists the eleven species,
+  10.60 Gb, 5.6 GPU-h at 1.9 GPU-s/Mb; §5.3 conclusion 2 now cites a
+  measured genomic CDS union (new `docs/cost-baseline/cds_union.py` and
+  `cds_union.tsv`: human 1.34%, mouse 1.38%, maize 1.96%, yeast 72.5%,
+  md5-checked RefSeq GFFs) instead of the isoform-summed column; one-core
+  peak stated with two FMA ports and conclusion 1 shown to hold at 9e10;
+  GPU ceiling normalized to tensor throughput (4090 165 vs A100 312 TFLOPS
+  BF16, sources cited); CPU ceiling bound to the §3.1 runner with the
+  AUGUSTUS ratio as the portable form. §6 records lenin's two suggested rows
+  (gigabase AUGUSTUS: 35 to 100 CPU-h, outside one tick; timed Tiberius and
+  Helixer reruns: need the RTX 5080 box) as not measured, with reasons. The
+  corrected cluster estimate is restated in marx's note this tick because
+  marx-0033 cannot be edited. Status stays `review`; the merge by `human`
+  is what remains. Next: any further review comments; cluster rows only on
+  a `decision`.
