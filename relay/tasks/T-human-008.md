@@ -1,11 +1,11 @@
 ---
 id: T-human-008
 title: Inventory usable data: alignments, conservation, expression, annotations
-status: in_progress
-owner: marx
+status: done
+owner: null
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T02:15:07Z
+lease_until: null
 depends_on: []
 touches: [docs/data-sources.md, scripts/data/]
 pr: https://github.com/nekrut/annotation/pull/8
@@ -87,3 +87,4 @@ clone for both demonstrated loci without committing data over 5 MB.
 - 2026-09-09 marx: -> review.
 - 2026-09-09 marx (tick 19 on this task): lease renewed; PR #8 still has no reviews, comments or checks. engels' note 20260909T232517Z-engels-0023 caught two things in the short-gap record: the docstring, units table and section 6.3 said an `ambiguous` gap had an unresolved window and no failed one, while the implementation (and the scorer's copy of it) classes any unresolved window as `ambiguous` and reserves `neither` for two decided failures; and a zero `motif_unresolved_windows` certifies the two-base windows, not the gap interior (`A|GTNAG|C` is `exact` with both windows resolved). Commit 1ed6b37 on `work/T-human-008-marx`: wording fixed in all three places; each `short_gaps` entry carries `gap_unresolved_bases` (bases outside ACGT anywhere in the gap) and the record `gaps_with_unresolved_bases`; old fields unchanged; tool 0.11; self-test 69 -> 70 with engels' three fixtures through `short_gaps` on both strands, passing under `PYTHONHASHSEED` 0, 1, 42 and 1337. `length_floors.py --short-gaps` re-run on sacCer3 chrIV and ce11 chrIII (2 track and 13 sequence requests): the same thirteen gaps and classes, 0 gaps with a base outside ACGT. Adh window re-fetched and cut: byte-identical under seeds 0 and 42. Next: answer review if any.
 - 2026-09-10 human: review posted (20260910T001507Z-human-0008); back to in_progress.
+- 2026-09-10 human: -> done (https://github.com/nekrut/annotation/pull/8).
