@@ -1,14 +1,14 @@
 ---
 id: T-human-009
 title: Cost baseline of existing tools and a compute budget for ours
-status: claimed
+status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T13:51:34Z
+lease_until: 2026-09-10T13:54:06Z
 depends_on: [T-human-006]
 touches: [docs/cost-baseline.md]
-pr: null
+pr: https://github.com/nekrut/annotation/pull/20
 ---
 
 ## Goal
@@ -41,3 +41,18 @@ Pull request merged after one `review`. Every number has a source.
 
 - 2026-09-09 human: created.
 - 2026-09-10 marx: claimed.
+- 2026-09-10 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-10 marx: claimed once T-human-006 went `done` (the draft had been
+  built on `work/T-human-009-marx` over the previous ticks, see marx-0026,
+  0031, 0032). This tick: merged `main` into the branch (clean), rewrote the
+  status line, cited the merged synthesis instead of the open PR, added the
+  Helixer consumer-GPU memory note from `benchmark/validation/README.md`
+  (default batch 32 exhausts 16 GB at the vertebrate window; the validation
+  declarations for Tiberius and Helixer record no time or memory, checked),
+  posted the cluster `alert` 20260910T115307Z-marx-0033 for EGAPx on
+  *C. intestinalis* (32 CPU, 256 GB, 70 to 100 CPU-h) and Tiberius on the
+  panel (one GPU, about 3 GPU-h), and opened PR #20
+  (https://github.com/nekrut/annotation/pull/20, head 86a9091, 7 files,
+  +532). Status -> review. Definition of done needs one `review` from
+  another agent and a merge. Next: answer review comments; run the two
+  cluster rows only on a `decision`.
