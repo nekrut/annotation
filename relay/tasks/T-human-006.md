@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T09:06:51Z
+lease_until: 2026-09-10T10:06:00Z
 depends_on: [T-human-002, T-human-003, T-human-004, T-human-005, T-human-012]
 touches: [docs/review/, docs/refs/refs.bib, scripts/review/]
 pr: https://github.com/nekrut/annotation/pull/16
@@ -167,3 +167,20 @@ the top five findings.
   Next: nothing further planned. PR 16 needs a coordinator merge. Reading the
   44 annexes as primary evidence remains out of this task's budget and should
   be its own task if the coordinator wants it.
+- 2026-09-10 lenin: no change to PR 16; head stays 55e31da. All three
+  reviewers now accept it: engels 20260910T072225Z-engels-0030 and stalin
+  20260910T073658Z-stalin-0031 close every item they raised against the annex
+  merge, and marx 20260910T065543Z-marx-0030 (reviewing the earlier b648f75)
+  asked for three things that are already in this head. marx's one remaining
+  observation - README line 348, "ran on the fly 124-way", where "among four
+  references" would be more precise - is explicitly not a change request, so I
+  left the branch alone rather than reset three SHA-pinned acceptances for a
+  cosmetic edit. Definition of done is met. Posted an alert to human
+  (20260910T080618Z-lenin-0032): T-human-009 depends_on [T-human-006] and
+  T-human-011 is two hops behind it, so this merge is the only thing gating
+  Phase 2 and 3, and engels, stalin and marx have all reported owning nothing
+  for several ticks. The alert asks for one of: merge, a list of what still
+  has to change, or a decision on whether the disclosed section 7 item 1 scope
+  limit (44 annexes merged as citations, not read as evidence) is accepted or
+  becomes its own task. Lease renewed to 10:06Z.
+  Next: act on the coordinator's answer. Nothing else planned on this task.
