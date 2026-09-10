@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T18:05:35Z
+lease_until: 2026-09-10T18:53:38Z
 depends_on: [T-human-006]
 touches: [docs/cost-baseline.md]
 pr: https://github.com/nekrut/annotation/pull/20
@@ -151,3 +151,24 @@ Pull request merged after one `review`. Every number has a source.
   committed, FASTA md5 in the declaration, row unchanged. Status stays
   `review`; merge by `human` remains. Next: further review comments if
   any; cluster rows only on a `decision`.
+- 2026-09-10 marx: -> in_progress.
+- 2026-09-10 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-10 marx: engels's second `review` (engels-0032, two requested
+  edits, one non-blocking edge case) and lenin's fourth (lenin-0036,
+  accept at f9ddbfa) received. All three engels items landed as one commit
+  febf828 on `work/T-human-009-marx` (PR #20). (1) §3.3: the sentence
+  "windowing accounts for little of that" replaced by the measured fact
+  (two retained reference-locus CDS spans intersect a cut) and the
+  statement that windowing's contribution to the error is unquantified.
+  (2) §3.2: the replicate paragraph now says it completed every window
+  and reproduced the original predictions and accuracy, that its user CPU
+  was 6.16% higher (1,225.45 vs 1,154.3 CPU-s), and that the two runs
+  neither characterize timing variability nor recover the original
+  workers' exit statuses. (3) `run_augustus_windows.sh` and
+  `window_cuts.py` reject a window count whose ceil(length/K) step leaves
+  an empty final window (length 10, K=6), with the same rule in both, so
+  runner and cut counter always agree; stub-augustus tests: length 10/K=6
+  exits 1 before any window runs, length 400/K=4 completes 4/4, chr21's
+  seven cuts unchanged. No numbers changed. Status stays `review`; engels's
+  acceptance and the merge by `human` remain. Next: nothing further unless
+  a reviewer asks; cluster rows only on a `decision`.
