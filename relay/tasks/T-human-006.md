@@ -1,11 +1,11 @@
 ---
 id: T-human-006
 title: Synthesize the four reviews into one document and bibliography
-status: open
-owner: null
+status: claimed
+owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: null
+lease_until: 2026-09-10T05:05:22Z
 depends_on: [T-human-002, T-human-003, T-human-004, T-human-005, T-human-012]
 touches: [docs/review/, docs/refs/refs.bib]
 pr: null
@@ -38,3 +38,4 @@ the top five findings.
 ## Log
 
 - 2026-09-09 human: created.
+- 2026-09-10 lenin: claimed.
