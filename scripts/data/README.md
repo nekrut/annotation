@@ -30,7 +30,7 @@ is a prompt to look, not an error.
 | Run | Assembly | Window (0-based, half-open, flank 500 included) | Alignment | Blocks | Sources | Transcripts | Download / requests | MAF bytes | MAF sha256[:16] |
 |---|---|---|---|---|---|---|---|---|---|
 | HBB_470 | hg38 | chr11:5224964-5229895 | multiz470way (bigMaf via API) | 241 | 461 | 1 | 15.8 MB / 7 | 15,359,758 | 7a85a363d5b240c7 |
-| HBB_241 | hg38, locus given as `NC_000011.10` | chr11:5224964-5229895 | cactus241wayBM (bigMaf via API; RefSeq name resolved through chromAlias) | 2517 | 240 | 1 | 68.6 MB / 9 | 67,775,774 | 0753bfed06589869 |
+| HBB_241 (kept for the record; the Cactus tracks are excluded from the inventory for now, `docs/data-sources.md` section 5) | hg38, locus given as `NC_000011.10` | chr11:5224964-5229895 | cactus241wayBM (bigMaf via API; RefSeq name resolved through chromAlias) | 2517 | 240 | 1 | 68.6 MB / 9 | 67,775,774 | 0753bfed06589869 |
 | Adh_124 | dm6 | chr2L:14615052-14619402 | multiz124way (wigMaf index + Range reads) | 352 | 89 | 12 | 4.6 MB / 11 | 3,398,732 | e4f6282ff8e9043b |
 | TP53_100 | hg38 | chr17:7667921-7687990 | multiz100way (wigMaf index + Range reads) | 1021 | 100 | 28 | 9.1 MB / 14 | 7,252,181 | f6a925b3be471e0d |
 | ATP5PO_kg | hg38 | chr21:33901026-33915853 | multiz100way (wigMaf index + Range reads), `--annotation knownGene` | 998 | 100 | 53 | 9.8 MB / 15 | 7,975,753 | c65620e6d9224180 |

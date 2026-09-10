@@ -22,7 +22,7 @@ them: `train`, `heldout`, `heldout_paired`.
 | UCSC Genome Browser | multiz and Cactus multiple alignments referenced on human, mouse, chicken, fly, worm, yeast, with trees; phyloP and phastCons; RefSeq annotation for 238 native assemblies and 52,623 GenArk assembly hubs; expression, regulation and variation tracks for human and mouse | alignments for 6 of 20 panel species (some on older assemblies); RefSeq annotation for 19 of 20 | JSON API (`api.genome.ucsc.edu`), rsync/https (`hgdownload.soe.ucsc.edu`), public MySQL | no licence needed for data; API guidance is about one request per second, `maxItemsOutput` at most 1,000,000 |
 | Ensembl Compara (release 116) | EPO, EPO-extended, PECAN and Cactus multiple alignments for vertebrates with per-block trees and inferred ancestral sequences; GERP scores and constrained elements; Ensembl annotation | human, mouse, chicken (same assembly as the panel), zebrafish, fugu, frog, ciona (some on older assemblies); nothing for invertebrates, plants, fungi, protists beyond rice | REST (`rest.ensembl.org`), FTP MAF/EMF dumps | open data; REST limit 55,000 requests per hour per client (response header) |
 | NCBI RefSeq / GenBank | the panel's reference annotations and genomes with MD5 sums; taxonomy | all 20 | https/FTP, Datasets, E-utilities | public domain; E-utilities 3 requests per second without an API key |
-| Zoonomia / Cactus consortia | 241-mammal Cactus HAL (2020) and 447-way (2023) alignments; phyloP from them | human (and any mammal in the HAL, via `halLiftover`) | https (UCSC CGL), UCSC tracks | open; HAL tools needed for anything but the hg38-referenced bigMaf |
+| Zoonomia / Cactus consortia (**excluded for now**, decision 20260910T004401Z-human-0009: too fragmented to rely on; section 5) | 241-mammal Cactus HAL (2020) and 447-way (2023) alignments; phyloP from them | human (and any mammal in the HAL, via `halLiftover`) | https (UCSC CGL), UCSC tracks | open; HAL tools needed for anything but the hg38-referenced bigMaf |
 | Community databases in the panel | FlyBase, WormBase, TAIR/Araport, SGD, PomBase annotations; VEuPathDB RNA-seq for Plasmodium | as listed in `panel.tsv` | through NCBI RefSeq mirrors and GenArk `contrib` tracks | per-database, all open |
 
 The headline: **public multiple alignments exist only for vertebrates,
@@ -59,8 +59,8 @@ under `/gbdb/` with HTTP `Accept-Ranges: bytes` (verified with HEAD). The
 | hg38 | multiz100way | multiz | 2015 | 100 | maf.gz per chromosome + `.nh` | 71.4 GB (357 files) | 790 GB | human `heldout_paired` |
 | hg38 | multiz30way | multiz | 2017 | 30 | maf.gz + `.nh` | 18.0 GB | 156 GB | human |
 | hg38 | multiz470way | multiz | 2022 | 470 (mammals only; 431 distinct species) | bigMaf (API) + uncompressed `maf/` per chromosome + `.nh` | none | 5.9 TB (499 files) | human; largest mammal set |
-| hg38 | cactus241way (`cactus241wayBM`) | Cactus (Zoonomia) | 2020 | 241 mammals | bigMaf (API) + `.nh`; phyloP bigWig 9.6 GB | n/a | n/a | human |
-| hg38 | cactus447way | Cactus (Zoonomia + primates) | 2023 | 447 | bigMaf (API) + `.nh.txt`; phyloP bigWig 10.0 GB | n/a | n/a | human |
+| hg38 | cactus241way (`cactus241wayBM`) | Cactus (Zoonomia) | 2020 | 241 mammals | bigMaf (API) + `.nh`; phyloP bigWig 9.6 GB | n/a | n/a | human; **excluded for now** (decision 20260910T004401Z-human-0009) |
+| hg38 | cactus447way | Cactus (Zoonomia + primates) | 2023 | 447 | bigMaf (API) + `.nh.txt`; phyloP bigWig 10.0 GB | n/a | n/a | human; **excluded for now** (decision 20260910T004401Z-human-0009) |
 | mm39 | multiz35way | multiz | 2021 | 35 | maf.gz + `.nh` | 16.3 GB | 141 GB | mouse `train` |
 | galGal6 | multiz77way | multiz | 2019 | 77 | maf.gz + `.nh` | 34.9 GB | 334 GB | chicken `heldout`, but GRCg6a, not the panel's GRCg7b |
 | dm6 | multiz124way | multiz | 2019 | 124 insects | maf.gz + `.nh` | 5.4 GB | 63.6 GB | fly `train` |
@@ -305,7 +305,20 @@ NCBI record.
   that is created by or for the US government on this site is within the
   public domain").
 
-## 5. Zoonomia and the large Cactus alignments
+## 5. Zoonomia and the large Cactus alignments (excluded for now)
+
+**Status.** Excluded from the inventory by coordinator decision 20260910T004401Z-human-0009
+(review of T-human-008): the Zoonomia Cactus alignments are too fragmented
+to rely on for now. The HBB measurement in section 6.3 is the evidence on
+record (2,517 blocks over 4,931 bp, a median block of about 2 bp, and
+duplicated rows in 2,513 of the blocks) and is kept there as a finding
+made on an alignment we are not using. No script under `scripts/data/`
+defaults to a Cactus track (`fetch_window.py` defaults to `multiz470way`
+on hg38 and otherwise to the first multiz `*way` track); `cut_windows.py`
+still classifies the `cactus*` names as jointly inferred so that a window
+fetched from one on purpose is handled correctly. The paragraphs below
+record what exists and how to reach it, for when the exclusion is
+revisited.
 
 - `241-mammalian-2020v2.hal`, the Zoonomia Cactus alignment (Zoonomia
   Consortium 2020, doi:10.1038/s41586-020-2876-6; conservation in Christmas
@@ -933,7 +946,9 @@ into examples of fixed reference length `L` (default 4,096) with stride `S`
   `bases` per informant), which is the one unit comparable with the
   example itself, so the sidecar also reports
   `kept_informant_bases_in_window`, the cells of the example that hold a
-  base. Measured on 2026-09-09: the human HBB window on the
+  base. Measured on 2026-09-09 on an alignment the inventory has since
+  excluded (section 5; the numbers stay as a recorded finding): the human
+  HBB window on the
   Cactus 241-way (4,931 bp, 2,517 blocks, 240 informants) has **no**
   overlapping blocks and no minus-strand reference rows, but 2,513 of
   its 2,517 blocks carry a duplicated species, up to 17 copies of one
@@ -1085,7 +1100,7 @@ Applying them to what exists:
 
 | Panel species | Split | Public multiple alignment referenced on it | Conservation | Fit |
 |---|---|---|---|---|
-| human | heldout_paired | hg38 100/30/470-way, Cactus 241/447, Ensembl mammals/primates/amniotes | phyloP, phastCons | evaluation only; any of these is a declarable informant set at inference. Not usable to train, because training on human windows means training on human labels |
+| human | heldout_paired | hg38 100/30/470-way, Ensembl mammals/primates/amniotes (Cactus 241/447 excluded for now, section 5) | phyloP, phastCons | evaluation only; any of these is a declarable informant set at inference. Not usable to train, because training on human windows means training on human labels |
 | mouse | train | mm39 35-way; Ensembl 44/92-mammal EPO and 22-murinae re-referenced on mouse | mm39 phyloP35way | training source, but every one of these alignments contains human (held-out) sequence. For the 35-way (multiz) drop the `hg38` row at cut time and declare it in `alignment_rows_dropped`; the EPO sets are jointly inferred, so dropping the row is not enough and they would have to be rebuilt |
 | chicken | heldout | Ensembl sauropsids EPO on GRCg7b (exact panel assembly); galGal6 77-way (older assembly, liftover needed) | galGal6 phyloP77way only | evaluation with a declared informant set; the sauropsid set contains no other panel species |
 | zebrafish | train | Ensembl fish EPO on GRCz11 (panel is GRCz12ab; `docs/benchmark.md` section 2.4 keeps it there) | none on either assembly (danRer11 has no `*way`, phyloP or phastCons track; GRCz12ab has no hub yet) | no usable training alignment: both fish EPO sets (32 and 65 species) contain fugu (held-out) and are jointly inferred, so under section 3.2 they must be rebuilt without fugu whichever assembly zebrafish sits on; dropping the row does not qualify. Lifting to GRCz11 through UCSC's `danRer11ToGCA_052040795.1.over.chain.gz` buys only that same unusable alignment and was rejected in section 2.4. Counts with the thirteen in section 8 |
