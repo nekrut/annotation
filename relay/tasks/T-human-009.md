@@ -1,14 +1,14 @@
 ---
 id: T-human-009
 title: Cost baseline of existing tools and a compute budget for ours
-status: claimed
+status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T13:51:34Z
+lease_until: 2026-09-10T16:52:10Z
 depends_on: [T-human-006]
 touches: [docs/cost-baseline.md]
-pr: null
+pr: https://github.com/nekrut/annotation/pull/20
 ---
 
 ## Goal
@@ -41,3 +41,82 @@ Pull request merged after one `review`. Every number has a source.
 
 - 2026-09-09 human: created.
 - 2026-09-10 marx: claimed.
+- 2026-09-10 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-10 marx: claimed once T-human-006 went `done` (the draft had been
+  built on `work/T-human-009-marx` over the previous ticks, see marx-0026,
+  0031, 0032). This tick: merged `main` into the branch (clean), rewrote the
+  status line, cited the merged synthesis instead of the open PR, added the
+  Helixer consumer-GPU memory note from `benchmark/validation/README.md`
+  (default batch 32 exhausts 16 GB at the vertebrate window; the validation
+  declarations for Tiberius and Helixer record no time or memory, checked),
+  posted the cluster `alert` 20260910T115307Z-marx-0033 for EGAPx on
+  *C. intestinalis* (32 CPU, 256 GB, 70 to 100 CPU-h) and Tiberius on the
+  panel (one GPU, about 3 GPU-h), and opened PR #20
+  (https://github.com/nekrut/annotation/pull/20, head 86a9091, 7 files,
+  +532). Status -> review. Definition of done needs one `review` from
+  another agent and a merge. Next: answer review comments; run the two
+  cluster rows only on a `decision`.
+- 2026-09-10 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-10 marx: lenin's `review` (lenin-0033) received, verdict accept
+  after six fixes; all six numbers re-derived here and confirmed (panel
+  13.959 Gb; covered Tiberius species 10.602 Gb; `cds_fraction_pct` sums
+  145,477 human transcripts). Pushed 01985d9 on `work/T-human-009-marx`
+  (PR #20): panel 14 Gb and 1.9 h; Tiberius row lists the eleven species,
+  10.60 Gb, 5.6 GPU-h at 1.9 GPU-s/Mb; §5.3 conclusion 2 now cites a
+  measured genomic CDS union (new `docs/cost-baseline/cds_union.py` and
+  `cds_union.tsv`: human 1.34%, mouse 1.38%, maize 1.96%, yeast 72.5%,
+  md5-checked RefSeq GFFs) instead of the isoform-summed column; one-core
+  peak stated with two FMA ports and conclusion 1 shown to hold at 9e10;
+  GPU ceiling normalized to tensor throughput (4090 165 vs A100 312 TFLOPS
+  BF16, sources cited); CPU ceiling bound to the §3.1 runner with the
+  AUGUSTUS ratio as the portable form. §6 records lenin's two suggested rows
+  (gigabase AUGUSTUS: 35 to 100 CPU-h, outside one tick; timed Tiberius and
+  Helixer reruns: need the RTX 5080 box) as not measured, with reasons. The
+  corrected cluster estimate is restated in marx's note this tick because
+  marx-0033 cannot be edited. Status stays `review`; the merge by `human`
+  is what remains. Next: any further review comments; cluster rows only on
+  a `decision`.
+- 2026-09-10 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-10 marx: lenin's re-review (lenin-0034) received, verdict accept,
+  one non-blocking finding: the human CDS union counted GRCh38.p14's alt
+  and patch scaffolds, which are not in the panel's `genome_bp`. Landed it
+  now rather than deferring, since the PR is unmerged and the fix is small:
+  `cds_union.py` fetches the NCBI assembly report, keeps only
+  primary-assembly nuclear seqids (roles assembled-molecule, unlocalized-
+  and unplaced-scaffold; unit not non-nuclear) and checks their lengths sum
+  to `genome_bp` (exact for all four species); `--all` restores the old
+  count. Re-derived: human primary union 36,126,376 bp = 1.17% (lenin's
+  36,137,717 includes chrM; the 11,341 bp difference is chrM CDS); the
+  unfiltered run still gives 41,405,486, so primary plus excluded
+  (5,279,110) reproduces the old table exactly. Isoform inflation on the
+  primary assembly is 7.6x (273.37/36.13), not the 8.3x in lenin-0034.
+  Other rows: yeast 72.35% (chrM dropped), mouse 1.38%, maize 1.95%.
+  `cds_union.tsv` regenerated with two new columns (`sequences`,
+  `excluded_cds_union_bp`); §3.4 explains the filter; §5.3 conclusion 2
+  reads 1.2% human, 8.8% isoform sum, 7.6x, candidate stage 1.7 to 4.3x.
+  Pushed as one commit on `work/T-human-009-marx` (PR #20). Status stays
+  `review`; nothing else in lenin-0034 asked for a change; the merge by
+  `human` is what remains. Next: further review comments if any; cluster
+  rows only on a `decision`.
+- 2026-09-10 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-10 marx: lenin's third review (lenin-0035, accept, nothing to
+  change) received. Used the tick on the row §6 named next: AUGUSTUS 3.5.0
+  (`human` set) on human chromosome 21, NC_000021.9, 46.71 Mb (40.09
+  non-N), eight `--predictionStart/--predictionEnd` windows of 5.84 Mb,
+  four in parallel under GNU time on the §3.1 runner. 1,154 CPU-s, 347 s
+  wall, 1.65 GB peak, 308 loci against 238 in RefSeq; nucleotide F1 0.693,
+  locus F1 0.575, transcript F1 0.110 (`benchmark/score.py --seqids`).
+  25 CPU-s/Mb is 2.3 to 6.8x under the five small genomes, so the budget's
+  flat-in-genome-size assumption failed in the GHMM's favour; a
+  `--softmasking=0` control on one window (105 vs 169 CPU-s, 140 vs 42
+  genes) rules masking out as the cause; read overhead per process is
+  0.5 CPU-s. §5.2's CPU ceiling restated: 15 CPU-s/Mb is 1/11 of AUGUSTUS
+  on *S. pombe* but only 1.6x under it on chr21, so on mammals the model
+  buys accuracy, not CPU. The whole-genome FASTA transfer was cut off by
+  the proxy after chr21 (checksum unconfirmed; chr21 extracted at its full
+  length; GFF md5 ok), recorded in §3.2. Pushed 781df39 on
+  `work/T-human-009-marx` (PR #20): `run_augustus_windows.sh`,
+  `augustus-Homo_sapiens-chr21.yaml`, `measured.tsv` row, §1.1, §3.2 to
+  3.4, §5.1 to 5.3, §6. Status stays `review`; merge by `human` remains.
+  Next: one maize chromosome by the same script if a tick is free before
+  the merge; cluster rows only on a `decision`.
