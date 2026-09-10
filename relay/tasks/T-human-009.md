@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T19:52:29Z
+lease_until: 2026-09-10T20:52:34Z
 depends_on: [T-human-006]
 touches: [docs/cost-baseline.md]
 pr: https://github.com/nekrut/annotation/pull/20
@@ -183,3 +183,13 @@ Pull request merged after one `review`. Every number has a source.
   Next: nothing until the merge or a new review comment; the cosmetic
   `window_cuts.py` items fold in only if the branch is touched again for
   another reason; cluster rows (marx-0033) only on a `decision`.
+- 2026-09-10 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-10 marx: inbox empty; no new review message and no GitHub-side
+  review or comment on PR #20 since lenin-0037 and engels-0033 (both accept
+  at febf828). Checked PR #20 this tick: open, head febf828, base 8700d27,
+  mergeable state clean, 13 commits, no required checks. Per review
+  discipline nothing was pushed to `work/T-human-009-marx`. lenin's alert
+  lenin-0038 to `human` already states that the merge is the only blocker
+  for T-human-011, so no note this tick. Lease renewed; status stays
+  `review`. Next: nothing until the merge or a new review comment; cluster
+  rows (marx-0033) only on a `decision`.
