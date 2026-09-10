@@ -1,0 +1,16 @@
+{
+  "cds_seen": 258082,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 25728,
+  "cds_shifted_minus": 13015,
+  "cds_shifted_plus": 12713,
+  "child_lines_dropped": 60185,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Arabidopsis_thaliana.degraded.gff3",
+  "reference": "/tmp/panel/Arabidopsis_thaliana//GCF_000001735.4_TAIR10.1_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 7,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 5963,
+  "transcripts_seen": 60334
+}

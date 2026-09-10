@@ -1,0 +1,16 @@
+{
+  "cds_seen": 9310,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 981,
+  "cds_shifted_minus": 504,
+  "cds_shifted_plus": 477,
+  "child_lines_dropped": 2803,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Schizosaccharomyces_pombe.degraded.gff3",
+  "reference": "/tmp/panel/Schizosaccharomyces_pombe//GCF_000002945.2_ASM294v3_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 4,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 1291,
+  "transcripts_seen": 12655
+}

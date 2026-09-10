@@ -1,0 +1,16 @@
+{
+  "cds_seen": 1164006,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 116302,
+  "cds_shifted_minus": 59881,
+  "cds_shifted_plus": 56421,
+  "child_lines_dropped": 300252,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Danio_rerio.degraded.gff3",
+  "reference": "/tmp/panel/Danio_rerio//GCF_052040795.1_GRCz12ab_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 26,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 12858,
+  "transcripts_seen": 130434
+}

@@ -1,0 +1,10 @@
+model: AUGUSTUS 3.5.0 (bioconda augustus-3.5.0-pl5321h5653ebf_10), --species=saccharomyces_cerevisiae_S288C --gff3=on --genemodel=complete --UTR=off
+training_species: [Saccharomyces_cerevisiae]
+pretraining_corpus: none
+heldout_seen_in_pretraining: {Saccharomyces_cerevisiae: yes}
+protein_db: none
+alignment: none
+alignment_rows_dropped: none
+informants: none
+rnaseq: none
+hardware: AMD/Intel x86-64, 24 cores, 62 GB RAM, no GPU; 17 chromosomes run in parallel

@@ -1,0 +1,10 @@
+model: GENCODE 50 (Ensembl 116) primary-assembly annotation, scored as a submitted prediction; sequence names rewritten chr*/GenBank -> RefSeq accession from GCF_000001405.40_GRCh38.p14_assembly_report.txt, no other change
+training_species: [Homo_sapiens]
+pretraining_corpus: none (manual and evidence-based annotation, not a trained model)
+heldout_seen_in_pretraining: {Homo_sapiens: yes}
+protein_db: not applicable
+alignment: not applicable
+alignment_rows_dropped: none
+informants: not applicable
+rnaseq: not applicable
+hardware: not applicable (no prediction was run; a released annotation file was scored)

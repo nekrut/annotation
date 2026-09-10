@@ -1,0 +1,16 @@
+{
+  "cds_seen": 184526,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 18454,
+  "cds_shifted_minus": 9086,
+  "cds_shifted_plus": 9368,
+  "child_lines_dropped": 41940,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Caenorhabditis_elegans.degraded.gff3",
+  "reference": "/tmp/panel/Caenorhabditis_elegans//GCF_000002985.6_WBcel235_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 7,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 4017,
+  "transcripts_seen": 40968
+}

@@ -1,0 +1,16 @@
+{
+  "cds_seen": 27052,
+  "cds_shift_refused_at_sequence_end": 1,
+  "cds_shifted": 2747,
+  "cds_shifted_minus": 1372,
+  "cds_shifted_plus": 1375,
+  "child_lines_dropped": 6225,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Dictyostelium_discoideum.degraded.gff3",
+  "reference": "/tmp/panel/Dictyostelium_discoideum//GCF_000004695.1_dicty_2.7_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 41,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 1410,
+  "transcripts_seen": 13782
+}

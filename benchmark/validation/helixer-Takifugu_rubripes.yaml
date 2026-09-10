@@ -1,0 +1,10 @@
+model: Helixer 0.3.7 (docker gglyptodon/helixer-docker:helixer_v0.3.7_cuda_12.2.2-cudnn8), --lineage vertebrate, weights vertebrate_v0.3_m_0080.h5 (sha256 de29b6baade3630999b77fbe90e43e76bf8a18f21633c9781a32ec927061b370), subsequence length 213840, HelixerPost defaults
+training_species: [see pretraining_corpus]
+pretraining_corpus: Helixer vertebrate model, 31 training and 284 validation species listed in docs/model_overview.md at usadellab/Helixer d17bb496b8842542590644b2437798711c0125d5
+heldout_seen_in_pretraining: {Takifugu_rubripes: yes}
+protein_db: none
+alignment: none
+alignment_rows_dropped: none
+informants: none
+rnaseq: none
+hardware: x86-64, 24 cores, 62 GB RAM, 1x NVIDIA RTX 5080 16 GB (sm_120; TF 2.15.1 has no sm_120 cubins, kernels JIT-compiled from PTX by the driver)

@@ -1,0 +1,16 @@
+{
+  "cds_seen": 204126,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 20368,
+  "cds_shifted_minus": 9652,
+  "cds_shifted_plus": 10716,
+  "child_lines_dropped": 48883,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Apis_mellifera.degraded.gff3",
+  "reference": "/tmp/panel/Apis_mellifera//GCF_003254395.2_Amel_HAv3.1_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 177,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 2823,
+  "transcripts_seen": 28368
+}

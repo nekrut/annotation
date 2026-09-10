@@ -1,0 +1,360 @@
+{
+ "codon": {
+  "predicted_partial_3prime": 3,
+  "predicted_partial_5prime": 7,
+  "predicted_partial_source": "range_attribute",
+  "reference_partial_3prime": 4,
+  "reference_partial_5prime": 9,
+  "start": {
+   "f1": 0.95056,
+   "fn": 939,
+   "fp": 0,
+   "precision": 1.0,
+   "sensitivity": 0.90577,
+   "tp": 9026
+  },
+  "stop": {
+   "f1": 0.85219,
+   "fn": 1795,
+   "fp": 992,
+   "precision": 0.8901,
+   "sensitivity": 0.81738,
+   "tp": 8034
+  },
+  "stop_codon_convention_detected": "unknown",
+  "stop_codon_convention_from_genome": "unknown",
+  "stop_codon_convention_source": "assumed",
+  "stop_codon_inside_cds": true,
+  "stop_inside_cds": 0,
+  "stop_outside_cds": 0,
+  "transcripts_stop_extended_by_3bp": 0,
+  "transcripts_stop_merged_from_feature": 0,
+  "transcripts_stop_not_extended_partial": 0,
+  "transcripts_with_stop_codon_feature": 0
+ },
+ "declaration": {
+  "model": "benchmark/degrade.py at seed 20260909, --drop-transcripts 0.10 --shift-cds 0.10 (synthetic control, not a predictor)",
+  "path": "decl.yaml",
+  "sha256": "aa90d85ab36ad3ff70d244ef5da656594d743cecfa60e25a47c49f0933c482ce"
+ },
+ "exon": {
+  "all": {
+   "f1": 0.85439,
+   "fn": 4650,
+   "fp": 2644,
+   "precision": 0.89003,
+   "sensitivity": 0.8215,
+   "tp": 21400
+  },
+  "by_type": {
+   "initial": {
+    "f1": 0.852,
+    "fn": 1425,
+    "fp": 802,
+    "precision": 0.8888,
+    "sensitivity": 0.81812,
+    "tp": 6410
+   },
+   "internal": {
+    "f1": 0.85941,
+    "fn": 1400,
+    "fp": 849,
+    "precision": 0.89007,
+    "sensitivity": 0.8308,
+    "tp": 6874
+   },
+   "single": {
+    "f1": 0.8457,
+    "fn": 433,
+    "fp": 214,
+    "precision": 0.8923,
+    "sensitivity": 0.80372,
+    "tp": 1773
+   },
+   "terminal": {
+    "f1": 0.85387,
+    "fn": 1392,
+    "fp": 779,
+    "precision": 0.89062,
+    "sensitivity": 0.82004,
+    "tp": 6343
+   }
+  },
+  "predicted_overlap_no_boundary": 86,
+  "predicted_overlap_no_boundary_frac": 0.00358
+ },
+ "locus": {
+  "f1": 0.95077,
+  "fn": 913,
+  "fp": 0,
+  "fusion": 0,
+  "precision": 1.0,
+  "predicted_loci": 8816,
+  "reference_loci": 9729,
+  "reference_overlapping_locus_pairs": 0,
+  "sensitivity": 0.90616,
+  "split": 0,
+  "tp": 8816
+ },
+ "nucleotide": {
+  "f1": 0.9512,
+  "fn": 1378861,
+  "fp": 7799,
+  "mcc": 0.94261,
+  "precision": 0.99942,
+  "predicted_cds_bp": 13522662,
+  "reference_cds_bp": 14893724,
+  "scored_bp": 40999747,
+  "sensitivity": 0.90742,
+  "tp": 13514863
+ },
+ "predicted_conflicting_transcript_ids": 0,
+ "predicted_sequences_absent_from_reference": 0,
+ "predicted_transcript_selection": {
+  "dropped": 0,
+  "dropped_by_reason": {},
+  "kept": 9688
+ },
+ "predicted_transcripts": 9688,
+ "predicted_transcripts_not_scored": 26,
+ "prediction": "Neurospora_crassa.degraded.gff3",
+ "reference": "GCF_000182925.2_NC12_genomic.gff.gz",
+ "reference_conflicting_transcript_ids": 0,
+ "reference_transcript_selection": {
+  "dropped": 0,
+  "dropped_by_reason": {},
+  "kept": 10784
+ },
+ "reference_transcripts": 10784,
+ "scored_bp": 40999747,
+ "scored_sequences": 14,
+ "sequence_selection": {
+  "dropped": 7,
+  "dropped_by_reason": {
+   "organelle": {
+    "bp": 64840,
+    "sequences": 1
+   },
+   "shorter than 10000 bp": {
+    "bp": 37791,
+    "sequences": 6
+   }
+  },
+  "kept": 14,
+  "reference_has_region_features": true
+ },
+ "species": "Neurospora_crassa",
+ "splice": {
+  "acceptor": {
+   "by_intron_length_decile": [
+    {
+     "f1": 0.92352,
+     "fn": 140,
+     "fp": 123,
+     "precision": 0.92811,
+     "sensitivity": 0.91898,
+     "tp": 1588
+    },
+    {
+     "f1": 0.87529,
+     "fn": 248,
+     "fp": 127,
+     "precision": 0.91199,
+     "sensitivity": 0.84143,
+     "tp": 1316
+    },
+    {
+     "f1": 0.88036,
+     "fn": 268,
+     "fp": 103,
+     "precision": 0.92984,
+     "sensitivity": 0.83588,
+     "tp": 1365
+    },
+    {
+     "f1": 0.89653,
+     "fn": 241,
+     "fp": 84,
+     "precision": 0.9437,
+     "sensitivity": 0.85385,
+     "tp": 1408
+    },
+    {
+     "f1": 0.89808,
+     "fn": 202,
+     "fp": 64,
+     "precision": 0.94822,
+     "sensitivity": 0.85298,
+     "tp": 1172
+    },
+    {
+     "f1": 0.92079,
+     "fn": 207,
+     "fp": 43,
+     "precision": 0.97126,
+     "sensitivity": 0.8753,
+     "tp": 1453
+    },
+    {
+     "f1": 0.92874,
+     "fn": 194,
+     "fp": 19,
+     "precision": 0.9865,
+     "sensitivity": 0.87737,
+     "tp": 1388
+    },
+    {
+     "f1": 0.94166,
+     "fn": 163,
+     "fp": 8,
+     "precision": 0.99424,
+     "sensitivity": 0.89436,
+     "tp": 1380
+    },
+    {
+     "f1": 0.94631,
+     "fn": 155,
+     "fp": 5,
+     "precision": 0.99647,
+     "sensitivity": 0.90096,
+     "tp": 1410
+    },
+    {
+     "f1": 0.95356,
+     "fn": 137,
+     "fp": 2,
+     "precision": 0.9986,
+     "sensitivity": 0.9124,
+     "tp": 1427
+    }
+   ],
+   "f1": 0.95462,
+   "fn": 1377,
+   "fp": 0,
+   "precision": 1.0,
+   "predicted_sites_multiple_intron_lengths": 304,
+   "reference_sites_multiple_intron_lengths": 53,
+   "sensitivity": 0.91319,
+   "tp": 14485
+  },
+  "by_dinucleotide": null,
+  "by_local_gc": null,
+  "donor": {
+   "by_intron_length_decile": [
+    {
+     "f1": 0.82647,
+     "fn": 288,
+     "fp": 315,
+     "precision": 0.8201,
+     "sensitivity": 0.83295,
+     "tp": 1436
+    },
+    {
+     "f1": 0.86088,
+     "fn": 248,
+     "fp": 177,
+     "precision": 0.88137,
+     "sensitivity": 0.84133,
+     "tp": 1315
+    },
+    {
+     "f1": 0.86502,
+     "fn": 280,
+     "fp": 141,
+     "precision": 0.90537,
+     "sensitivity": 0.82812,
+     "tp": 1349
+    },
+    {
+     "f1": 0.86781,
+     "fn": 274,
+     "fp": 144,
+     "precision": 0.90501,
+     "sensitivity": 0.83354,
+     "tp": 1372
+    },
+    {
+     "f1": 0.87538,
+     "fn": 225,
+     "fp": 103,
+     "precision": 0.91793,
+     "sensitivity": 0.8366,
+     "tp": 1152
+    },
+    {
+     "f1": 0.85669,
+     "fn": 299,
+     "fp": 154,
+     "precision": 0.89788,
+     "sensitivity": 0.81912,
+     "tp": 1354
+    },
+    {
+     "f1": 0.85857,
+     "fn": 287,
+     "fp": 139,
+     "precision": 0.90293,
+     "sensitivity": 0.81835,
+     "tp": 1293
+    },
+    {
+     "f1": 0.85405,
+     "fn": 282,
+     "fp": 149,
+     "precision": 0.89433,
+     "sensitivity": 0.81724,
+     "tp": 1261
+    },
+    {
+     "f1": 0.84484,
+     "fn": 292,
+     "fp": 173,
+     "precision": 0.87978,
+     "sensitivity": 0.81258,
+     "tp": 1266
+    },
+    {
+     "f1": 0.8562,
+     "fn": 277,
+     "fp": 158,
+     "precision": 0.89126,
+     "sensitivity": 0.82379,
+     "tp": 1295
+    }
+   ],
+   "f1": 0.8564,
+   "fn": 2746,
+   "fp": 1647,
+   "precision": 0.88831,
+   "predicted_sites_multiple_intron_lengths": 46,
+   "reference_sites_multiple_intron_lengths": 73,
+   "sensitivity": 0.8267,
+   "tp": 13099
+  },
+  "intron_length_decile_cuts": [
+   56,
+   60,
+   64,
+   69,
+   74,
+   83,
+   98,
+   127,
+   205
+  ],
+  "min_intron": 20,
+  "predicted_cds_gaps_below_min": 1,
+  "predicted_introns": 14792,
+  "reference_cds_gaps_below_min": 0,
+  "reference_introns": 15918
+ },
+ "transcript": {
+  "f1": 0.72473,
+  "fn": 3249,
+  "fp": 2336,
+  "precision": 0.75888,
+  "sensitivity": 0.69352,
+  "tp": 7352,
+  "unmatched_reference_loci": 913
+ }
+}

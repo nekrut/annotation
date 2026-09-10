@@ -1,0 +1,16 @@
+{
+  "cds_seen": 841707,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 83895,
+  "cds_shifted_minus": 42621,
+  "cds_shifted_plus": 41274,
+  "child_lines_dropped": 200515,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Gallus_gallus.degraded.gff3",
+  "reference": "/tmp/panel/Gallus_gallus//GCF_016699485.2_bGalGal1.mat.broiler.GRCg7b_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 214,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 8474,
+  "transcripts_seen": 85704
+}

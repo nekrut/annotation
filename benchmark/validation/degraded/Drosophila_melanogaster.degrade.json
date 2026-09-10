@@ -1,0 +1,16 @@
+{
+  "cds_seen": 147688,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 14603,
+  "cds_shifted_minus": 7516,
+  "cds_shifted_plus": 7087,
+  "child_lines_dropped": 33914,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Drosophila_melanogaster.degraded.gff3",
+  "reference": "/tmp/panel/Drosophila_melanogaster//GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 1870,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 3476,
+  "transcripts_seen": 35366
+}

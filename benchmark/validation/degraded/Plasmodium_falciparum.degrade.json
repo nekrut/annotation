@@ -1,0 +1,16 @@
+{
+  "cds_seen": 12566,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 1336,
+  "cds_shifted_minus": 674,
+  "cds_shifted_plus": 662,
+  "child_lines_dropped": 3039,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Plasmodium_falciparum.degraded.gff3",
+  "reference": "/tmp/panel/Plasmodium_falciparum//GCF_000002765.6_GCA_000002765_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 14,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 578,
+  "transcripts_seen": 5529
+}

@@ -1,0 +1,10 @@
+model: Tiberius 2.0.7 (docker larsgabriel23/tiberius@sha256:2c3bddda32cc621b805de40dc0395942cb5dd8a5766b1fe6c98fba845740f9bd, /opt/Tiberius at c6d92f2fa15cee0bc845141395216cea89ec89ec, TensorFlow 2.17.0), --model_cfg vertebrates, --out tiberius.gtf tiberius.gff3 (both dialects from one invocation), weights /opt/Tiberius/model_weights/vertebrates_weights/weights.h5 (sha256 f80833ebc615c534e897a45a824dca1e148c4834b48720cada7001225c1a1545, dated 2025-11-10, 39,203,472 bytes), chunk length 400050, batch size 4, softmasking off, HMM parallel factor 630, all other defaults
+training_species: 65 species listed verbatim in model_cfg/vertebrates.yaml at Gaius-Augustus/Tiberius c6d92f2fa15cee0bc845141395216cea89ec89ec -- 31 mammals and 34 non-mammalian vertebrates, counted from the list itself; the file's own comment above the list says 35 for the second group, which its 34 entries contradict. Takifugu_rubripes is not among the 65 and is named in that file's own test set (GCF_901000725.2)
+pretraining_corpus: none beyond training_species; Tiberius is trained from scratch on the listed genomes and their annotations
+heldout_seen_in_pretraining: {Takifugu_rubripes: no}
+protein_db: none
+alignment: none
+alignment_rows_dropped: none
+informants: none
+rnaseq: none
+hardware: x86-64, 24 cores, 62 GB RAM, 1x NVIDIA RTX 5080 16 GB (sm_120; the image ships TF 2.17.0, kernels JIT-compiled from PTX by the driver)

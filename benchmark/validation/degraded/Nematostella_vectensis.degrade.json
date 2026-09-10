@@ -1,0 +1,16 @@
+{
+  "cds_seen": 319539,
+  "cds_shift_refused_at_sequence_end": 0,
+  "cds_shifted": 31816,
+  "cds_shifted_minus": 15427,
+  "cds_shifted_plus": 16389,
+  "child_lines_dropped": 74949,
+  "drop_transcripts": 0.1,
+  "out": "/tmp/run9/Nematostella_vectensis.degraded.gff3",
+  "reference": "/tmp/panel/Nematostella_vectensis//GCF_932526225.1_jaNemVect1.1_genomic.gff.gz",
+  "seed": 20260909,
+  "sequence_lengths_known": 47,
+  "shift_cds": 0.1,
+  "transcripts_dropped": 5209,
+  "transcripts_seen": 52592
+}

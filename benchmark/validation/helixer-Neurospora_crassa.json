@@ -1,0 +1,539 @@
+{
+ "codon": {
+  "predicted_partial_3prime": 0,
+  "predicted_partial_5prime": 0,
+  "predicted_partial_source": "none",
+  "reference_partial_3prime": 4,
+  "reference_partial_5prime": 9,
+  "start": {
+   "f1": 0.7951,
+   "fn": 1890,
+   "fp": 2272,
+   "precision": 0.78042,
+   "sensitivity": 0.81034,
+   "tp": 8075
+  },
+  "stop": {
+   "f1": 0.84163,
+   "fn": 1337,
+   "fp": 1859,
+   "precision": 0.8204,
+   "sensitivity": 0.86397,
+   "tp": 8492
+  },
+  "stop_codon_convention_detected": "unknown",
+  "stop_codon_convention_from_genome": "inside",
+  "stop_codon_convention_source": "genome",
+  "stop_codon_inside_cds": true,
+  "stop_convention_genome_chains": 10303,
+  "stop_convention_genome_inside": 10303,
+  "stop_convention_genome_neither": 0,
+  "stop_convention_genome_outside": 0,
+  "stop_inside_cds": 0,
+  "stop_outside_cds": 0,
+  "transcripts_stop_extended_by_3bp": 0,
+  "transcripts_stop_merged_from_feature": 0,
+  "transcripts_stop_not_extended_partial": 0,
+  "transcripts_with_stop_codon_feature": 0
+ },
+ "declaration": {
+  "model": "Helixer 0.3.7 (docker gglyptodon/helixer-docker:helixer_v0.3.7_cuda_12.2.2-cudnn8), --lineage fungi, weights fungi_v0.3_a_0100.h5 (sha256 8771f071769931519da8b504216fb16d1a97cc031034419bcf884a2f5d0a52cf), subsequence length 21384, HelixerPost defaults",
+  "path": "helixer-Neurospora_crassa.yaml",
+  "sha256": "305789d24ae443e50918b9a2597a0cd5c333a43db8f96b060253bbb7ca35b106"
+ },
+ "exon": {
+  "all": {
+   "f1": 0.77244,
+   "fn": 5711,
+   "fp": 6273,
+   "precision": 0.76428,
+   "sensitivity": 0.78077,
+   "tp": 20339
+  },
+  "by_type": {
+   "initial": {
+    "f1": 0.76819,
+    "fn": 1900,
+    "fp": 1682,
+    "precision": 0.77918,
+    "sensitivity": 0.7575,
+    "tp": 5935
+   },
+   "internal": {
+    "f1": 0.77749,
+    "fn": 1698,
+    "fp": 2066,
+    "precision": 0.76093,
+    "sensitivity": 0.79478,
+    "tp": 6576
+   },
+   "single": {
+    "f1": 0.68919,
+    "fn": 503,
+    "fp": 1033,
+    "precision": 0.62244,
+    "sensitivity": 0.77199,
+    "tp": 1703
+   },
+   "terminal": {
+    "f1": 0.79677,
+    "fn": 1619,
+    "fp": 1501,
+    "precision": 0.80294,
+    "sensitivity": 0.79069,
+    "tp": 6116
+   }
+  },
+  "predicted_overlap_no_boundary": 600,
+  "predicted_overlap_no_boundary_frac": 0.02255
+ },
+ "locus": {
+  "f1": 0.90638,
+  "fn": 628,
+  "fp": 1252,
+  "fusion": 32,
+  "precision": 0.87907,
+  "predicted_loci": 10353,
+  "reference_loci": 9729,
+  "reference_overlapping_locus_pairs": 0,
+  "sensitivity": 0.93545,
+  "split": 128,
+  "tp": 9101
+ },
+ "nucleotide": {
+  "f1": 0.96176,
+  "fn": 345560,
+  "fp": 811212,
+  "mcc": 0.95329,
+  "precision": 0.94718,
+  "predicted_cds_bp": 15359376,
+  "reference_cds_bp": 14893724,
+  "scored_bp": 40999747,
+  "sensitivity": 0.9768,
+  "tp": 14548164
+ },
+ "predicted_conflicting_transcript_ids": 0,
+ "predicted_sequences_absent_from_reference": 0,
+ "predicted_transcript_selection": {
+  "dropped": 0,
+  "dropped_by_reason": {},
+  "kept": 10353
+ },
+ "predicted_transcripts": 10353,
+ "predicted_transcripts_not_scored": 18,
+ "prediction": "ncrassa_helixer.gff3",
+ "reference": "GCF_000182925.2_NC12_genomic.gff.gz",
+ "reference_conflicting_transcript_ids": 0,
+ "reference_transcript_selection": {
+  "dropped": 0,
+  "dropped_by_reason": {},
+  "kept": 10784
+ },
+ "reference_transcripts": 10784,
+ "scored_bp": 40999747,
+ "scored_sequences": 14,
+ "sequence_selection": {
+  "dropped": 7,
+  "dropped_by_reason": {
+   "organelle": {
+    "bp": 64840,
+    "sequences": 1
+   },
+   "shorter than 10000 bp": {
+    "bp": 37791,
+    "sequences": 6
+   }
+  },
+  "kept": 14,
+  "reference_has_region_features": true
+ },
+ "species": "Neurospora_crassa",
+ "splice": {
+  "acceptor": {
+   "by_intron_length_decile": [
+    {
+     "f1": 0.76923,
+     "fn": 233,
+     "fp": 664,
+     "precision": 0.69245,
+     "sensitivity": 0.86516,
+     "tp": 1495
+    },
+    {
+     "f1": 0.88093,
+     "fn": 88,
+     "fp": 311,
+     "precision": 0.82597,
+     "sensitivity": 0.94373,
+     "tp": 1476
+    },
+    {
+     "f1": 0.89838,
+     "fn": 108,
+     "fp": 237,
+     "precision": 0.86549,
+     "sensitivity": 0.93386,
+     "tp": 1525
+    },
+    {
+     "f1": 0.88766,
+     "fn": 120,
+     "fp": 267,
+     "precision": 0.85134,
+     "sensitivity": 0.92723,
+     "tp": 1529
+    },
+    {
+     "f1": 0.88383,
+     "fn": 111,
+     "fp": 221,
+     "precision": 0.85108,
+     "sensitivity": 0.91921,
+     "tp": 1263
+    },
+    {
+     "f1": 0.85355,
+     "fn": 200,
+     "fp": 301,
+     "precision": 0.82907,
+     "sensitivity": 0.87952,
+     "tp": 1460
+    },
+    {
+     "f1": 0.83375,
+     "fn": 233,
+     "fp": 305,
+     "precision": 0.8156,
+     "sensitivity": 0.85272,
+     "tp": 1349
+    },
+    {
+     "f1": 0.79209,
+     "fn": 322,
+     "fp": 319,
+     "precision": 0.79286,
+     "sensitivity": 0.79132,
+     "tp": 1221
+    },
+    {
+     "f1": 0.70361,
+     "fn": 543,
+     "fp": 318,
+     "precision": 0.76269,
+     "sensitivity": 0.65304,
+     "tp": 1022
+    },
+    {
+     "f1": 0.54646,
+     "fn": 870,
+     "fp": 282,
+     "precision": 0.71107,
+     "sensitivity": 0.44373,
+     "tp": 694
+    }
+   ],
+   "f1": 0.83179,
+   "fn": 2503,
+   "fp": 2900,
+   "precision": 0.82164,
+   "predicted_sites_multiple_dinuc_classes": 0,
+   "predicted_sites_multiple_intron_lengths": 0,
+   "reference_sites_multiple_dinuc_classes": 6,
+   "reference_sites_multiple_intron_lengths": 53,
+   "sensitivity": 0.8422,
+   "tp": 13359
+  },
+  "by_dinucleotide": {
+   "AT-AC": {
+    "f1": 0.0,
+    "fn": 2,
+    "fp": 1,
+    "precision": 0.0,
+    "sensitivity": 0.0,
+    "tp": 0
+   },
+   "GC-AG": {
+    "f1": 0.45537,
+    "fn": 63,
+    "fp": 236,
+    "precision": 0.34626,
+    "sensitivity": 0.66489,
+    "tp": 125
+   },
+   "GT-AG": {
+    "f1": 0.82032,
+    "fn": 2947,
+    "fp": 2652,
+    "precision": 0.82816,
+    "sensitivity": 0.81263,
+    "tp": 12781
+   },
+   "other": {
+    "f1": 0.0,
+    "fn": 0,
+    "fp": 464,
+    "precision": 0.0,
+    "sensitivity": null,
+    "tp": 0
+   }
+  },
+  "by_local_gc": {
+   "acceptor": {
+    "0": {
+     "f1": 0.0,
+     "fn": 11,
+     "fp": 30,
+     "precision": 0.0,
+     "sensitivity": 0.0,
+     "tp": 0
+    },
+    "1": {
+     "f1": 0.56,
+     "fn": 32,
+     "fp": 45,
+     "precision": 0.52128,
+     "sensitivity": 0.60494,
+     "tp": 49
+    },
+    "2": {
+     "f1": 0.82187,
+     "fn": 940,
+     "fp": 1318,
+     "precision": 0.79807,
+     "sensitivity": 0.84713,
+     "tp": 5209
+    },
+    "3": {
+     "f1": 0.84549,
+     "fn": 1439,
+     "fp": 1433,
+     "precision": 0.84576,
+     "sensitivity": 0.84522,
+     "tp": 7858
+    },
+    "4": {
+     "f1": 0.75819,
+     "fn": 81,
+     "fp": 74,
+     "precision": 0.76656,
+     "sensitivity": 0.75,
+     "tp": 243
+    }
+   },
+   "donor": {
+    "0": {
+     "f1": 0.0,
+     "fn": 5,
+     "fp": 29,
+     "precision": 0.0,
+     "sensitivity": 0.0,
+     "tp": 0
+    },
+    "1": {
+     "f1": 0.6789,
+     "fn": 22,
+     "fp": 48,
+     "precision": 0.60656,
+     "sensitivity": 0.77083,
+     "tp": 74
+    },
+    "2": {
+     "f1": 0.84859,
+     "fn": 850,
+     "fp": 1254,
+     "precision": 0.82462,
+     "sensitivity": 0.874,
+     "tp": 5896
+    },
+    "3": {
+     "f1": 0.8431,
+     "fn": 1379,
+     "fp": 1364,
+     "precision": 0.84383,
+     "sensitivity": 0.84238,
+     "tp": 7370
+    },
+    "4": {
+     "f1": 0.6723,
+     "fn": 90,
+     "fp": 65,
+     "precision": 0.70982,
+     "sensitivity": 0.63855,
+     "tp": 159
+    }
+   }
+  },
+  "donor": {
+   "by_intron_length_decile": [
+    {
+     "f1": 0.7726,
+     "fn": 224,
+     "fp": 659,
+     "precision": 0.69477,
+     "sensitivity": 0.87007,
+     "tp": 1500
+    },
+    {
+     "f1": 0.88299,
+     "fn": 84,
+     "fp": 308,
+     "precision": 0.82764,
+     "sensitivity": 0.94626,
+     "tp": 1479
+    },
+    {
+     "f1": 0.89885,
+     "fn": 105,
+     "fp": 238,
+     "precision": 0.86493,
+     "sensitivity": 0.93554,
+     "tp": 1524
+    },
+    {
+     "f1": 0.88727,
+     "fn": 119,
+     "fp": 269,
+     "precision": 0.85022,
+     "sensitivity": 0.9277,
+     "tp": 1527
+    },
+    {
+     "f1": 0.88431,
+     "fn": 112,
+     "fp": 219,
+     "precision": 0.85243,
+     "sensitivity": 0.91866,
+     "tp": 1265
+    },
+    {
+     "f1": 0.85296,
+     "fn": 197,
+     "fp": 305,
+     "precision": 0.8268,
+     "sensitivity": 0.88082,
+     "tp": 1456
+    },
+    {
+     "f1": 0.83735,
+     "fn": 226,
+     "fp": 300,
+     "precision": 0.81862,
+     "sensitivity": 0.85696,
+     "tp": 1354
+    },
+    {
+     "f1": 0.79014,
+     "fn": 325,
+     "fp": 322,
+     "precision": 0.79091,
+     "sensitivity": 0.78937,
+     "tp": 1218
+    },
+    {
+     "f1": 0.70945,
+     "fn": 530,
+     "fp": 312,
+     "precision": 0.76716,
+     "sensitivity": 0.65982,
+     "tp": 1028
+    },
+    {
+     "f1": 0.55181,
+     "fn": 869,
+     "fp": 273,
+     "precision": 0.72029,
+     "sensitivity": 0.4472,
+     "tp": 703
+    }
+   ],
+   "f1": 0.84095,
+   "fn": 2346,
+   "fp": 2760,
+   "precision": 0.83025,
+   "predicted_sites_multiple_dinuc_classes": 0,
+   "predicted_sites_multiple_intron_lengths": 0,
+   "reference_sites_multiple_dinuc_classes": 0,
+   "reference_sites_multiple_intron_lengths": 73,
+   "sensitivity": 0.85194,
+   "tp": 13499
+  },
+  "intron_length_decile_cuts": [
+   56,
+   60,
+   64,
+   69,
+   74,
+   83,
+   98,
+   127,
+   205
+  ],
+  "min_intron": 20,
+  "predicted_cds_gaps_below_min": 0,
+  "predicted_introns": 16259,
+  "reference_cds_gaps_below_min": 0,
+  "reference_introns": 15918,
+  "short_gaps": {
+   "predicted": {
+    "by_length": {},
+    "contexts_by_class": {},
+    "count": 0,
+    "distinct_contexts": 0,
+    "gap_unresolved_bases": 0,
+    "gaps_with_unresolved_bases": 0,
+    "length_mod_3": {},
+    "most_common_contexts": [],
+    "motif_borrows_exon_base": 0,
+    "motif_by_class": {
+     "acceptor_only": 0,
+     "ambiguous": 0,
+     "borrows_exon_base": 0,
+     "donor_only": 0,
+     "exact": 0,
+     "neither": 0
+    },
+    "motif_exact": 0,
+    "motif_none": 0,
+    "motif_unknown": 0,
+    "motif_unresolved_windows": 0
+   },
+   "reference": {
+    "by_length": {},
+    "contexts_by_class": {},
+    "count": 0,
+    "distinct_contexts": 0,
+    "gap_unresolved_bases": 0,
+    "gaps_with_unresolved_bases": 0,
+    "length_mod_3": {},
+    "most_common_contexts": [],
+    "motif_borrows_exon_base": 0,
+    "motif_by_class": {
+     "acceptor_only": 0,
+     "ambiguous": 0,
+     "borrows_exon_base": 0,
+     "donor_only": 0,
+     "exact": 0,
+     "neither": 0
+    },
+    "motif_exact": 0,
+    "motif_none": 0,
+    "motif_unknown": 0,
+    "motif_unresolved_windows": 0
+   }
+  },
+  "strata_units": {
+   "by_dinucleotide": "intron",
+   "by_intron_length_decile": "site",
+   "by_local_gc": "site"
+  }
+ },
+ "transcript": {
+  "f1": 0.68947,
+  "fn": 2806,
+  "fp": 3430,
+  "precision": 0.6687,
+  "sensitivity": 0.71158,
+  "tp": 6923,
+  "unmatched_reference_loci": 628
+ }
+}
