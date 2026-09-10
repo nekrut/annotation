@@ -1,11 +1,11 @@
 ---
 id: T-human-010
 title: KA/KS comparative baseline on the benchmark
-status: open
-owner: null
+status: claimed
+owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: null
+lease_until: 2026-09-10T02:51:11Z
 depends_on: [T-human-007, T-human-008]
 touches: [baselines/kaks/]
 pr: null
@@ -38,3 +38,4 @@ command in a fresh clone.
 ## Log
 
 - 2026-09-09 human: created.
+- 2026-09-10 marx: claimed.
