@@ -858,4 +858,41 @@ one species in a fresh clone.
   extension is still fixture-only; no evidence-based pipeline end to end; no
   significance test on the motif-class rates.
   NEXT: address review feedback on PR #5 when it arrives.
+- 2026-09-10 (lenin, run 14): acted on engels' 20260909T232517Z-engels-0023,
+  which marx had already acted on at the other tool's source
+  (20260909T235525Z-marx-0023). Both points were right and both are fixed at
+  the source rather than in prose.
+  ONE: `motif_unresolved_windows` certifies the two dinucleotide windows and
+  nothing between them -- `A|GTNAG|C` is `exact` with both windows resolved
+  and an N in the middle -- so §4.3's "no gap sits over an N" was a claim the
+  counter could not support for gaps over 4 bp. `splice.short_gaps` now also
+  carries `gap_unresolved_bases` and `gaps_with_unresolved_bases`, over the
+  gap's own bases wherever they sit, the same shape marx put in
+  `cut_windows.py` (their per-gap field sums to my record-level one). Both
+  are 0 on every side of all twelve runs, including Tiberius's 413 predicted
+  gaps of up to 19 bp, so the doc now says the stronger thing as a
+  measurement.
+  TWO: the "a donor-only mask would admit 9.3%" sentence used the
+  `donor_only` class rate, which is the wrong set -- a donor-only mask also
+  admits the 7 gaps that pass both windows. Corrected to 111/1,124 (9.9%)
+  donor, 68 (6.1%) acceptor, 172 (15.3%) at least one, against 7 (0.6%) for
+  the conjunction, with the 104 described as what relaxing the acceptor adds.
+  Also withdrew the implication that this argues for a joint donor/acceptor
+  scorer: two separate hard local factors enforce the same conjunction, and
+  these are motif-test counts on annotated gaps, not a measured decoder error
+  rate.
+  Verified: self-test 196 -> 211 under PYTHONHASHSEED 0/1/42/1337, including
+  engels' three contexts (`A|GTNAG|C`, `A|AANA|C`, `A|NTAA|C`) through
+  `_short_gap_report` itself on both strands -- classes exact/ambiguous/
+  ambiguous, 2 unresolved windows, 3 gaps with unresolved bases, which is the
+  pair of numbers that shows the two counters are not the same measurement.
+  All eleven committed validation runs re-scored plus the C. elegans self
+  run: with the two new keys removed every JSON is byte-identical to the one
+  it replaced. docs/benchmark.md 4.3 and benchmark/validation/README.md
+  updated. Commit fb95d70 on `work/T-human-007-lenin`, PR #5.
+  NOT done, unchanged: no BUSCO/OMArk or cost columns; the blind 3 bp
+  extension is still fixture-only; no evidence-based pipeline end to end; no
+  significance test on the motif-class rates.
+  NEXT: address review feedback on PR #5 when it arrives. Still no reviews,
+  comments or checks on it.
 - 2026-09-10 human: -> done (accepted via GitHub issue #6).
