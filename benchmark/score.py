@@ -888,6 +888,22 @@ MOTIF_CLASSES = ("exact", "borrows_exon_base", "donor_only", "acceptor_only",
                  "neither", "ambiguous")
 
 
+def unresolved_bases(s):
+    """How many of ``s``'s bases are outside A/C/G/T, case-insensitively.
+
+    ``motif_unresolved_windows`` certifies the two dinucleotide windows and
+    nothing between them: ``A|GTNAG|C`` is ``exact`` with both windows
+    resolved and an ``N`` in the middle of the gap.  So a zero there says
+    every *tested window* was resolved, not that no gap sits over an assembly
+    gap, and for a gap longer than 4 bp those are different statements
+    (engels, ``relay/messages/20260909T232517Z-engels-0023``).  Counting the
+    gap's own bases is what closes that, and marx added the same counter at
+    the other tool's source, per gap and per record, so ``cut_windows.py``'s
+    per-gap ``gap_unresolved_bases`` sums to the one this report returns.
+    """
+    return sum(1 for b in s.upper() if b not in "ACGT")
+
+
 def motif_windows(left, gap, right):
     """The donor and acceptor verdicts of a short CDS gap, kept apart.
 
@@ -986,6 +1002,10 @@ def _short_gap_report(gaps, seqfetch, top=5):
     and acceptor *windows* holding a base outside A/C/G/T, so a zero there
     says every tested window was resolved -- which ``motif_unknown``, a count
     of gaps whose sequence could not be fetched at all, does not say.
+    ``gap_unresolved_bases`` and ``gaps_with_unresolved_bases`` count the
+    same bases over the whole gap rather than over the two windows, so a zero
+    there is the stronger statement that no gap holds an ``N`` at all; the
+    windows cover the whole gap only up to 4 bp (see ``unresolved_bases``).
     ``contexts_by_class`` gives the top contexts inside each class, because
     one top-``top`` list over all gaps cannot show what a small class is
     made of.
@@ -993,6 +1013,8 @@ def _short_gap_report(gaps, seqfetch, top=5):
     counts = Counter()
     classes = Counter()
     unresolved = 0
+    gap_ns = 0
+    gaps_with_ns = 0
     lengths, mod3, ctx = Counter(), Counter(), Counter()
     ctx_by_class = defaultdict(Counter)
     for seqid, s, e, strand in gaps:
@@ -1010,6 +1032,9 @@ def _short_gap_report(gaps, seqfetch, top=5):
         cls = motif_class(w[0], gap, w[-1])
         classes[cls] += 1
         unresolved += sum(v is None for v in motif_windows(w[0], gap, w[-1]))
+        n_bases = unresolved_bases(gap)
+        gap_ns += n_bases
+        gaps_with_ns += n_bases > 0
         if cls == "exact":
             counts["motif_exact"] += 1
         elif cls == "borrows_exon_base":
@@ -1031,6 +1056,8 @@ def _short_gap_report(gaps, seqfetch, top=5):
             "motif_unknown": counts["motif_unknown"],
             "motif_by_class": {c: classes[c] for c in MOTIF_CLASSES},
             "motif_unresolved_windows": unresolved,
+            "gap_unresolved_bases": gap_ns,
+            "gaps_with_unresolved_bases": gaps_with_ns,
             "by_length": {str(k): lengths[k] for k in sorted(lengths)},
             "length_mod_3": {str(k): mod3[k] for k in sorted(mod3)},
             "distinct_contexts": len(ctx),
@@ -2443,6 +2470,9 @@ def self_test():
     check("short gap class total", sum(sgr["motif_by_class"].values()),
           sgr["count"] - sgr["motif_unknown"])
     check("short gap unresolved windows", sgr["motif_unresolved_windows"], 0)
+    check("short gap unresolved gap bases", sgr["gap_unresolved_bases"], 0)
+    check("short gap gaps with unresolved bases",
+          sgr["gaps_with_unresolved_bases"], 0)
     check("short gap contexts by class",
           sgr["contexts_by_class"]["borrows_exon_base"], [["A|G|T", 2]])
     check("short gap contexts by class keys",
@@ -2457,6 +2487,37 @@ def self_test():
     # An identity run reports the same thing for the prediction.
     check("short gap predicted borrows",
           sg["short_gaps"]["predicted"]["motif_borrows_exon_base"], 2)
+    # engels' three contexts through the report itself, on both strands
+    # (message 20260909T232517Z-engels-0023, and marx's check 70 on the same
+    # three in cut_windows.py).  The first has both windows resolved and an N
+    # between them, which is the case the window counter cannot see: two
+    # unresolved *windows* over three gaps, but three gaps holding an N.
+    ncontexts = [("A", "GTNAG", "C"), ("A", "AANA", "C"), ("A", "NTAA", "C")]
+    for strand in ("+", "-"):
+        nseq, ngaps = "", []
+        for left, gap, right in ncontexts:
+            nseq += "C" * 10
+            piece = left + gap + right
+            nseq += piece if strand == "+" else _revcomp(piece)
+            ngaps.append(("chr1", len(nseq) - len(right) - len(gap) + 1,
+                          len(nseq) - len(right), strand))
+        nrep = _short_gap_report(
+            ngaps, lambda _s, a, b: nseq[a - 1:b], top=5)
+        check("short gap N classes %s" % strand, nrep["motif_by_class"],
+              {"exact": 1, "borrows_exon_base": 0, "donor_only": 0,
+               "acceptor_only": 0, "neither": 0, "ambiguous": 2})
+        check("short gap N unresolved windows %s" % strand,
+              nrep["motif_unresolved_windows"], 2)
+        check("short gap N unresolved gap bases %s" % strand,
+              nrep["gap_unresolved_bases"], 3)
+        check("short gap N gaps with unresolved bases %s" % strand,
+              nrep["gaps_with_unresolved_bases"], 3)
+        check("short gap N unknown %s" % strand, nrep["motif_unknown"], 0)
+    # The count over the gap and the count over the windows are the same
+    # number only while the windows cover the whole gap, which is up to 4 bp.
+    check("unresolved bases none", unresolved_bases("GTAG"), 0)
+    check("unresolved bases lower case", unresolved_bases("gtnag"), 1)
+    check("unresolved bases several", unresolved_bases("NNRYgt"), 4)
     # Without a genome there is nothing to read the sequence from, and the
     # report says so rather than guessing.
     check("short gap no genome",

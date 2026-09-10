@@ -561,6 +561,8 @@
     },
     "count": 24,
     "distinct_contexts": 21,
+    "gap_unresolved_bases": 0,
+    "gaps_with_unresolved_bases": 0,
     "length_mod_3": {
      "0": 1,
      "1": 13,
@@ -654,6 +656,8 @@
     },
     "count": 55,
     "distinct_contexts": 39,
+    "gap_unresolved_bases": 0,
+    "gaps_with_unresolved_bases": 0,
     "length_mod_3": {
      "1": 38,
      "2": 17

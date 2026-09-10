@@ -453,6 +453,8 @@
     "contexts_by_class": {},
     "count": 0,
     "distinct_contexts": 0,
+    "gap_unresolved_bases": 0,
+    "gaps_with_unresolved_bases": 0,
     "length_mod_3": {},
     "most_common_contexts": [],
     "motif_borrows_exon_base": 0,
@@ -517,6 +519,8 @@
     },
     "count": 19,
     "distinct_contexts": 19,
+    "gap_unresolved_bases": 0,
+    "gaps_with_unresolved_bases": 0,
     "length_mod_3": {
      "1": 12,
      "2": 7

@@ -754,7 +754,14 @@ decided, both fail), and `ambiguous` (a window holding a base outside
 A/C/G/T, which is unresolved rather than failing) — with all six keys always
 present, so a zero is a measurement. `motif_unresolved_windows` counts those
 unresolved windows, which the class counts alone cannot distinguish from
-absence. The same six classes and the same window split are what
+absence. That counter certifies the two dinucleotide windows and nothing
+between them: `A|GTNAG|C` is `exact` with both windows resolved and an `N` in
+the middle of the gap, so for a gap longer than 4 bp "every window resolved"
+and "no `N` in the gap" are different statements (engels,
+`relay/messages/20260909T232517Z-engels-0023`). `gap_unresolved_bases` and
+`gaps_with_unresolved_bases` count the gap's own bases outside A/C/G/T
+wherever they sit, which is the second statement. The same six classes, the
+same window split and the same two gap-level counters are what
 `benchmark/cut_windows.py` reports for §6.3 of `docs/data-sources.md`, so the
 two tools' short-gap fields mean the same thing. The three original counters
 (`motif_exact`, `motif_borrows_exon_base`, `motif_none`) are the conjunction
@@ -776,8 +783,11 @@ On the panel the two populations differ strongly:
 | Tiberius 2.0.7 on *T. rubripes* | 413 | 1 bp ×101, 4–19 bp ×312 | 312 | 101 | 0 | 0 | 0 |
 
 `ambiguous` is 0 and `motif_unresolved_windows` is 0 on every side of every
-row, so no gap on this panel sits over an `N` and every window in the table
-was resolved.
+row, so every window in the table was resolved; `gap_unresolved_bases` and
+`gaps_with_unresolved_bases` are 0 on every side too, which is the stronger
+statement that no gap on this panel holds an `N` at all — including
+Tiberius's 413 predicted gaps of up to 19 bp, whose interiors the window
+counter does not reach.
 
 Every row but the last three comes from a committed run under
 `benchmark/validation/`; the *C. elegans* line is the reference scored against
@@ -813,13 +823,27 @@ significance test; the earlier claim that 7 was "near chance" is withdrawn.
 **The half-masks are where the reference sides differ most.** 104 of the
 1,124 fugu reference gaps carry a GT/GC donor with no AG after it and 61
 carry an AG with no donor before it: 165 gaps, 14.7%, that satisfy exactly
-one of the two masks. A decoder masked on the donor alone would admit 9.3%
-of fugu's frameshift steps as intron starts where the conjunction admits
-0.6%. The same asymmetry is visible small on the other references — 5
-donor-only and 3 acceptor-only in *A. mellifera*, 4 and 0 in human — and
-GENCODE 50 scored as a prediction has 5 and 1. This is the argument for
-constraining both ends jointly rather than scoring donors and acceptors as
-independent signals, and it is invisible in donor F1.
+one of the two masks. The rule a decoder would apply is not the class,
+though: a donor-only mask admits every gap whose donor window passes,
+which is the 104 plus the 7 that pass both. So the donor test passes
+111/1,124 (9.9%) of fugu's frameshift steps where the conjunction passes
+7/1,124 (0.6%), and dropping the acceptor requirement is what adds the 104
+(engels, `relay/messages/20260909T232517Z-engels-0023`; the earlier wording
+here read the 9.3% class rate as the donor-mask rate). The acceptor test
+passes 68 (6.1%), and at least one of the two passes 172 (15.3%). The same
+asymmetry is visible small on the other references — 5 donor-only and 3
+acceptor-only in *A. mellifera*, 4 and 0 in human — and GENCODE 50 scored as
+a prediction has 5 and 1.
+
+This is the argument for constraining both ends of a junction rather than
+reading donor and acceptor scores as two independent verdicts, and it is
+invisible in donor F1. It is not an argument that the two scores must be
+statistically dependent, and it is not a measured decoder error rate: a
+structured decoder can enforce the conjunction with two separate local
+factors, each of which only has to see its own end (engels, same message),
+and path constraints, phase and postprocessing decide which eligible gap is
+actually emitted. What the table bounds is how much a boundary test alone
+leaves open.
 
 So the floor is doing two different jobs on the two sides, and both are
 needed. On the reference side it keeps 1,335 frameshift and

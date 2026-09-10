@@ -149,6 +149,12 @@ gained `motif_by_class`, `motif_unresolved_windows` and `contexts_by_class`
 (§4.3). The change is additive: with the three new keys removed, every
 regenerated JSON is identical to the one it replaced.
 
+They were regenerated again when `splice.short_gaps` gained
+`gap_unresolved_bases` and `gaps_with_unresolved_bases`, which count bases
+outside A/C/G/T over the whole gap rather than over the two dinucleotide
+windows. That change is additive on the same test: with the two new keys
+removed, every regenerated JSON is identical to the one it replaced.
+
 `gencode50-Homo_sapiens` is not a predictor run at all: it is one human
 annotation scored against another, and it is here because it is the only
 submission so far with more than one isoform per locus (370,476 scored chains
@@ -315,15 +321,22 @@ Two things that earlier wording here got wrong, both raised by engels in
   reports them apart. Of the 1,117 fugu reference gaps that fail, **104 carry
   a GT/GC donor with no AG after it**, **61 carry an AG with no donor before
   it**, and 952 fail both windows. `motif_unresolved_windows` is 0 on every
-  side of every committed run, so no gap on this panel sits over an `N`: the
-  class counts are measurements and not silent ambiguity.
+  side of every committed run, so every tested window was resolved, and
+  `gaps_with_unresolved_bases` is 0 on every side too, so no gap on this
+  panel holds an `N` anywhere — including the predicted gaps of up to 19 bp,
+  whose interiors the window counter does not reach. The class counts are
+  measurements and not silent ambiguity.
 
 The floor is therefore not hiding a disagreement about micro-introns: it is
 separating an annotation's frameshift encoding from a decoder that constrains
 splice-site composition without constraining intron duration. It also puts a
-number on a half-masked decoder: a donor-only mask would admit 104 of the
-1,124 fugu reference frameshift steps (9.3%) as intron starts, against 7 for
-the conjunction.
+number on a half-masked decoder: a donor-only mask admits every gap whose
+donor window passes, which is 111 of the 1,124 fugu reference frameshift
+steps (9.9%) as intron starts, against 7 (0.6%) for the conjunction —
+dropping the acceptor requirement is what adds the 104 `donor_only` gaps.
+That bounds what a boundary test alone leaves open; it is not a measured
+decoder error rate, and a decoder can enforce the conjunction with two
+separate local factors rather than one joint scorer.
 
 The `heldout_seen_in_pretraining: no` in that declaration is a set operation,
 not a judgement, and it can be rechecked without the container:
