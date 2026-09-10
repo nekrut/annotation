@@ -34,6 +34,18 @@ API = "https://api.github.com"
 LABEL = "relay-inbox"
 COORDINATOR = "human"
 NEEDS_HUMAN = {"question", "alert", "proposal"}
+WEB = "https://github.com/" + REPO
+
+
+def blob(path, ref="main"):
+    """Markdown link to a file in the repository on the web."""
+    return "[%s](%s/blob/%s/%s)" % (path, WEB, ref, path)
+
+
+def tree(path, ref="main"):
+    return "[%s/](%s/tree/%s/%s)" % (path, WEB, ref, path)
+
+
 MARK_MSG = re.compile(r"<!-- relay-msg: (\S+) -->")
 MARK_TASK = re.compile(r"<!-- relay-task: (\S+) -->")
 
@@ -84,6 +96,21 @@ def open_bridge_issues():
         page += 1
 
 
+def _pr_files(number):
+    """(path, head_ref) for files a pull request changes outside relay/, up to 12."""
+    try:
+        pr = gh("GET", "/repos/%s/pulls/%s" % (REPO, number))
+        ref = pr["head"]["ref"]
+        files = gh("GET", "/repos/%s/pulls/%s/files?per_page=100" % (REPO, number))
+    except SystemExit:
+        return []
+    out = [(f["filename"], ref) for f in files
+           if not f["filename"].startswith("relay/") and f.get("status") != "removed"]
+    docs = [x for x in out if x[0].endswith((".md", ".tsv"))]
+    rest = [x for x in out if x not in docs]
+    return (docs + rest)[:12]
+
+
 # ---------------------------------------------------------------- sync-inbox
 
 def sync_inbox():
@@ -107,13 +134,13 @@ def sync_inbox():
         text = (
             "<!-- relay-msg: %s -->\n"
             "**%s** from `%s` to `%s`%s\n\n"
-            "Message: `relay/messages/%s.md`\n\n---\n\n%s\n\n---\n"
+            "Message: %s\n\n---\n\n%s\n\n---\n"
             "**To reply:** comment on this issue. Your comment is committed to the relay as a "
             "`%s` from `human` addressed to `%s`, and this issue is closed. "
             "Only collaborators' comments are used."
         ) % (stem, kind, fm["from"], ", ".join(to),
-             (" about `%s`" % fm["task"]) if fm.get("task") else "",
-             stem, body.strip(), reply_kind, fm["from"])
+             (" about %s" % blob("relay/tasks/%s.md" % fm["task"])) if fm.get("task") else "",
+             blob("relay/messages/%s.md" % stem), body.strip(), reply_kind, fm["from"])
         gh("POST", "/repos/%s/issues" % REPO, {"title": title[:250], "body": text, "labels": [LABEL]})
         created += 1
 
@@ -124,17 +151,29 @@ def sync_inbox():
         arts = relay.ROOT / "artifacts" / tid
         art_list = ""
         if arts.is_dir():
-            art_list = "\n".join("- `relay/artifacts/%s/%s`" % (tid, p.name) for p in sorted(arts.iterdir()))
+            art_list = "\n".join("- " + blob("relay/artifacts/%s/%s" % (tid, p.name)) for p in sorted(arts.iterdir()))
+        pr_block = ""
+        if fm.get("pr"):
+            pr_block = "\n**Pull request:** %s" % fm["pr"]
+            m_pr = re.search(r"/pull/(\d+)$", fm["pr"])
+            if m_pr:
+                pr_block += " · [files changed](%s/files)" % fm["pr"]
+                files = _pr_files(m_pr.group(1))
+                if files:
+                    pr_block += "\n\n**Work product on the PR branch:**\n" + "\n".join(
+                        "- " + blob(path, ref) for path, ref in files)
         text = (
             "<!-- relay-task: %s -->\n"
-            "Task `%s` was moved to `review` by `%s`.\n\n"
-            "Task file: `relay/tasks/%s.md`%s\n\nArtifacts:\n%s\n\n---\n"
-            "**To accept:** comment `done`. The task is marked done and this issue closes.\n"
+            "Task `%s` (%s) was moved to `review` by `%s`.\n%s\n\n"
+            "**Relay artifacts:**\n%s\n- %s (task file with run log)\n\n---\n"
+            "**To accept:** comment `done`. The task is marked done and this issue closes.%s\n"
             "**To send it back:** comment anything else. Your comment is posted as a "
             "`review` message to `%s` and the task returns to `in_progress`."
-        ) % (tid, tid, fm.get("owner"), tid,
-             ("\nPull request: %s" % fm["pr"]) if fm.get("pr") else "",
-             art_list or "- (none under relay/artifacts)", fm.get("owner"))
+        ) % (tid, tid, fm["title"], fm.get("owner"), pr_block,
+             art_list or "- (none under relay/artifacts)",
+             blob("relay/tasks/%s.md" % tid),
+             " Merge the pull request on GitHub as well." if fm.get("pr") else "",
+             fm.get("owner"))
         gh("POST", "/repos/%s/issues" % REPO, {"title": title[:250], "body": text, "labels": [LABEL]})
         created += 1
 
