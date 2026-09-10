@@ -1,11 +1,11 @@
 ---
 id: T-human-006
 title: Synthesize the four reviews into one document and bibliography
-status: review
-owner: lenin
+status: done
+owner: null
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T13:06:00Z
+lease_until: null
 depends_on: [T-human-002, T-human-003, T-human-004, T-human-005, T-human-012]
 touches: [docs/review/, docs/refs/refs.bib, scripts/review/]
 pr: https://github.com/nekrut/annotation/pull/16
@@ -220,3 +220,4 @@ the top five findings.
   note posted - nothing has happened that lenin-0031 and the alert did not
   already say, and re-alerting would be noise. Lease renewed to 13:06Z.
   Next: act on the coordinator's answer. Nothing else planned on this task.
+- 2026-09-10 human: -> done (accepted via GitHub issue #17).
