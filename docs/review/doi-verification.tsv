@@ -4,8 +4,7 @@ armstrong2020progressive	10.1038/s41586-020-2871-y	ok	Progressive Cactus is a mu
 authors2025plantcad	10.1101/2025.08.27.672609	ok	PlantCAD2: a DNA foundation model for interpreting genomes across flowering plants	1.00	lenin
 avsec2021effective	10.1038/s41592-021-01252-x	ok	Effective gene expression prediction from sequence by integrating long-range interactions	1.00	lenin
 avsec2026advancing	10.1038/s41586-025-10014-0	ok	Advancing regulatory variant effect prediction with AlphaGenome	1.00	lenin
-baker2023initio	10.1093/bioadv/vbad105	ok	Ab initio
-                    gene prediction for protein-coding regions	1.00	marx
+baker2023initio	10.1093/bioadv/vbad105	ok	Ab initio gene prediction for protein-coding regions	1.00	marx
 bates2026omannotator	10.1093/bioadv/vbag015	ok	OMAnnotator: a novel approach to building an annotated consensus genome sequence	1.00	lenin
 borodovsky2011eukaryotic	10.1002/0471250953.bi0406s35	ok	Eukaryotic Gene Prediction Using GeneMark.hmm‐E and GeneMark‐ES	1.00	engels
 brixi2026genome	10.1038/s41586-026-10176-5	ok	Genome modelling and design across all domains of life with Evo 2	1.00	lenin, marx
@@ -33,10 +32,8 @@ gabriel2021tsebra	10.1186/s12859-021-04482-0	ok	TSEBRA: transcript selector for 
 gabriel2024braker	10.1101/gr.278090.123	ok	BRAKER3: Fully automated genome annotation using RNA-seq and protein evidence with GeneMark-ETP, AUGUSTUS, and TSEBRA	1.00	engels, lenin, marx, stalin
 gabriel2024brakerb	10.1093/bioinformatics/btae010	mismatch	FAVA: high-quality functional association networks inferred from scRNA-seq and proteomics data	0.05	trotsky
 gabriel2024tiberius	10.1093/bioinformatics/btae685	ok	Tiberius: end-to-end deep learning with an HMM for gene prediction	1.00	engels, lenin, marx, stalin
-gabriel2026accurate	10.64898/2026.04.24.720536	ok	Accurate
-                  ab initio
-                  gene prediction in eukaryotes with Tiberius in multiple clades	1.00	engels, lenin, marx, stalin
-goldfarb2025ncbi	10.1093/nar/gkae1038	ok	NCBI RefSeq: reference sequence standards through 25 years of curation and annotation	1.00	engels, stalin
+gabriel2026accurate	10.64898/2026.04.24.720536	ok	Accurate ab initio gene prediction in eukaryotes with Tiberius in multiple clades	1.00	engels, lenin, marx, stalin
+goldfarb2025ncbi	10.1093/nar/gkae1038	ok	NCBI RefSeq: reference sequence standards through 25 years of curation and annotation	1.00	engels, stalin
 gotoh2008space	10.1093/nar/gkn105	ok	A space-efficient and accurate method for mapping and aligning cDNA sequences onto genomic sequence	1.00	marx
 gotoh2018modeling	10.1093/bioinformatics/bty353	ok	Modeling one thousand intron length distributions with fitild	1.00	marx
 gotoh2024spaln	10.1093/bioinformatics/btae517	ok	Spaln3: improvement in speed and accuracy of genome mapping and spliced alignment of protein query sequences	1.00	marx
@@ -51,9 +48,7 @@ guigo2006egasp	10.1186/gb-2006-7-s1-s2	no-title			marx
 haas2008automated	10.1186/gb-2008-9-1-r7	ok	Automated eukaryotic gene structure annotation using EVidenceModeler and the Program to Assemble Spliced Alignments	1.00	lenin, marx
 he2026benchmarking	10.64898/2026.02.22.707219	ok	Benchmarking foundation models for splice site and exon annotation	1.00	lenin
 hoff2016braker	10.1093/bioinformatics/btv661	ok	BRAKER1: Unsupervised RNA-Seq-Based Genome Annotation with GeneMark-ET and AUGUSTUS	1.00	lenin, marx, stalin, trotsky
-holst2023helixer	10.1101/2023.02.06.527280	ok	Helixer–
-                  de novo
-                  Prediction of Primary Eukaryotic Gene Models Combining Deep Learning and a Hidden Markov Model	1.00	engels
+holst2023helixer	10.1101/2023.02.06.527280	ok	Helixer– de novo Prediction of Primary Eukaryotic Gene Models Combining Deep Learning and a Hidden Markov Model	1.00	engels
 holst2023helixerb	10.1093/nar/gkad1003	mismatch	VEuPathDB: the eukaryotic pathogen, vector and host bioinformatics resource center in 2023	0.06	trotsky
 holst2026helixer	10.1038/s41592-025-02939-1	ok	Helixer: ab initio prediction of primary eukaryotic gene models combining deep learning and a hidden Markov model	1.00	engels, lenin, marx, stalin
 holt2011maker	10.1186/1471-2105-12-491	ok	MAKER2: an annotation pipeline and genome-database management tool for second-generation genome projects	1.00	lenin, marx, trotsky
@@ -72,9 +67,7 @@ liu2026scaling	10.64898/2026.04.26.720859	ok	Scaling genome annotation across th
 lomsadze2005gene	10.1093/nar/gki937	ok	Gene identification in novel eukaryotic genomes by self-training algorithm	1.00	engels, lenin, marx, stalin
 lomsadze2005geneb	10.1093/nar/gki987	mismatch	Analysis of repetitive element DNA methylation by MethyLight	0.00	trotsky
 lomsadze2014integration	10.1093/nar/gku557	ok	Integration of mapped RNA-Seq reads into automatic training of eukaryotic gene finding algorithm	1.00	marx
-majoros2004tigrscan	10.1093/bioinformatics/bth315	ok	TigrScan and GlimmerHMM: two open source
-                    ab initio
-                    eukaryotic gene-finders	1.00	engels, lenin, marx
+majoros2004tigrscan	10.1093/bioinformatics/bth315	ok	TigrScan and GlimmerHMM: two open source ab initio eukaryotic gene-finders	1.00	engels, lenin, marx
 malovichko2026accurate	10.64898/2026.06.30.735536	ok	Accurate, comprehensive gene annotation and ortholog identification across thousands of vertebrate genomes with TOGA2	1.00	lenin
 manni2021busco	10.1093/molbev/msab199	ok	BUSCO Update: Novel and Streamlined Workflows along with Broader and Deeper Phylogenetic Coverage for Scoring of Eukaryotic, Prokaryotic, and Viral Genomes	1.00	lenin, marx
 mertsch2022end	10.1093/bioinformatics/btac028	ok	End-to-end learning of evolutionary models to find coding regions in genome alignments	1.00	engels, marx, stalin
@@ -89,8 +82,7 @@ pertea2015stringtie	10.1038/nbt.3122	ok	StringTie enables improved reconstructio
 pockrandt2022phylocsf	10.1093/bioinformatics/btab756	ok	PhyloCSF++: a fast and user-friendly implementation of PhyloCSF with annotation tools	1.00	engels, marx
 pollard2010detection	10.1101/gr.097857.109	ok	Detection of nonneutral substitution rates on mammalian phylogenies	1.00	lenin, marx
 pruitt2014refseq	10.1093/nar/gkt1114	ok	RefSeq: an update on mammalian reference sequences	1.00	lenin
-rodelsperger2026lessons	10.64898/2026.02.18.706511	ok	Lessons learned from manual curation of thousands of gene models in the nematode
-                  Pristionchus pacificus	1.00	lenin
+rodelsperger2026lessons	10.64898/2026.02.18.706511	ok	Lessons learned from manual curation of thousands of gene models in the nematode Pristionchus pacificus	1.00	lenin
 saenko2025annotation	10.1101/2025.04.17.649312	ok	Annotation of 200 Insect Genomes with BRAKER for Consistent Comparisons across Species	1.00	marx
 sayers2026database	10.1093/nar/gkaf1060	ok	Database resources of the National Center for Biotechnology Information in 2026	1.00	lenin
 scalzitti2020benchmark	10.1186/s12864-020-6707-9	ok	A benchmark study of ab initio gene prediction methods in diverse eukaryotic organisms	1.00	marx
@@ -102,8 +94,7 @@ shumate2021liftoff	10.1093/bioinformatics/btaa1016	ok	Liftoff: accurate mapping 
 siepel2005evolutionarily	10.1101/gr.3715005	ok	Evolutionarily conserved elements in vertebrate, insect, worm, and yeast genomes	1.00	marx
 slater2005automated	10.1186/1471-2105-6-31	ok	Automated generation of heuristics for biological sequence comparison	1.00	marx
 souvorov2010gnomon	-	no-doi			trotsky
-stanke2003gene	10.1093/bioinformatics/btg1080	ok	Gene prediction with a hidden Markov model and a new intron
-  submodel	1.00	engels, marx, stalin, trotsky
+stanke2003gene	10.1093/bioinformatics/btg1080	ok	Gene prediction with a hidden Markov model and a new intron submodel	1.00	engels, marx, stalin, trotsky
 stanke2006augustus	10.1093/nar/gkl200	ok	AUGUSTUS: ab initio prediction of alternative transcripts	1.00	marx, stalin
 stanke2006gene	10.1186/1471-2105-7-62	ok	Gene prediction in eukaryotes with a generalized hidden Markov model that uses hints from external sources	1.00	lenin
 stiehler2021helixer	10.1093/bioinformatics/btaa1044	ok	Helixer: cross-species gene annotation of large eukaryotic genomes using deep learning	1.00	engels, lenin, marx, stalin, trotsky
@@ -117,7 +108,5 @@ yang2026improving	10.1186/s13015-025-00293-7	ok	Improving spliced alignment by m
 ye2025highly	10.21203/rs.3.rs-6402260/v1	ok	Highly accurate ab initio gene annotation with ANNEVO	1.00	engels, stalin
 zeng2022predicting	10.1186/s13059-022-02664-4	ok	Predicting RNA splicing from DNA sequence using Pangolin	1.00	lenin, marx, trotsky
 zhang2026highly	10.1038/s41592-026-03036-7	ok	Highly accurate ab initio gene annotation with ANNEVO	1.00	engels, lenin, marx, stalin
-zhang2026plantgeneann	10.64898/2026.06.25.733695	ok	PlantGeneAnn: a strand-specific genome foundation model for
-                  ab initio
-                  gene structure annotation of plant genomes	1.00	marx
+zhang2026plantgeneann	10.64898/2026.06.25.733695	ok	PlantGeneAnn: a strand-specific genome foundation model for ab initio gene structure annotation of plant genomes	1.00	marx
 zimin2026efficient	10.1038/s41592-026-03156-0	ok	Efficient evidence-based genome annotation with EviAnn	1.00	marx

@@ -80,9 +80,16 @@ almost the same words. The design assumes a good alignment with a tree at every
 locus in a novel genome. For a newly sequenced genome in a sparsely sampled
 clade that alignment either does not exist or is the most expensive part of the
 pipeline — the cost has moved rather than gone, and the clade dependence is
-back in a new form. Every large alignment that can be downloaded is mammal- or
-bird-centric; for protists, basal fungi and non-insect arthropods there may be
-no informant at a useful distance.
+back in a new form. The alignments the *reviewed literature* used are mammal-
+and bird-centric, but the accepted data inventory (`docs/data-sources.md`,
+T-human-008, `done`) records three deep non-vertebrate alignments UCSC serves
+directly: `dm6/multiz124way`, `ce11/multiz135way` and `sacCer3/multiz7way`.
+So insects, nematodes and yeasts are a download, and the degradation curve can
+be measured on them this quarter at no alignment-construction cost. What is
+genuinely missing is plants, most fungi and the protists — and, for every
+covered clade, informants away from the one reference assembly the alignment
+is built on, with no established route to transfer an alignment to an assembly
+that is not its reference.
 
 The evidence that this curve is steep already exists on the evidence side:
 ProtHint's intron-hint sensitivity falls 79.8 → 35.8 and start-codon sensitivity
@@ -109,14 +116,29 @@ less than the charter assumes once a good sequence model exists, or generating
 it per clade is too expensive or too data-hungry to scale. Both are bad news
 for a naively comparative design and they point at different fixes.
 
-**Cost.** Code and weights are installed and MIT-licensed; ~1 day, one GPU.
-Two caveats from the install bench: Tiberius requires Python ≥3.12 (this
-project targets 3.11, so it needs its own pinned environment), and on a
-compute-capability-12.0 GPU its pinned TensorFlow must JIT from PTX, which
-TensorFlow warns can take 30 minutes or more. Carry `stalin`'s and `engels`'s
-qualification with any result: Tiberius's comparative input generator has
-supervised human exposure, and its preprocessing cost is separate from
-inference.
+**Cost.** Code and weights are installed and MIT-licensed; ~1 day, one GPU —
+*conditional on the published ClaMSA features for the evaluated regions being
+downloadable and compatible with the released checkpoints*. That is the whole
+estimate: it is inference on prepared input. If the features have to be
+regenerated, the comparison acquires a preprocessing bill that this number does
+not contain and that must be reported as a separate line; the only figure the
+reviews have for the historical shared feature-generation workload is 492 CPU
+node-days with the node core count unstated, which is neither a per-genome
+charge nor a measurement anyone here has made
+([stalin's supplement audit](../../relay/messages/20260909T084030Z-stalin-0008.md)).
+Record the checkpoint identity and the exact species and regions evaluated with
+any result. Two further caveats from the install bench: Tiberius requires
+Python ≥3.12 (this project targets 3.11, so it needs its own pinned
+environment), and on a compute-capability-12.0 GPU its pinned TensorFlow must
+JIT from PTX, which TensorFlow warns can take 30 minutes or more.
+
+**What it cannot decide.** The measured quantity is the benefit of *this
+supplied comparative pipeline* as a whole. It does not separate tree geometry
+from alignment information, and it does not separate either from the
+feature generator's supervised human exposure (Methods 3.7: the sitewise
+ClaMSA input generator was trained with human chromosome 17 RefSeq labels).
+Candidate #4, the fixed-decoder encoder ablation, is still required for the
+causal claim; #3 is the cheap reading that says whether #4 is worth running.
 
 **This is the highest value-per-hour item in the list.** If the answer is that
 comparative input buys little, the charter's central hypothesis needs revision
@@ -144,12 +166,33 @@ tree-likelihood versus distance-aware encoder versus no tree, decoder fixed;
 `stalin` as a codon-likelihood feature bank versus the axial design; `lenin` as
 three arms with the benchmark as the deliverable.
 
-**Prerequisite from `stalin`, which nobody else raises.** MDS coordinates are
-not unique under rotation or sign change. Before (e) is worth building, check
-that the encoder is invariant to a random rotation of the embedding, to taxon
-reordering, to removed taxa and to rescaled branch lengths. If it is not, (e)
-is fitting arbitrary coordinates and the ablation will not mean what it appears
-to mean. This is a day's work and it gates the arm.
+**Prerequisite from `stalin`, which nobody else raises.** Two different checks,
+and an earlier draft of this file collapsed them into one gate; `stalin`'s
+opinion asks for *stability tests*, not for a blanket invariance requirement
+([review](../../relay/artifacts/T-human-004/review.md), and
+[20260910T033840Z-stalin-0027](../../relay/messages/20260910T033840Z-stalin-0027.md)).
+
+1. **Representation symmetries — require invariance or equivariance.** MDS
+   coordinates are not unique under rotation or sign change, and taxon order
+   is an arbitrary indexing choice. Under a consistent permutation of the
+   taxon axis, or an arbitrary orthogonal transformation of the embedding,
+   nothing about the evidence has changed, so the prediction should not
+   change either. If it does, (e) is fitting arbitrary coordinates and the
+   ablation will not mean what it appears to mean. The alternative to an
+   invariant operation is a stable canonical-coordinate convention, which is
+   the other option `stalin` names.
+2. **Changes in evidence — measure degradation, do not require equality.**
+   Removing an informant removes evidence; rescaling branch lengths changes
+   the modeled evolutionary distances. Predictions *should* move in both
+   cases, and an encoder that scored perfectly on an equality test here would
+   be one ignoring the comparative channel — the opposite of what (e) is
+   built to measure. What to report is robustness, calibration and the shape
+   of the degradation curve against the number and distance of the informants
+   retained.
+
+§5.4 of [`disagreements.md`](disagreements.md) states this the same way.
+Check 1 is a day's work and it gates the arm; check 2 is an evaluation the
+arm produces, not a gate on building it.
 
 **Prerequisite from `engels` and `stalin`, jointly.** Measure the candidate
 generator's recall ceiling before measuring end-to-end accuracy. A scorer must

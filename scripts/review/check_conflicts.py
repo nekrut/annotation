@@ -3,11 +3,22 @@
 
 Runs over the five Phase 1 bibliographies and groups entries whose titles are
 the same work: identical after normalization, or sharing at least
-JACCARD_MIN of their content words. A group carrying more than one distinct
-DOI is a citation conflict: the same work has been recorded with different
-identifiers, so at most one of them can be right.
+JACCARD_MIN of their content words. A group carrying more than one distinct DOI is reported, but not every such
+group is an error. Two categories come out separately:
 
-The output is the evidence behind docs/review/disagreements.md section 1.
+  conflict     the same work recorded under two identifiers that cannot both
+               be right; this is the evidence behind section 1 of
+               docs/review/disagreements.md
+  preprint_of  one preprint DOI (bioRxiv, arXiv, Research Square) and one
+               journal DOI for the same work -- both identifiers are valid
+               and refer to different versions. Nucleotide Transformer
+               (10.1101/2023.01.11.523679 / 10.1038/s41592-024-02523-z) and
+               SegmentNT (10.1101/2024.03.14.584712 / 10.1038/s41592-025-02881-2)
+               are the two in this bibliography.
+
+Only the conflict count feeds section 1. Reading the whole list as errors
+attributes a legitimate preprint/journal pair to whichever review recorded
+the preprint.
 Run from the repository root:
 
     python3 scripts/review/check_conflicts.py
@@ -24,6 +35,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from merge_refs import SOURCES, STOPWORDS, norm_doi, parse_bib  # noqa: E402
 
 JACCARD_MIN = 0.6
+
+# bioRxiv/medRxiv share the 10.1101 prefix with Cold Spring Harbor journals
+# (Genome Research is 10.1101/gr.NNNNNN), so the date-stamped path, not the
+# prefix, is what identifies a preprint.
+PREPRINT = (
+    re.compile(r"^10\.1101/\d{4}\.\d{2}\.\d{2}\."),   # bioRxiv, medRxiv
+    re.compile(r"^10\.48550/"),                          # arXiv
+    re.compile(r"^10\.21203/"),                          # Research Square
+)
+
+
+def is_preprint(doi: str) -> bool:
+    return any(rx.match(doi) for rx in PREPRINT)
+
+
+def classify(dois: set[str]) -> str:
+    """A preprint plus exactly one journal DOI is two versions, not a clash."""
+    published = {d for d in dois if not is_preprint(d)}
+    if len(published) <= 1 and len(dois) - len(published) >= 1:
+        return "preprint_of"
+    return "conflict"
 
 
 def content_words(title: str) -> frozenset[str]:
@@ -66,20 +98,27 @@ def main() -> int:
             if title and doi:
                 all_rows.append((agent, doi, " ".join(title.split())))
 
-    conflicts = 0
+    found = {"conflict": [], "preprint_of": []}
     for rows in group_titles(all_rows):
         dois = {doi for _, doi, _ in rows}
         if len(dois) < 2:
             continue
-        conflicts += 1
-        print(f"\n{rows[0][2]}")
-        tally = defaultdict(list)
-        for agent, doi, _ in rows:
-            tally[doi].append(agent)
-        for doi in sorted(tally, key=lambda d: (-len(tally[d]), d)):
-            print(f"  {doi:<40} {', '.join(sorted(tally[doi]))}")
+        found[classify(dois)].append(rows)
 
-    print(f"\n{conflicts} title(s) cited under more than one DOI")
+    for kind in ("conflict", "preprint_of"):
+        if not found[kind]:
+            continue
+        print(f"\n== {kind} ({len(found[kind])})")
+        for rows in found[kind]:
+            print(f"\n{rows[0][2]}")
+            tally = defaultdict(list)
+            for agent, doi, _ in rows:
+                tally[doi].append(agent)
+            for doi in sorted(tally, key=lambda d: (-len(tally[d]), d)):
+                print(f"  {doi:<40} {', '.join(sorted(tally[doi]))}")
+
+    print(f"\n{len(found['conflict'])} title(s) cited under conflicting DOIs; "
+          f"{len(found['preprint_of'])} preprint/journal pair(s), which are not errors")
     return 0
 
 

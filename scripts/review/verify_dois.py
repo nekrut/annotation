@@ -13,6 +13,13 @@ work), `unresolved` (Crossref has no record for a DOI it should serve),
 registered with DataCite), `no-title` (Crossref has the record but no title
 to compare, common for journal supplements), or `no-doi`.
 
+Every field is whitespace-flattened before it is written. Crossref titles
+carry embedded newlines (the registered Helixer title breaks after "Gene"),
+and an embedded newline splits one logical record across several physical
+TSV lines, which is what any reader -- `csv.reader`, `cut`, `awk` -- sees.
+The file is read back after writing and the run fails if any record is not
+exactly six fields wide or if the key column does not match the bibliography.
+
 Standard library only. Run from the repository root:
 
     python3 scripts/review/verify_dois.py [--limit N]
@@ -21,6 +28,8 @@ Standard library only. Run from the repository root:
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 import json
 import re
 import sys
@@ -38,6 +47,36 @@ from merge_refs import parse_bib  # noqa: E402
 # caller about excessive traffic; anton is this runner's operator.
 UA = "relay-review-synthesis/0.1 (https://github.com/nekrut/annotation; mailto:anton@nekrut.org)"
 OVERLAP_OK = 0.6
+COLUMNS = ("key", "doi", "status", "registered_title", "title_overlap", "reviews")
+
+
+def flatten(value: object) -> str:
+    """One logical record per physical line: no tabs, no newlines, no runs."""
+    return re.sub(r"\s+", " ", str(value)).strip()
+
+
+def serialize(rows: list[tuple]) -> str:
+    out = ["\t".join(COLUMNS)]
+    for row in rows:
+        if len(row) != len(COLUMNS):
+            raise ValueError(f"row has {len(row)} fields, expected {len(COLUMNS)}: {row!r}")
+        out.append("\t".join(flatten(v) for v in row))
+    return "\n".join(out) + "\n"
+
+
+def check_serialization(text: str, rows: list[tuple]) -> None:
+    """Parse the written file the way a consumer does and fail on any drift."""
+    records = list(csv.reader(io.StringIO(text), delimiter="\t"))
+    if len(records) != len(rows) + 1:
+        raise ValueError(f"{len(records)} parsed records for {len(rows)} entries plus header")
+    bad = [i for i, r in enumerate(records) if len(r) != len(COLUMNS)]
+    if bad:
+        raise ValueError(f"records with wrong width at lines {[i + 1 for i in bad]}")
+    if tuple(records[0]) != COLUMNS:
+        raise ValueError(f"header is {records[0]}")
+    written = [r[0] for r in records[1:]]
+    if written != [flatten(r[0]) for r in rows]:
+        raise ValueError("key column does not match the bibliography order")
 
 
 def strip_markup(title: str) -> str:
@@ -99,10 +138,9 @@ def main() -> int:
 
     out = root / "docs" / "review" / "doi-verification.tsv"
     out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("w", encoding="utf-8") as fh:
-        fh.write("key\tdoi\tstatus\tregistered_title\ttitle_overlap\treviews\n")
-        for row in rows:
-            fh.write("\t".join(str(v).replace("\t", " ") for v in row) + "\n")
+    text = serialize(rows)
+    check_serialization(text, rows)
+    out.write_text(text, encoding="utf-8")
 
     tally = {}
     for row in rows:

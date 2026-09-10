@@ -56,6 +56,16 @@ its DOI actually resolves to, so nothing downstream can cite them by accident.
 Every claim in [`README.md`](README.md) that these entries would have supported
 is instead sourced to the DOI the other reviews recorded.
 
+**A related list that is not this one.**
+[`scripts/review/check_conflicts.py`](../../scripts/review/check_conflicts.py)
+groups the five source bibliographies by title and reports every group carrying
+more than one DOI. Four of those groups are conflicts of the kind tabulated
+above; four are a preprint DOI and its journal DOI for the same work (Helixer,
+ANNEVO, Nucleotide Transformer, SegmentNT), where **both identifiers are
+valid**. The script now labels the two categories separately, so a later reader
+of its output does not attribute a legitimate preprint/journal pair to whichever
+review recorded the preprint.
+
 **Not a resolution of the underlying question.** This says the identifiers are
 wrong. It does not say the review's *reading* of those papers is wrong — that
 would need the numbers checked one by one against the correct sources, which
@@ -190,6 +200,13 @@ side and, where one exists, the cheapest experiment that would settle it.
 - **Differentiable HMM, end-to-end** — `lenin` and `marx`. The argument is
   Tiberius's: the end-to-end integration, not Helixer's separate HMM
   post-processor, is what produced the gene-level jump [gabriel2024tiberius].
+  `marx` does not keep the HMM as it stands: the variant proposed is
+  candidate #5 of [`candidates.md`](candidates.md), which makes the duration
+  and emission distributions **functions of per-genome covariates** instead of
+  the fixed mammalian geometric durations. That is a direct answer to the
+  defect `trotsky` cites as the reason to abandon the HMM, so this is a
+  three-way disagreement about how to fix the length model, not two positions
+  against one about whether it is broken.
 - **A structured decoder, family unspecified, chosen by experiment** —
   `engels` and `stalin`. Both explicitly decline to pick, and both add the same
   requirement: whatever generates candidates must have its **recall ceiling
@@ -258,7 +275,11 @@ central hypothesis.
   with eleven, while N-SCAN, with an explicit phylogenetic model, "performs as
   well using mouse as its only informant as it does with any combination"
   [gross2007contrast]. In 2007, discarding the tree scaled better than modelling
-  it.
+  it. (The prose of `marx`'s §6 gives this as "35.6 to 58.6"; `marx` has since
+  corrected it — 35.6 is the N-SCAN-with-mouse row, and CONTRAST with mouse
+  alone is 50.8. The table in `marx`'s §2 and the figures above are the right
+  ones; do not restore the §6 numbers.
+  [20260910T035517Z-marx-0027](../../relay/messages/20260910T035517Z-marx-0027.md).)
 - **`engels` and `stalin` are agnostic and want it tested.** `engels`: "an
   attractive geometric embedding is not itself a validated evolutionary model",
   and proposes comparing an explicit tree likelihood or learned CTMC layer, a
@@ -297,6 +318,16 @@ lengths.
 that `T-human-011` must answer before proposing a tree-as-metric arm. No other
 review addresses it. Cheap to settle: apply a random rotation to the MDS
 embedding and check whether predictions change.
+
+Keep the two halves apart. Rotation, sign change and a consistent permutation
+of the taxon axis are **representation symmetries**: the evidence is
+unchanged, so the prediction should be too, and equality is the right test.
+Removing taxa and rescaling branch lengths **change the evidence**; predictions
+may legitimately move, and requiring equality there would reward an encoder
+that ignores the comparative channel. For those, measure robustness,
+calibration and the degradation curve. `stalin` asks for stability tests, not
+for invariance, throughout
+([20260910T033840Z-stalin-0027](../../relay/messages/20260910T033840Z-stalin-0027.md)).
 
 ### 5.5 UTRs in version 1?
 

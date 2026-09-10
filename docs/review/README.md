@@ -138,7 +138,7 @@ one review only is not weaker evidence, but it is unreplicated search.
 | Helixer | 2021, 2026 | [stiehler2021helixer; holst2026helixer] | DNA only | 2021: one vertebrate model over 186 animal genomes, one land-plant model over 51. 2026: four lineage models | 2026 mean transcript F1: **fungi 0.5386, plants 0.4618, vertebrates 0.1977, invertebrates 0.3066**; base-wise phase F1 0.95/0.81/0.88/0.86. In fungi, GeneMark-ES (0.60) beats it | 8:54 h per mammal on A100; README asks 8–11 GB GPU | all 5 |
 | Pangolin | 2022 | [zeng2022predicting] | sequence, multi-tissue | 4 species | multi-species splicing | GPU | lenin, marx, trotsky |
 | SegmentNT | 2024/2025 | [dealmeida2024annotating; dealmeida2025annotating] | DNA | fine-tuned on human + 5 animals; 10 animals and 5 plants held out | plant genic-element mean MCC 0.45 vs 0.34 for human-only fine-tuning; frames annotation as instance segmentation of 14 element classes | 3-kb model: 20 h on 8×H100 | engels, lenin |
-| Tiberius | 2024 | [gabriel2024tiberius] | DNA + softmasking (+ optional ClaMSA in de novo mode) | trained on mammals; tested human, cow, beluga | three-mammal mean exon/gene F1 **89.7/55.1** vs BRAKER3 83.2/53.7, GALBA 86.2/41.8, Helixer 72.9/19.3, AUGUSTUS 67.3/12.4; **human gene F1 62% vs 21% for the next best ab initio**; de novo (ClaMSA) mode on human 92.6/65.5. **~8M parameters, with a 2M ablation** | 1:39 h per mammal on one A100; training 15 days on four A100s | engels, lenin, marx, stalin (trotsky cites a preprint DOI that resolves to an unrelated paper) |
+| Tiberius | 2024 | [gabriel2024tiberius] | DNA + softmasking (+ optional ClaMSA in de novo mode) | trained on mammals; tested human, cow, beluga | three-mammal mean exon/gene F1 **89.7/55.1** vs BRAKER3 83.2/53.7, GALBA 86.2/41.8, Helixer 72.9/19.3, AUGUSTUS 67.3/12.4; **human gene F1 62% vs 21% for the next best ab initio**; de novo (ClaMSA) mode on human 92.6/65.5, **but that comparative number is not human-label-unseen**: Methods 3.7 says the sitewise ClaMSA input generator was trained using human chromosome 17 RefSeq labels, so the held-out-species split protects the Tiberius network, not the whole comparative pipeline (§7; [stalin's supplement audit](../../relay/messages/20260909T084030Z-stalin-0008.md)). **~8M parameters, with a 2M ablation** | 1:39 h per mammal on one A100; training 15 days on four A100s | engels, lenin, marx, stalin (trotsky cites a preprint DOI that resolves to an unrelated paper) |
 | Tiberius multi-clade | 2026 | [gabriel2026accurate] | DNA | six lineage models: Mesangiospermae, Fungi, Vertebrata, Insecta, Chlorophyta, Bacillariophyta → "92% of available eukaryotic assemblies" | gene F1 **+12 to +37 over Helixer, +10 to +22 over ANNEVO** across a 33-species panel; approaches BRAKER3 in plants, fungi, diatoms, algae; BRAKER3 keeps a gene-level advantage overall | mean 26 min vs ANNEVO 30, Helixer 178, BRAKER3 2,170 min; 72 CPU threads, A100 for the neural tools | engels, lenin, marx, stalin |
 | ANNEVO | 2026 | [zhang2026highly] | DNA; lineage flag | 566-species benchmark (abstract); six released lineage models | "substantially outperforms existing ab initio methods" (abstract; not OA). README: human 19 min on one RTX 4090 for v2.3.3; 12-species mean 12.2 min / **3.8 GB GPU memory** vs Tiberius 43.6 min / 22.5 GB and Helixer 286.6 min / 8.6 GB (authors' measurements) | consumer GPU | engels, lenin, marx, stalin |
 | geneML | 2026 | [vader2026geneml] | DNA | nine fungal genomes | gene F1 **67.1 vs BRAKER3-with-proteins 64.9** (recall 64.1 → 69.0 at equal precision); predicts alternative transcripts (41.1% recall / 71.1% precision vs Iso-Seq) | **~6 min/genome on 8 CPU cores** | engels, lenin, stalin |
@@ -274,9 +274,22 @@ start from evidence.
 benchmarks on); Cactus/HAL, demonstrated at >600 amniote genomes
 [armstrong2020progressive]; Zoonomia's 241 mammals
 [christmas2023evolutionary]; TOGA's 488-mammal and 501-bird chain sets
-[kirilenko2023integrating]. **All of these are mammal- and bird-heavy.** For
-plants, fungi, insects and protists, alignments must be built with Cactus,
-which is why Cactus's activity level matters to this project.
+[kirilenko2023integrating]. **The large alignments the reviewed papers used
+are mammal- and bird-heavy**, but that is a statement about this literature,
+not about what UCSC serves. The accepted data inventory (`docs/data-sources.md`,
+T-human-008, `done`) records deep public alignments on three non-vertebrate
+reference assemblies: `dm6/multiz124way` (124 insects, 5.4 GB of MAF plus a
+Newick tree), `ce11/multiz135way` (135 nematodes) and `sacCer3/multiz7way`
+(7 yeasts), and the KA/KS baseline (T-human-010, `done`) ran on the fly
+124-way. So insects, nematodes and yeasts are already covered on a few
+reference assemblies; **plants, most fungi and the protists have no
+comparable public alignment**, and those must be built with Cactus, which is
+why Cactus's activity level matters to this project. The residual risk for
+the covered clades is not absence but coverage: one reference assembly per
+clade, sparse informant coverage away from it, and no established transfer to
+an assembly that is not the alignment's reference. That distinction changes
+the cost premise for §3 of `candidates.md`: for insects, nematodes and yeasts
+the comparative candidates cost a download, not a Cactus run.
 CONTRAST's 11-informant human panel (macaque, mouse, rat, rabbit, dog, cow,
 armadillo, elephant, tenrec, opossum, chicken) is a documented minimal
 informant set that already captured most of the available gain.
@@ -559,4 +572,13 @@ benchmark, is the contribution this project can honestly claim.
    Scholar was used only for citation counts.
 5. **Nothing here was measured.** Every runtime and accuracy figure is
    as-reported. `T-human-009` should treat this document as a list of claims to
-   check, not as a source of baselines.
+   check, not as a source of baselines. Exactly one measured row exists to
+   check the tables against, and it is not from this task: AUGUSTUS 3.5.0 over
+   the whole *S. pombe* genome, one core, **2,076 s wall clock, 403 MB peak
+   RSS, 165 s per Mb**, scored with T-human-007's validation procedure
+   ([20260910T032948Z-marx-0026](../../relay/messages/20260910T032948Z-marx-0026.md)).
+6. **What this document says about alignment availability comes from the
+   inventory, not from the reviewed papers.** The literature reviewed here used
+   mammal- and bird-centric alignments; UCSC additionally serves deep insect,
+   nematode and yeast alignments that none of these papers used (§4). Where the
+   two differ, `docs/data-sources.md` (T-human-008, `done`) is authoritative.

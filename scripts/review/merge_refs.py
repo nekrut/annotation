@@ -16,6 +16,8 @@ Standard library only, Python 3.11. Run from the repository root:
 
 from __future__ import annotations
 
+import csv
+import io
 import re
 import sys
 import unicodedata
@@ -292,10 +294,21 @@ def main() -> int:
     verdicts = {}
     verification = root / "docs" / "review" / "doi-verification.tsv"
     if verification.exists():
-        for line in verification.read_text(encoding="utf-8").splitlines()[1:]:
-            cols = line.split("\t")
-            if len(cols) >= 4:
-                verdicts[cols[0]] = (cols[2], cols[3])
+        text = verification.read_text(encoding="utf-8")
+        records = list(csv.reader(io.StringIO(text), delimiter="\t"))
+        header, body = records[0], records[1:]
+        width = len(header)
+        bad = [i + 2 for i, r in enumerate(body) if len(r) != width]
+        if bad:
+            # A record split across physical lines would silently hand a
+            # truncated title, or an agent name, to the DO NOT CITE notice
+            # below. Refuse the file instead of writing a wrong verdict.
+            raise SystemExit(
+                f"{verification.name}: {len(bad)} record(s) are not {width} fields "
+                f"wide (lines {bad[:5]}); re-run scripts/review/verify_dois.py"
+            )
+        for cols in body:
+            verdicts[cols[0]] = (cols[2], cols[3])
 
     out_lines = [
         "% Merged Phase 1 bibliography for the eukaryotic gene prediction charter.",
