@@ -1,9 +1,11 @@
 # Cost baseline: what existing gene predictors cost, and the budget ours must fit
 
 Task [T-human-009](../relay/tasks/T-human-009.md). Owner: `marx`.
-Status: **draft**, prepared while the task was still blocked on
-T-human-006; every figure below carries its source, and the measured rows
-were produced by the commands in §3.4 on the runner described there.
+Status: **submitted for review** (2026-09-10). Every figure below carries
+its source, and the measured rows were produced by the commands in §3.4 on
+the runner described there. Two rows, EGAPx and Tiberius end to end, need
+the cluster; the `alert` requesting it is
+[marx-0033](../relay/messages/20260910T115307Z-marx-0033.md) (§5.4).
 
 Two kinds of number appear here and they are kept apart. **Documented**
 figures are quoted from a paper, a README or a project's own report; they
@@ -96,7 +98,8 @@ hardware and species sets, agree on the ordering Tiberius/ANNEVO < Helixer
 Each subsection quotes the primary source first (checked on 2026-09-10 by
 fetching the README from `raw.githubusercontent.com`), then what the five
 Phase 1 reviews (`relay/artifacts/T-human-00{2,3,4,5,12}/review.md`) and
-the synthesis (`docs/review/README.md`, PR #16) add from the papers.
+the synthesis (`docs/review/README.md`, T-human-006, merged from PR #16)
+add from the papers.
 
 ### 2.1 EGAPx
 
@@ -187,6 +190,13 @@ Primary source, [weberlab-hhu/Helixer README](https://github.com/weberlab-hhu/He
 - Demos: about 3 min (1-step inference) and 5 min (3-step inference) on a
   GPU.
 - Install: "20-30 minutes" for an experienced user, "2-3 hours" otherwise.
+- On a consumer card: the T-human-007 validation runs on an RTX 5080
+  (16 GB) needed `--batch-size 8` because "the shipped default of 32
+  exhausts 16 GB of GPU memory at `--subsequence-length 213840`" (the
+  vertebrate model's window), and TensorFlow 2.15.1 ships no kernels for
+  that card's compute capability, so every kernel is JIT-compiled on first
+  use (`benchmark/validation/README.md`). Those runs record no time or
+  memory in their declarations, so they give accuracy but no cost.
 
 Paper figures (reviews and synthesis): 8 h 54 min per mammalian genome on
 an A100, about **10.7 GPU-s/Mb** for a 3 Gb genome.
@@ -222,7 +232,7 @@ package versions; the `time` package had to be installed alongside
 
 | genome | size (Mb) | how run | wall clock (s) | CPU (user s) | **CPU-s / Mb** | peak RSS (MB) | genes | nucleotide F1 | locus F1 | transcript F1 | source |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| *Schizosaccharomyces pombe* | 12.57 | 1 process, whole genome, 1 core | 2076 | 2073 | **165** | 403 | 4,456 | 0.95466 | 0.92316 | 0.70235 | marx-0026 (2026-09-10, same runner class) |
+| *Schizosaccharomyces pombe* | 12.57 | 1 process, whole genome, 1 core | 2076 | 2073 | **165** | 403 | 4,456 | 0.95466 | 0.92316 | 0.70235 | [marx-0026](../relay/messages/20260910T032948Z-marx-0026.md) (2026-09-10, same runner class) |
 | *Saccharomyces cerevisiae* | 12.16 | 17 processes, 4 in parallel | 209 | 698 | **57** | 233 | 5,154 | 0.95839 | 0.91850 | 0.78060 | this document, 2026-09-10 |
 | *Plasmodium falciparum* | 23.29 | 14 processes, 4 in parallel | 622 | 2101 | **90** | 988 | 4,813 | 0.88362 | 0.87984 | 0.42754 | this document, 2026-09-10 |
 | *Caenorhabditis elegans* | 100.29 | 7 processes, 4 in parallel | 3951 | 11409 | **114** | 730 | 14,999 | 0.86887 | 0.77123 | 0.30895 | this document, 2026-09-10 |
@@ -426,8 +436,9 @@ T-human-008's finding and T-human-011's risk, not a budget line here.
 
 EGAPx end to end and Tiberius on the panel are the two documented rows
 that most need a measured counterpart, and neither fits a laptop. The
-`alert` to `human` that the task asks for will request, for one attempt
-each:
+`alert` to `human` that the task asks for is
+[marx-0033](../relay/messages/20260910T115307Z-marx-0033.md), posted
+2026-09-10; it requests, for one attempt each:
 
 - EGAPx on *Ciona intestinalis* (140 Mb, `heldout`, no RNA-seq required):
   one 32-CPU, 256 GB node; by the README's fly figure, about 70 to 100
@@ -444,7 +455,8 @@ each:
   for the first two and a day of CPU for the third. The RTX 5080 machine of
   `benchmark/validation/` is the natural place; those runs exist but their
   declarations record no time or memory.
-- EGAPx end to end: below this runner's and a laptop's minimum. An `alert`
-  with a cluster estimate is drafted in §5.4.
+- EGAPx end to end: below this runner's and a laptop's minimum. The
+  `alert` with the cluster estimate is posted (§5.4); the run waits on a
+  `decision`.
 - Failure rate per genome for anything other than EGAPx on Galaxy: no
   source reports one.
