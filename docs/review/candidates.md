@@ -21,7 +21,7 @@ Provenance column: which reviews proposed or supported the idea.
 |---|---|---|---|---|
 | 1 | Neutral benchmark with stratified metrics and a leakage protocol | already scoped as `T-human-007` (`done`) | everything downstream | 5/5 |
 | 2 | Informant-degradation curve | small | whether the comparative programme is viable at all | 5/5 |
-| 3 | Tiberius ab initio vs ClaMSA mode, replicated on mammals | ~1 day, 1 GPU | whether tree/alignment input buys anything given a good sequence model | lenin |
+| 3 | Tiberius ab initio vs ClaMSA mode, replicated on mammals | ~1 day, 1 GPU **on prepared ClaMSA features**; a preprocessing bill if they must be regenerated | how much *this supplied comparative pipeline* buys on *these mammalian regions* — prioritization evidence for #4, not a verdict on comparative input in general | lenin |
 | 4 | Fixed-decoder encoder ablation | weeks, 1 GPU | which geometry does the work | engels, stalin, lenin |
 | 5 | Covariate-conditioned decoder | weeks | whether "one model, many clades" is achievable without per-clade weights | marx |
 | 6 | Fixed-encoder decoder ablation (HMM vs CRF vs splice graph) | weeks | isoforms and the intron-length regime | trotsky, engels, stalin |
@@ -88,8 +88,16 @@ So insects, nematodes and yeasts are a download, and the degradation curve can
 be measured on them this quarter at no alignment-construction cost. What is
 genuinely missing is plants, most fungi and the protists — and, for every
 covered clade, informants away from the one reference assembly the alignment
-is built on, with no established route to transfer an alignment to an assembly
-that is not its reference.
+is built on. Two cases must be kept apart here. A genome that *is* in the
+alignment but is not the one it was built around is reachable: HAL documents
+queries relative to an arbitrary reference or subtree and MAF export with a
+selectable reference ([README](https://github.com/ComparativeGenomicsToolkit/hal#readme)),
+so the cost is a resource-specific extraction, not a missing capability — and
+the multiz MAF files UCSC serves are reference-anchored, so they need that
+conversion or a re-projection first. A genome that is *absent* from the source
+alignment is the real gap: no change of reference recovers sequence the
+alignment never contained, and a new assembly must be aligned in. Neither case
+is evidence about held-out-species accuracy on its own.
 
 The evidence that this curve is steep already exists on the evidence side:
 ProtHint's intron-hint sensitivity falls 79.8 → 35.8 and start-codon sensitivity
@@ -138,28 +146,58 @@ from alignment information, and it does not separate either from the
 feature generator's supervised human exposure (Methods 3.7: the sitewise
 ClaMSA input generator was trained with human chromosome 17 RefSeq labels).
 Candidate #4, the fixed-decoder encoder ablation, is still required for the
-causal claim; #3 is the cheap reading that says whether #4 is worth running.
+causal claim.
 
-**This is the highest value-per-hour item in the list.** If the answer is that
-comparative input buys little, the charter's central hypothesis needs revision
-before anything is built.
+**What its result licenses.** A gain measured here is a statement about *this
+pipeline, these checkpoints and these mammalian regions*, and it is
+prioritization evidence, not a gate. A large gain raises the priority of #4; a
+small one lowers it, and says that this particular supplied encoder adds little
+on this material. Neither outcome decides whether a different comparative
+encoder, a different informant set, or a different clade would help, and a
+small gain here is not grounds for revising the charter's central hypothesis —
+only #4, with the decoder and inputs held fixed, can support a claim that
+general. `engels` and `stalin` both asked for this scope limit
+([20260910T042437Z-engels-0027](../../relay/messages/20260910T042437Z-engels-0027.md),
+[20260910T043806Z-stalin-0028](../../relay/messages/20260910T043806Z-stalin-0028.md)).
+
+**It is still the highest value-per-hour item in the list**, because it is a
+day of inference that reorders the rest of the list.
 
 ## 4. The fixed-decoder encoder ablation
 
 **What.** Hold one structured decoder fixed and swap only the evidence encoder:
 
-- (a) KA/KS window statistic — the floor, already built as `baselines/kaks/`;
-- (b) PhyloCSF or ClaMSA codon-model likelihood features;
-- (c) a small sequence-only encoder at the target budget (Tiberius-class);
-- (d) (c) plus the tree as extra tokens;
-- (e) (c) plus the tree as a metric — MDS embedding and Tree-RoPE, the HyphAeon
-  transfer.
+- (a) KA/KS window statistic over the MSA — the floor, already built as
+  `baselines/kaks/`;
+- (b) PhyloCSF or ClaMSA codon-model likelihood features over the same MSA;
+- (c) **target DNA only**, a small sequence-only encoder at the target budget
+  (Tiberius-class) — the no-alignment baseline;
+- (d) **MSA, no tree**: (c)'s encoder plus the aligned informant rows, with no
+  phylogeny supplied in any form;
+- (e) **MSA + tree as tokens**: (d) plus the tree as extra tokens;
+- (f) **MSA + tree as a metric**: (d) plus MDS embedding and Tree-RoPE, the
+  HyphAeon transfer.
+
+**What each contrast isolates, and what must be held fixed.** (c) vs (d)
+measures the value of the alignment; (d) vs (e) and (d) vs (f) measure the
+value of the tree *given* the alignment; (e) vs (f) is the HyphAeon claim
+itself. That reading only holds if (d), (e) and (f) consume **the same aligned
+informants, the same masking, the same candidate support, the same fixed
+decoder, the same training and evaluation split, and a controlled parameter
+budget** — the tree representation is then the only thing that varies. Without
+the (d) arm, "sequence-only versus plus the tree" changes alignment content and
+tree content at once and measures neither. `engels` and `stalin` both raised
+this
+([20260910T042437Z-engels-0027](../../relay/messages/20260910T042437Z-engels-0027.md),
+[20260910T043806Z-stalin-0028](../../relay/messages/20260910T043806Z-stalin-0028.md));
+specifying the arms is a Phase 3 writing task, not a Phase 4 run.
 
 **Why.** This is the one deliverable nobody else is producing. OrionGeno and
 ANNEVO report accuracy; neither isolates the contribution of phylogenetic
 context from that of long-range modelling. The specific HyphAeon claim is that
 injecting the tree *as a metric* removes the need to learn the phylogeny — and
-(d) versus (e) at a fixed parameter budget is exactly that claim, tested.
+(e) versus (f) at a fixed parameter budget, over identical alignments, is
+exactly that claim, tested.
 
 Three of the five reviews ask for a version of this. `engels` frames it as
 tree-likelihood versus distance-aware encoder versus no tree, decoder fixed;
@@ -177,16 +215,19 @@ opinion asks for *stability tests*, not for a blanket invariance requirement
    is an arbitrary indexing choice. Under a consistent permutation of the
    taxon axis, or an arbitrary orthogonal transformation of the embedding,
    nothing about the evidence has changed, so the prediction should not
-   change either. If it does, (e) is fitting arbitrary coordinates and the
+   change either. If it does, (f) is fitting arbitrary coordinates and the
    ablation will not mean what it appears to mean. The alternative to an
    invariant operation is a stable canonical-coordinate convention, which is
    the other option `stalin` names.
 2. **Changes in evidence — measure degradation, do not require equality.**
    Removing an informant removes evidence; rescaling branch lengths changes
-   the modeled evolutionary distances. Predictions *should* move in both
-   cases, and an encoder that scored perfectly on an equality test here would
-   be one ignoring the comparative channel — the opposite of what (e) is
-   built to measure. What to report is robustness, calibration and the shape
+   the modeled evolutionary distances. Predictions *may legitimately* move in
+   both cases, and an encoder that scored perfectly on an equality test here would
+   be one ignoring the comparative channel — the opposite of what (f) is
+   built to measure. The converse does not hold either: predictions that stay
+   put on redundant or uninformative evidence do not by themselves show that an
+   encoder ignores its comparative input. Neither universal equality nor
+   universal change is the test. What to report is robustness, calibration and the shape
    of the degradation curve against the number and distance of the informants
    retained.
 

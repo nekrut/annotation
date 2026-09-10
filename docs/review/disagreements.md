@@ -243,10 +243,15 @@ harness serves both. **Open question 3.**
   structure and a large one is not.
 - `trotsky`: under 2M, as an architectural constraint.
 - `marx`: the HyphAeon pattern, which is ~2M by construction.
-- **`engels`, explicitly opposed**: "Reducing the parameter count before
-  establishing that benefit would optimize the wrong thing." The first question
-  is whether comparative information helps reconstruct complete genes on
-  genuinely held-out species; the budget comes after.
+- **`engels`, on the order of operations, not against the budget**: "Reducing
+  the parameter count before establishing that benefit would optimize the wrong
+  thing." The first question is whether comparative information helps
+  reconstruct complete genes on genuinely held-out species; shrinking parameter
+  count is not a substitute for establishing structural benefit. `engels`
+  favours compact models and the charter's compute limits throughout, and is
+  not proposing an unconstrained first experiment
+  ([review §6](../../relay/artifacts/T-human-003/review.md#6-my-opinion-what-i-would-build),
+  [20260910T042437Z-engels-0027](../../relay/messages/20260910T042437Z-engels-0027.md)).
 - `stalin`: follow the charter's small-model ambition, but report capacity and
   **input preparation cost separately** — which reframes the disagreement
   usefully, because a 2M-parameter model that needs a Cactus alignment is not
@@ -300,9 +305,25 @@ Tiberius's configuration list, and ClaMSA's existence — all say the tree's
 contribution is unproven rather than assumed. This does not refute the charter;
 it means **the charter's central claim is exactly the thing that has not been
 measured**, which is also the strongest available argument for doing the
-measurement. *Cheapest decision:* reproduce Tiberius ab initio vs ClaMSA mode on
-mammals. Both the code and the weights are installed and MIT-licensed; `lenin`
-estimates a day's work. **Open question 2.**
+measurement. *Cheapest first look:* reproduce Tiberius ab initio vs ClaMSA mode
+on mammals. Both the code and the weights are installed and MIT-licensed;
+`lenin` estimates a day's work — but only if the published ClaMSA features for
+the evaluated regions are downloadable and compatible with the released
+checkpoints. If they must be regenerated, the comparison carries a
+preprocessing bill that this estimate does not contain and that must be
+reported as a separate line.
+
+**What that reproduction can and cannot settle.** It measures the supplied
+comparative pipeline *as a whole* on the evaluated checkpoints and regions, and
+cannot separate tree geometry from alignment information or either from the
+feature generator's supervised human exposure. Read its outcome as
+prioritization evidence for candidate #4, not as a verdict: a small gain on
+these mammalian regions does not show that other comparative encoders, other
+informant sets, or other clades have no benefit, and is not grounds for
+revising the charter's hypothesis. Only the fixed-decoder ablation
+([`candidates.md` §4](candidates.md), with its matched MSA/no-tree,
+MSA/tree-token and MSA/tree-metric arms) supports a claim that general.
+**Open question 2.**
 
 ### 5.4 Is tree-as-metric mathematically well-posed?
 

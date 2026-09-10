@@ -135,7 +135,7 @@ one review only is not weaker evidence, but it is unreplicated search.
 | Method | Year | Cite | Inputs | Clades | Reported accuracy | Runtime | Reviews |
 |---|---|---|---|---|---|---|---|
 | SpliceAI | 2019 | [jaganathan2019predicting] | pre-mRNA sequence | human | top-*k* accuracy ~0.95 for donors/acceptors; splice sites only | GPU, seconds per locus | lenin, marx, trotsky |
-| Helixer | 2021, 2026 | [stiehler2021helixer; holst2026helixer] | DNA only | 2021: one vertebrate model over 186 animal genomes, one land-plant model over 51. 2026: four lineage models | 2026 mean transcript F1: **fungi 0.5386, plants 0.4618, vertebrates 0.1977, invertebrates 0.3066**; base-wise phase F1 0.95/0.81/0.88/0.86. In fungi, GeneMark-ES (0.60) beats it | 8:54 h per mammal on A100; README asks 8–11 GB GPU | all 5 |
+| Helixer | 2021, 2026 | [stiehler2021helixer; holst2026helixer] | DNA only | 2021: one vertebrate model over 186 animal genomes, one land-plant model over 51. 2026: four lineage models | 2026 mean transcript F1: **fungi 0.5386, plants 0.4618, vertebrates 0.1977, invertebrates 0.3066**; base-wise phase F1 0.95/0.81/0.88/0.86. In fungi, GeneMark-ES (0.60) beats it. **Scoring caveat: these are GffCompare transcript F1 after longest-protein selection and UTR removal, without `--strict-match`/`-e`, so identical intron chains match despite differing outer boundaries — they do not establish exact CDS start/stop agreement** and are not comparable to the benchmark's exact-CDS endpoint ([engels's endpoint audit](../../relay/messages/20260909T032715Z-engels-0004.md); §5.8, §7) | 8:54 h per mammal on A100; README asks 8–11 GB GPU | all 5 |
 | Pangolin | 2022 | [zeng2022predicting] | sequence, multi-tissue | 4 species | multi-species splicing | GPU | lenin, marx, trotsky |
 | SegmentNT | 2024/2025 | [dealmeida2024annotating; dealmeida2025annotating] | DNA | fine-tuned on human + 5 animals; 10 animals and 5 plants held out | plant genic-element mean MCC 0.45 vs 0.34 for human-only fine-tuning; frames annotation as instance segmentation of 14 element classes | 3-kb model: 20 h on 8×H100 | engels, lenin |
 | Tiberius | 2024 | [gabriel2024tiberius] | DNA + softmasking (+ optional ClaMSA in de novo mode) | trained on mammals; tested human, cow, beluga | three-mammal mean exon/gene F1 **89.7/55.1** vs BRAKER3 83.2/53.7, GALBA 86.2/41.8, Helixer 72.9/19.3, AUGUSTUS 67.3/12.4; **human gene F1 62% vs 21% for the next best ab initio**; de novo (ClaMSA) mode on human 92.6/65.5, **but that comparative number is not human-label-unseen**: Methods 3.7 says the sitewise ClaMSA input generator was trained using human chromosome 17 RefSeq labels, so the held-out-species split protects the Tiberius network, not the whole comparative pipeline (§7; [stalin's supplement audit](../../relay/messages/20260909T084030Z-stalin-0008.md)). **~8M parameters, with a 2M ablation** | 1:39 h per mammal on one A100; training 15 days on four A100s | engels, lenin, marx, stalin (trotsky cites a preprint DOI that resolves to an unrelated paper) |
@@ -286,8 +286,17 @@ reference assemblies; **plants, most fungi and the protists have no
 comparable public alignment**, and those must be built with Cactus, which is
 why Cactus's activity level matters to this project. The residual risk for
 the covered clades is not absence but coverage: one reference assembly per
-clade, sparse informant coverage away from it, and no established transfer to
-an assembly that is not the alignment's reference. That distinction changes
+clade and sparse informant coverage away from it. Distinguish two things that
+an earlier draft of this section ran together. Re-anchoring on a genome that is
+*already in* the alignment is documented: HAL supports queries relative to an
+arbitrary reference or subtree and MAF export with a selectable reference
+([README](https://github.com/ComparativeGenomicsToolkit/hal#readme)), so for
+HAL-backed resources this is an extraction step with a resource-specific cost.
+UCSC's multiz MAF files are reference-anchored and need that conversion or a
+re-projection first. A genome that is *absent* from the alignment is the actual
+limitation: no choice of reference recovers sequence the alignment never
+contained, so a novel assembly must be aligned in. And neither operation is by
+itself evidence of good held-out-species prediction. That distinction changes
 the cost premise for §3 of `candidates.md`: for insects, nematodes and yeasts
 the comparative candidates cost a download, not a Cactus run.
 CONTRAST's 11-informant human panel (macaque, mouse, rat, rabbit, dog, cow,
@@ -409,7 +418,12 @@ the correct boundary is pruned, a perfect downstream model cannot recover it.
 matter. [5/5]** No two rows in §2 share a benchmark. Comparisons across papers
 are confounded by isoform policy (Tiberius scores the longest-CDS isoform per
 gene; BRAKER3 counts a gene correct if any transcript matches), by whether UTRs
-are scored (Helixer 2026 strips them), and by reference population (GeneMark-ETP's
+are scored (Helixer 2026 strips them — and its GffCompare invocation carries no
+`--strict-match`/`-e`, so transcripts match on identical intron chains
+regardless of terminal position: stripping UTRs does *not* make the comparison
+exact at coding termini, `engels`'s
+[endpoint audit](../../relay/messages/20260909T032715Z-engels-0004.md)), and by
+reference population (GeneMark-ETP's
 sensitivity and precision use different reference populations, so its harmonic
 mean need not be a single-confusion-matrix F1 — `stalin`'s annex). Two 2026
 papers make the point directly: He & Florea find every method peaks on the exon
