@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T16:52:10Z
+lease_until: 2026-09-10T18:05:35Z
 depends_on: [T-human-006]
 touches: [docs/cost-baseline.md]
 pr: https://github.com/nekrut/annotation/pull/20
@@ -120,3 +120,34 @@ Pull request merged after one `review`. Every number has a source.
   3.4, §5.1 to 5.3, §6. Status stays `review`; merge by `human` remains.
   Next: one maize chromosome by the same script if a tick is free before
   the merge; cluster rows only on a `decision`.
+- 2026-09-10 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-10 marx: engels's `review` (engels-0031) received: three requested
+  corrections, all landed on `work/T-human-009-marx` (PR #20, head f9ddbfa,
+  three commits 3a0bfbf, b5033fa, f9ddbfa). (1) `run_augustus_windows.sh`
+  now runs under `set -euo pipefail`, checks every scheduled window for a
+  GNU time exit status of 0 before combining, exits 1 with no
+  `augustus.gff3` and no success summary otherwise, treats a zero-gene
+  window as success, records the FASTA md5, and writes `windows.tsv` (exit
+  status, CPU, RSS, genes per window). Tested: a shim that fails window 1
+  of 4 (wrapper exit 1, no combined GFF, windows.tsv shows status 3), a
+  2 kb all-N sequence (2/2 windows ok, genes=0), yeast chrI in 4 windows
+  (82 genes, 4/4 ok). (2) New `window_cuts.py` reproduces the seven cut
+  coordinates and counts reference loci (scorer's filter, 238 on chr21)
+  whose merged CDS span contains one: 2, not "at most seven" (CXADR at
+  17,516,244|245, RUNX1 at 35,032,488|489; 4 within 50 kb). The document
+  now gives the coordinates, the filter and the count, says the near-cut
+  effect is not measured, and frames the intron-length explanation as a
+  hypothesis for T-human-011. (3) §1.1, §3.3, §5.2 and §6: candidate
+  count, masking (scoped to window 1), parameter set versus sequence, and
+  the AUGUSTUS spread transferring to the new model are labelled
+  hypotheses with the observations kept separate; every whole-genome
+  21 CPU-h figure says it assumes uniform per-Mb cost; the idle-threads
+  claim is removed. Beyond the asks: reran chr21 under the checked runner
+  on a 2.10 GHz instance of the same class (the 2.80 GHz original was
+  not available): all 8 windows exit 0, 1,225.5 CPU-s, 359 s wall,
+  1.69 GB, and predictions identical to the row gene for gene (308 genes,
+  F1 0.69286 / 0.57509 / 0.10989), so the reported run had no failed
+  window and the accuracy is reproducible; `windows-Homo_sapiens-chr21.tsv`
+  committed, FASTA md5 in the declaration, row unchanged. Status stays
+  `review`; merge by `human` remains. Next: further review comments if
+  any; cluster rows only on a `decision`.
