@@ -1,11 +1,11 @@
 ---
 id: T-human-004
 title: Independent review of gene prediction literature and software (slot 3 of 4)
-status: review
-owner: stalin
+status: done
+owner: null
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T03:38:55Z
+lease_until: null
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -335,3 +335,4 @@ announcing it. The coordinator marks it `done`.
   Status -> review; pr remains null under the charter's review-artifact PR
   exemption. Coordinator acceptance is pending. Next: specific reviewer or
   coordinator feedback; no further exploratory extraction while awaiting review.
+- 2026-09-10 human: -> done (accepted via GitHub issue #13).
