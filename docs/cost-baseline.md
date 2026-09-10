@@ -354,11 +354,23 @@ The genomic coding fractions quoted in §5.3 are reproduced by
 python3 docs/cost-baseline/cds_union.py Saccharomyces_cerevisiae Homo_sapiens Mus_musculus Zea_mays
 ```
 
-which downloads each species' RefSeq GFF named in `benchmark/panel.tsv`,
-checks its md5 against the panel, and writes the union of CDS intervals
-beside the per-isoform sum (`cds_union.tsv`; the per-isoform column
-reproduces the panel's `cds_fraction_pct` exactly). Standard library only;
-the four GFFs are about 200 MB and are cached in `$CDS_UNION_CACHE`.
+which downloads each species' RefSeq GFF and NCBI assembly report named
+in `benchmark/panel.tsv`, checks the GFF md5 against the panel, and writes
+the union of CDS intervals beside the per-isoform sum (`cds_union.tsv`).
+Numerator and denominator cover the same sequences: the panel's
+`genome_bp` is the primary nuclear assembly, so the script keeps only
+seqids whose assembly-report role is `assembled-molecule`,
+`unlocalized-scaffold` or `unplaced-scaffold` and whose unit is not
+`non-nuclear`, and checks that their lengths sum to `genome_bp` (they do,
+for all four). This matters for human: GRCh38.p14 carries 515 alt-scaffold,
+fix-patch and novel-patch sequences (199 Mb absent from the denominator)
+whose CDS are duplicates of primary-assembly genes; counting them, as the
+first version of this script did (`--all`), reads 41.4 Mb and 1.34%
+instead of 36.1 Mb and 1.17% (finding by lenin, message
+`20260910T130845Z-lenin-0034`). Mouse, maize and yeast have no alt or
+patch units, so only the organelles drop and their fractions move by at
+most 0.2 points. Standard library only; the four GFFs are about 140 MB
+and are cached in `$CDS_UNION_CACHE`.
 
 ## 4. Our floor: the KA/KS window test
 
@@ -431,15 +443,18 @@ T-human-011, not preferences:
    core speed: at the full 9 × 10^10 FLOP/s peak of §5.1 the same shape
    costs 890 s/Mb, still five times AUGUSTUS and 60 times the ceiling.
 2. **The model must run on candidate support, not on the genome.** The
-   genomic coding fraction, the union of CDS intervals over the genome, is
-   1.3% for human, 1.4% for mouse, 2.0% for maize and 72.5% for
-   *S. cerevisiae* (`docs/cost-baseline/cds_union.tsv`, produced by
-   `cds_union.py` from the panel's RefSeq GFFs, md5-checked against
-   `benchmark/panel.tsv`). The panel's `cds_fraction_pct` column sums CDS
-   over every isoform, so it reads 9.6% for human, 7.2x the union, and is
-   not the number to size a candidate stage by. A candidate-region stage
-   that keeps 2 to 5% of a mammalian genome, which is 1.5 to 4x the coding
-   bases with room for flanks, and nearly all of a yeast genome, and a
+   genomic coding fraction, the union of CDS intervals over the primary
+   nuclear assembly, is 1.2% for human, 1.4% for mouse, 2.0% for maize and
+   72.4% for *S. cerevisiae* (`docs/cost-baseline/cds_union.tsv`, produced
+   by `cds_union.py` from the panel's RefSeq GFFs, md5-checked against
+   `benchmark/panel.tsv`, restricted to the sequences that make up the
+   panel's `genome_bp`; §3.4). The panel's `cds_fraction_pct` column sums
+   CDS over every isoform, so it reads 8.8% for human on the same
+   sequences, 7.6x the union, and is not the number to size a candidate
+   stage by; the inflation is 1.0x in yeast, 1.8x in maize and 5.3x in
+   mouse, so it is not a constant that can be divided out. A
+   candidate-region stage that keeps 2 to 5% of a mammalian genome, which
+   is 1.7 to 4.3x the coding bases with room for flanks, and nearly all of a yeast genome, and a
    codon-level (not base-level) token axis, are what bring the per-Mb cost
    under the ceiling. The candidate stage
    itself must therefore be a cheap sequence scan, of the cost class of the
