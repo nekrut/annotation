@@ -109,7 +109,7 @@ machinery is justified. The worm result (F1 at most 0.39, MCC at most
    nothing at any window size. Rhesus (0.08) reaches F1 0.20. *simulans*
    (0.10) needs 600 bp to reach F1 0.76 and calls nothing useful at 90 or
    150 bp. The test counts synonymous and nonsynonymous differences; with
-   fewer than about 15 differences in a window the z-test cannot reject
+   only a handful of differences in a window the z-test cannot reject
    dN = dS whatever the ratio. A model that wants to use close relatives
    (which is where the alignments are complete: chimp covers 98% of the
    human windows) must use a signal that does not need substitutions,
@@ -127,23 +127,22 @@ machinery is justified. The worm result (F1 at most 0.39, MCC at most
    numbers improve only a little, because the spill is inside the aligned
    part too. Beyond about 1 substitution per site, the second failure
    appears: the pairs that are aligned are near saturation at synonymous
-   sites, so dS is large and noisy, the `saturated` count rises, and dN/dS
-   is below one in shadow frames as often as in the true frame (fly
-   *ananassae* at 1.05: sensitivity 0.84, precision 0.39; MCC restricted
-   to aligned bases falls to 0.25). The worm pairs are all in this regime
+   sites, so dS is large and noisy and dN/dS is below one in shadow frames
+   nearly as often as in the true frame (fly *ananassae* at 1.05 and
+   600 bp: sensitivity 0.84, precision 0.39, MCC 0.39). The worm pairs are all in this regime
    (1.12-1.31 on the 135-way tree; there is no *Caenorhabditis* at 0.2-0.6
-   from *elegans* in the track), and their aligned-only MCC is 0.13 or
+   from *elegans* in the track), and their aligned-only MCC is 0.14 or
    below: the test is at noise level.
 
 3. **Short exons: the window is the wrong unit.** At the 150-bp window
-   that maximizes F1 for mammals, sensitivity is 0.00 for CDS segments
+   that maximizes F1 for mammals, sensitivity is 0.00-0.26 for CDS segments
    under 100 bp and 0.44-0.63 for 100-200 bp, against 0.77-0.85 for
    segments of 400 bp or more. Nearly half of mammalian CDS bases are in
    segments under 200 bp (48% human, 46% mouse in these samples), so
    half the coding sequence is invisible to the window that works best on
    the other half. Raising the window to 600 bp recovers the short exons
-   (sensitivity 0.47-0.83 under 100 bp) but precision collapses to
-   0.17-0.24, because the window is now mostly intron. There is no window
+   (sensitivity 0.47-1.00 under 100 bp) but precision collapses to
+   0.17-0.23, because the window is now mostly intron. There is no window
    size that resolves both; the sweep's best F1 is a compromise between
    two failure modes, not a good operating point. The paper's own remark
    that the test cannot locate exon boundaries is the same fact.
