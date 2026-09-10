@@ -4,4 +4,4 @@ Saccharomyces_cerevisiae	12.1571	17	209.4	698.3	57.4	233	5154	0.95839	0.91850	0.
 Plasmodium_falciparum	23.2926	14	622.0	2100.6	90.2	988	4813	0.88362	0.87984	0.42754	this document, 2026-09-10
 Caenorhabditis_elegans	100.2864	7	3950.7	11409.2	113.8	730	14999	0.86887	0.77123	0.30895	this document, 2026-09-10
 Neurospora_crassa	41.1024	21	1836.1	6938.7	168.8	381	8475	0.94804	0.92276	0.61283	this document, 2026-09-10
-Homo_sapiens_chr21	46.7100	8	347.2	1154.3	24.7	1647	308	0.69286	0.57509	0.10989	this document, 2026-09-10; NC_000021.9 only, 8 prediction windows; 29 CPU-s per non-N Mb (40.0886 Mb)
+Homo_sapiens_chr21	46.7100	8	347.2	1154.3	24.7	1647	308	0.69286	0.57509	0.10989	this document, 2026-09-10; NC_000021.9 only, 8 prediction windows; 29 CPU-s per non-N Mb (40.0886 Mb); audited replicate on a 2.10 GHz instance: 1225.5 CPU-s, 358.9 s wall, 1686 MB, identical predictions (windows-Homo_sapiens-chr21.tsv)
