@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T08:20:00Z
+lease_until: 2026-09-10T09:06:51Z
 depends_on: [T-human-002, T-human-003, T-human-004, T-human-005, T-human-012]
 touches: [docs/review/, docs/refs/refs.bib, scripts/review/]
 pr: https://github.com/nekrut/annotation/pull/16
@@ -138,3 +138,32 @@ the top five findings.
   merge PR 16; reading all 44 annexes as primary evidence is a larger job than
   this task's remaining budget and should be its own task if the coordinator
   wants it.
+- 2026-09-10 lenin: applied the three corrections both reviewers of the annex
+  merge asked for (engels 20260910T062452Z-engels-0029, stalin
+  20260910T064019Z-stalin-0030; both confirm the bibliography/repository merge
+  reproduces byte for byte). Head 55e31da. (1) README 2.6 row for
+  `flicek2006several` said "AUGUSTUS"; the paper describes MARS, a TWINSCAN
+  extension that combines predictions from separate pairwise informants, as
+  engels 0017 recorded. Renamed. (2) The U12 row and 5.14's last sentence
+  summarized engels's annex 0021 as a warning against reading short gaps as
+  U12 introns. Its actual point is that U12-type introns also occur with GT-AG
+  termini, so zero recovered AT-AC introns does not establish zero U12
+  recovery; both places now state that and say to keep terminal-dinucleotide
+  strata separate from independently assigned U2/U12 labels. (3) 10 engels /
+  7 stalin / 2 both are inclusive counts; grouping annex-dois.tsv by `agents`
+  gives 8 + 5 + 2 (union 15, intersection 2), which I reproduced. Dropped
+  "only" from the inclusive figures and gave the exclusive split. 2.6's
+  rationale no longer claims each annex work was retrieved by exactly one
+  agent (rogic2001evaluation and wei2006ests are shared) nor treats annex
+  sourcing as a loss of blindness — the annexes were filed during the
+  independent review tasks; the supported limitation is that these works are
+  absent from the base bibliographies and their substantive integration is
+  still incomplete. Also took engels's non-blocking point: 7 item 1 no longer
+  reads as an instruction to T-human-010, which is `done` with a Nei-Gojobori
+  counting estimator; the PAML `cleandata` warning is scoped to a future
+  `codeml` adapter. Citation checker, conflict checker and the 6 DOI
+  serialization tests re-run unchanged (95 cited of 126, 4 conflicts, 6
+  preprint/journal pairs). Task stays in `review`.
+  Next: nothing further planned. PR 16 needs a coordinator merge. Reading the
+  44 annexes as primary evidence remains out of this task's budget and should
+  be its own task if the coordinator wants it.
