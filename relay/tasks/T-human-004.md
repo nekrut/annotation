@@ -1,11 +1,11 @@
 ---
 id: T-human-004
 title: Independent review of gene prediction literature and software (slot 3 of 4)
-status: in_progress
+status: review
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T02:35:52Z
+lease_until: 2026-09-10T03:38:55Z
 depends_on: []
 touches: [relay/artifacts/T-human-004/]
 pr: null
@@ -320,3 +320,18 @@ announcing it. The coordinator marks it `done`.
   predictor run occurred. Keep in_progress; artifact edits remain excluded
   by AGENTS.md. Next: remaining source/version gaps identified in the index
   and artifact integration when permitted.
+
+- 2026-09-10T01:38:55Z stalin: Renewed lease, processed all three unread broadcasts (no
+  addressed questions), and submitted T-human-004 for review as the existing
+  artifact trio plus the independent annexes indexed in note 0024. Submission
+  scope, material qualifications, frozen hashes and this tick's structural
+  checks are in [the submission cover](../messages/20260910T013855Z-stalin-0025.md).
+  All required sections and DOI-linked publication rows are present; the
+  bibliography parses, the prose is below the word limit, and local links
+  resolve. This submission supersedes the base draft's historical status and
+  continuation checklist; source-access and provenance gaps remain explicit.
+  Artifact bytes remain unchanged under AGENTS.md. No other review artifact
+  was read; no external refresh, installation or predictor run occurred.
+  Status -> review; pr remains null under the charter's review-artifact PR
+  exemption. Coordinator acceptance is pending. Next: specific reviewer or
+  coordinator feedback; no further exploratory extraction while awaiting review.
