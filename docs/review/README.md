@@ -80,8 +80,9 @@ Their bibliography and inventory additions are now merged.
 [`merge_annex_refs.py`](../../scripts/review/merge_annex_refs.py) scans the 49
 messages either agent filed against `T-human-003` or `T-human-004`, extracts
 every DOI, and subtracts the DOIs the five artifact bibliographies already
-carry. **15 works are cited only in the annexes** — 10 reached only by
-`engels`, 7 only by `stalin`, 2 by both — and all 15 resolve in Crossref
+carry. **15 works are cited only in the annexes** — 10 cited by `engels` and
+7 by `stalin`, with 2 in common, so exclusively 8 `engels` + 5 `stalin` + 2
+shared — and all 15 resolve in Crossref
 ([`annex-dois.tsv`](annex-dois.tsv)). They enter `refs.bib` with
 `reviews = {engels (annex)}` or `{stalin (annex)}` and an `annex` field naming
 the messages that cite them. `engels`'s cover reports "eight distinct DOI
@@ -208,20 +209,24 @@ one review only is not weaker evidence, but it is unreplicated search.
 
 These 15 are cited in an `engels` or `stalin` annex message and in no base
 review bibliography (§1, [`annex-dois.tsv`](annex-dois.tsv)). They are listed
-here rather than folded into 2.1–2.5 because each was retrieved by exactly one
-agent, outside the blind base reviews, so no second review corroborates the
-reading. The `annex` field in `refs.bib` names the message for each.
+here rather than folded into 2.1–2.5 because none of them appears in any base
+review bibliography, and their substantive integration is still incomplete
+(§7). The annexes were filed during the independent review tasks, so their
+absence from the frozen base bibliographies is not evidence that blindness was
+lost. Two of the 15 (`rogic2001evaluation`, `wei2006ests`) are cited by both
+agents; shared citation does not by itself establish that both verified the
+same result. The `annex` field in `refs.bib` names the message for each.
 
 | Item | Year | Cite | Why the annex reached for it | Annex of |
 |---|---|---|---|---|
 | Gene-finder evaluation on mammals | 2001 | [rogic2001evaluation] | the reference population behind several historical accuracy figures both agents had to qualify | engels, stalin |
 | Begin at the beginning (5′ UTR prediction) | 2005 | [brown2005begin] | UTR prediction is in the charter's eventual scope and this is where the classical treatment sits | engels |
 | AUGUSTUS at EGASP | 2006 | [stanke2006augustusb] | the incomplete-reference scoring that qualifies AUGUSTUS's EGASP numbers | stalin |
-| Several pair-wise informants (AUGUSTUS) | 2006 | [flicek2006several] | alternative-transcript prediction from several pairwise informants — a comparative-input design point | engels |
+| Several pair-wise informants (MARS, a TWINSCAN extension) | 2006 | [flicek2006several] | alternative-transcript prediction from several pairwise informants — a comparative-input design point | engels |
 | ESTs improve de novo prediction (N-SCAN_EST) | 2006 | [wei2006ests] | the EST-evidence denominators behind N-SCAN_EST's reported gain | engels, stalin |
 | Iterative prediction and pseudogene removal | 2006 | [vanbaren2006iterative] | pseudogene masking changes what counts as a false positive | engels |
 | GeneMark-ES for novel fungal genomes | 2008 | [terhovhannisyan2008gene] | the unsupervised-training extension whose transfer claims stalin's annex qualifies | stalin |
-| U12-type intron database | 2020 | [moyer2020comprehensive] | whether short-gap motif observations can be read as U12 introns — the annex says they cannot | engels |
+| U12-type intron database | 2020 | [moyer2020comprehensive] | U12 introns can have GT-AG termini too, so a terminal-dinucleotide stratum is not a spliceosome class | engels |
 | GeMoMa | 2016 | [keilwagen2016intron] | homology-based prediction from intron position conservation; not covered by any base review | engels |
 | GeMoMa + RNA-seq | 2018 | [keilwagen2018combining] | the reciprocal-hit evaluation and the reference-conditioned intron limit | engels |
 | ClaMSA preprint | 2021 | [mertsch2021end] | the recovered tables belong to this version, not the journal article | engels |
@@ -556,8 +561,10 @@ coeruleus* has 15-base introns, with a splicing mechanism to match
 genomes with no dedicated stop codon, where termination is context dependent
 [swart2016genetic] (`stalin`'s scope annexes). Any cross-clade experiment must
 record and test such constraints rather than inherit them. The mirror-image
-error is reading a short gap as a U12 intron without the evidence a U12 call
-needs [moyer2020comprehensive] (`engels`'s annex 0021).
+error is conflating a terminal-dinucleotide stratum with a spliceosome class:
+U12-type introns also occur with GT-AG termini, so zero recovered AT-AC introns
+does not establish zero U12 recovery [moyer2020comprehensive] (`engels`'s annex
+0021). Report motif strata and independently assigned U2/U12 labels separately.
 
 ---
 
@@ -649,8 +656,11 @@ benchmark, is the contribution this project can honestly claim.
    consequential known example is `stalin` 0016 on PAML: `codeml` overrides
    `cleandata` for pairwise runmodes, so feeding a full multispecies alignment
    to a pairwise fit deletes codon columns that were clean in the target and
-   informant pair. That is a direct instruction to `T-human-010`, and it
-   reaches it through this note rather than through §5.
+   informant pair. `T-human-010` is already `done` and its accepted
+   [baseline](../../baselines/kaks/README.md) uses the Nei–Gojobori counting
+   estimator rather than `codeml`, so nothing currently executes that path; the
+   warning stands for any future `codeml` adapter, and it reaches the record
+   through this note rather than through §5.
 2. **The `trotsky` review needs a decision.** 9 of its 26 bibliography entries
    carry a DOI that resolves to an unrelated paper or does not resolve at all,
    and several of its table numbers and repository links cannot be traced to a
