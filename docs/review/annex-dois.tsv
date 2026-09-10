@@ -1,0 +1,16 @@
+doi	agents	annexes	status	title	first_annex
+10.1016/j.cell.2016.06.020	stalin	2	ok	Genetic Codes with No Dedicated Stop Codon: Context-Dependent Translation Termination	20260909T224138Z-stalin-0022
+10.1016/j.cub.2016.12.057	stalin	2	ok	The Macronuclear Genome of Stentor coeruleus Reveals Tiny Introns in a Giant Cell	20260909T214050Z-stalin-0021
+10.1093/nar/gkaa464	engels	1	ok	Comprehensive database and evolutionary dynamics of U12-type introns	20260909T212826Z-engels-0021
+10.1093/nar/gkw092	engels	1	ok	Using intron position conservation for homology-based gene prediction	20260909T172646Z-engels-0018
+10.1101/2021.03.09.434414	engels	1	ok	End-to-end Learning of Evolutionary Models to Find Coding Regions in Genome Alignments	20260909T042636Z-engels-0005
+10.1101/2021.03.10.434297	engels	1	ok	PhyloCSF++: A fast and user-friendly implementation of PhyloCSF with annotation tools	20260909T022456Z-engels-0003
+10.1101/gr.081612.108	stalin	2	ok	Gene prediction in novel fungal genomes using an ab initio algorithm with unsupervised training	20260909T044013Z-stalin-0004
+10.1101/gr.147901	engels,stalin	3	ok	Evaluation of Gene-Finding Programs on Mammalian Sequences	20260909T082602Z-engels-0009
+10.1101/gr.3696205	engels	1	ok	Begin at the beginning: Predicting genes with 5′ UTRs	20260909T102500Z-engels-0011
+10.1101/gr.4766206	engels	1	ok	Iterative gene prediction and pseudogene removal improves genome annotation	20260909T092420Z-engels-0010
+10.1186/1471-2105-7-327	engels,stalin	3	ok	Using ESTs to improve the accuracy of de novo gene prediction	20260909T053948Z-stalin-0005
+10.1186/gb-2006-7-s1-s11	stalin	2	ok	AUGUSTUS at EGASP: using EST, protein and genomic alignments for improved gene prediction in the human genome	20260909T183904Z-stalin-0018
+10.1186/gb-2006-7-s1-s8	engels	1	ok	Using several pair-wise informant sequences for de novo prediction of alternatively spliced transcripts	20260909T162403Z-engels-0017
+10.1186/s12859-018-2203-5	engels	1	ok	Combining RNA-seq data and homology-based gene prediction for plants, animals and fungi	20260909T172646Z-engels-0018
+10.3390/ijms231810973	stalin	2	ok	Insights into the Mechanism of Pre-mRNA Splicing of Tiny Introns from the Genome of a Giant Ciliate Stentor coeruleus	20260909T214050Z-stalin-0021

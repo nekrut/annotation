@@ -154,9 +154,11 @@ prioritization evidence, not a gate. A large gain raises the priority of #4; a
 small one lowers it, and says that this particular supplied encoder adds little
 on this material. Neither outcome decides whether a different comparative
 encoder, a different informant set, or a different clade would help, and a
-small gain here is not grounds for revising the charter's central hypothesis —
-only #4, with the decoder and inputs held fixed, can support a claim that
-general. `engels` and `stalin` both asked for this scope limit
+small gain here is not grounds for revising the charter's central hypothesis.
+Attribution to the tree, or to the alignment, requires #4 with the decoder and
+inputs held fixed — and even then the claim is scoped to the encoders,
+informants, species and split #4 evaluates, not to comparative encoders or
+clades in general. `engels` and `stalin` both asked for this scope limit
 ([20260910T042437Z-engels-0027](../../relay/messages/20260910T042437Z-engels-0027.md),
 [20260910T043806Z-stalin-0028](../../relay/messages/20260910T043806Z-stalin-0028.md)).
 
@@ -222,11 +224,12 @@ opinion asks for *stability tests*, not for a blanket invariance requirement
 2. **Changes in evidence — measure degradation, do not require equality.**
    Removing an informant removes evidence; rescaling branch lengths changes
    the modeled evolutionary distances. Predictions *may legitimately* move in
-   both cases, and an encoder that scored perfectly on an equality test here would
-   be one ignoring the comparative channel — the opposite of what (f) is
-   built to measure. The converse does not hold either: predictions that stay
+   both cases, so an equality test is the wrong instrument: passing it is not
+   evidence that the encoder uses its comparative channel, and failing it is
+   not evidence that it does. Nor does the converse hold: predictions that stay
    put on redundant or uninformative evidence do not by themselves show that an
-   encoder ignores its comparative input. Neither universal equality nor
+   encoder ignores its comparative input, and unchanged decoded labels do not
+   even imply unchanged scores. Neither universal equality nor
    universal change is the test. What to report is robustness, calibration and the shape
    of the degradation curve against the number and distance of the informants
    retained.

@@ -1,4 +1,5 @@
 repo	reviews	last_commit	commits_12m	open_issues	stars	language	licence	install	disagreements
+abacus-gene/paml	stalin (annex)	2026-01-29T17:04:31Z	16	2	205	C	GPL-3.0	not_attempted	
 agshumate/Liftoff	lenin,marx	2023-08-01	0	73 | 78	552	Python	GPL-3.0	no | not attempted	
 alekseyzimin/EviAnn	marx	2026-08-11	99	1	9	Perl, Shell, C++	GPL-3.0	not attempted: code lives in alekseyzimin/EviAnn_release (183 stars, 58 open issues on 2026-09-09); bioconda package or install.sh that compiles miniprot and ufasta and bundles TransDecoder and BLAST+	
 ArcInstitute/evo2	lenin,marx	2026-06-18 | 2026-06-19	7	54 | 55	4.2k | 4196	Jupyter Notebook | Python	Apache-2.0	no | not attempted	stars,language
@@ -35,6 +36,7 @@ hillerlab/TOGA	lenin,marx	2025-11-23	1	2 | 3	211	Python | Python, C	MIT	no | not
 hillerlab/TOGA2	lenin	2026-08-19	100+	9	53	Python	MIT	no	
 Illumina/SpliceAI	lenin,marx	2026-04-03	2	32 | 36	507	Python	NOASSERTION | PolyForm Strict 1.0 (non-commercial, no derivatives)	no | not attempted	open_issues,licence
 instadeepai/nucleotide-transformer	engels,lenin,marx	2025-12-27 | 2025-12-27T14:29:33Z | 2026-02-24	3	13 | 14	917	Jupyter Notebook | Python	CC BY-NC-SA 4.0 | NOASSERTION	no | not attempted	language,licence
+Jstacs/Jstacs	engels (annex)	2026-03-12T09:01:26Z	59	3	23	Java	GPL-3.0-or-later per README | GPL-3.0 per API	not_attempted	
 KorfLab/SNAP	engels,lenin,marx,stalin,trotsky	2022-10-22 | 2022-10-22T21:29:10Z	0	14 | 16	72	C | C, Perl	GPL-2.0 | MIT | MIT-style | NOASSERTION	PASS: fresh source build and both README example predictions; genome accuracy untested | no | not attempted | passed_clean_source_build_and_two_readme_examples | yes	open_issues,language,licence
 Kuanhao-Chao/OpenSpliceAI	lenin,marx	2026-07-29 | 2026-07-30	29	5 | 6	53	Python	GPL-3.0	no | not attempted	
 kuleshov-group/caduceus	marx	2025-06-17	0	5	252	Python	Apache-2.0	not attempted	

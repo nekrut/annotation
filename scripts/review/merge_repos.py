@@ -86,6 +86,25 @@ def main() -> int:
                     field: pick(row, names) for field, names in COLUMNS.items()
                 }
 
+    # Two annex messages carry a repository snapshot that never reached their
+    # author's own repos.tsv: `abacus-gene/paml` (stalin 0016) and
+    # `Jstacs/Jstacs`, which hosts GeMoMa (engels 0018). They are transcribed
+    # into docs/review/annex-repos.tsv with the annex id in the `annex` column,
+    # and enter the merge as "<agent> (annex)".
+    annex_path = root / "docs" / "review" / "annex-repos.tsv"
+    annex_rows = 0
+    if annex_path.exists():
+        with annex_path.open(encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh, delimiter="\t"):
+                url = (row.get("url") or "").strip()
+                if not url:
+                    continue
+                label = "{} (annex)".format((row.get("agent") or "annex").strip())
+                repos[slug(url)][label] = {
+                    field: pick(row, names) for field, names in COLUMNS.items()
+                }
+                annex_rows += 1
+
     out_rows = []
     for repo in sorted(repos, key=str.lower):
         seen = repos[repo]
@@ -116,6 +135,7 @@ def main() -> int:
     multi = sum(1 for r in out_rows if len(r["reviews"].split(",")) > 1)
     flagged = [r["repo"] for r in out_rows if r["disagreements"]]
     print(f"wrote {len(out_rows)} repositories to {out.relative_to(root)}")
+    print(f"  annex snapshots folded in: {annex_rows}")
     print(f"  seen by more than one review: {multi}")
     print(f"  fields disagreeing across reviews: {len(flagged)} repos")
     for repo in flagged:

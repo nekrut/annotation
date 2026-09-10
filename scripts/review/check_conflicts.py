@@ -98,6 +98,19 @@ def main() -> int:
             if title and doi:
                 all_rows.append((agent, doi, " ".join(title.split())))
 
+    # The annex-only works (scripts/review/merge_annex_refs.py) are part of the
+    # merged bibliography, so they belong in the conflict scan: engels's annexes
+    # cite the PhyloCSF++ and ClaMSA preprints whose journal versions other
+    # reviews already carry.
+    annex_path = root / "docs" / "review" / "annex-refs.bib"
+    if annex_path.exists():
+        for entry in parse_bib(annex_path.read_text(encoding="utf-8")):
+            title = entry["fields"].get("title", "")
+            doi = norm_doi(entry["fields"].get("doi", ""))
+            agents = entry["fields"].get("reviews", "annex")
+            if title and doi:
+                all_rows.append((agents, doi, " ".join(title.split())))
+
     found = {"conflict": [], "preprint_of": []}
     for rows in group_titles(all_rows):
         dois = {doi for _, doi, _ in rows}

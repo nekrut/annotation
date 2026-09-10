@@ -20,10 +20,13 @@ Companion files:
   reached different conclusions, with a resolution or an open question.
 - [`candidates.md`](candidates.md) — the ranked shortlist of ideas for the new
   model, distilled from the five opinion sections.
-- [`../refs/refs.bib`](../refs/refs.bib) — the merged bibliography, 111 works.
+- [`../refs/refs.bib`](../refs/refs.bib) — the merged bibliography, 126 works.
 - [`repos.tsv`](repos.tsv), [`repo-verification.tsv`](repo-verification.tsv),
   [`doi-verification.tsv`](doi-verification.tsv) — the merged software
   inventory and the checks run over it.
+- [`annex-dois.tsv`](annex-dois.tsv), [`annex-refs.bib`](annex-refs.bib),
+  [`annex-repos.tsv`](annex-repos.tsv) — the works and repository snapshots
+  that appear only in the `engels` and `stalin` annex messages (§1).
 
 ---
 
@@ -34,15 +37,16 @@ Independence clause requires. Three of them (`lenin`, `engels`, `marx`)
 recorded machine-readable search and retrieval logs; `stalin` recorded a
 retrieval manifest; `trotsky` recorded query counts only.
 
-Merging was done with four scripts under [`scripts/review/`](../../scripts/review),
+Merging was done with the scripts under [`scripts/review/`](../../scripts/review),
 so that every count in this document is reproducible from the artifacts:
 
 | Script | What it does | Output |
 |---|---|---|
-| `merge_refs.py` | deduplicates the five bibliographies by DOI, merging fields and recording which reviews carried each work | `docs/refs/refs.bib` |
+| `merge_refs.py` | deduplicates the five bibliographies plus the annex works by DOI, merging fields and recording which reviews carried each work | `docs/refs/refs.bib` |
+| `merge_annex_refs.py` | scans the `engels` and `stalin` annex messages for DOIs their own bibliographies never carried, and fetches Crossref metadata | `docs/review/annex-dois.tsv`, `docs/review/annex-refs.bib` |
 | `check_conflicts.py` | finds works cited under more than one DOI | printed report |
 | `verify_dois.py` | resolves every DOI against Crossref and compares registered titles | `docs/review/doi-verification.tsv` |
-| `merge_repos.py` | unifies the five repository inventories, which used five different schemas, and flags fields the reviews disagree on | `docs/review/repos.tsv` |
+| `merge_repos.py` | unifies the five repository inventories, which used five different schemas, plus the two annex snapshots, and flags fields the reviews disagree on | `docs/review/repos.tsv` |
 | `verify_repos.py` | re-queries GitHub for the disputed repository rows | `docs/review/repo-verification.tsv` |
 
 **Evidence rule used throughout.** A number appears in the tables below only
@@ -55,22 +59,52 @@ Nothing here was re-measured; measurement is `T-human-009`'s work.
 **Two verification passes were run for this synthesis** and are the only new
 first-hand evidence in it:
 
-1. **DOI resolution (Crossref, 2026-09-10).** 111 merged entries: 95 resolve
+1. **DOI resolution (Crossref, 2026-09-10).** 126 merged entries: 110 resolve
    with a matching title, 4 have no DOI by design (repository documentation
    with URLs), 2 are arXiv DOIs that Crossref does not serve, 1 is a journal
    supplement Crossref stores without a title, and **9 either resolve to an
    unrelated paper or do not resolve at all**. All 9 come from one review; see
-   [`disagreements.md`](disagreements.md) §1.
+   [`disagreements.md`](disagreements.md) §1. The 15 annex works added below
+   were resolved through the same Crossref pass; none of them is among the 9.
 2. **Repository resolution (GitHub API, 2026-09-10).** The 23 repositories
    whose rows the reviews disagreed about, plus 5 disputed slugs. Results in
    [`repo-verification.tsv`](repo-verification.tsv).
 
-**What this synthesis has not yet absorbed.** `engels` and `stalin` each
-submitted a base review plus 22 annex messages carrying corrections to their
-own drafts, and their submission covers state that the annexes take precedence
-over the base text where they conflict. Section 7 lists the qualifications
-their covers name; the annexes' own contents are not yet merged into the tables
-here. That is the largest remaining gap in this document.
+**The annexes.** `engels` and `stalin` each submitted a base review plus 22
+annex messages carrying corrections to their own drafts, and their submission
+covers state that the annexes take precedence over the base text where they
+conflict. The qualifications their covers name are carried in §2 and §5 where
+they change a claim; §7 lists them.
+
+Their bibliography and inventory additions are now merged.
+[`merge_annex_refs.py`](../../scripts/review/merge_annex_refs.py) scans the 49
+messages either agent filed against `T-human-003` or `T-human-004`, extracts
+every DOI, and subtracts the DOIs the five artifact bibliographies already
+carry. **15 works are cited only in the annexes** — 10 reached only by
+`engels`, 7 only by `stalin`, 2 by both — and all 15 resolve in Crossref
+([`annex-dois.tsv`](annex-dois.tsv)). They enter `refs.bib` with
+`reviews = {engels (annex)}` or `{stalin (annex)}` and an `annex` field naming
+the messages that cite them. `engels`'s cover reports "eight distinct DOI
+sources"; `stalin`'s index lists twelve. Those two counts overlap, and five of
+`stalin`'s twelve were already in the merged file from other reviews, so the
+measured union is 15, not 20.
+
+Two of the 15 are the preprint versions of works other reviews carry as
+journal articles (PhyloCSF++, and ClaMSA's "End-to-end learning of evolutionary
+models"). Both are kept as separate entries and reported as preprint/journal
+pairs by `check_conflicts.py`, which is exactly `engels`'s annex point that
+ClaMSA's recovered tables belong to the preprint version.
+
+Two annex messages also carry a repository snapshot that never reached their
+author's own inventory: `abacus-gene/paml`
+([stalin 0016](../../relay/messages/20260909T164106Z-stalin-0016.md)) and
+`Jstacs/Jstacs`, which hosts GeMoMa
+([engels 0018](../../relay/messages/20260909T172646Z-engels-0018.md)). Both are
+transcribed into [`annex-repos.tsv`](annex-repos.tsv) with their own observation
+time, pin and `not_attempted` install status, and merged as `stalin (annex)` and
+`engels (annex)`. `stalin`'s index names four snapshot additions; the other
+three (OrionGeno, Vipsania, PhyloCSFpp) were absent from `stalin`'s inventory
+but already present in the merged table from `lenin`, `marx` and `engels`.
 
 ---
 
@@ -170,11 +204,37 @@ one review only is not weaker evidence, but it is unreplicated search.
 | Scaling studies | 2025–2026 | [saenko2025annotation; dhakad2026comparative] | BRAKER on 200 insects; comparative annotation across 301 Drosophilidae | marx |
 | Review of the field | 2025 | [djossou2025overview] | extends G3PO over five classical tools plus a gene-model-free NN and Helixer | lenin |
 
+### 2.6 Works reached only by the annexes
+
+These 15 are cited in an `engels` or `stalin` annex message and in no base
+review bibliography (§1, [`annex-dois.tsv`](annex-dois.tsv)). They are listed
+here rather than folded into 2.1–2.5 because each was retrieved by exactly one
+agent, outside the blind base reviews, so no second review corroborates the
+reading. The `annex` field in `refs.bib` names the message for each.
+
+| Item | Year | Cite | Why the annex reached for it | Annex of |
+|---|---|---|---|---|
+| Gene-finder evaluation on mammals | 2001 | [rogic2001evaluation] | the reference population behind several historical accuracy figures both agents had to qualify | engels, stalin |
+| Begin at the beginning (5′ UTR prediction) | 2005 | [brown2005begin] | UTR prediction is in the charter's eventual scope and this is where the classical treatment sits | engels |
+| AUGUSTUS at EGASP | 2006 | [stanke2006augustusb] | the incomplete-reference scoring that qualifies AUGUSTUS's EGASP numbers | stalin |
+| Several pair-wise informants (AUGUSTUS) | 2006 | [flicek2006several] | alternative-transcript prediction from several pairwise informants — a comparative-input design point | engels |
+| ESTs improve de novo prediction (N-SCAN_EST) | 2006 | [wei2006ests] | the EST-evidence denominators behind N-SCAN_EST's reported gain | engels, stalin |
+| Iterative prediction and pseudogene removal | 2006 | [vanbaren2006iterative] | pseudogene masking changes what counts as a false positive | engels |
+| GeneMark-ES for novel fungal genomes | 2008 | [terhovhannisyan2008gene] | the unsupervised-training extension whose transfer claims stalin's annex qualifies | stalin |
+| U12-type intron database | 2020 | [moyer2020comprehensive] | whether short-gap motif observations can be read as U12 introns — the annex says they cannot | engels |
+| GeMoMa | 2016 | [keilwagen2016intron] | homology-based prediction from intron position conservation; not covered by any base review | engels |
+| GeMoMa + RNA-seq | 2018 | [keilwagen2018combining] | the reciprocal-hit evaluation and the reference-conditioned intron limit | engels |
+| ClaMSA preprint | 2021 | [mertsch2021end] | the recovered tables belong to this version, not the journal article | engels |
+| PhyloCSF++ preprint | 2021 | [pockrandt2021phylocsf] | same version distinction | engels |
+| *Stentor* macronuclear genome | 2017 | [slabodnick2017macronuclear] | genuine 15-base introns: a real counterexample to short-intron floors | stalin |
+| *Stentor* tiny-intron splicing | 2022 | [nuadthaisong2022insights] | the mechanism, so the counterexample is not an annotation artefact | stalin |
+| Genetic codes with no dedicated stop codon | 2016 | [swart2016genetic] | context-dependent termination breaks a decoder that assumes the standard code | stalin |
+
 ---
 
 ## 3. Software inventory
 
-Merged table: [`repos.tsv`](repos.tsv) — 59 repositories, of which 28 were
+Merged table: [`repos.tsv`](repos.tsv) — 61 repositories, of which 28 were
 recorded by more than one review. Because the five inventories used five
 different schemas and two different commit-counting methods (GitHub REST
 `since` filters versus `git clone --shallow-since`), the merged table keeps
@@ -260,7 +320,12 @@ GitHub API on 2026-09-10:
   coordinator about this has been open since 2026-09-09 (§7).
 - There is no canonical MAKER repository beyond `Yandell-Lab/maker` (47 stars,
   last pushed 2024-08-20); MAKER's practical successor is `nextgenusfs/funannotate`.
-- GlimmerHMM, GeneID, GeMoMa and Gnomon are not on GitHub at all.
+- GlimmerHMM, GeneID and Gnomon are not on GitHub at all. GeMoMa is, but not
+  under its own name: it is a module inside `Jstacs/Jstacs`, which none of the
+  five base inventories recorded. `engels`'s annex 0018 pinned it, so the
+  merged table now carries it (§1). Repository-wide activity there — 59 commits
+  in the window against 12 touching `projects/gemoma` — overstates work on the
+  predictor.
 
 ---
 
@@ -485,9 +550,14 @@ does not remove this risk.
 
 **5.14 Defaults embody narrow biological assumptions. [1/5]** geneML's README
 documents a **maximum intron length default of 400 bases** [vader2026geneml].
-Nuclear eukaryotes also include genuine very short introns and alternative
-genetic codes (`stalin`'s scope annexes). Any cross-clade experiment must
-record and test such constraints rather than inherit them.
+Nuclear eukaryotes also include genuine very short introns — *Stentor
+coeruleus* has 15-base introns, with a splicing mechanism to match
+[slabodnick2017macronuclear; nuadthaisong2022insights] — and ciliate nuclear
+genomes with no dedicated stop codon, where termination is context dependent
+[swart2016genetic] (`stalin`'s scope annexes). Any cross-clade experiment must
+record and test such constraints rather than inherit them. The mirror-image
+error is reading a short gap as a U12 intron without the evidence a U12 call
+needs [moyer2020comprehensive] (`engels`'s annex 0021).
 
 ---
 
@@ -555,9 +625,9 @@ benchmark, is the contribution this project can honestly claim.
 
 ## 7. Limits of this synthesis, and open items for the coordinator
 
-1. **The annexes are indexed but not merged.** `engels` and `stalin` submitted
-   44 annex messages between them, and both covers state the annexes take
-   precedence over the base drafts. Their covers name the material
+1. **The annexes are merged as sources, not as prose.** `engels` and `stalin`
+   submitted 44 annex messages between them, and both covers state the annexes
+   take precedence over the base drafts. Their covers name the material
    qualifications — Helixer's "exact CDS" wording is too strong for the
    documented GffCompare procedure; ClaMSA's recovered tables belong to the
    preprint version and mixed-clade classification does not establish
@@ -566,9 +636,21 @@ benchmark, is the contribution this project can honestly claim.
    GeneMark-ETP's sensitivity and precision use different reference
    populations; nuclear-eukaryote scope includes genuine very short introns and
    alternative genetic codes. Those qualifications are reflected in §2 and §5
-   where they change a claim, but the annexes' own new bibliography entries
-   (8 from `engels`, 12 from `stalin`) and four repository snapshots are **not**
-   in the merged files yet. Next tick.
+   where they change a claim.
+
+   The bibliography and inventory gap is now closed: the 15 annex-only works
+   are in `refs.bib` and listed in §2.6, and the two annex repository snapshots
+   are in `repos.tsv` (§1). **What is still not done is reading the 44 annexes
+   as evidence.** Each is a page or two of source-level auditing — pinned line
+   numbers in `codeml.c`, `GeMoMa.java`, PAML's `RemoveIndel` — and this pass
+   used them only to (a) find the citations, (b) fix claims their covers
+   flagged, and (c) correct the GeMoMa/GitHub statement in §3. An annex
+   finding that neither cover surfaced is not in this document. The most
+   consequential known example is `stalin` 0016 on PAML: `codeml` overrides
+   `cleandata` for pairwise runmodes, so feeding a full multispecies alignment
+   to a pairwise fit deletes codon columns that were clean in the target and
+   informant pair. That is a direct instruction to `T-human-010`, and it
+   reaches it through this note rather than through §5.
 2. **The `trotsky` review needs a decision.** 9 of its 26 bibliography entries
    carry a DOI that resolves to an unrelated paper or does not resolve at all,
    and several of its table numbers and repository links cannot be traced to a

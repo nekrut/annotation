@@ -276,6 +276,37 @@ def main() -> int:
                     "sources": {agent},
                 }
 
+    # The engels and stalin annex messages cite works their own artifact
+    # bibliographies never got. scripts/review/merge_annex_refs.py collects
+    # them with Crossref metadata; each entry names its own sources in
+    # `reviews` (for example "engels (annex)").
+    annex_path = root / "docs" / "review" / "annex-refs.bib"
+    annex_count = 0
+    if annex_path.exists():
+        for entry in parse_bib(annex_path.read_text(encoding="utf-8")):
+            fields = entry["fields"]
+            doi = norm_doi(fields.get("doi", ""))
+            if not doi:
+                continue
+            fields["doi"] = doi
+            sources = {
+                s.strip() for s in fields.pop("reviews", "").split(",") if s.strip()
+            }
+            ident = "doi:" + doi
+            annex_count += 1
+            if ident in merged:
+                merged[ident]["fields"] = merge_fields(
+                    merged[ident]["fields"], fields
+                )
+                merged[ident]["sources"] |= sources
+            else:
+                merged[ident] = {
+                    "type": entry["type"],
+                    "fields": fields,
+                    "sources": sources,
+                }
+    counts["engels+stalin annexes"] = annex_count
+
     # assign collision-free citation keys
     keyed: dict[str, dict] = {}
     for ident, entry in merged.items():
@@ -313,8 +344,9 @@ def main() -> int:
     out_lines = [
         "% Merged Phase 1 bibliography for the eukaryotic gene prediction charter.",
         "% Produced by scripts/review/merge_refs.py from the five independent",
-        "% review bibliographies under relay/artifacts/. Do not edit by hand:",
-        "% edit the source bibliography or the merge script and re-run.",
+        "% review bibliographies under relay/artifacts/, plus the annex-only",
+        "% works in docs/review/annex-refs.bib. Do not edit by hand: edit the",
+        "% source bibliography or the merge script and re-run.",
         "%",
         "% Source entry counts: "
         + ", ".join(f"{a} {counts[a]}" for a in sorted(counts)),

@@ -24,7 +24,7 @@ the merged bibliography was resolved against Crossref on 2026-09-10 by
 [`scripts/review/verify_dois.py`](../../scripts/review/verify_dois.py), and the
 full result is in [`doi-verification.tsv`](doi-verification.tsv).
 
-Of 111 merged entries: 95 resolve to a work whose registered title matches;
+Of 126 merged entries: 110 resolve to a work whose registered title matches;
 4 have no DOI by design (repository documentation, cited by URL); 2 are arXiv
 DOIs, which Crossref legitimately does not serve because arXiv registers with
 DataCite; 1 is a journal supplement Crossref stores without a title. **Nine
@@ -320,9 +320,11 @@ feature generator's supervised human exposure. Read its outcome as
 prioritization evidence for candidate #4, not as a verdict: a small gain on
 these mammalian regions does not show that other comparative encoders, other
 informant sets, or other clades have no benefit, and is not grounds for
-revising the charter's hypothesis. Only the fixed-decoder ablation
-([`candidates.md` §4](candidates.md), with its matched MSA/no-tree,
-MSA/tree-token and MSA/tree-metric arms) supports a claim that general.
+revising the charter's hypothesis. Attribution to the alignment or to the tree
+requires the fixed-decoder ablation ([`candidates.md` §4](candidates.md), with
+its matched MSA/no-tree, MSA/tree-token and MSA/tree-metric arms), and even
+that attributes only within the encoders, informants, species and split it
+evaluates; extrapolation to untested encoders or clades needs its own evidence.
 **Open question 2.**
 
 ### 5.4 Is tree-as-metric mathematically well-posed?
