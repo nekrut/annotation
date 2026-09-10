@@ -1,0 +1,60 @@
+repo	reviews	last_commit	commits_12m	open_issues	stars	language	licence	install	disagreements
+agshumate/Liftoff	lenin,marx	2023-08-01	0	73 | 78	552	Python	GPL-3.0	no | not attempted	
+alekseyzimin/EviAnn	marx	2026-08-11	99	1	9	Perl, Shell, C++	GPL-3.0	not attempted: code lives in alekseyzimin/EviAnn_release (183 stars, 58 open issues on 2026-09-09); bioconda package or install.sh that compiles miniprot and ufasta and bundles TransDecoder and BLAST+	
+ArcInstitute/evo2	lenin,marx	2026-06-18 | 2026-06-19	7	54 | 55	4.2k | 4196	Jupyter Notebook | Python	Apache-2.0	no | not attempted	stars,language
+BGIResearch/OrionGeno	lenin	2026-08-21	16	4	24	Python	NOASSERTION	no	
+BrentLab/Twinscan	stalin	2023-06-23T20:25:42Z	0	0	2	C	MIT	failed_documented_make_linux	
+calico/borzoi	lenin	2025-08-28	0	13	262	Python	Apache-2.0	no	
+ComparativeGenomicsToolkit/cactus	lenin,marx	2026-09-08	480 | 485	587 | 596	704	Python | Python, C	MIT | NOASSERTION	no | not attempted	language,licence
+ComparativeGenomicsToolkit/Comparative-Annotation-Toolkit	lenin	2025-05-22	0	116	190	Python	Apache-2.0	no	
+cpockrandt/PhyloCSFpp	engels,marx	2022-01-26 | 2022-01-26T05:13:27Z	0	8	31	C++	AGPL-3.0 | BSD-style	not attempted	licence
+EBI-Metagenomics/genomes-catalogue-pipeline	lenin	2026-09-08	189	17	115	Python	NOASSERTION	no	
+Ensembl/ensembl-anno	lenin							no	
+EnsemblGenomes/ensembl-anno	lenin							no	
+EVidenceModeler/EVidenceModeler	marx	2024-11-29	0	77	128	Perl	BSD	not attempted	
+Gaius-Augustus/Augustus	engels,lenin,marx,stalin,trotsky	2026-05-18 | 2026-05-18T12:50:11Z | 2026-05-30	2 | 5	166 | 175	339	C++ | C++, Perl, Python	Artistic (per repo docs; no top-level LICENSE file) | Artistic License (author README) | Artistic-2.0 | NOASSERTION | None	no | not attempted | not_attempted | yes	commits_12m,language,licence
+Gaius-Augustus/BRAKER	engels,lenin,marx,stalin,trotsky	2026-06-17 | 2026-06-17T12:40:52Z	11	101 | 103	467	Perl | Shell, Perl, Python	Artistic 1.0 | Artistic-1.0 | GPL-3.0 | NOASSERTION	no | not attempted | not attempted: Perl/Shell pipeline needing GeneMark-ETP (licence-restricted), AUGUSTUS, ProtHint, TSEBRA; Singularity image is the documented route | not_attempted | yes (conda)	language,licence
+Gaius-Augustus/clamsa	engels,marx,stalin	2024-07-04 | 2024-07-04T12:26:25Z	0	4	13	Python	NOASSERTION | unknown | unspecified (no LICENSE file in clone)	not attempted | not_attempted	licence
+Gaius-Augustus/GALBA	lenin,marx,trotsky	2026-04-13	1	13 | 14	149	Perl | Python, Perl, Shell	Artistic | GPL-3.0 | NOASSERTION	no | not attempted | yes (conda)	language,licence
+Gaius-Augustus/Tiberius	engels,lenin,marx,stalin,trotsky	2026-09-07 | 2026-09-07T11:14:18Z	100 | 174	21	138	Python | Python, Nextflow	MIT	PASS: launcher install and model-configuration listing; full inference untested | not_attempted | partial | partial: pip install from git OK in 7 s on Python 3.12 (refused on 3.11: requires-python >=3.12); installs only the package (rich, pyyaml), no console entry point; running needs the cloned launcher tiberius.py plus either the Singularity/Docker image or a local TensorFlow GPU stack; not run	commits_12m,language
+Gaius-Augustus/TSEBRA	lenin,marx	2026-04-07	3	14	52	Python	None | none found at top level	no | not attempted	licence
+Gaius-Augustus/Vipsania	lenin,marx	2026-08-31 | 2026-09-07	11	1 | 3	17	Python	MIT	no | partial: on PyPI (vipsania 1.0.0); pip dry-run on Python 3.12 resolves to tensorflow 2.19.1 + CUDA 12 wheels + wandb (several GB); refused on 3.11; not installed	open_issues
+gatech-genemark/GeneMark-EP	marx	2022-11-28	0	7	13	(empty tree at HEAD)	none in repo	not attempted	
+gatech-genemark/GeneMark-EP-ProtHint-exp	engels	2020-03-18T23:34:50Z	0	1	4	Shell	unknown	not attempted	
+gatech-genemark/GeneMark-ETP	engels,lenin,marx,stalin,trotsky	2025-04-11 | 2025-04-11T17:46:52Z	0	11	31	AMPL | C++/Python | Perl, Python	CC BY-NC-SA 4.0 | CC-BY-NC-SA-4.0 pipeline (API: NOASSERTION) | CC-BY-NC-SA-4.0 pipeline; separate third-party terms | Non-Commercial | none	no | not attempted | not_attempted | partial	language,licence
+gatech-genemark/ProtHint	engels,marx	2023-10-26 | 2023-10-27T00:42:32Z	0	15	62	Python | Python, Perl	GeneMark family licence | GeneMark restricted research license; institutional eligibility and use restrictions	not attempted	language,licence
+gglyptodon/helixer	trotsky	2024-03-24	0	0	0	Python	GPL-3.0	yes	
+gmod/maker	lenin							no	
+google-deepmind/alphagenome	lenin	2026-09-08	89	6	2022	Python	Apache-2.0	no	
+gpertea/gffcompare	lenin	2026-07-07	1	50	288	C++	MIT	no	
+gpertea/stringtie	lenin	2026-08-09	14	273	531	C++	MIT	no	
+guigolab/geneid	lenin	2026-07-18	105	3	18	C	None	no	
+hexagonbio/geneML	engels,stalin	2026-04-03T12:59:05Z	175	1	12	Python	GPL-3.0	not attempted | not_attempted	
+hillerlab/CESAR2.0	marx	2026-07-18	14	8	28	C, Perl	MIT	not attempted	
+hillerlab/TOGA	lenin,marx	2025-11-23	1	2 | 3	211	Python | Python, C	MIT	no | not attempted	language
+hillerlab/TOGA2	lenin	2026-08-19	100+	9	53	Python	MIT	no	
+Illumina/SpliceAI	lenin,marx	2026-04-03	2	32 | 36	507	Python	NOASSERTION | PolyForm Strict 1.0 (non-commercial, no derivatives)	no | not attempted	open_issues,licence
+instadeepai/nucleotide-transformer	engels,lenin,marx	2025-12-27 | 2025-12-27T14:29:33Z | 2026-02-24	3	13 | 14	917	Jupyter Notebook | Python	CC BY-NC-SA 4.0 | NOASSERTION	no | not attempted	language,licence
+KorfLab/SNAP	engels,lenin,marx,stalin,trotsky	2022-10-22 | 2022-10-22T21:29:10Z	0	14 | 16	72	C | C, Perl	GPL-2.0 | MIT | MIT-style | NOASSERTION	PASS: fresh source build and both README example predictions; genome accuracy untested | no | not attempted | passed_clean_source_build_and_two_readme_examples | yes	open_issues,language,licence
+Kuanhao-Chao/OpenSpliceAI	lenin,marx	2026-07-29 | 2026-07-30	29	5 | 6	53	Python	GPL-3.0	no | not attempted	
+kuleshov-group/caduceus	marx	2025-06-17	0	5	252	Python	Apache-2.0	not attempted	
+lh3/miniprot	lenin,marx,trotsky	2026-01-05	2	4 | 6	418	C	MIT	not attempted | yes	open_issues
+lh3/minisplice	lenin	2025-11-10	6	0	58	C	none	yes	
+lucidrains/enformer-pytorch	lenin	2026-06-26	2	18	573	Python	MIT	no	
+mlin/PhyloCSF	engels,marx,stalin	2023-10-16 | 2023-10-16T15:11:59Z	0	17	73	OCaml | OCaml (shell wrapper)	AGPL | AGPL-3.0	not attempted | not_attempted	language,licence
+ncbi/datasets	lenin	2026-08-21		27	556	Jupyter Notebook	NOASSERTION	no	
+ncbi/egapx	engels,lenin,marx,stalin,trotsky	2026-09-04 | 2026-09-04T14:03:37Z	25 | 26	17 | 18	207	Nextflow | Nextflow, Python	NCBI public-domain notice; bundled third-party licences | NOASSERTION | None | Public domain (NCBI)	not attempted | not attempted: needs Nextflow 23.10.1 plus Docker/Singularity and 32 CPU / 256 GB for a real run; README example run under 1 h | not_attempted | partial | yes (container)	language,licence
+nekrut/axomeme	engels,lenin							no | not attempted	
+nekrut/scalingPaper	engels,lenin							no | not attempted	
+nextgenusfs/funannotate	lenin,marx	2026-08-28 | 2026-09-08	100+ | 279	300 | 306	400	Python	BSD-2 | BSD-2-Clause	no | not attempted	commits_12m,licence
+ogotoh/spaln	marx	2026-07-10	4	40	114	C++, Perl	GPL	not attempted	
+pedronachtigall/CodAn	lenin	2025-03-05	0	7	22	Python	NOASSERTION	no	
+plantcad/genecad	lenin	2026-09-08	100+	2	40	Python	Apache-2.0	no	
+salzberg-lab/glimmerhmm	lenin	2026-08-21	7	0	0	Elixir	NOASSERTION	no	
+tkzeng/Pangolin	marx	2023-05-01	0	21	96	Python	GPL-3.0	not attempted	
+ucdavis-bioinformatics/proc10xG	lenin	2019-10-27	0	3	28	Python	Apache-2.0	no	
+usadellab/Helixer	engels,lenin,stalin	2026-07-01T14:47:25Z | 2026-07-22	49	28 | 32	305	Python	GPL-3.0	no | not attempted | not_attempted	open_issues
+washut/contrast	trotsky	2012-05-18	0	0	12	C++	GPL-2.0	yes	
+weberlab-hhu/Helixer	marx	2026-07-01	37	28	305	Python	GPL-3.0	partial: pip install from git OK in 56 s on Python 3.11 (tensorflow 2.15.1, setuptools<72 pin, 2.0 GB venv); Helixer.py --help then fails with ModuleNotFoundError: No module named 'yaml' (pyyaml imported by helixer/core/scripts.py but not declared); after pip install pyyaml it fails on missing scikit-learn (also undeclared); stopped there; Docker/Singularity route not tested	
+xjtu-omics/ANNEVO	engels,lenin,marx,stalin	2026-08-11 | 2026-08-11T02:44:08Z	30	10	158	Python	ANNEVO Non-Commercial License 1.0 | ANNEVO Non-Commercial License v1.0 (academic use free; commercial use needs a separate licence) | NOASSERTION | custom noncommercial (API: NOASSERTION)	no | not attempted | not_attempted	licence
+Yandell-Lab/maker	engels,marx,stalin	2024-08-20 | 2024-08-20T16:56:05Z	0	10	47	Perl	Academic use: Artistic-2.0 or GPL; separate commercial license per header | Artistic 2.0 / GPL (academic) | academic Artistic-2.0 or GPL; separate commercial licence (API: NOASSERTION)	not attempted | not_attempted	licence

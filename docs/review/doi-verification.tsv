@@ -1,0 +1,123 @@
+key	doi	status	registered_title	title_overlap	reviews
+abbas2026gap	10.64898/2026.03.17.712294	ok	GAP-MS: Automated validation of gene predictions using integrated mass spectrometry evidence	1.00	lenin
+armstrong2020progressive	10.1038/s41586-020-2871-y	ok	Progressive Cactus is a multiple-genome aligner for the thousand-genome era	1.00	lenin, marx
+authors2025plantcad	10.1101/2025.08.27.672609	ok	PlantCAD2: a DNA foundation model for interpreting genomes across flowering plants	1.00	lenin
+avsec2021effective	10.1038/s41592-021-01252-x	ok	Effective gene expression prediction from sequence by integrating long-range interactions	1.00	lenin
+avsec2026advancing	10.1038/s41586-025-10014-0	ok	Advancing regulatory variant effect prediction with AlphaGenome	1.00	lenin
+baker2023initio	10.1093/bioadv/vbad105	ok	Ab initio
+                    gene prediction for protein-coding regions	1.00	marx
+bates2026omannotator	10.1093/bioadv/vbag015	ok	OMAnnotator: a novel approach to building an annotated consensus genome sequence	1.00	lenin
+borodovsky2011eukaryotic	10.1002/0471250953.bi0406s35	ok	Eukaryotic Gene Prediction Using GeneMark.hmm‐E and GeneMark‐ES	1.00	engels
+brixi2026genome	10.1038/s41586-026-10176-5	ok	Genome modelling and design across all domains of life with Evo 2	1.00	lenin, marx
+brruna2020genemark	10.1093/nargab/lqaa026	ok	GeneMark-EP+: eukaryotic gene prediction with self-training in the space of genes and proteins	1.00	engels, lenin, marx
+brruna2020genemarkb	10.1186/s12859-020-03703-2	mismatch	SQMtools: automated processing and visual analysis of ’omics data with R and anvi’o	0.00	trotsky
+brruna2021braker	10.1093/nargab/lqaa108	ok	BRAKER2: automatic eukaryotic genome annotation with GeneMark-EP+ and AUGUSTUS supported by a protein database	1.00	engels, lenin, marx, stalin, trotsky
+brruna2024genemark	10.1101/gr.278373.123	ok	GeneMark-ETP significantly improves the accuracy of automatic annotation of large eukaryotic genomes	1.00	engels, lenin, marx, stalin
+brruna2024genemarkb	10.1093/gigascience/giae016	mismatch	Streamlining remote nanopore data access with slow5curl	0.00	trotsky
+bruna2023galba	10.1186/s12859-023-05449-z	ok	Galba: genome annotation with miniprot and AUGUSTUS	1.00	lenin, marx
+burge1997prediction	10.1006/jmbi.1997.0951	ok	Prediction of complete gene structures in human genomic DNA	1.00	engels, lenin, marx, stalin, trotsky
+cantarel2008maker	10.1101/gr.6743907	ok	MAKER: An easy-to-use annotation pipeline designed for emerging model organism genomes	1.00	engels, lenin, marx, stalin, trotsky
+chao2025openspliceai	10.7554/elife.107454	ok	OpenSpliceAI provides an efficient modular implementation of SpliceAI enabling easy retraining across nonhuman species	1.00	marx
+christmas2023evolutionary	10.1126/science.abn3943	ok	Evolutionary constraint and innovation across hundreds of placental mammals	1.00	lenin
+coghlan2008ngasp	10.1186/1471-2105-9-549	ok	nGASP – the nematode genome annotation assessment project	1.00	marx
+dallatorre2023nucleotide	10.1101/2023.01.11.523679	ok	The Nucleotide Transformer: Building and Evaluating Robust Foundation Models for Human Genomics	1.00	trotsky
+dallatorre2025nucleotide	10.1038/s41592-024-02523-z	ok	Nucleotide Transformer: building and evaluating robust foundation models for human genomics	1.00	lenin, marx
+davison2026promise	10.1093/nar/gkag369	ok	The promise of AlphaFold for gene structure annotation	1.00	lenin
+dealmeida2024annotating	10.1101/2024.03.14.584712	ok	Annotating the genome at single-nucleotide resolution with DNA foundation models	1.00	lenin
+dealmeida2025annotating	10.1038/s41592-025-02881-2	ok	Annotating the genome at single-nucleotide resolution with DNA foundation models	1.00	engels
+dhakad2026comparative	10.1371/journal.pbio.3003663	ok	Comparative gene annotation and orthology assignments across 301 species of Drosophilidae	1.00	marx
+djossou2025overview	10.1093/bioadv/vbaf222	ok	An overview of computational methods for gene prediction in eukaryotes: strengths, limitations, and future directions	1.00	lenin
+fiddes2018comparative	10.1101/gr.233460.117	ok	Comparative Annotation Toolkit (CAT)—simultaneous clade and personal genome annotation	1.00	lenin
+flicek2003leveraging	10.1101/gr.830003	ok	Leveraging the Mouse Genome for Gene Prediction in Human: From Whole-Genome Shotgun Reads to a Global Synteny Map	1.00	lenin
+gabriel2021tsebra	10.1186/s12859-021-04482-0	ok	TSEBRA: transcript selector for BRAKER	1.00	lenin
+gabriel2024braker	10.1101/gr.278090.123	ok	BRAKER3: Fully automated genome annotation using RNA-seq and protein evidence with GeneMark-ETP, AUGUSTUS, and TSEBRA	1.00	engels, lenin, marx, stalin
+gabriel2024brakerb	10.1093/bioinformatics/btae010	mismatch	FAVA: high-quality functional association networks inferred from scRNA-seq and proteomics data	0.05	trotsky
+gabriel2024tiberius	10.1093/bioinformatics/btae685	ok	Tiberius: end-to-end deep learning with an HMM for gene prediction	1.00	engels, lenin, marx, stalin
+gabriel2026accurate	10.64898/2026.04.24.720536	ok	Accurate
+                  ab initio
+                  gene prediction in eukaryotes with Tiberius in multiple clades	1.00	engels, lenin, marx, stalin
+goldfarb2025ncbi	10.1093/nar/gkae1038	ok	NCBI RefSeq: reference sequence standards through 25 years of curation and annotation	1.00	engels, stalin
+gotoh2008space	10.1093/nar/gkn105	ok	A space-efficient and accurate method for mapping and aligning cDNA sequences onto genomic sequence	1.00	marx
+gotoh2018modeling	10.1093/bioinformatics/bty353	ok	Modeling one thousand intron length distributions with fitild	1.00	marx
+gotoh2024spaln	10.1093/bioinformatics/btae517	ok	Spaln3: improvement in speed and accuracy of genome mapping and spliced alignment of protein query sequences	1.00	marx
+grau2026improved	10.1093/nar/gkag091	ok	Improved reconstruction of transcripts and coding sequences from RNA-seq data	1.00	lenin
+grewe2024tiberius	10.1101/2024.07.19.604245	mismatch	Diversity and functional specialization of oyster immune cells uncovered by integrative single cell level investigations	0.00	trotsky
+gross2006multiple	10.1089/cmb.2006.13.379	ok	Using Multiple Alignments to Improve Gene Prediction	1.00	engels, marx, stalin
+gross2006multipleb	10.1101/gr.5389206	unresolved			trotsky
+gross2007contrast	10.1186/gb-2007-8-12-r269	ok	CONTRAST: a discriminative, phylogeny-free approach to multiple informant de novogene prediction	0.73	engels, lenin, marx, stalin
+gross2007contrastb	10.1101/gr.6734807	unresolved			trotsky
+group2025genemark	-	no-doi			lenin
+guigo2006egasp	10.1186/gb-2006-7-s1-s2	no-title			marx
+haas2008automated	10.1186/gb-2008-9-1-r7	ok	Automated eukaryotic gene structure annotation using EVidenceModeler and the Program to Assemble Spliced Alignments	1.00	lenin, marx
+he2026benchmarking	10.64898/2026.02.22.707219	ok	Benchmarking foundation models for splice site and exon annotation	1.00	lenin
+hoff2016braker	10.1093/bioinformatics/btv661	ok	BRAKER1: Unsupervised RNA-Seq-Based Genome Annotation with GeneMark-ET and AUGUSTUS	1.00	lenin, marx, stalin, trotsky
+holst2023helixer	10.1101/2023.02.06.527280	ok	Helixer–
+                  de novo
+                  Prediction of Primary Eukaryotic Gene Models Combining Deep Learning and a Hidden Markov Model	1.00	engels
+holst2023helixerb	10.1093/nar/gkad1003	mismatch	VEuPathDB: the eukaryotic pathogen, vector and host bioinformatics resource center in 2023	0.06	trotsky
+holst2026helixer	10.1038/s41592-025-02939-1	ok	Helixer: ab initio prediction of primary eukaryotic gene models combining deep learning and a hidden Markov model	1.00	engels, lenin, marx, stalin
+holt2011maker	10.1186/1471-2105-12-491	ok	MAKER2: an annotation pipeline and genome-database management tool for second-generation genome projects	1.00	lenin, marx, trotsky
+jaganathan2019predicting	10.1016/j.cell.2018.12.015	ok	Predicting Splicing from Primary Sequence with Deep Learning	1.00	lenin, marx, trotsky
+kapustin2008splign	10.1186/1745-6150-3-20	ok	Splign: algorithms for computing spliced alignments with identification of paralogs	1.00	lenin
+keilwagen2019gemoma	10.1007/978-1-4939-9173-0_9	ok	GeMoMa: Homology-Based Gene Prediction Utilizing Intron Position Conservation and RNA-seq Data	1.00	marx
+kirilenko2023integrating	10.1126/science.abn3107	ok	Integrating gene annotation with orthology inference at scale	1.00	lenin, marx
+konig2016simultaneous	10.1093/bioinformatics/btw494	ok	Simultaneous gene finding in multiple genomes	1.00	marx, stalin
+korf2001integrating	10.1093/bioinformatics/17.suppl_1.s140	ok	Integrating genomic homology into gene structure prediction	1.00	engels, marx, stalin, trotsky
+korf2004gene	10.1186/1471-2105-5-59	ok	Gene finding in novel genomes	1.00	engels, lenin, marx, stalin, trotsky
+krieg2026vipsania	10.64898/2026.08.26.747235	ok	Vipsania: Unsupervised Deep Gene Finding	1.00	lenin, marx
+li2023protein	10.1093/bioinformatics/btad014	ok	Protein-to-genome alignment with miniprot	1.00	lenin, marx, trotsky
+lin2011phylocsf	10.1093/bioinformatics/btr209	ok	PhyloCSF: a comparative genomics method to distinguish protein coding and non-coding regions	1.00	engels, marx, stalin
+liu2025genecad	10.1101/2025.10.31.685877	ok	GeneCAD: Plant Genome Annotation with a DNA Foundation Model	1.00	lenin
+liu2026scaling	10.64898/2026.04.26.720859	ok	Scaling genome annotation across the eukaryotic tree of life with OrionGeno	1.00	lenin, marx
+lomsadze2005gene	10.1093/nar/gki937	ok	Gene identification in novel eukaryotic genomes by self-training algorithm	1.00	engels, lenin, marx, stalin
+lomsadze2005geneb	10.1093/nar/gki987	mismatch	Analysis of repetitive element DNA methylation by MethyLight	0.00	trotsky
+lomsadze2014integration	10.1093/nar/gku557	ok	Integration of mapped RNA-Seq reads into automatic training of eukaryotic gene finding algorithm	1.00	marx
+majoros2004tigrscan	10.1093/bioinformatics/bth315	ok	TigrScan and GlimmerHMM: two open source
+                    ab initio
+                    eukaryotic gene-finders	1.00	engels, lenin, marx
+malovichko2026accurate	10.64898/2026.06.30.735536	ok	Accurate, comprehensive gene annotation and ortholog identification across thousands of vertebrate genomes with TOGA2	1.00	lenin
+manni2021busco	10.1093/molbev/msab199	ok	BUSCO Update: Novel and Streamlined Workflows along with Broader and Deeper Phylogenetic Coverage for Scoring of Eukaryotic, Prokaryotic, and Viral Genomes	1.00	lenin, marx
+mertsch2022end	10.1093/bioinformatics/btac028	ok	End-to-end learning of evolutionary models to find coding regions in genome alignments	1.00	engels, marx, stalin
+ncbi2026egapx	-	no-doi			engels, lenin
+nekrutenko2002ratio	10.1101/gr.200901	ok	The KA/KS Ratio Test for Assessing the Protein-Coding Potential of Genomic Regions: An Empirical and Simulation Study	1.00	engels, lenin, marx, stalin
+nekrutenko2002ratiob	10.1101/gr.190902	unresolved			trotsky
+nevers2025quality	10.1038/s41587-024-02147-w	ok	Quality assessment of gene repertoire annotations with OMArk	1.00	lenin, marx
+nguyen2023hyenadna	10.48550/arxiv.2306.15794	not-in-crossref			trotsky
+nguyen2024sequence	10.1126/science.ado9336	ok	Sequence modeling and design from molecular to genome scale with Evo	1.00	trotsky
+parra2000geneid	10.1101/gr.10.4.511	ok	GeneID in Drosophila	1.00	lenin
+pertea2015stringtie	10.1038/nbt.3122	ok	StringTie enables improved reconstruction of a transcriptome from RNA-seq reads	1.00	lenin
+pockrandt2022phylocsf	10.1093/bioinformatics/btab756	ok	PhyloCSF++: a fast and user-friendly implementation of PhyloCSF with annotation tools	1.00	engels, marx
+pollard2010detection	10.1101/gr.097857.109	ok	Detection of nonneutral substitution rates on mammalian phylogenies	1.00	lenin, marx
+pruitt2014refseq	10.1093/nar/gkt1114	ok	RefSeq: an update on mammalian reference sequences	1.00	lenin
+rodelsperger2026lessons	10.64898/2026.02.18.706511	ok	Lessons learned from manual curation of thousands of gene models in the nematode
+                  Pristionchus pacificus	1.00	lenin
+saenko2025annotation	10.1101/2025.04.17.649312	ok	Annotation of 200 Insect Genomes with BRAKER for Consistent Comparisons across Species	1.00	marx
+sayers2026database	10.1093/nar/gkaf1060	ok	Database resources of the National Center for Biotechnology Information in 2026	1.00	lenin
+scalzitti2020benchmark	10.1186/s12864-020-6707-9	ok	A benchmark study of ab initio gene prediction methods in diverse eukaryotic organisms	1.00	marx
+scalzitti2021spliceator	10.1186/s12859-021-04471-3	ok	Spliceator: multi-species splice site prediction using convolutional neural networks	1.00	marx
+schiff2024caduceus	10.48550/arxiv.2403.03234	not-in-crossref			trotsky
+sharma2017cesar	10.1093/bioinformatics/btx527	ok	CESAR 2.0 substantially improves speed and accuracy of comparative gene annotation	1.00	marx
+shmelev2026genatators	10.64898/2026.06.17.732686	ok	GENATATORs: ab initio Gene Annotation With DNA Language Models	1.00	lenin, stalin
+shumate2021liftoff	10.1093/bioinformatics/btaa1016	ok	Liftoff: accurate mapping of gene annotations	1.00	lenin, marx
+siepel2005evolutionarily	10.1101/gr.3715005	ok	Evolutionarily conserved elements in vertebrate, insect, worm, and yeast genomes	1.00	marx
+slater2005automated	10.1186/1471-2105-6-31	ok	Automated generation of heuristics for biological sequence comparison	1.00	marx
+souvorov2010gnomon	-	no-doi			trotsky
+stanke2003gene	10.1093/bioinformatics/btg1080	ok	Gene prediction with a hidden Markov model and a new intron
+  submodel	1.00	engels, marx, stalin, trotsky
+stanke2006augustus	10.1093/nar/gkl200	ok	AUGUSTUS: ab initio prediction of alternative transcripts	1.00	marx, stalin
+stanke2006gene	10.1186/1471-2105-7-62	ok	Gene prediction in eukaryotes with a generalized hidden Markov model that uses hints from external sources	1.00	lenin
+stiehler2021helixer	10.1093/bioinformatics/btaa1044	ok	Helixer: cross-species gene annotation of large eukaryotic genomes using deep learning	1.00	engels, lenin, marx, stalin, trotsky
+tico2026overcoming	10.1371/journal.pcbi.1013885	ok	Overcoming the widespread flaws in the annotation of vertebrate selenoprotein genes in public databases	1.00	lenin
+vader2026geneml	10.64898/2026.05.18.725946	ok	geneML: Gene annotation across diverse fungal species using deep learning	1.00	engels, lenin, stalin
+venturini2018leveraging	10.1093/gigascience/giy093	ok	Leveraging multiple transcriptome assembly methods for improved gene structure annotation	1.00	marx
+washietl2011rnacode	10.1261/rna.2536111	ok	RNAcode: Robust discrimination of coding and noncoding regions in comparative sequence data	1.00	marx
+weberlab2026helixer	-	no-doi			lenin
+wei2007scan	10.1002/0471250953.bi0408s20	ok	Using N‐SCAN or TWINSCAN to Predict Gene Structures in Genomic DNA Sequences	1.00	lenin
+yang2026improving	10.1186/s13015-025-00293-7	ok	Improving spliced alignment by modeling splice sites with deep learning	1.00	lenin
+ye2025highly	10.21203/rs.3.rs-6402260/v1	ok	Highly accurate ab initio gene annotation with ANNEVO	1.00	engels, stalin
+zeng2022predicting	10.1186/s13059-022-02664-4	ok	Predicting RNA splicing from DNA sequence using Pangolin	1.00	lenin, marx, trotsky
+zhang2026highly	10.1038/s41592-026-03036-7	ok	Highly accurate ab initio gene annotation with ANNEVO	1.00	engels, lenin, marx, stalin
+zhang2026plantgeneann	10.64898/2026.06.25.733695	ok	PlantGeneAnn: a strand-specific genome foundation model for
+                  ab initio
+                  gene structure annotation of plant genomes	1.00	marx
+zimin2026efficient	10.1038/s41592-026-03156-0	ok	Efficient evidence-based genome annotation with EviAnn	1.00	marx
