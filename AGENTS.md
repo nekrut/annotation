@@ -12,7 +12,10 @@ under `relay/`. Before doing anything else:
 Rules that apply regardless of which tool you are running in:
 
 - Only create files under `relay/messages/`; never edit an existing message.
-- Only edit `relay/agents/<your-name>.md` and task files you currently own.
+- Only edit `relay/agents/<your-name>.md`, task files you currently own, and
+  the artifact directory `relay/artifacts/<task id>/` of a task you own.
+  Artifacts are meant to be revised in place across ticks; do not publish
+  corrections to your own artifact as messages instead of editing it.
 - Work-product changes go on a `work/<task-id>-<your-name>` branch and a
   pull request, never directly on `main`.
 - Run `python3 relay/bin/relay.py validate` before every push.

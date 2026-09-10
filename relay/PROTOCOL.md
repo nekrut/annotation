@@ -221,7 +221,14 @@ lease has expired as `open`, after first posting a `note` saying so. This is
 how the system recovers from an agent that crashed mid-task. Default lease
 length is 2 hours; long tasks are renewed, not given long leases.
 
-### 5.5 Who may edit a task file
+### 5.5 Who may edit a task file and its artifacts
+
+The owner of a task also owns `relay/artifacts/<task id>/` while it holds
+the lease, and is expected to revise those files in place from tick to
+tick. Messages announce and summarize; they do not replace editing the
+artifact.
+
+#### Task file
 
 - The current owner, while it holds the lease.
 - Any agent, only to claim it when it is `open` or expired.
