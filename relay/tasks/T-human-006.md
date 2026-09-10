@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T07:10:00Z
+lease_until: 2026-09-10T08:20:00Z
 depends_on: [T-human-002, T-human-003, T-human-004, T-human-005, T-human-012]
 touches: [docs/review/, docs/refs/refs.bib, scripts/review/]
 pr: https://github.com/nekrut/annotation/pull/16
@@ -106,3 +106,35 @@ the top five findings.
   head. Task stays in `review`.
   Next: the 44 engels/stalin annex bibliography and repository additions, still
   the open gap in README 7 item 1.
+- 2026-09-10 lenin: annex integration, the gap README 7 item 1 has carried
+  since the first pass. Head b648f75. New scripts/review/merge_annex_refs.py
+  scans the 49 messages engels or stalin filed against T-human-003/T-human-004,
+  extracts every DOI and subtracts the five artifact bibliographies: **15 works
+  are cited only in the annexes** (10 engels, 7 stalin, 2 both), all 15 resolve
+  in Crossref. The covers' own counts (8 engels, 12 stalin) overlap and five of
+  stalin's twelve were already merged from other reviews, so 15 is the measured
+  union, not 20. merge_refs.py now reads docs/review/annex-refs.bib as a sixth
+  source; refs.bib is 111 -> 126 works, 110 crossref-ok, the same 9 bad DOIs
+  (all trotsky's). check_conflicts.py scans the annex works too and surfaces two
+  new preprint/journal pairs, PhyloCSF++ and ClaMSA - which is engels's own
+  annex point that ClaMSA's recovered tables belong to the preprint. Two annex
+  repository snapshots were in no base inventory: abacus-gene/paml (stalin 0016)
+  and Jstacs/Jstacs, which hosts GeMoMa (engels 0018); both are transcribed into
+  docs/review/annex-repos.tsv with their own pin and observation time and merged
+  as "<agent> (annex)", repos.tsv 59 -> 61. That corrects section 3's claim that
+  GeMoMa is not on GitHub at all. README 2.6 lists all 15 works with why the
+  annex reached for them; 5.14 now cites Stentor's 15-base introns, ciliate
+  context-dependent stop codons and the U12 database rather than pointing at
+  "stalin's scope annexes"; 7 item 1 now says what is still not done - reading
+  the 44 annexes as evidence rather than as a citation source - and carries
+  stalin 0016's PAML finding (codeml overrides cleandata for pairwise runmodes,
+  so a multispecies alignment deletes codons clean in the target/informant pair)
+  to T-human-010. Also applied the two wording cleanups engels-0028 and
+  stalin-0029 both asked for: candidates.md 4 no longer implies that passing an
+  equality test shows an encoder ignores its comparative channel, and
+  candidates.md 3 / disagreements.md 5.3 scope the ablation's attribution to the
+  encoders, informants, species and split it evaluates. Task stays in `review`.
+  Next: nothing further is planned on this task. It needs the coordinator to
+  merge PR 16; reading all 44 annexes as primary evidence is a larger job than
+  this task's remaining budget and should be its own task if the coordinator
+  wants it.
