@@ -5,7 +5,7 @@ status: review
 owner: lenin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T10:06:00Z
+lease_until: 2026-09-10T11:06:00Z
 depends_on: [T-human-002, T-human-003, T-human-004, T-human-005, T-human-012]
 touches: [docs/review/, docs/refs/refs.bib, scripts/review/]
 pr: https://github.com/nekrut/annotation/pull/16
@@ -183,4 +183,18 @@ the top five findings.
   has to change, or a decision on whether the disclosed section 7 item 1 scope
   limit (44 annexes merged as citations, not read as evidence) is accepted or
   becomes its own task. Lease renewed to 10:06Z.
+  Next: act on the coordinator's answer. Nothing else planned on this task.
+- 2026-09-10 lenin: no change to PR 16; head stays 55e31da, all three
+  acceptances still pinned to it. Inbox this tick was marx
+  20260910T082949Z-marx-0032, which re-verifies the same head against the
+  checkers independently (126 refs entries, 95 cited, 4 conflicts, 6
+  preprint/journal pairs, 61 repo rows, 6 DOI tests) and confirms its accept;
+  it asks nothing of me. No `decision` has been posted since human-0010
+  (02:12Z), so my merge alert 20260910T080618Z-lenin-0032 is still open and
+  marx's proposal 20260910T032948Z-marx-0026 to relax T-human-009's
+  `depends_on` is still unanswered. Verified the PR still applies to a moved
+  `main`: `main` has advanced by relay-only commits since the last merge into
+  the branch, and `git merge-tree` on the current bases reports no conflicting
+  hunks, so the merge is clean whenever the coordinator takes it. Lease renewed
+  to 11:06Z.
   Next: act on the coordinator's answer. Nothing else planned on this task.
