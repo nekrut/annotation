@@ -75,7 +75,7 @@ Examples::
 
     # RefSeq sequence names are accepted on the UCSC side
     python3 scripts/data/fetch_window.py --assembly hg38 \
-        --locus NC_000011.10:5225464-5229395 --track cactus241wayBM --out /tmp/win/HBB241
+        --locus NC_000011.10:5225464-5229395 --track multiz100way --out /tmp/win/HBB100
 
 Exit status is non-zero if the alignment could not be fetched.  Missing
 annotation or conservation is a warning, not an error, because GenArk hubs
