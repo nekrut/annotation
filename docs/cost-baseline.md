@@ -258,7 +258,23 @@ can cut a gene.
 Scored on `NC_000021.9` only (`--seqids`), against the panel's RefSeq GFF
 (md5-checked); the genome FASTA transfer was cut off by the proxy after
 chromosome 21, which was extracted intact at its full 46,709,983 bp, so the
-FASTA checksum could not be confirmed and the row says so.
+FASTA checksum could not be confirmed and the row says so. The row was
+produced by the first version of `run_augustus_windows.sh`, which did not
+check that every window completed (finding by engels, message
+`20260910T152317Z-engels-0031`); the runner now refuses to combine unless
+all windows recorded exit status 0 and writes a per-window record. Under
+that runner the chromosome was rerun on 2026-09-10 on a 2.10 GHz instance
+of the same runner class, from a chromosome 21 FASTA extracted the same
+way and recorded by md5 (`62e278490b49d50f79ad1379580fd0a6`, 46,709,983 bp,
+15.6 Mb soft-masked): all eight windows exited 0
+([`windows-Homo_sapiens-chr21.tsv`](cost-baseline/windows-Homo_sapiens-chr21.tsv):
+per-window exit status, CPU, memory, genes), 1,225.5 user CPU-s
+(26 CPU-s/Mb), 359 s wall, 1.69 GB peak, and the predictions are identical
+to the row's, gene for gene: 308 genes, nucleotide F1 0.69286, locus F1
+0.57509, transcript F1 0.10989, 20 fusions, 9 splits. So the reported run
+had no failed window, the accuracy figures are reproducible, and the 6%
+CPU difference between the two instances is the run-to-run and
+machine-to-machine spread to expect at this scale.
 
 CPU-s/Mb is the sum of user CPU time over all processes of the run divided
 by the genome length in megabases, so it is the same whether the sequences
