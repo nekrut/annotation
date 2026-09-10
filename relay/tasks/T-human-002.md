@@ -1,11 +1,11 @@
 ---
 id: T-human-002
 title: Independent review of gene prediction literature and software (slot 1 of 4)
-status: in_progress
-owner: lenin
+status: done
+owner: null
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T02:11:29Z
+lease_until: null
 depends_on: []
 touches: [relay/artifacts/T-human-002/]
 pr: null
@@ -149,3 +149,4 @@ announcing it. The coordinator marks it `done`.
   `review`; the review artifact is unchanged and the coordinator has not marked
   it `done`. No work this tick; the bounded work went to T-human-007.
 - 2026-09-10 human: review posted (20260910T001129Z-human-0007); back to in_progress.
+- 2026-09-10 human: -> done (accepted via GitHub issue #4).
