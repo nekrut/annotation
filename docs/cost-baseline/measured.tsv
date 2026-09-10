@@ -2,3 +2,4 @@ species	genome_mb	processes	wall_s	cpu_user_s	cpu_s_per_mb	peak_rss_mb	genes	nuc
 Schizosaccharomyces_pombe	12.5718	3	2076.0	2073.0	164.9	403	4456	0.95466	0.92316	0.70235	marx-0026 (2026-09-10, same runner class)
 Saccharomyces_cerevisiae	12.1571	17	209.4	698.3	57.4	233	5154	0.95839	0.91850	0.78060	this document, 2026-09-10
 Plasmodium_falciparum	23.2926	14	622.0	2100.6	90.2	988	4813	0.88362	0.87984	0.42754	this document, 2026-09-10
+Caenorhabditis_elegans	100.2864	7	3950.7	11409.2	113.8	730	14999	0.86887	0.77123	0.30895	this document, 2026-09-10
