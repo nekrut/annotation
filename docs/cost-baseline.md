@@ -1,7 +1,10 @@
 # Cost baseline: what existing gene predictors cost, and the budget ours must fit
 
 Task [T-human-009](../relay/tasks/T-human-009.md). Owner: `marx`.
-Status: **submitted for review** (2026-09-10). Every figure below carries
+Status: **in review, revised after lenin's review** (2026-09-10; the six
+fixes of `relay/messages/20260910T120853Z-lenin-0033.md` are in §5 and §6,
+and the isoform-summed coding fraction is replaced by a measured genomic
+union, `docs/cost-baseline/cds_union.tsv`). Every figure below carries
 its source, and the measured rows were produced by the commands in §3.4 on
 the runner described there. Two rows, EGAPx and Tiberius end to end, need
 the cluster; the `alert` requesting it is
@@ -345,6 +348,18 @@ The Ubuntu package's yeast configs set `stopCodonExcludedFromCDS true`, so
 `--stop-outside-cds` is required for them; `pfalciparum` sets it `false`,
 so the flag must be dropped, as does `caenorhabditis`. The scorer warns either way if the flag is wrong.
 
+The genomic coding fractions quoted in §5.3 are reproduced by
+
+```
+python3 docs/cost-baseline/cds_union.py Saccharomyces_cerevisiae Homo_sapiens Mus_musculus Zea_mays
+```
+
+which downloads each species' RefSeq GFF named in `benchmark/panel.tsv`,
+checks its md5 against the panel, and writes the union of CDS intervals
+beside the per-isoform sum (`cds_union.tsv`; the per-isoform column
+reproduces the panel's `cds_fraction_pct` exactly). Standard library only;
+the four GFFs are about 200 MB and are cached in `$CDS_UNION_CACHE`.
+
 ## 4. Our floor: the KA/KS window test
 
 T-human-010 (`baselines/kaks/`) ran the pairwise KA/KS classifier on 32
@@ -372,7 +387,8 @@ T-human-011 must fit, and shows one consequence the numbers force.
 | Classical GHMM on one core, per Mb | AUGUSTUS, 165 to 169 CPU-s/Mb (*S. pombe*, *N. crassa*), 114 on the 100 Mb *C. elegans*; see §3 | §3 |
 | Evidence pipeline, per Mb | EGAPx, 1,400 to 1,800 CPU-s/Mb plus a 32-CPU, 256 GB machine | §2.1 |
 | Consumer GPU, peak | RTX 4090: 83 TFLOPS FP32 shader, 24 GB ([NVIDIA product page](https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4090/), read 2026-09-10); an RTX 2070 / GTX 1080 class card with 8 GB is the floor Tiberius and Helixer both state | §2.2, §2.5 |
-| One CPU core, sustained | assumed 3 × 10^10 FLOP/s (a 2.8 GHz core with AVX2 fused multiply-add peaks at 16 FLOP/cycle × 2.8 GHz = 45 GFLOP/s; small-matrix inference reaches well under that; this is an assumption, not a measurement) | this document |
+| One CPU core, sustained | assumed 3 × 10^10 FLOP/s (a 2.8 GHz Xeon core with two 256-bit fused multiply-add ports peaks at 32 FLOP/cycle × 2.8 GHz = 90 GFLOP/s, 45 with one port; small-matrix inference reaches well under either; this is an assumption, not a measurement, and §5.3 conclusion 1 states what survives if it is 3x too low) | this document |
+| Consumer GPU versus the A100 the GPU tools were timed on, tensor throughput | RTX 4090 about 165 TFLOPS BF16 dense, FP32 accumulate ([NVIDIA Ada GPU architecture whitepaper](https://images.nvidia.com/aem-dam/Solutions/geforce/ada/nvidia-ada-gpu-architecture.pdf), RTX 4090 specification table, read 2026-09-10); A100 312 TFLOPS BF16 dense ([NVIDIA A100 datasheet](https://www.nvidia.com/en-us/data-center/a100/), read 2026-09-10). On the number that governs inference the target card is about half the A100, so a per-Mb ceiling on the 4090 is a stricter demand on the algorithm than the same number on an A100 | this document |
 | Precedent for the parameter budget | HyphAeon, about 2 M parameters | `relay/TASK.md` background |
 
 ### 5.2 The budget
@@ -380,8 +396,8 @@ T-human-011 must fit, and shows one consequence the numbers force.
 | resource | ceiling | why |
 |---|---|---|
 | Parameters | 5 M, target 2 to 3 M | the task's stated target; 2 M is the HyphAeon precedent and the number the FLOP arithmetic below uses |
-| One CPU core, inference | **≤ 15 CPU-s/Mb** | an order of magnitude under AUGUSTUS (165 to 169) and two under EGAPx (1,400 to 1,800); a 3.1 Gb human genome in 13 core-hours, a 12 Mb yeast in 3 minutes, on a laptop with no GPU |
-| One consumer GPU (8 to 24 GB), inference | **≤ 0.5 GPU-s/Mb** | a quarter of Tiberius-on-A100 on a card a quarter of its price; the human genome in 26 minutes, the whole 20-genome panel (about 17 Gb) in 2.4 hours |
+| One CPU core, inference | **≤ 15 CPU-s/Mb on the §3.1 runner** (Xeon 2.80 GHz, one core), equivalently **≤ 1/10 of AUGUSTUS's CPU-s/Mb on the same machine and genome** | the absolute is bound to the machine that produced §3 so it can be checked against `measured.tsv`; the ratio is the portable form, because a faster core lowers our number and AUGUSTUS's together and an absolute with no machine cannot be falsified. An order of magnitude under AUGUSTUS (165 to 169 on *S. pombe* and *N. crassa*, same runner) and two under EGAPx (1,400 to 1,800); a 3.1 Gb human genome in 13 core-hours, a 12 Mb yeast in 3 minutes, on a laptop with no GPU |
+| One consumer GPU (8 to 24 GB), inference | **≤ 0.5 GPU-s/Mb on an RTX 4090 class card** | 3.8x under Tiberius's 1.9 GPU-s/Mb on an A100 (2.6x under the post-2.0.0 1.3), measured on a card with about half the A100's tensor throughput (165 versus 312 TFLOPS BF16, §5.1), so the demand is about 5 to 8x less work per megabase than Tiberius, not a quarter; the human genome in 26 minutes, the whole 20-genome panel (13.96 Gb, the sum of `genome_bp` in `benchmark/panel.tsv`) in 1.9 hours |
 | Peak host memory | ≤ 8 GB | the laptop constraint of the charter; AUGUSTUS runs in 0.4 GB, so anything that needs a whole-genome tensor resident has already lost |
 | Peak GPU memory | ≤ 8 GB | the floor both GPU tools state; batch size is the knob, as their READMEs say |
 | Failure rate | 0 per genome on the panel, by construction: no per-genome training, no external pipeline steps that can time out | the EGAPx figure is 45% on Galaxy (§2.1); every training-in-the-loop pipeline inherits the same fragility |
@@ -394,7 +410,7 @@ FLOP per token. With 2 M parameters, one token per base and 20 aligned taxa
 (the shape of a whole-genome alignment fed in densely) that is
 2 × 2 × 10^6 × 10^6 × 20 = 8 × 10^13 FLOP per megabase:
 
-| shape | FLOP/Mb | one core at 3 × 10^10 FLOP/s | RTX 4090 at a realistic 10^13 FLOP/s (12% of peak) |
+| shape | FLOP/Mb | one core at 3 × 10^10 FLOP/s | RTX 4090 at a realistic 10^13 FLOP/s (12% of FP32 shader peak, 6% of BF16 tensor peak) |
 |---|---|---|---|
 | per base, 20 taxa | 8.0 × 10^13 | 2,700 s/Mb | 8 s/Mb |
 | per codon, 20 taxa | 2.7 × 10^13 | 890 s/Mb | 2.7 s/Mb |
@@ -411,12 +427,21 @@ T-human-011, not preferences:
 1. **A dense per-base model over the alignment is slower than AUGUSTUS on
    a CPU by more than an order of magnitude** (2,700 versus 169 s/Mb) even
    at 2 M parameters, and only just meets Tiberius on a GPU. The CPU
-   budget cannot be met that way at all.
+   budget cannot be met that way at all. This does not rest on the assumed
+   core speed: at the full 9 × 10^10 FLOP/s peak of §5.1 the same shape
+   costs 890 s/Mb, still five times AUGUSTUS and 60 times the ceiling.
 2. **The model must run on candidate support, not on the genome.** The
-   panel's coding fraction is 4 to 73% (`benchmark/panel.tsv`, `cds_fraction_pct`);
-   a candidate-region stage that keeps 2 to 5% of a mammalian genome and
-   50% of a yeast genome, and a codon-level (not base-level) token axis,
-   are what bring the per-Mb cost under the ceiling. The candidate stage
+   genomic coding fraction, the union of CDS intervals over the genome, is
+   1.3% for human, 1.4% for mouse, 2.0% for maize and 72.5% for
+   *S. cerevisiae* (`docs/cost-baseline/cds_union.tsv`, produced by
+   `cds_union.py` from the panel's RefSeq GFFs, md5-checked against
+   `benchmark/panel.tsv`). The panel's `cds_fraction_pct` column sums CDS
+   over every isoform, so it reads 9.6% for human, 7.2x the union, and is
+   not the number to size a candidate stage by. A candidate-region stage
+   that keeps 2 to 5% of a mammalian genome, which is 1.5 to 4x the coding
+   bases with room for flanks, and nearly all of a yeast genome, and a
+   codon-level (not base-level) token axis, are what bring the per-Mb cost
+   under the ceiling. The candidate stage
    itself must therefore be a cheap sequence scan, of the cost class of the
    KA/KS window test (§4) or a GHMM emission pass, not a neural network.
 3. **The tree costs nothing at inference if it is coordinates.** Tree-RoPE
@@ -443,11 +468,20 @@ that most need a measured counterpart, and neither fits a laptop. The
 - EGAPx on *Ciona intestinalis* (140 Mb, `heldout`, no RNA-seq required):
   one 32-CPU, 256 GB node; by the README's fly figure, about 70 to 100
   CPU-hours and 3 to 4 hours wall clock; 200 GB scratch.
-- Tiberius 2.0.7 `vertebrates`, `fungi` and `insecta` models on the panel
-  species those clades cover: one GPU with ≥ 8 GB (an A100 or the RTX 5080
-  box used by `benchmark/validation/`); by the paper's human figure, under
-  2 GPU-s/Mb, so about 3 GPU-hours for the 5.5 Gb of covered panel genomes,
-  plus first-run kernel compilation.
+- Tiberius 2.0.7 `vertebrates`, `fungi` and `insecta` models on the eleven
+  panel species those clades cover: *H. sapiens* 3.10 Gb, *M. musculus*
+  2.73, *X. tropicalis* 1.45, *D. rerio* 1.45, *G. gallus* 1.05,
+  *T. rubripes* 0.38, *A. mellifera* 0.23, *D. melanogaster* 0.14,
+  *N. crassa* 0.04, *S. pombe* 0.01, *S. cerevisiae* 0.01; in total
+  10.60 Gb (`genome_bp` in `benchmark/panel.tsv`). One GPU with ≥ 8 GB (an
+  A100 or the RTX 5080 box used by `benchmark/validation/`); at the paper's
+  1.9 GPU-s/Mb about 5.6 GPU-hours, at the post-2.0.0 1.3 GPU-s/Mb about
+  3.8, plus first-run kernel compilation. The five held-out species among
+  them (*H. sapiens*, *G. gallus*, *T. rubripes*, *A. mellifera*,
+  *S. pombe*) are 4.78 Gb, 2.5 GPU-hours at 1.9. The alert as posted said
+  5.5 Gb and about 3 GPU-hours, about half the run; messages are never
+  edited, so the corrected figure is restated in marx's note of
+  2026-09-10 that accompanies this revision (lenin's review, fix 2).
 
 ## 6. What is not here yet
 
@@ -460,3 +494,15 @@ that most need a measured counterpart, and neither fits a laptop. The
   `decision`.
 - Failure rate per genome for anything other than EGAPx on Galaxy: no
   source reports one.
+- AUGUSTUS on a gigabase genome. Every measured row is under 100 Mb, so
+  the 3x per-Mb spread of §3.3 is a spread over small genomes, and the
+  budget's per-megabase form assumes cost is flat in genome size.
+  *Z. mays* (2.18 Gb) at 57 to 169 CPU-s/Mb is 35 to 100 CPU-hours on the
+  §3.1 runner, which does not fit the 35-minute foreground limit of one
+  tick on 4 cores; not measured for that reason. One 100 Mb chromosome of
+  a gigabase genome would fit and is the next measured row to add.
+- Wall clock and memory for the Tiberius and Helixer runs already in
+  `benchmark/validation/`. Re-running them under `/usr/bin/time -v` on the
+  RTX 5080 box would replace two "documented only" cells without a cluster
+  `decision`, at a fraction of the §5.4 request. This runner has no GPU,
+  so that is a request to whoever operates that machine.

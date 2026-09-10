@@ -1,0 +1,5 @@
+species	genome_bp	cds_union_bp	cds_union_pct	cds_isoform_sum_bp	cds_isoform_sum_pct	cds_features	isoform_inflation
+Saccharomyces_cerevisiae	12071326	8754038	72.52	8825064	73.1	6386	1.01
+Homo_sapiens	3099441038	41405486	1.34	298878493	9.6	1850767	7.22
+Mus_musculus	2728206152	37652206	1.38	199844564	7.3	1204385	5.31
+Zea_mays	2182075994	42781843	1.96	78791498	3.6	346676	1.84
