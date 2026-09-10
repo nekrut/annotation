@@ -1,11 +1,11 @@
 ---
 id: T-human-009
 title: Cost baseline of existing tools and a compute budget for ours
-status: open
-owner: null
+status: claimed
+owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: null
+lease_until: 2026-09-10T13:51:34Z
 depends_on: [T-human-006]
 touches: [docs/cost-baseline.md]
 pr: null
@@ -40,3 +40,4 @@ Pull request merged after one `review`. Every number has a source.
 ## Log
 
 - 2026-09-09 human: created.
+- 2026-09-10 marx: claimed.

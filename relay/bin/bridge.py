@@ -131,16 +131,22 @@ def sync_inbox():
         kind = fm["type"]
         title = "[relay] %s from %s: %s" % (kind, fm["from"], fm["title"])
         reply_kind = "answer" if kind == "question" else "decision"
+        ask = {
+            "proposal": "Reply **accept** or **reject** in a comment. One word is enough.",
+            "question": "Answer the question in a comment. One or two sentences is enough.",
+            "alert": "Reply in a comment with what you decided. One line is enough.",
+        }.get(kind, "Reply in a comment.")
+        about = (" about task %s" % blob("relay/tasks/%s.md" % fm["task"])) if fm.get("task") else ""
+        words = len(body.split())
         text = (
             "<!-- relay-msg: %s -->\n"
-            "**%s** from `%s` to `%s`%s\n\n"
-            "Message: %s\n\n---\n\n%s\n\n---\n"
-            "**To reply:** comment on this issue. Your comment is committed to the relay as a "
-            "`%s` from `human` addressed to `%s`, and this issue is closed. "
-            "Only collaborators' comments are used."
-        ) % (stem, kind, fm["from"], ", ".join(to),
-             (" about %s" % blob("relay/tasks/%s.md" % fm["task"])) if fm.get("task") else "",
-             blob("relay/messages/%s.md" % stem), body.strip(), reply_kind, fm["from"])
+            "## What you need to do\n\n"
+            "%s Your comment is committed to the relay as a `%s` from `human` to `%s` "
+            "and this issue closes. Only collaborators' comments count.\n\n"
+            "**%s from `%s`%s:** %s\n\n"
+            "<details><summary>Full message (%d words; <a href=\"https://github.com/%s/blob/main/relay/messages/%s.md\">relay/messages/%s.md</a>)</summary>\n\n%s\n\n</details>\n"
+        ) % (stem, ask, reply_kind, fm["from"], kind.capitalize(), fm["from"], about,
+             fm["title"], words, REPO, stem, stem, body.strip())
         gh("POST", "/repos/%s/issues" % REPO, {"title": title[:250], "body": text, "labels": [LABEL]})
         created += 1
 
@@ -162,18 +168,24 @@ def sync_inbox():
                 if files:
                     pr_block += "\n\n**Work product on the PR branch:**\n" + "\n".join(
                         "- " + blob(path, ref) for path, ref in files)
+        if fm.get("pr"):
+            steps = ("1. Look at the work: %s\n"
+                     "2. To accept: merge that pull request on GitHub, then comment **done** here.\n"
+                     "3. To send it back: comment what should change. Your comment goes to `%s` "
+                     "as a `review` and the task returns to `in_progress`.") % (fm["pr"], fm.get("owner"))
+        else:
+            steps = ("1. Look at the work: the artifact links below.\n"
+                     "2. To accept: comment **done** here.\n"
+                     "3. To send it back: comment what should change. Your comment goes to `%s` "
+                     "as a `review` and the task returns to `in_progress`.") % fm.get("owner")
         text = (
             "<!-- relay-task: %s -->\n"
-            "Task `%s` (%s) was moved to `review` by `%s`.\n%s\n\n"
-            "**Relay artifacts:**\n%s\n- %s (task file with run log)\n\n---\n"
-            "**To accept:** comment `done`. The task is marked done and this issue closes.%s\n"
-            "**To send it back:** comment anything else. Your comment is posted as a "
-            "`review` message to `%s` and the task returns to `in_progress`."
-        ) % (tid, tid, fm["title"], fm.get("owner"), pr_block,
+            "## What you need to do\n\n%s\n\n"
+            "**Task `%s`: %s.** Moved to `review` by `%s`.%s\n\n"
+            "**Relay artifacts:**\n%s\n- %s (task file with run log)\n"
+        ) % (tid, steps, tid, fm["title"], fm.get("owner"), pr_block,
              art_list or "- (none under relay/artifacts)",
-             blob("relay/tasks/%s.md" % tid),
-             " Merge the pull request on GitHub as well." if fm.get("pr") else "",
-             fm.get("owner"))
+             blob("relay/tasks/%s.md" % tid))
         gh("POST", "/repos/%s/issues" % REPO, {"title": title[:250], "body": text, "labels": [LABEL]})
         created += 1
 
