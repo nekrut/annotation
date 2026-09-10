@@ -1,0 +1,10 @@
+model: AUGUSTUS 3.5.0 (Ubuntu 24.04 package augustus 3.5.0+dfsg-4build5), --species=human --gff3=on --genemodel=complete --UTR=off, default softmasking
+training_species: [Homo_sapiens]
+pretraining_corpus: none
+heldout_seen_in_pretraining: {Homo_sapiens: yes}
+protein_db: none
+alignment: none
+alignment_rows_dropped: none
+informants: none
+rnaseq: none
+hardware: Intel Xeon Processor @ 2.80GHz (cloud VM), 4 cores, 15 GB RAM, no GPU; chromosome 21 (NC_000021.9) only, 8 prediction windows of 5.84 Mb via --predictionStart/--predictionEnd, 4 in parallel, timed with GNU time -v

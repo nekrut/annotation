@@ -27,7 +27,7 @@ different runs.
 | EGAPx | evidence pipeline (miniprot/ProSplign, STAR, minimap2, Gnomon) | 71 CPU-h / 3 h wall for the 144 Mb fly; 425 CPU-h / 5.5 h wall for the 1.1 Gb chicken; wants a 32-CPU, 256 GB machine (§2.1) | not attempted; below the stated minimum machine | no |
 | Tiberius | CNN + LSTM + differentiable HMM, ab initio | GPU with ≥ 8 GB; batch sizes given for A100 80 GB, RTX 3090, RTX 2070; runtime "reduced by 30%" in 2.0.0 (§2.2) | not measurable on this runner (no GPU, Python 3.11 < 3.12) | GPU laptop only |
 | BRAKER3 | GeneMark-ETP + AUGUSTUS training pipeline | 20 min test runs on a Xeon E5530; full genomes hours to days (§2.3) | not attempted this tick | CPU, hours to days |
-| AUGUSTUS 3.5.0 | GHMM, ab initio | 6 min per 1.6 Mb on a 2.4 GHz PC (2003); 2 h 25 min per mammal on 48 threads (2024) (§2.4) | **57 to 169 CPU-s/Mb, 0.23 to 0.97 GB** on five panel genomes, one of them the 100 Mb *C. elegans* (§3) | yes |
+| AUGUSTUS 3.5.0 | GHMM, ab initio | 6 min per 1.6 Mb on a 2.4 GHz PC (2003); 2 h 25 min per mammal on 48 threads (2024) (§2.4) | **25 to 169 CPU-s/Mb, 0.23 to 1.65 GB** on five panel genomes and on human chromosome 21, which is the cheapest per megabase and the least accurate (§3) | yes |
 | Helixer 0.3.7 | CNN + biLSTM, ab initio | GPU with 8 to 11 GB; 3 to 5 min demos on a GPU (§2.5) | Docker image only; no daemon on this runner | GPU laptop only |
 | GeneMark-ETP | self-training GHMM + evidence | `--cores 32` in its own usage line; licence CC BY-NC-SA 4.0 (§2.6) | not attempted; non-commercial licence recorded | CPU, hours |
 | KA/KS window test (our floor) | comparative statistic | 365 s wall for 32 genes, nearly all fetch; the test itself is milliseconds per window (§4) | measured in T-human-010 | yes |
@@ -91,7 +91,10 @@ nothing from T-human-012 as sole evidence).
 Two consistency checks worth recording. The 2003 AUGUSTUS figure (225
 CPU-s/Mb on a 2.4 GHz PC) and the 2024 upper bound (139 CPU-s/Mb across 48
 threads) bracket the 165 and 169 CPU-s/Mb measured in §3 on *S. pombe* and
-*N. crassa*, so a twenty-year-old GHMM runs at the same per-megabase cost it always did. And
+*N. crassa*, so a twenty-year-old GHMM runs at the same per-megabase cost it
+always did on gene-dense genomes. On human chromosome 21 the same package
+costs 25 CPU-s/Mb (§3.2), 5.6x under the 48-thread bound, which is how a
+thread-count bound on a genome that is 1.2% coding (§5.3) should look. And
 ANNEVO's own benchmark and the Tiberius clade preprint, on different
 hardware and species sets, agree on the ordering Tiberius/ANNEVO < Helixer
 << BRAKER3 by one to two orders of magnitude.
@@ -177,7 +180,7 @@ prediction alone (§3) is a small part of it.
 
 No runtime is stated in the AUGUSTUS README or paper for whole genomes.
 The measured rows in §3 are the figures for this document. A single
-process on one core costs 57 to 169 CPU-s/Mb depending on the genome; the tool is trivially parallel by sequence, which is
+process on one core costs 25 to 169 CPU-s/Mb depending on the genome; the tool is trivially parallel by sequence, which is
 how `benchmark/validation/` ran it (24 cores), and the cost per megabase
 does not change with that parallelism, only the wall clock.
 
@@ -240,8 +243,21 @@ package versions; the `time` package had to be installed alongside
 | *Plasmodium falciparum* | 23.29 | 14 processes, 4 in parallel | 622 | 2101 | **90** | 988 | 4,813 | 0.88362 | 0.87984 | 0.42754 | this document, 2026-09-10 |
 | *Caenorhabditis elegans* | 100.29 | 7 processes, 4 in parallel | 3951 | 11409 | **114** | 730 | 14,999 | 0.86887 | 0.77123 | 0.30895 | this document, 2026-09-10 |
 | *Neurospora crassa* | 41.10 | 21 processes, 4 in parallel | 1836 | 6939 | **169** | 381 | 8,475 | 0.94804 | 0.92276 | 0.61283 | this document, 2026-09-10 |
+| *Homo sapiens* chromosome 21 (NC_000021.9) | 46.71 (40.09 non-N) | 8 prediction windows of 5.84 Mb, 4 in parallel | 347 | 1154 | **25** (29 per non-N Mb) | 1,647 | 308 | 0.69286 | 0.57509 | 0.10989 | this document, 2026-09-10 |
 
 Machine-readable copy: [`docs/cost-baseline/measured.tsv`](cost-baseline/measured.tsv); declarations in the same directory follow `docs/benchmark.md` §3.3.
+
+The human row is one chromosome of a gigabase genome, not the genome: the
+2.18 to 3.10 Gb panel genomes do not fit one bounded run (§6). It was run
+with `run_augustus_windows.sh`, eight AUGUSTUS processes over the same
+46.7 Mb sequence with `--predictionStart/--predictionEnd`, so each process
+reads the whole chromosome (0.5 CPU-s and 0.17 GB per process, measured
+with a 2 kb all-N window, so negligible) and the seven window boundaries
+can cut a gene.
+Scored on `NC_000021.9` only (`--seqids`), against the panel's RefSeq GFF
+(md5-checked); the genome FASTA transfer was cut off by the proxy after
+chromosome 21, which was extracted intact at its full 46,709,983 bp, so the
+FASTA checksum could not be confirmed and the row says so.
 
 CPU-s/Mb is the sum of user CPU time over all processes of the run divided
 by the genome length in megabases, so it is the same whether the sequences
@@ -252,7 +268,7 @@ memory is the largest resident set of any single process.
 
 - **The per-megabase cost of a GHMM is not a constant, and no single
   panel statistic predicts it.** The same tool costs 57, 90, 114, 165 and
-  169 CPU-s/Mb on five genomes. Per megabase (`benchmark/panel.tsv`),
+  169 CPU-s/Mb on five genomes, and 25 on human chromosome 21. Per megabase (`benchmark/panel.tsv`),
   *S. cerevisiae* has 25 introns, *P. falciparum* 363, *S. pombe* 418,
   *N. crassa* 435 and *C. elegans* 1,140; gene density is 499, 227, 408,
   238 and 199 genes per Mb; CDS fraction 73, 53, 57, 41 and 43 percent.
@@ -268,8 +284,37 @@ memory is the largest resident set of any single process.
   nuclear chromosomes span 101 to 131 CPU-s/Mb, chrX the dearest; within
   *N. crassa* the seven chromosomes span only 166 to 171, so the
   within-genome spread is itself species-dependent. Whatever the new model costs per
-  megabase will likewise vary by 2 to 3x across the panel, so the budget in
+  megabase will likewise vary by 2 to 7x across the panel, so the budget in
   §5 is stated as a ceiling over the panel, not a mean.
+- **A mammalian chromosome is the cheapest sequence per megabase and the
+  worst predicted.** Human chromosome 21 costs 25 CPU-s/Mb (29 per non-N
+  megabase), 2.3x under the cheapest small genome and 6.8x under the
+  dearest, with the same package and the same protocol class. The
+  budget's assumption that per-megabase cost is flat in genome size was
+  wrong in the direction that favours the GHMM: chr21 has 5 reference
+  loci per Mb against 199 to 499 for the five small genomes, and the cost
+  follows the number of candidate exons the emission pass has to score,
+  not the length of the sequence. Soft-masking is not what makes it cheap:
+  the 5.84 Mb window 1 rerun with `--softmasking=0` took 105 CPU-s against
+  169 with the default masking on (the masked-region hints cost, they do
+  not save) and predicted 140 genes instead of 42. At 25 CPU-s/Mb the
+  3.1 Gb human genome is 21 CPU-hours on this runner, one core; the 2024
+  "2 h 25 min on 48 threads" figure of §1.1 is consistent with that and
+  mostly idle threads. Accuracy is the other side: with the `human`
+  parameter set, on the genome it was trained on, nucleotide F1 0.693,
+  locus F1 0.575 and transcript F1 0.110; 308 predicted loci against 238
+  reference loci, 20 fusions, 9 splits, 81 reference loci missed. The
+  median intron on this genome is 1,781 bp and the 90th percentile 17 kb
+  (`benchmark/panel.tsv`), which is where a geometric intron-length state
+  fails and a length-aware decoder is supposed to win; at most seven
+  reference loci lie on a window boundary, which does not explain the gap.
+  Peak memory is 1.37 to 1.69 GB across the eight 5.84 Mb windows, and
+  reading the chromosome alone costs 0.17 GB, so the memory is the
+  prediction over the window: 0.28 GB per window megabase, against 0.03
+  per megabase in the *C. elegans* chromosomes and 0.29 in the 3.3 Mb
+  *P. falciparum* chromosome. Memory per megabase is set by the parameter
+  set and the composition, as the previous bullet says, and the human set
+  takes 8x what the nematode set does.
 - **Memory grows with sequence length within a species and with
   composition across species.** The *C. elegans* chromosomes run from
   0.54 GB at 14.0 Mb (chrIII) to 0.73 GB at 21.2 Mb (chrV), roughly
@@ -342,6 +387,15 @@ python3 benchmark/score.py --reference /tmp/panel/Neurospora_crassa/*_genomic.gf
     --prediction /tmp/run-nc/augustus.gff3 --species Neurospora_crassa \
     --declaration docs/cost-baseline/augustus-Neurospora_crassa.yaml \
     --genome /tmp/panel/Neurospora_crassa/*_genomic.fna.gz --stop-outside-cds --out nc.json
+# human chromosome 21: 5.8 min wall on 4 cores, 0.32 CPU-h, 1.65 GB peak; no --stop-outside-cds
+python3 benchmark/fetch.py --species Homo_sapiens --what fasta,gff --dest /tmp/panel
+zcat /tmp/panel/Homo_sapiens/*_genomic.fna.gz | awk '/^>/{p=($1==">NC_000021.9")} p' > /tmp/chr21.fa
+docs/cost-baseline/run_augustus_windows.sh /tmp/chr21.fa human 8 4 /tmp/run-chr21
+echo NC_000021.9 > /tmp/seqids.txt
+python3 benchmark/score.py --reference /tmp/panel/Homo_sapiens/*_genomic.gff.gz \
+    --prediction /tmp/run-chr21/augustus.gff3 --species Homo_sapiens \
+    --declaration docs/cost-baseline/augustus-Homo_sapiens-chr21.yaml \
+    --genome /tmp/chr21.fa --seqids /tmp/seqids.txt --out chr21.json
 ```
 
 The Ubuntu package's yeast configs set `stopCodonExcludedFromCDS true`, so
@@ -396,7 +450,7 @@ T-human-011 must fit, and shows one consequence the numbers force.
 |---|---|---|
 | Best ab initio GPU tool, per Mb | Tiberius, about 1.9 GPU-s/Mb on an A100 80 GB (1.3 after the 2.0.0 speed-up) | §2.2 |
 | Second GPU tool, per Mb | Helixer, about 10.7 GPU-s/Mb on an A100 | §2.5 |
-| Classical GHMM on one core, per Mb | AUGUSTUS, 165 to 169 CPU-s/Mb (*S. pombe*, *N. crassa*), 114 on the 100 Mb *C. elegans*; see §3 | §3 |
+| Classical GHMM on one core, per Mb | AUGUSTUS, 165 to 169 CPU-s/Mb (*S. pombe*, *N. crassa*), 114 on the 100 Mb *C. elegans*, 25 on human chromosome 21; see §3 | §3 |
 | Evidence pipeline, per Mb | EGAPx, 1,400 to 1,800 CPU-s/Mb plus a 32-CPU, 256 GB machine | §2.1 |
 | Consumer GPU, peak | RTX 4090: 83 TFLOPS FP32 shader, 24 GB ([NVIDIA product page](https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4090/), read 2026-09-10); an RTX 2070 / GTX 1080 class card with 8 GB is the floor Tiberius and Helixer both state | §2.2, §2.5 |
 | One CPU core, sustained | assumed 3 × 10^10 FLOP/s (a 2.8 GHz Xeon core with two 256-bit fused multiply-add ports peaks at 32 FLOP/cycle × 2.8 GHz = 90 GFLOP/s, 45 with one port; small-matrix inference reaches well under either; this is an assumption, not a measurement, and §5.3 conclusion 1 states what survives if it is 3x too low) | this document |
@@ -408,9 +462,9 @@ T-human-011 must fit, and shows one consequence the numbers force.
 | resource | ceiling | why |
 |---|---|---|
 | Parameters | 5 M, target 2 to 3 M | the task's stated target; 2 M is the HyphAeon precedent and the number the FLOP arithmetic below uses |
-| One CPU core, inference | **≤ 15 CPU-s/Mb on the §3.1 runner** (Xeon 2.80 GHz, one core), equivalently **≤ 1/10 of AUGUSTUS's CPU-s/Mb on the same machine and genome** | the absolute is bound to the machine that produced §3 so it can be checked against `measured.tsv`; the ratio is the portable form, because a faster core lowers our number and AUGUSTUS's together and an absolute with no machine cannot be falsified. An order of magnitude under AUGUSTUS (165 to 169 on *S. pombe* and *N. crassa*, same runner) and two under EGAPx (1,400 to 1,800); a 3.1 Gb human genome in 13 core-hours, a 12 Mb yeast in 3 minutes, on a laptop with no GPU |
+| One CPU core, inference | **≤ 15 CPU-s/Mb on the §3.1 runner** (Xeon 2.80 GHz, one core), equivalently **≤ 1/11 of AUGUSTUS's CPU-s/Mb on *S. pombe* on the same machine** | the absolute is bound to the machine that produced §3 so it can be checked against `measured.tsv`; the ratio is the portable form, because a faster core lowers our number and AUGUSTUS's together and an absolute with no machine cannot be falsified, and it is quoted on a named genome because AUGUSTUS's own cost varies 7x across the panel (§3.3). An order of magnitude under AUGUSTUS on the gene-dense genomes (165 to 169 on *S. pombe* and *N. crassa*, same runner) and two under EGAPx (1,400 to 1,800); but only 1.6x under AUGUSTUS on human chromosome 21 (25 CPU-s/Mb, §3.2), so on a mammalian genome the ceiling does not buy an order of magnitude over a GHMM in CPU, and what the model has to buy there is accuracy (AUGUSTUS locus F1 0.575 on chr21). A 3.1 Gb human genome in 13 core-hours against AUGUSTUS's 21, a 12 Mb yeast in 3 minutes against 12 to 35, on a laptop with no GPU |
 | One consumer GPU (8 to 24 GB), inference | **≤ 0.5 GPU-s/Mb on an RTX 4090 class card** | 3.8x under Tiberius's 1.9 GPU-s/Mb on an A100 (2.6x under the post-2.0.0 1.3), measured on a card with about half the A100's tensor throughput (165 versus 312 TFLOPS BF16, §5.1), so the demand is about 5 to 8x less work per megabase than Tiberius, not a quarter; the human genome in 26 minutes, the whole 20-genome panel (13.96 Gb, the sum of `genome_bp` in `benchmark/panel.tsv`) in 1.9 hours |
-| Peak host memory | ≤ 8 GB | the laptop constraint of the charter; AUGUSTUS runs in 0.4 GB, so anything that needs a whole-genome tensor resident has already lost |
+| Peak host memory | ≤ 8 GB | the laptop constraint of the charter; AUGUSTUS runs in 0.4 GB on a yeast and 1.65 GB on a 47 Mb human chromosome (§3.2), so anything that needs a whole-genome tensor resident has already lost |
 | Peak GPU memory | ≤ 8 GB | the floor both GPU tools state; batch size is the knob, as their READMEs say |
 | Failure rate | 0 per genome on the panel, by construction: no per-genome training, no external pipeline steps that can time out | the EGAPx figure is 45% on Galaxy (§2.1); every training-in-the-loop pipeline inherits the same fragility |
 | Preprocessing, alignment excluded | counted in the CPU budget above | the alignment itself is accounted separately (§5.3) because it is shared with every other comparative user of the genome |
@@ -437,7 +491,8 @@ twice these. Three things follow, and they are constraints on
 T-human-011, not preferences:
 
 1. **A dense per-base model over the alignment is slower than AUGUSTUS on
-   a CPU by more than an order of magnitude** (2,700 versus 169 s/Mb) even
+   a CPU by more than an order of magnitude** (2,700 versus 169 s/Mb on
+   *N. crassa*, and 100x the 25 s/Mb on human chromosome 21) even
    at 2 M parameters, and only just meets Tiberius on a GPU. The CPU
    budget cannot be met that way at all. This does not rest on the assumed
    core speed: at the full 9 × 10^10 FLOP/s peak of §5.1 the same shape
@@ -509,13 +564,13 @@ that most need a measured counterpart, and neither fits a laptop. The
   `decision`.
 - Failure rate per genome for anything other than EGAPx on Galaxy: no
   source reports one.
-- AUGUSTUS on a gigabase genome. Every measured row is under 100 Mb, so
-  the 3x per-Mb spread of §3.3 is a spread over small genomes, and the
-  budget's per-megabase form assumes cost is flat in genome size.
-  *Z. mays* (2.18 Gb) at 57 to 169 CPU-s/Mb is 35 to 100 CPU-hours on the
-  §3.1 runner, which does not fit the 35-minute foreground limit of one
-  tick on 4 cores; not measured for that reason. One 100 Mb chromosome of
-  a gigabase genome would fit and is the next measured row to add.
+- AUGUSTUS on a whole gigabase genome. Human chromosome 21 (§3.2) stands
+  in for it at 25 CPU-s/Mb, which puts the 3.1 Gb human genome at 21
+  CPU-hours and *Z. mays* (2.18 Gb) at about 15 if maize costs the same
+  per megabase, and neither fits the 35-minute foreground limit of one
+  tick on 4 cores. Whether a TE-rich 47% GC plant genome with the `maize5`
+  set costs what a 41% GC mammalian chromosome does is not measured; one
+  maize chromosome would be the next row, by the same script.
 - Wall clock and memory for the Tiberius and Helixer runs already in
   `benchmark/validation/`. Re-running them under `/usr/bin/time -v` on the
   RTX 5080 box would replace two "documented only" cells without a cluster
