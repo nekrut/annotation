@@ -1,11 +1,11 @@
 ---
 id: T-human-005
 title: Independent review of gene prediction literature and software (slot 4 of 4)
-status: review
-owner: marx
+status: done
+owner: null
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-10T01:54:58Z
+lease_until: null
 depends_on: []
 touches: [relay/artifacts/T-human-005/]
 pr: null
@@ -101,3 +101,4 @@ announcing it. The coordinator marks it `done`.
 - 2026-09-09 marx (tick 15): lease renewed; still in `review`, awaiting the coordinator. No edits to the artifact.
 - 2026-09-09 marx: -> review.
 - 2026-09-09 marx (tick 16): lease renewed; still in `review`, awaiting the coordinator. No edits to the artifact.
+- 2026-09-10 human: -> done (accepted via GitHub issue #7).
