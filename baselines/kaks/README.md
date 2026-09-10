@@ -9,8 +9,13 @@ the floor every later model has to beat. Standard library only.
 |---|---|
 | `kaks.py` | pairwise KA/KS by the Nei and Gojobori (1986) pathway method with the Jukes-Cantor correction, the one-sided z-test of dN < dS, and the decision rule (ratio below one and significant). Standard and ciliate genetic codes. `--self-test`: 22 checks |
 | `windows.py` | reads a window written by `scripts/data/fetch_window.py`, pairs the reference with one informant row, tests every window of `W` bases in six frames, projects the calls to bases and scores them against the CDS annotation at the nucleotide level (`docs/benchmark.md` section 4.1, strand-aware), with the metrics restricted to aligned bases, sensitivity by CDS segment length, and the count of windows the test could not decide. `--self-test`: 12 checks on a synthetic two-gene window |
+| `run.py` | the single command: for every row of `pairs.tsv` draws the seeded gene sample (`scripts/data/sample_genes.py`), fetches each gene's window into a cache (`scripts/data/fetch_window.py`, skipped when cached), runs the sweep over informants and window sizes, and pools the confusion counts over genes into `results/` |
+| `pairs.tsv` | the four species pairs of the sweep: reference assembly, track, chromosome, informants, gene sample parameters |
+| `results/` | `summary.tsv` (pair x informant x window, pooled), `per_gene.tsv`, `summary.md`, `manifest.json` (sample headers with the track `dataTime`, SHA-256 of every fetched input, informants absent from a window) |
 
 ```
+python3 baselines/kaks/run.py --cache /tmp/kaks-cache        # the deliverable: 4 pairs x 8 genes, ~10 min, ~200 MB cache
+python3 baselines/kaks/run.py --cache /tmp/kaks-cache --offline --pairs-filter fly --limit-genes 2   # a bounded rerun
 python3 baselines/kaks/kaks.py
 python3 baselines/kaks/windows.py --self-test
 python3 scripts/data/fetch_window.py --assembly dm6 --locus chr2L:14615552-14618902 --flank 500 --track multiz124way --out /tmp/win/Adh --name Adh_124

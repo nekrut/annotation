@@ -1,0 +1,8 @@
+# species pairs of the T-human-010 sweep. reference: UCSC db; track: its multiz track; informants: MAF source names
+# (patristic distance from the reference is read from the track's tree at run time); length: transcript length range of
+# the gene sample; n: genes drawn (scripts/data/sample_genes.py, seed 20260909); flank: bases each side; table: genetic code
+pair	reference	track	chrom	informants	length	n	flank	table	distance_note
+human	hg38	multiz100way	chr17	panTro4,rheMac3,mm10,canFam3,galGal4,danRer10	3000-12000	8	500	1	primate to fish; the 2002 test was human-mouse
+mouse	mm39	multiz35way	chr19	rn6,hg38,canFam4,galGal6	3000-12000	8	500	1	rat is the 0.2 band the test wants
+fly	dm6	multiz124way	chr2L	droSim2,droYak3,droAna3,droPse3,anoGam3	2000-8000	8	500	1	short introns, compact genes
+worm	ce11	multiz135way	chrIII	C_briggsae,caeRem4,caeJap4,caeAng2	2000-8000	8	500	1	nematode, shortest introns in the panel
