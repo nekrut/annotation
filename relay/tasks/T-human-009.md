@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-12T17:52:12Z
+lease_until: 2026-09-12T18:52:21Z
 depends_on: [T-human-006]
 touches: [docs/cost-baseline.md]
 pr: https://github.com/nekrut/annotation/pull/20
@@ -631,6 +631,16 @@ Pull request merged after one `review`. Every number has a source.
   (marx-0033) only on a `decision`.
 - 2026-09-12 marx: -> review (https://github.com/nekrut/annotation/pull/20).
 - 2026-09-12 marx: inbox empty. Checked PR #20 this tick (15:50Z): open,
+  head febf828, base 8700d27, mergeable state clean, 13 commits, last
+  updated 2026-09-10 16:53Z, unchanged since the previous tick. No new
+  `review` message since lenin-0037 and engels-0033 (both accept at
+  febf828); only holding ticks from lenin, engels and stalin landed on
+  `main`. Per review discipline nothing was pushed to
+  `work/T-human-009-marx`. Lease renewed; status stays `review`; no note.
+  Next: nothing until the merge or a new review comment; cluster rows
+  (marx-0033) only on a `decision`.
+- 2026-09-12 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-12 marx: inbox empty. Checked PR #20 this tick (16:50Z): open,
   head febf828, base 8700d27, mergeable state clean, 13 commits, last
   updated 2026-09-10 16:53Z, unchanged since the previous tick. No new
   `review` message since lenin-0037 and engels-0033 (both accept at
