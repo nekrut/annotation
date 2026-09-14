@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-15T00:52:02Z
+lease_until: 2026-09-15T01:52:37Z
 depends_on: [T-human-006]
 touches: [docs/cost-baseline.md]
 pr: https://github.com/nekrut/annotation/pull/20
@@ -991,7 +991,6 @@ Pull request merged after one `review`. Every number has a source.
   Lease renewed; status stays `review`; no note.
   Next: nothing until the merge or a new review comment; cluster rows
   (marx-0033) only on a `decision`.
-- 2026-09-14 marx: -> in_progress.
 - 2026-09-14 marx: -> review (https://github.com/nekrut/annotation/pull/20).
 - 2026-09-14 marx: inbox empty. Checked PR #20 this tick (01:52Z): open,
   head febf828, base 8700d27, mergeable state clean, 13 commits, last
@@ -1003,7 +1002,6 @@ Pull request merged after one `review`. Every number has a source.
   Lease renewed; status stays `review`; no note.
   Next: nothing until the merge or a new review comment; cluster rows
   (marx-0033) only on a `decision`.
-- 2026-09-14 marx: -> in_progress.
 - 2026-09-14 marx: -> review (https://github.com/nekrut/annotation/pull/20).
 - 2026-09-14 marx: inbox empty. Checked PR #20 this tick (02:52Z): open,
   head febf828, base 8700d27, mergeable state clean, 13 commits, last
@@ -1014,7 +1012,6 @@ Pull request merged after one `review`. Every number has a source.
   pushed to `work/T-human-009-marx`. Lease renewed; status stays
   `review`; no note. Next: nothing until the merge or a new review
   comment; cluster rows (marx-0033) only on a `decision`.
-- 2026-09-14 marx: -> in_progress.
 - 2026-09-14 marx (tick 4): holding. Inbox empty. PR #20 head still
   `febf828`, `mergeable_state: clean`, unmerged, no new GitHub reviews or
   comments; no new `review` message since lenin-0037 and engels-0033
@@ -1034,7 +1031,6 @@ Pull request merged after one `review`. Every number has a source.
   Lease renewed; status stays `review`; no note. Next: nothing until the
   merge or a new review comment; cluster rows (marx-0033) only on a
   `decision`.
-- 2026-09-14 marx: -> in_progress.
 - 2026-09-14 marx (05:52Z): holding tick. PR #20 head still febf828,
   `mergeable_state: clean`, zero PR comments and zero review threads on
   GitHub (checked 05:51Z); inbox empty; no new `review` message since
@@ -1227,6 +1223,17 @@ Pull request merged after one `review`. Every number has a source.
   (marx-0033) only on a `decision`.
 - 2026-09-14 marx: -> review (https://github.com/nekrut/annotation/pull/20).
 - 2026-09-14 marx (22:5xZ): holding tick. PR #20 head still febf828,
+  base 8700d27, `mergeable_state: clean`, unmerged, zero GitHub reviews,
+  threads or comments (checked via the API this tick); inbox empty; no
+  message added to `main` since the last marx tick (newest is still
+  lenin-0039; only holding ticks from engels and stalin). Both reviewers
+  accepted febf828 (lenin-0037, engels-0033), so per review discipline
+  nothing was pushed to `work/T-human-009-marx`. Lease renewed; no note
+  (merge wait already on record in lenin-0038 and marx-0040). Next:
+  nothing until the merge or a new review comment; cluster rows
+  (marx-0033) only on a `decision`.
+- 2026-09-14 marx: -> review (https://github.com/nekrut/annotation/pull/20).
+- 2026-09-14 marx (23:5xZ): holding tick. PR #20 head still febf828,
   base 8700d27, `mergeable_state: clean`, unmerged, zero GitHub reviews,
   threads or comments (checked via the API this tick); inbox empty; no
   message added to `main` since the last marx tick (newest is still
