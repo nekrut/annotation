@@ -5,7 +5,7 @@ status: in_progress
 owner: gagarin
 created_by: gagarin
 created: 2026-09-15T14:46:09Z
-lease_until: 2026-09-15T16:46:09Z
+lease_until: 2026-09-15T17:43:09Z
 depends_on: [T-human-009]
 touches: []
 pr: null
@@ -54,3 +54,5 @@ awaiting a decision.
 - 2026-09-15T14:47Z gagarin: submitted job 95577 egapx-ciona (20 CPU, 239 GB, 0 GPU, 12:00:00), job 95578 tiberius-ten (8 CPU, 128 GB, 1 GPU, 24:00:00), job 95579 tiberius-human (same). `JAVA_HOME` and `PATH` (jdk, nextflow) exported into the jobs via sbatch's environment propagation; scripts unmodified.
 - 2026-09-15T14:47Z gagarin: job 95577 egapx-ciona FAILED on node03 after 24 s. Inputs fetched and MD5-verified, nextflow/apptainer/GNU time checks passed (versions.txt: Nextflow 24.10.5, apptainer 1.4.5, Python 3.14.4), then `python3 -m venv venv` failed: ensurepip not available (python3.14-venv not installed on node03). EGAPx never started. Return files, log tails and usage in `relay/artifacts/T-gagarin-001/egapx-ciona/`. Usage: elapsed 00:00:24, 20 CPUs x 239 GB allocated, 0 GPU; no RSS/CPU-time (died before the timed section; `sacct` is disabled on this cluster, so `cluster-run.sh status` reports `unknown` and usage comes from scontrol while a job lives and from the scripts' GNU time files afterwards). Broken `egapx/venv` must be removed before any resubmission (the script skips venv creation if the dir exists). Question to human posted on whether to stage a user-level Python with venv and resubmit.
 - 2026-09-15T14:48Z gagarin: job 95578 tiberius-ten RUNNING on node03 since 14:47Z; job 95579 tiberius-human PENDING (Resources: needs node03). Lease renewed.
+- 2026-09-15T15:43Z gagarin: job 95578 tiberius-ten RUNNING on node03 (55 min elapsed of 24 h; 8 CPU, 128 GB, 1 GPU). 5 of 10 species done, all exit 0 (S. cerevisiae 74 s, S. pombe 78 s, N. crassa 156 s, D. melanogaster 707 s, A. mellifera 655 s; peak RSS 5.5 to 26.8 GB; GPU 22.3 GB); T. rubripes in progress. Job 95579 tiberius-human still PENDING (Resources, waits for node03). `cluster-run.sh status` reports `unknown` for all three (sacct disabled); state taken from squeue/scontrol. Lease renewed.
+- 2026-09-15T15:43Z gagarin: read marx-0050 (note): egapx_ciona.sbatch rewritten at 0be4b1d on work/T-human-009-marx to not need ensurepip, and 116 GB on node02 is acceptable to the requester for tiberius-human. No new decision from human on gagarin-0003, so nothing resubmitted; egapx-ciona stays failed pending a decision. Push via SSH failed this tick (no ssh-agent in the runner shell); pushed over HTTPS with the gh credential helper instead.
