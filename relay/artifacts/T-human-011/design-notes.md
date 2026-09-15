@@ -1,8 +1,9 @@
 # Geometric gene prediction: candidate design working draft
 
 Task: [T-human-011](../../tasks/T-human-011.md). Author: stalin.
-Written 2026-09-15 UTC against accepted main `09b5386` (claim `9239764`).
-Status: first bounded design pass, **in progress**. This is the working
+Written 2026-09-15 UTC against accepted main `09b5386` (claim `9239764`);
+decoder/resource revision against main `86abfc5` later that day.
+Status: second bounded design pass, **in progress**. This is the working
 artifact for the eventual `docs/design/proposal.md`, not the submitted
 proposal or a Phase 4 implementation. Numerical architecture choices below
 are proposed settings; arithmetic is an estimate, not measured performance.
@@ -133,23 +134,14 @@ state advances phase only when it emits a CDS base; an intron preserves
 it. The model therefore need not discover the modulo-three accounting,
 which is distinct from discovering which bases actually code.
 
-**Decoder.** A sparse-transition conditional random field (CRF) has
-intergenic, coding-phase, intron-phase and start/stop boundary states.
-At intron entry choose a duration component and keep it through the
-intron; each component has a geometric tail. A finite mixture avoids one
-fixed mammalian mean and leaves positive support for arbitrarily long
-introns, but is still asymptotically exponential rather than a true
-power-law tail. Compare it with the single-component control. Length
-and motif penalties are separate; noncanonical motifs receive finite
-scores rather than a zero-probability alphabet mask.
-
-Forward/Viterbi state passes run on the complete selected sequence, using
-sparse transitions. Chunk checkpoints and recomputation bound resident
-traceback storage; do not retain a genome-sized neural activation tensor.
-Restart only at real sequence boundaries. This makes a megabase intron
-possible without a megabase attention window or donor-acceptor edge list.
-The exact transition/state inventory and traceback resource bound remain
-required before the proposal is submitted.
+**Decoder.** The conditional random field (CRF) below retains unfinished
+codon bases as well as reading phase. Phase alone cannot recognize a stop
+codon split by an intron. Use a sparse, chromosome-wide recurrence with
+shifted geometric duration components, finite noncanonical-motif scores,
+and checkpointed traceback. The minimum-length prefix can be evaluated
+with delayed entry rather than a separate update for every prefix state
+at every base. Sections 3.1 to 3.4 specify the proposed recurrence and its
+resource accounting; this is a design, not an implemented decoder.
 
 The proposed minimum splice-gap convention follows the scorer's default
 20-base distinction between introns and short CDS gaps; record anything
@@ -174,6 +166,211 @@ every same-strand overlap or alternative transcript.
 signals despite fine-resolution heads. (2) A pooled or conditioned mixture
 miscalibrates unseen clades or the long tail, producing fusions/splits.
 (3) One chain per strand loses same-strand overlapping loci and isoforms.
+
+### 3.1 Coding state and boundary contract
+
+Work in oriented, zero-based sequence coordinates. A state at boundary t
+describes bases strictly before t; a usual transition consumes base x[t].
+The prefix q is the unfinished codon in the **spliced** CDS, not the last
+genomic bases. Its length p is the number of CDS bases emitted modulo
+three. Maintain these logical state families:
+
+| State | Meaning | Maximum allocation, derived from the four-base alphabet |
+|---|---|---:|
+| U | Outside a coding chain | 1 |
+| E(q) | Ordinary CDS after a completed initiator; q has length 0, 1 or 2 | 1 + 4 + 16 = 21 |
+| S(q) | Initiator not yet complete; q has length 1 or 2 | 4 + 16 = 20 |
+| I(c, r) | Intron tail holding the complete coding state c in E or S and duration component r | P R, with P = 41 as the unpruned allocation |
+
+Unreachable start prefixes have score minus infinity. Using the supplied
+translation table to remove them is a possible exact optimization, not
+assumed in the resource bounds. Each consuming coding transition appends
+x[t] to q. At length three, S accepts only a declared initiator and moves
+to E(empty); E returns to E(empty) for a sense codon or terminates the
+chain in U for a stop. There is no continuation through a stop as ordinary
+CDS. U either consumes an intergenic base or starts S with the first
+initiator base. The start score is attached to that first base; the stop
+score is attached to completion of the terminal codon. Split initiators
+and terminal stops therefore use the same prefix machinery.
+
+From an E/S state c, a donor can open an intron without changing c.
+Closing that intron consumes the **first following CDS base**, applies
+its ordinary coding transition, and adds the acceptor score. This ensures
+at least one CDS base between interior introns without a separate
+zero-length-exon state. The same c, including the nucleotide identities
+in q, survives any number of intronic bases. A graph decoder for C needs
+this compatibility information too; matching only phases is insufficient.
+
+The required score channels per oriented base are: U (one), CDS by p
+(three), intron by p (three), and start/stop/donor/acceptor (four): **11**
+channels, by this inventory. Prefix states share the phase emission;
+they do not require separate neural output channels. Motifs add finite
+boundary scores and never prohibit noncanonical junctions. GFF3 CDS
+phase for a segment beginning after p emitted CDS bases is `(3-p) % 3`;
+derive it along the traced chain, with strand-aware coordinates. Emit
+terminal-stop bases inside CDS and explicit codon features, including
+split features when needed, under the [benchmark][benchmark] convention.
+
+The declared table supplies the coding alphabet and allowed initiators,
+using the [NCBI genetic codes][codes]. In table 6, TAA/TAG are sense and
+TGA is stop; table 1 treats all three as stops. For ambiguous observed
+bases, use a normalized observation prior over the permitted bases
+(initially uniform), sum the weighted choices in the forward recurrence
+and maximize them in Viterbi. This avoids rewarding coding states merely
+for having more compatible latent bases. Mark any affected emitted CDS as sequence-uncertain;
+a compatible latent base assignment is not evidence of an intact ORF.
+No held-out CDS annotation is used to resolve ambiguity or choose a table.
+
+At an actual sequence edge, allow E/I entry or E/S/I exit with an explicit
+partial-end prior; recover the partial flag from traceback. An entry in
+I is a residual intron, with no invented upstream donor. Discard paths
+with no observed CDS. Initialize unfinished ordinary codons with a
+normalized prior over phase and prefix so phases with more prefixes do
+not gain probability merely by multiplicity. Interior chunk boundaries
+have no partial-entry/exit option. Recoding, programmed frameshifts and
+same-strand overlapping chains remain declared exceptions to this grammar.
+
+### 3.2 Duration recurrence and exact delayed entry
+
+Proposed settings are minimum intron length m = 20 and R = 3 components;
+these are design choices, not biological estimates. The benchmark counts
+splice gaps of at least 20 bases ([section 4.3][benchmark]); changing that
+scoring convention is separate from changing the decoder's configurable
+minimum. For phase p, weights pi[p,r] sum to one and 0 < q[p,r] < 1:
+
+`Pr(length = l | p) = sum_r pi[p,r] * (1-q[p,r]) * q[p,r]**(l-m), l >= m`.
+
+The first comparison learns pooled weights and hazards on train data.
+They stay constant through the intron. Local GC can condition donor and
+acceptor scores now; conditioning the duration law itself is a separate
+arm whose parameters must be fixed at entry or constant for the sequence.
+Recomputing a hazard from local GC at each intronic base would define a
+different, position-dependent duration model. The mixture supports every
+length above m, with an exponential asymptotic tail; it is not a power law.
+
+A direct expansion has m-1 mandatory intron states per coding state,
+followed by R tail states. An equivalent delayed-entry recurrence uses
+only the tails as active intron states. Let D[t,c] be the coding-state
+score, d[t] the donor score at boundary t, and u[p,t] the intron emission.
+The score for entering tail r at boundary t is
+
+`D[t-m,c] + d[t-m] + sum(u[p,j] for j in range(t-m,t)) + log(pi[p,r])`.
+
+Combine it with continuation from `I[t-1,c,r] + u[p,t-1] + log(q[p,r])`.
+At exit, add `log(1-q[p,r])`, the acceptor score at t, and the normal
+coding transition consuming x[t]. At l = m no continuation factor is
+paid; at l = m+1 exactly one is paid. A ring buffer of the last m donor
+entries and rolling phase-emission sums evaluates the fixed-length jump
+without enumerating donor/acceptor pairs or visiting m prefix states per
+base. It forbids lengths below m and permits arbitrarily long tails.
+
+This equivalence assumes the mandatory prefix uses the same per-phase
+intron emission as the tail and has no age-dependent neural features.
+More elaborate short-intron shapes would need another derivation and
+budget. Keep the expanded recurrence as the specification oracle for
+Phase 4 checks of the optimized form.
+
+The CRF forward pass sums over latent duration components. For a known
+training chain its numerator also sums those components; masked or
+ambiguous labels require a constrained numerator, not an invented union
+transcript. Viterbi chooses the best **joint** chain/component assignment.
+It is not marginal-MAP over chains after summing component assignments.
+That inference choice must be identical in the A/B encoder comparison.
+
+### 3.3 Checkpoints, scratch and decoding work
+
+The following bounds are our arithmetic for this specification, not
+measurements. Use P = 41, R = 3, m = 20, a traceback block of B = 65,536
+bases and an illustrative chromosome N = 250,000,000 bases. Both strands
+run sequentially. For unambiguous input, each coding state has at most
+one coding successor. The expanded state/transition bounds are
+`S = 1 + P*(m+R)` and `E = 2 + P*(m+3*R)`; delayed entry gives
+`S = 1 + P*(1+R)` and `E = 2 + P*(1+3*R)` transition candidates per base.
+The latter includes P R jump entries; donor-buffer updates, emission
+arithmetic and output serialization are additional work.
+
+| Quantity, using those assumptions | Expanded minimum-length chain | Delayed entry |
+|---|---:|---:|
+| Active scores per boundary | 944 | 165 |
+| Float64 slots reserved per checkpoint | 944 | 1,069 |
+| Transition candidates/base, unambiguous input | <=1,191 | <=412 |
+| Candidates/Mb, both strands, forward plus traceback replay | <=4.764 billion | <=1.648 billion |
+| Local uint16 traceback storage, B+m positions | 123,769,728 bytes | 21,633,480 bytes |
+| All checkpoints for illustrative N, one strand | 28,818,432 bytes | 32,634,432 bytes |
+
+The delayed-entry checkpoint reserves `S + m*P + 4*(m+1)` doubles:
+active scores, pending donor scores, phase-emission history/sums and
+normalization-offset allowance. The checkpoint count is
+`ceil(N/B)+1 = 3,816`. Use `8*slots*count` bytes for checkpoint scores
+and `2*S*(B+m)` bytes for local traceback. Float64 rolling scores are
+additional. A uint16 incoming-edge code suffices for this specified
+transition inventory, including the four possible latent base choices;
+the jump code recovers donor boundary t-m and c. A traceback jump may
+cross a block boundary: resume from its true predecessor using the prior
+checkpoint, not from a fabricated boundary state. Keep numerical offsets
+for delayed scores consistent with active-state normalization.
+
+Thus the decoder arrays alone fit comfortably within the host-memory
+target in this example. This does **not** price neural activations, input
+packing or library overhead. It also does not establish runtime: a
+transition reduction is not a dense-matrix FLOP, and a serial chromosome
+recurrence may dominate GPU wall time. Implementation and measurement
+remain Phase 4 work. Ambiguous bases can add coding-successor candidates;
+the canonical-input transition figures are not all-input upper bounds.
+
+Traceback replay requires the same emissions again. There are two
+explicit resource regimes:
+
+- **Spool emissions.** Feed forward scores to the decoder while writing
+  the 11 float32 channels to scratch; replay reads them. This is 44 bytes
+  per oriented base, or 11 GB scratch for illustrative N when processing
+  strands sequentially. Writing and reading both strands transfers
+  176 MB/Mb, excluding FASTA/alignment I/O. Scratch need not be resident,
+  and none of it would be committed to git. Disk bandwidth/time belongs
+  in the inference result; limit scratch by sequence and remove it after
+  traceback. This retains the one-neural-pass arithmetic in section 6.
+- **Regenerate emissions.** Replay the same frozen chunks, masks, support
+  and kernels, with dropout disabled and deterministic tie handling.
+  This approximately doubles the counted neural work as well as replaying
+  the decoder. The companion [TSV](budget-arithmetic.tsv) now includes
+  those scenarios. Even A's counted core rises to 13.47 conditional
+  CPU-s/Mb; B at K=8 and f=0.05 rises to 18.32, before omitted operations.
+  Regeneration therefore removes most or all of the claimed CPU headroom
+  under the assumed throughput. It cannot be silently treated as free.
+
+Adopt emission spooling as the proposed first implementation regime,
+with scratch usage reported alongside RAM. Preserve emission precision
+between forward and replay; lossy caching must be declared and evaluated.
+Streaming checkpoint files instead of retaining every checkpoint can
+further bound RAM for longer chromosomes, at an additional I/O cost.
+The memory argument concerns inference, not training through a whole
+chromosome. Training can use truth-derived boundary conditions within
+train-only blocks; inference must retain unrestricted chromosome state.
+
+### 3.4 Hand-checkable acceptance cases for Phase 4
+
+These are consequences of the specified grammar and required future
+implementation checks, not results from an implemented predictor. In
+the examples, `|intron|` consumes at least m genomic bases and none of
+the displayed CDS bases; concatenate the displayed exonic strings to
+verify the codons.
+
+| Example | Required behavior |
+|---|---|
+| `ATGAAAT |intron| AA` | Table 1 complete CDS `ATG AAA TAA`; retain prefix T across a phase-1 intron. |
+| `ATGAAATA |intron| A` | The same stop split after TA; retain the phase-2 prefix. |
+| `A |intron| TGAAATAA` | Complete the split initiator through S states; do not require genomic adjacency of its bases. |
+| `ATGAAAT |intron| AATGA` | Table 6 permits `ATG AAA TAA TGA`; table 1 must terminate at the earlier TAA. |
+| Lengths m-1, m and m+1 | Reject the first; assign pi*(1-q) and pi*q*(1-q) per component to the other two before neural scores. |
+| An intron spanning a checkpoint or an encoder chunk seam | Preserve prefix, duration component and score; no new start/end permission at the seam. |
+
+Also require exhaustive tiny-lattice forward/Viterbi agreement between
+expanded and delayed entry, brute-force agreement of the CRF partition,
+reverse-complement coordinate/phase agreement, ambiguous-base handling,
+and shifted-chunk replay checks once Phase 4 is authorized. Quantify the
+single-path label ceiling on train development chromosomes by comparing
+the retained real chains with all reference chains and their overlapping
+spans. No ceiling percentage is asserted without that count.
 
 ## 4. Candidate B: A plus a narrow comparative encoder
 
@@ -250,7 +447,8 @@ or many informants defeat the CPU budget even with very few parameters.
 Use the identical A/B encoders, inputs, masks and training split. Replace
 the chain decoder with a directed acyclic graph on genomic start, stop,
 donor and acceptor candidates. Exon/intron edges carry strand, phase,
-sequence and duration scores; only compatible paths form transcripts.
+unfinished codon prefixes, sequence and duration scores; only compatible
+paths form transcripts under the coding rules in section 3.1.
 An intron is an edge between endpoints, so it can cross chunks without
 attending to every intronic base. Permit multiple paths and independent
 overlapping loci; use the benchmark's all-emitted-transcript precision
@@ -285,6 +483,11 @@ matrix projections and attention products only. Values divided by the
 **conditional arithmetic times**, not measured runtimes or guarantees.
 Packing, stem/heads, nonlinearities, masking, I/O, tree setup, decoder and
 device synchronization are omitted and must be added in a complete budget.
+Section 3.3 separately counts decoder transitions and scratch traffic;
+those cannot be converted to seconds using the matrix-throughput rate.
+The table below assumes emissions are spooled for traceback. The TSV's
+`regenerated_emissions_*` columns instead count two neural evaluations
+and are reproduced by doubling flopA + flopB before dividing by each rate.
 
 Let N = 1,000,000 bases, f be pre-halo comparative support fraction, K total
 rows including target, and use a provisional comparative halo/padding factor
@@ -311,11 +514,12 @@ flopB = 2 * pB * nB + 2 * 4 * nB * 32 * (32 + K)
 | B, K=16, f=1 | 3190.511 | 106.35 | 0.319 |
 
 A's initial engineering target is <=15 CPU-s/Mb and <=0.5 GPU-s/Mb.
-For B, the same targets are plausible only conditionally: sparse support
-leaves some CPU headroom, while dense support already exceeds the CPU
-ceiling in counted operations alone at the assumed sustained rate. On a
-GPU the arithmetic leaves headroom but does not predict small-kernel and
-decoder efficiency. C inherits B's encoder time **plus an as-yet unpriced
+For B, sparse support leaves conditional CPU headroom only in the
+one-neural-evaluation regime; decoder work and scratch I/O may consume it.
+Dense support already exceeds the CPU ceiling in counted operations
+alone at the assumed sustained rate. On a GPU the arithmetic leaves
+headroom but does not predict small-kernel, I/O or decoder efficiency.
+C inherits B's encoder time **plus an as-yet unpriced
 graph/traceback cost**; assigning it a precise seconds/Mb forecast now
 would invent a measurement. A two-pass strand computation shares weights,
 not execution time. All three must include preprocessing other than the
@@ -361,12 +565,16 @@ separate declared runs, using the same frozen model weights.
 
 ## 8. Work remaining before a review PR
 
-- Finish the decoder transition/phase convention, duration parameterization,
-  handling of partial ends and resource bounds for checkpointed traceback.
-  Quantify which overlapping transcripts a single-path control cannot emit.
+- Review the now-specified prefix-state decoder, duration recurrence,
+  partial-end rules and scratch/checkpoint accounting. Quantify which
+  overlapping transcripts the single-path training control cannot emit;
+  retain the Phase 4 correctness checks in section 3.4 as prerequisites
+  to any encoder comparison, without implementing the prototype now.
 - Replace parameter reservations with an explicit layer inventory and
-  include stem/heads/decoder in the CPU/GPU budget. Specify an observable
-  candidate/edge-density experiment to price C without prototype training.
+  include stem/heads in the CPU/GPU arithmetic. Reserve measured runtime
+  tests for decoder and I/O; transition counts alone are not timings.
+  Specify an observable candidate/edge-density experiment to price C
+  without prototype training.
 - Decide the exact non-neural support scan, density cap/fallback policy and
   support-recall criteria on train development data. Resolve how selected
   short-exon halos change the provisional 1.2 token multiplier.
@@ -378,8 +586,11 @@ separate declared runs, using the same frozen model weights.
 ## Sources
 
 Accepted repository documents above are pinned to this draft's main commit.
-External sources were read through public pages on 2026-09-15 UTC; only
-metadata and our own design notes are stored here.
+External sources were read through public pages on 2026-09-15 UTC; the
+NCBI genetic-code source was rechecked for the decoder revision. Only
+metadata and our own design notes are stored here. Decoder state counts,
+storage quantities and example strings are our proposed specification
+and arithmetic, not biological measurements or implemented-model results.
 
 [synthesis]: ../../../docs/review/candidates.md
 [geometry]: ../../../docs/review/disagreements.md#54-is-tree-as-metric-mathematically-well-posed

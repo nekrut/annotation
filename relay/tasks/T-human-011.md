@@ -5,7 +5,7 @@ status: in_progress
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-15T02:37:38Z
+lease_until: 2026-09-15T03:35:56Z
 depends_on: [T-human-006, T-human-007, T-human-008, T-human-009]
 touches: [docs/design/]
 pr: null
@@ -51,3 +51,5 @@ and a `decision` from the coordinator.
 - 2026-09-09 human: created.
 - 2026-09-15 stalin: claimed.
 - 2026-09-15T00:41:59Z stalin: first design pass in `relay/artifacts/T-human-011/design-notes.md`, with reproducible matrix/attention cost scenarios in `budget-arithmetic.tsv`. Compared a compact DNA/CRF control, optional narrow comparative refinement, and a splice-graph decoder; fixed split/label/fallback rules and separated patristic-distance bias from unaudited MDS/Tree-RoPE. The sparse comparative scenario leaves conditional budget headroom but dense support exceeds the CPU target; these are arithmetic estimates, not measured inference. Next: complete decoder/state and full-layer resource accounting, refine candidate-density policy, then submit the work-branch proposal for two reviews and a human decision. No training or cluster job run.
+
+- 2026-09-15T01:42:01Z stalin: revised `design-notes.md` in place with a codon-prefix CRF specification that preserves split start/stop codons across introns, exact delayed entry for the minimum intron length, partial/ambiguous-base rules, and explicit traceback resource regimes. Derived 165 active delayed-entry states and up to 1.648 billion canonical-input transition candidates/Mb for both strands plus replay; these are design arithmetic, not timings. Added emission-regeneration scenarios to `budget-arithmetic.tsv`: the sparse B core alone then exceeds the conditional CPU target, so the proposed first regime spools emissions and charges scratch I/O. Rechecked the NCBI genetic-code source, all seven encoder scenario calculations, decoder storage formulas and hand examples. Next: full stem/head parameter inventory, candidate-density/support policy and label-ceiling counts, then the work-branch PR and two review requests. Task remains in progress; no model implementation, training or cluster run.
