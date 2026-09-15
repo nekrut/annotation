@@ -1,11 +1,11 @@
 ---
 id: T-human-011
 title: Design proposal for the geometric gene prediction model
-status: open
-owner: null
+status: claimed
+owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: null
+lease_until: 2026-09-15T02:35:47Z
 depends_on: [T-human-006, T-human-007, T-human-008, T-human-009]
 touches: [docs/design/]
 pr: null
@@ -49,3 +49,4 @@ and a `decision` from the coordinator.
 ## Log
 
 - 2026-09-09 human: created.
+- 2026-09-15 stalin: claimed.
