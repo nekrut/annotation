@@ -22,9 +22,10 @@ The recommendation is conditional on candidate coverage, geometry checks,
 and measured cost. The present arithmetic does **not** establish that B
 meets the CPU budget on gene-dense genomes. Declare A on CPU, B with capped
 support on CPU, and B with unrestricted support on GPU as separate regimes.
-The cap withholds comparative refinement from excess tiles; A still predicts
-those positions. Neither partial comparative support nor GPU matrix arithmetic
-establishes the end-to-end time target. Sections 4.2 and 6.1 make those
+The cap withholds comparative refinement from excess tiles; their local
+emission scores remain A's, while the shared decoder can propagate structural
+changes beyond refined tiles (section 4). Neither partial comparative support
+nor GPU matrix arithmetic establishes the end-to-end time target. Sections 4.2 and 6.1 make those
 distinctions explicit.
 
 | Rank | Candidate and role | Learned scalars | Counted conditional CPU / GPU seconds per Mb | Main unresolved cost |
@@ -560,9 +561,11 @@ loader or sequence-admission result is claimed by this design pass.
 
 **Candidate support.** Cheap sequence scans plus A's frozen DNA scores
 nominate coding-like spans and boundary neighborhoods. A still provides
-scores at every base; a region omitted from B is predicted by A. Thus the
-gate limits comparative improvement rather than deleting all predictions
-there. Freeze the support independently of informants/tree for the encoder
+scores at every base; positions omitted from B retain A's emission scores.
+The shared chromosome-wide decoder can still change labels at those positions
+when a residual elsewhere changes the best complete chain. The gate therefore
+limits where comparative scores enter, while preserving a complete prediction.
+Freeze the support independently of informants/tree for the encoder
 comparison. Count CDS-base, exon, donor/acceptor and complete-chain support
 recall against development truth, including short/noncanonical cases.
 Report both the raw selected intervals and the actual emitted tokens
@@ -630,8 +633,16 @@ operations. Therefore the [cost baseline][cost]'s statement that a metric
 adds no per-token FLOP is not adopted literally. These terms are usually
 smaller than dense projections, and still belong in the cost inventory.
 
-**Fallback and extremes.** B becomes A where alignment/refinement is absent.
-Unknown/ambiguous alignment supplies no negative coding evidence by default.
+**Fallback and extremes.** Where alignment/refinement is absent, B retains
+A's local emissions. A wholly unrefined sequence/orientation reproduces A's
+decoded output exactly with the same decoder and tie-breaking; an unrefined
+region within a partly refined sequence has no such local label guarantee.
+For example, on `ATGAAACCCTAA`, let the all-outside path score 0 and the
+complete-CDS path score -1 under A, with every other legal path lower. A +2
+CDS residual at one interior base makes the complete-CDS path win at +1,
+changing all twelve labels. This is a score counterexample, not an implemented
+decoder result. Unknown/ambiguous alignment supplies no negative coding
+evidence by default.
 Non-coding flanks and fine-resolution boundary scores remain available;
 the decoder's phase and duration carry through short and long introns.
 
@@ -810,7 +821,7 @@ would change predictions with machine/load and is not the first policy.
 | Declared regime | Comparative allocation | Interpretation |
 |---|---|---|
 | A-CPU | None | Common sequence/decoder control; measure its full CPU time. |
-| B-capped-CPU | Above ranked quota, frozen alpha, K<=8 | Partial comparative rescue; A supplies every omitted position. |
+| B-capped-CPU | Above ranked quota, frozen alpha, K<=8 | Partial comparative rescue; omitted positions retain A's emissions. |
 | B-gated-GPU | All nominated tiles, fixed tau and K | Gate recall still limits comparative improvement. |
 | B-full-GPU | Every tile, fixed K | Removes seed/quota omissions; still limited by actual alignment. |
 
@@ -1436,16 +1447,65 @@ is about 1.6-fold at the absolute ceiling. Preserve that denominator in
 the Phase 4 result. On GPU, the dense K=8 counted encoder rate is
 0.214605 conditional GPU-s/Mb (section 6), but a serial host decoder
 plus synchronization and scratch cannot be inferred to fit the remaining
-wall time. GPU-resident decoding or a different decoder is a Phase 4
-engineering question, not an accomplished optimization.
+wall time. From the same decoder formula, c=3 gives 1.765714 host
+CPU-s/Mb and c=10 gives 5.885714, both already above the entire 0.5 s/Mb
+GPU wall-time target. Even with perfect balancing and no other work,
+`ceil(T_decoder/0.5)` requires at least 4 or 12 simultaneous host workers,
+respectively. These are optimistic decoder-only lower bounds; encoder,
+scratch, synchronization and unequal sequence lengths can require more
+workers or make the target infeasible. GPU regimes therefore need a measured
+multi-core host decoder or device decoding. Preserve the declared per-sequence
+strand schedule when scheduling independent sequences; report worker count,
+aggregate CPU time, wall time and aggregate peak host/device memory, including
+concurrent buffers. Parallel or device decoding remains a Phase 4 engineering
+question, not an accomplished optimization.
+
+### 6.2 Conditional training-work envelope
+
+For budget planning, sum `genome_bp/1e6` over the ten `train` rows of
+[panel.tsv][panel]: 8,262.64308 physical Mb. This is a panel-length
+normalization for one full exposure, not an actual epoch or an admitted
+nuclear sequence manifest. Section 2 reserves development chromosomes and
+samples species/strata, so a real epoch must declare its sampled bases and
+repeated examples. The counts below include both orientations as in section 6.
+
+Assume, solely for this arithmetic scenario, that a trainable encoder's
+forward plus backward costs three times its counted forward operations.
+Frozen A is evaluated once without gradients during initial B fitting.
+With `F_A=231.4605` and `F_B(f)=1914.592*f` GFLOP/Mb at K=8 from section 6,
+use `3*F_A` for fitting A and `F_A+3*F_B(f)` for fitting B's residual.
+Multiply by 8,262.64308 and divide by 1e6 for PFLOP, or by 1e4 for seconds
+at the assumed 1e13 FLOP/s:
+
+| Fitting stage | Counted PFLOP per full panel exposure | Conditional GPU seconds |
+|---|---:|---:|
+| A | 5.737426 | 573.7 |
+| B residual, frozen A, K=8, f=0.05 | 4.285414 | 428.5 |
+| B residual, frozen A, K=8, f=1 | 49.371247 | 4,937.1 |
+
+B's rows are additional to fitting A. They assume recomputing frozen A
+on each exposure and the stated support fraction across the entire panel;
+actual alignment availability and tile allocation must be metered. Applying
+three passes to the whole A+B encoder instead would give 8.110365 and
+53.196198 PFLOP for the two B rows, but would also charge backward work to
+frozen A. Neither accounting is an upper bound on full training runtime.
+CRF partition/numerator forward-backward, auxiliary losses, uncounted neural
+operations, optimizer updates, alignment I/O and validation are omitted;
+activation storage and throughput on the chosen device are unmeasured.
+The Phase 4 charter must cap sampled bases, repeats/epochs and total wall
+clock, then revise these arithmetic allowances after a measured pilot.
+This calculation grants no compute allocation and does not establish that
+training fits a particular time or memory budget.
 
 ## 7. Experiments specified for Phase 4
 
 1. Freeze data, candidate policy, decoder and training budget. Compare
    DNA-only; same MSA/no tree; same MSA/tree tokens; same MSA/patristic bias;
    and an audited MDS/Tree-RoPE arm. Keep informants, masks, support,
-   decoder, split and effective capacity controlled. Tree-based selection
-   must be fixed across arms; no-tree means no tree supplied to the encoder,
+   decoder, split and effective capacity controlled. Apply section 2's staged
+   fitting rule: every initial comparative arm shares the same frozen A and
+   decoder and trains only its residual; joint fine-tuning is a separate later
+   ablation. Tree-based selection must be fixed across arms; no-tree means no tree supplied to the encoder,
    conditional on the same selected alignment, not absence of phylogeny
    from upstream alignment construction. Report token-arm overhead.
 2. Compare the KA/KS score and codon-likelihood/ClaMSA features under the
@@ -1462,6 +1522,10 @@ engineering question, not an accomplished optimization.
    A/B results on the entire genome and on aligned/unaligned subsets with
    the same complete-genome denominator retained. No new scorer definition
    is needed; the input regime belongs in run metadata and report grouping.
+   Label changes on unaligned bases may reflect propagated decoder decisions,
+   not direct comparative scores there (section 4). Interpret each species
+   against its available input regime; DNA-only cross-clade rows test A's
+   portability and cannot establish a cross-clade benefit from tree geometry.
 5. Report the benchmark's exact transcript, exon, splice, start/stop and
    locus metrics, fusions/splits and GC/intron/exon strata. Keep paired
    versus cross-clade aggregates separate; Tetrahymena is reported and
@@ -1481,8 +1545,9 @@ would otherwise confound the encoder comparison.
 
 The coordinator's requested decision is to accept or revise that ordering
 and issue the separate Phase 4 charter with a bounded prototype/training
-budget. This proposal requests no cluster allocation. Any later cluster
-work follows the charter's compute-request and gagarin process.
+budget, using section 6.2's conditional training-work envelope and a measured
+pilot to set explicit limits. This proposal requests no cluster allocation.
+Any later cluster work follows the charter's compute-request and gagarin process.
 T-human-011 requires the proposal PR, formal reviews from at least two
 other agents, coordinator merge and a `decision` before it is done.
 Independent arithmetic notes cited here are supporting evidence; they do
@@ -1499,8 +1564,10 @@ not replace those formal reviews.
    preprocessing, encoder, decoder, traceback, scratch and output separately.
    Record peak host/device memory and hardware. Compare the complete result
    with the accepted budgets and the same-machine S. pombe normalization in
-   section 6.1. If A cannot meet a target, report the failed regime and revise
-   it before assigning a positive CPU allowance to B.
+   section 6.1. GPU rows require the multi-core/device decoder accounting in
+   that section, including worker count and aggregate memory; matrix throughput
+   alone cannot establish the target. If A cannot meet a target, report the
+   failed regime and revise it before assigning a positive CPU allowance to B.
 3. **Fit and evaluate comparative support.** Freeze A, fit tau on reserved
    train chromosomes to section 4.2's declared coverage criteria, measure
    real token allocation, and choose alpha using measured cost. Freeze both
@@ -1508,8 +1575,8 @@ not replace those formal reviews.
    retain A plus the predeclared full-tile GPU experiment for diagnosis.
    CPU and GPU operating regimes remain separate benchmark rows.
 4. **Run the controlled encoder comparison.** Use section 7's common
-   decoder, inputs and training split. Report all-species metrics, losses
-   from unavailable alignment and independent-run uncertainty. Tree-RoPE
+   decoder, inputs and training split and section 2's frozen-A fitting rule.
+   Report all-species metrics, losses from unavailable alignment and independent-run uncertainty. Tree-RoPE
    remains contingent on accessible code and a representation-stability
    audit; the patristic-bias candidate does not depend on that access.
 5. **Reconsider C using the encoder result.** First meter its true-path
