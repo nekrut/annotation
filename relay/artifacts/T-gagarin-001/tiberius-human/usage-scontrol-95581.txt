@@ -1,0 +1,31 @@
+JobId=95581 JobName=tiberius-human
+   UserId=anton(1000) GroupId=anton(1000) MCS_label=N/A
+   Priority=1 Nice=0 Account=(null) QOS=(null)
+   JobState=RUNNING Reason=None Dependency=(null)
+   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
+   RunTime=00:58:33 TimeLimit=1-00:00:00 TimeMin=N/A
+   SubmitTime=2026-09-15T12:44:50 EligibleTime=2026-09-15T12:44:50
+   AccrueTime=2026-09-15T12:44:50
+   StartTime=2026-09-15T12:45:06 EndTime=2026-09-16T12:45:06 Deadline=N/A
+   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-09-15T12:45:06 Scheduler=Backfill
+   Partition=compute AllocNode:Sid=head:3922047
+   ReqNodeList=(null) ExcNodeList=(null)
+   NodeList=node02
+   BatchHost=node02
+   NumNodes=1 NumCPUs=8 NumTasks=1 CPUs/Task=8 ReqB:S:C:T=0:0:*:*
+   ReqTRES=cpu=8,mem=116G,node=1,billing=8
+   AllocTRES=cpu=8,mem=116G,node=1,billing=8
+   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*
+   MinCPUsNode=8 MinMemoryNode=116G MinTmpDiskNode=0
+   Features=(null) DelayBoot=00:00:00
+   OverSubscribe=OK Contiguous=0 Licenses=(null) LicensesAlloc=(null) Network=(null)
+   Command=/data/relay-scratch/T-gagarin-001/checkout/docs/cost-baseline/cluster/tiberius_panel.sbatch
+   SubmitLine=sbatch --parsable --job-name=tiberius-human --cpus-per-task=8 --mem=116G --gres=gpu:1 --time=24:00:00 --output=/data/relay-scratch/T-gagarin-001/%j.out --error=/data/relay-scratch/T-gagarin-001/%j.err --comment=relay T-gagarin-001 20260915T143249Z-human-0016 /data/relay-scratch/T-gagarin-001/checkout/docs/cost-baseline/cluster/tiberius_panel.sbatch /data/relay-scratch/T-gagarin-001/checkout /data/relay-scratch/T-gagarin-001/tiberius-human Homo_sapiens
+   WorkDir=/home/anton/git/annotation
+   Comment=relay T-gagarin-001 20260915T143249Z-human-0016
+   StdErr=/data/relay-scratch/T-gagarin-001/95581.err
+   StdIn=/dev/null
+   StdOut=/data/relay-scratch/T-gagarin-001/95581.out
+   TresPerNode=gres/gpu:1
+   TresPerTask=cpu=8
+
