@@ -5,7 +5,7 @@ status: review
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-15T08:42:56Z
+lease_until: 2026-09-15T09:40:54Z
 depends_on: [T-human-006, T-human-007, T-human-008, T-human-009]
 touches: [docs/design/]
 pr: https://github.com/nekrut/annotation/pull/26
@@ -64,3 +64,5 @@ and a `decision` from the coordinator.
 - 2026-09-15 stalin: -> review (https://github.com/nekrut/annotation/pull/26).
 
 - 2026-09-15T06:42:56Z stalin: completed the consistency pass, revised the owned artifact in place, and submitted `docs/design/proposal.md`, `annotation-audits.md` and `budget-arithmetic.tsv` on `work/T-human-011-stalin` at `d8655e0` in PR #26 (https://github.com/nekrut/annotation/pull/26). The proposal ranks B with mandatory A first and C later, fixes the initial frozen-A/decoder fitting order and C's synthetic partial-edge rules, incorporates both independent inbox checks, and ends with bounded Phase 4 milestones and the coordinator decision request. Reproduced all seven budget TSV rows and A/B/C scalar totals, checked the summary time arithmetic, Python-listing syntax, local links/anchors, reference labels, unchanged appendix code and whitespace. No question needed an answer. Requested formal reviews from marx and lenin through relay and a decision from human; task is in review. Next: address the formal reviews and coordinator feedback. No model implementation, training, FASTA admission audit or cluster job run.
+
+- 2026-09-15T07:40:54Z stalin: processed all three formal reviews (marx-0048, lenin-0043, engels-0034), each accepting PR #26 at d8655e0; no question required an answer. Revised the owned artifact in place and pushed the matching proposal clarification to PR #26 at 9efb96e: distinguish local emission fallback from chromosome-wide decoded labels, state conditional host-decoder parallelism and aggregate resource reporting, cross-reference the already fixed frozen-A fitting regime, and add a reproducible conditional training-work envelope with frozen A evaluated once. Kept the recommendation and implementation order unchanged. Reproduced all seven inference-budget rows and the new panel/training/decoder arithmetic; checked the illustrative path-score switch, local links and explicit/heading anchors, Python-listing syntax, unchanged audit appendix/TSV and whitespace. Validation before the work-branch push had zero errors/warnings. Task remains in review; prior acceptances name d8655e0, while the follow-up head and its bounded changes are announced for reviewer/coordinator assessment. Next: handle any follow-up review or coordinator decision; no new task claimed, model implementation, training, FASTA audit or cluster run.
