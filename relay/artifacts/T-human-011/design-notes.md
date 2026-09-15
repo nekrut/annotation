@@ -1,16 +1,13 @@
-# Geometric gene prediction: candidate design working draft
+# Geometric gene prediction: design proposal
 
 Task: [T-human-011](../../tasks/T-human-011.md). Author: stalin.
-Written 2026-09-15 UTC against accepted main `09b5386` (claim `9239764`);
-decoder/resource revision against main `86abfc5`, then layer/tile accounting
-against main `f424eb7` later that day. Support/strand and annotation-topology
-audit against main `0899198`, then representative-label and carried-quota
-audits against main `9fbe9cd` on the same date. Raw-CDS exception and graph
-accounting revision against main `b49a41b`, also on 2026-09-15 UTC.
-Status: sixth bounded design pass, **in progress**. This is the working
-artifact for the eventual `docs/design/proposal.md`, not the submitted
-proposal or a Phase 4 implementation. Numerical architecture choices below
-are proposed settings; arithmetic is an estimate, not measured performance.
+Prepared 2026-09-15 UTC against accepted main `ab08425`.
+Status: **in review**, [PR #26](https://github.com/nekrut/annotation/pull/26).
+The review copy is `docs/design/proposal.md` on `work/T-human-011-stalin`;
+this artifact retains
+the full audit reproductions. Numerical architecture choices below are
+proposed settings; arithmetic is an estimate, not measured performance.
+Model implementation and training require the Phase 4 charter revision.
 
 ## 1. Recommendation to develop
 
@@ -29,6 +26,19 @@ The cap withholds comparative refinement from excess tiles; A still predicts
 those positions. Neither partial comparative support nor GPU matrix arithmetic
 establishes the end-to-end time target. Sections 4.2 and 6.1 make those
 distinctions explicit.
+
+| Rank | Candidate and role | Learned scalars | Counted conditional CPU / GPU seconds per Mb | Main unresolved cost |
+|---|---|---:|---:|---|
+| 1 | B: optional comparative refinement, with A as its required control | 495,021 (section 4.1) | 10.906337 / 0.032719 at K=8, f=0.05 (section 6) | Support recall, full decoder time and alignment I/O |
+| 2 | A: DNA-only control, fallback and first implementation milestone | 455,841 (section 3.5) | 7.715350 / 0.023146 (section 6) | Serial decoding, small kernels and emission scratch |
+| 3 | C: later splice-graph comparison with fixed A/B evidence | 495,598 (section 5) | 10.917942 / 0.032754 for the same B scenario plus V=10,000, E=32V (sections 5.3 and 6) | Repeated exon scans, path bookkeeping and emitted output |
+
+These times divide counted matrix work by assumed throughput. They exclude
+the unresolved costs in the last column and are **not end-to-end forecasts**.
+The C GPU entry is `(327.1901 + 0.34816)/10000` from the cited sections.
+No candidate has demonstrated the accepted time, memory or accuracy targets.
+Section 8 requests B as the design direction, with A implemented and measured
+first; ranking B first does not put its implementation before A.
 
 ### Accepted evidence that constrains the design
 
@@ -117,6 +127,19 @@ admission; keep all real boundary sites for
 separate auxiliary losses and count the omitted chains.
 An isoform-union mask must never be presented as one valid transcript.
 Extending the loader to structured chains is an identified Phase 4 need.
+
+**Staged fitting.** Fit A's encoder and pooled CRF on admitted train-only
+chain targets, using the constrained chain negative log-likelihood and
+independent binary boundary losses with section 3.6's unknown-site masks.
+Tune loss weights and optimization settings only on reserved train-species
+chromosomes, and record them before held-out evaluation. Then freeze A's
+weights, decoder and support policy for the initial B comparison; fit only
+B's additional residual parameters, with alignment dropout. Every tree arm
+uses that same frozen A and decoder. This makes zero comparative residual
+return the identical A control. Joint A/B fine-tuning is a separate later
+ablation and cannot replace this comparison. C likewise first fits only its
+edge head on frozen encoder evidence (section 5.2). No optimizer run or
+training-time measurement is implied by this fitting plan.
 
 **Covariates.** Local GC and sequence-only composition summaries may
 condition a shared decoder. A learned mapping is fitted on train genomes
@@ -802,7 +825,7 @@ control on GPU too when measuring comparative overhead on that device.
 
 ### 4.3 Annotation-only support and single-path topology audit
 
-Measured locally in the fourth pass from four cached **train** species' panel
+Measured locally on 2026-09-15 from four cached **train** species' panel
 GFFs, verifying every `md5_gff` before parsing. This audit uses the accepted
 scorer's sequence and transcript filters, including the 10 kb sequence
 floor and declared pseudogene/biotype exclusions. Its denominators therefore
@@ -942,7 +965,7 @@ for sp in species:
 
 ### 4.4 Representative-label losses and quota sensitivity
 
-This fifth-pass audit uses the same four **train** GFFs and scorer/panel
+This audit uses the same four **train** GFFs and scorer/panel
 hashes as section 4.3. It supplements the scorer's CDS records with the
 GFF's full exon lengths and first transcript appearance in file order,
 then calls the existing cutter's actual `select_isoforms(..., "longest-cds")`
@@ -1060,6 +1083,13 @@ set has at least one declared end away from the corresponding sequence
 edge. `No flag` does **not** mean a sequence-validated complete CDS; it is
 only the remainder after the union of these metadata checks. The script
 below reproduces these counts along with the earlier tables.
+
+[Marx's independent metadata audit][metadata-review] reproduced every cell
+and reports that all row-arithmetic flags in these files co-occur with
+declared exception/partial tags. It also found exception attributes present
+only on transcript rows, supporting the contract to inspect both transcript
+and CDS rows. These observations leave the conservative admission policy
+unchanged; unflagged records still require sequence validation.
 
 **Quota comparison.** [Marx's independent audit][quota-note] reproduced
 section 4.3 and identified wasted per-group slots. Recomputing from the
@@ -1381,6 +1411,14 @@ must be reported separately and still pays for scanning all bases.
 An exon edge runs from a start/acceptor at s to a donor/stop at e,
 consumes `[s,e)` and requires e>s. An intron edge runs from a donor d to
 an acceptor a, preserves the full coding prefix and requires a-d>=m.
+Those length and complete-end rules apply to ordinary internal edges.
+Synthetic true-sequence-edge entries/exits use section 3.1's partial priors:
+an initial coding edge may enter E with its latent ordinary prefix, and
+a terminal coding edge need not end in a stop. A residual intron at a
+sequence edge has no invented donor/acceptor score or minimum *observed*
+length m; its unobserved extent is represented by the same residual/partial
+state convention as A. Partial edges are still shortlisted and charged to
+the same graph meter, and a path must contain observed CDS to be emitted.
 Partition positive lengths into the proposed eight half-open bins with
 lower bounds `1, 20, 50, 200, 1000, 10000, 100000, 1000000`; the last
 extends to the sequence end. Apply the relevant type/minimum constraints.
@@ -1481,6 +1519,9 @@ conditional CPU-s/Mb at section 6's assumed throughput. With B's K=8,
 f=0.05 encoder scenario, counted matrix time becomes 10.917942 CPU-s/Mb.
 This illustrative arithmetic omits the graph/decoder work listed above;
 it is not an expected observed time or evidence of budget compliance.
+[Marx][metadata-review] and [Lenin][graph-review] independently reproduced
+the edge-head, storage and conditional-time arithmetic. Their checks do
+not measure graph construction, grammar scans or end-to-end prediction.
 
 For every train development sequence/orientation, meter bases scanned,
 nominations/retained vertices by kind, range queries, E before/after
@@ -1661,7 +1702,7 @@ The portable CPU target in [cost] section 5.2 is 1/11 of AUGUSTUS's
 CPU-s/Mb on **S. pombe on the same machine**. It is not an 11-fold speedup
 promise for each genome: the baseline's human-chromosome-21 comparison
 is about 1.6-fold at the absolute ceiling. Preserve that denominator in
-the eventual proposal. On GPU, the dense K=8 counted encoder rate is
+the Phase 4 result. On GPU, the dense K=8 counted encoder rate is
 0.214605 conditional GPU-s/Mb (section 6), but a serial host decoder
 plus synchronization and scratch cannot be inferred to fit the remaining
 wall time. GPU-resident decoding or a different decoder is a Phase 4
@@ -1697,36 +1738,62 @@ engineering question, not an accomplished optimization.
    development chromosomes. Repeat-seed uncertainty and per-species
    changes precede any claim that geometry wins.
 
-## 8. Work remaining before a review PR
+## 8. Ranked recommendation and decision requested
 
-- Review the now-specified prefix-state decoder, duration recurrence,
-  partial-end rules and scratch/checkpoint accounting. Sections 4.3 and
-  4.4 now quantify topology, longest-CDS selection, full-span conflict
-  masks and raw-CDS metadata flags. Section 3.6 specifies grammar-exception
-  handling, including partial CDS ends inside sequences. Review that
-  admission contract; full train-panel/FASTA checks and the correctness
-  cases in section 3.4 are Phase 4 prerequisites to fitting/comparison,
-  not an implemented prototype or completed sequence audit.
-- A/B layer and token inventories are now explicit (sections 3.5, 4.1
-  and 6). Review their fixed-grid/halo assumptions and streaming buffers;
-  price non-matrix operations, decoder and I/O by measurement only after
-  Phase 4 authorization. C now has an explicit edge head, retained-graph
-  bounds and a candidate/edge/span/output meter (sections 5.1 to 5.3).
-  Review the distinction between E<=32V and the O(P*W) repeated exon scan;
-  C's small parameter count is not evidence of meeting the time target.
-- Review the now-specified score scan, bounded buffering and carried-credit
-  tile quota (sections 4.2 and 4.4). Threshold/alpha fitting and sequence-gate
-  recall must wait for the Phase 4 trained-A pilot; the annotation-only audit establishes
-  neither. Preserve the distinction between gate targets, work bounds
-  and measured runtime, including the sensitivities in section 6.1.
-- Turn this working artifact into `docs/design/proposal.md` on
-  `work/T-human-011-stalin`, open a PR, request reviews from at least two
-  other agents through relay, and send the final ranked proposal to human
-  for the required Phase 4 decision. No model training was run this tick.
+**Select B as the Phase 4 design direction, implement and measure A first,
+and defer C until the fixed-decoder encoder comparison is informative.**
+B's comparative residual tests the central geometry hypothesis while the
+shared A path gives a defined prediction on every sequence. A ranks second
+as a final design direction and first as an implementation dependency.
+C ranks third because its candidate/path losses and unpriced repeated scans
+would otherwise confound the encoder comparison.
+
+The coordinator's requested decision is to accept or revise that ordering
+and issue the separate Phase 4 charter with a bounded prototype/training
+budget. This proposal requests no cluster allocation. Any later cluster
+work follows the charter's compute-request and gagarin process.
+T-human-011 requires the proposal PR, formal reviews from at least two
+other agents, coordinator merge and a `decision` before it is done.
+Independent arithmetic notes cited here are supporting evidence; they do
+not replace those formal reviews.
+
+### Proposed Phase 4 milestones after authorization
+
+1. **Validate labels and grammar.** Run the full train-panel metadata and
+   FASTA admission audit in section 3.6. Implement the reference and delayed
+   recurrences and check the section 3.4 acceptance cases, including partial
+   edges, split codons, ambiguity and checkpoint replay. A finite legal
+   numerator and consistent output coordinates are prerequisites to fitting.
+2. **Measure A end to end.** On train-only pilot chromosomes, account for
+   preprocessing, encoder, decoder, traceback, scratch and output separately.
+   Record peak host/device memory and hardware. Compare the complete result
+   with the accepted budgets and the same-machine S. pombe normalization in
+   section 6.1. If A cannot meet a target, report the failed regime and revise
+   it before assigning a positive CPU allowance to B.
+3. **Fit and evaluate comparative support.** Freeze A, fit tau on reserved
+   train chromosomes to section 4.2's declared coverage criteria, measure
+   real token allocation, and choose alpha using measured cost. Freeze both
+   before held-out evaluation. If the gate fails, report that failure and
+   retain A plus the predeclared full-tile GPU experiment for diagnosis.
+   CPU and GPU operating regimes remain separate benchmark rows.
+4. **Run the controlled encoder comparison.** Use section 7's common
+   decoder, inputs and training split. Report all-species metrics, losses
+   from unavailable alignment and independent-run uncertainty. Tree-RoPE
+   remains contingent on accessible code and a representation-stability
+   audit; the patristic-bias candidate does not depend on that access.
+5. **Reconsider C using the encoder result.** First meter its true-path
+   survival, V/E/W, storage and output on train development sequences.
+   Fit the edge head and test frozen resource limits only under the Phase 4
+   budget. Retain the declared A fallback when those limits are exceeded.
+
+These milestones distinguish design completeness from prototype evidence.
+The annotation audits and resource formulas are available for review now;
+sequence-admitted training counts, learned gate recall, accuracy and full
+runtime remain unmeasured. The final decision should preserve those limits.
 
 ## Sources
 
-Accepted repository documents above are pinned to this draft's main commit.
+The header records the accepted main revision used for repository sources.
 External sources were read through public pages on 2026-09-15 UTC; the
 NCBI genetic-code source was rechecked for the decoder revision and the
 GFF3 documentation was read for raw-row exception semantics. Only
@@ -1736,9 +1803,9 @@ proposed specification and arithmetic, not implemented-model results.
 Sections 4.3 and 4.4 separately report reproducible measurements of cached
 training annotations, under the named scorer/panel hashes; they are not model accuracy
 measurements. Section 4.4 also pins the cutter used for representative and
-boundary selection. The sixth pass adds an annotation-only raw-CDS audit
-to that same embedded reproduction; no FASTA was read. The public axomeme
-page was rechecked in the fourth pass. [Lenin's independent check][compute-review]
+boundary selection. The raw-CDS metadata audit is included in the embedded reproduction;
+no FASTA was read. The public axomeme
+page still returned HTTP 404 in the final public-access check on 2026-09-15. [Lenin's independent check][compute-review]
 reproduces the A/B layer, FLOP and sensitivity arithmetic; its conclusion
 is conditional and supports measuring A end-to-end before assigning any
 positive B quota, rather than making a speed claim.
@@ -1758,3 +1825,6 @@ positive B quota, rather than making a speed claim.
 [quota-followup]: ../../messages/20260915T045623Z-marx-0046.md
 [compute-review]: ../../messages/20260915T050700Z-lenin-0041.md
 [gff3]: https://www.ncbi.nlm.nih.gov/datasets/docs/v2/reference-docs/file-formats/annotation-files/about-ncbi-gff3/
+
+[metadata-review]: ../../messages/20260915T055818Z-marx-0047.md
+[graph-review]: ../../messages/20260915T060707Z-lenin-0042.md

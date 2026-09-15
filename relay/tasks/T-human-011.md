@@ -1,14 +1,14 @@
 ---
 id: T-human-011
 title: Design proposal for the geometric gene prediction model
-status: in_progress
+status: review
 owner: stalin
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-15T07:35:54Z
+lease_until: 2026-09-15T08:42:56Z
 depends_on: [T-human-006, T-human-007, T-human-008, T-human-009]
 touches: [docs/design/]
-pr: null
+pr: https://github.com/nekrut/annotation/pull/26
 ---
 
 ## Goal
@@ -61,3 +61,6 @@ and a `decision` from the coordinator.
 - 2026-09-15T04:45:15Z stalin: revised `design-notes.md` in place with an exact longest-CDS selection audit using the existing cutter and four checksum-verified train GFFs, a conservative full-span same-strand conflict mask, and all/selected/unmasked boundary counts. The topology mask excludes 138/132/530/370 representatives in yeast/worm/fly/mouse; retained representatives still require the declared partial/phase/translation exception checks. Reproduced the inbox quota finding and replaced forfeited per-group slots with forward credit on the same sequence/orientation: mouse oracle CDS tiles served increase from 168,501 to 282,530 of 284,713 at the identical total slot allowance; no measured gate recall or runtime is claimed. Added reproducible flank and offline-pooling comparisons, reran the embedded audit, checked interval masks against 500 independent all-pairs cases and carried quotas against 20,736 exhaustive cases, and verified local links and arithmetic. Processed the one unread note; no question required an answer. Next: specify partial-CDS/grammar exception handling and C edge accounting, then prepare the work-branch review PR. Task remains in progress; no model implementation, training or cluster job run.
 
 - 2026-09-15T05:45:44Z stalin: revised `design-notes.md` in place with a structured-label admission contract for partial CDS, raw phase/row checks, conservative exception masks and independent auxiliary-site supervision. Extended the checksum-verified four-train-GFF reproduction to raw CDS metadata before scorer merging: after topology masking, 6/28/455/102 yeast/worm/fly/mouse representatives carry exclusion/review flags; 5,858/19,811/12,980/21,711 have none of these flags, but still need FASTA/grammar validation. Specified C's 577-scalar edge head (495,598 total), endpoint-first range pruning with E<=32V, direct exon-scan O(P*W) accounting, top-path/output costs and pilot-frozen fallback limits. Folded in both independent inbox arithmetic checks; no question needed an answer. Reproduced all existing annotation/quota tables and the new metadata counts, checked 18 strand-aware raw-CDS fixtures, graph arithmetic and local links. Next: final consistency pass and prepare the work-branch proposal PR for two reviews and the human decision. Task remains in progress; no model implementation, training or cluster run.
+- 2026-09-15 stalin: -> review (https://github.com/nekrut/annotation/pull/26).
+
+- 2026-09-15T06:42:56Z stalin: completed the consistency pass, revised the owned artifact in place, and submitted `docs/design/proposal.md`, `annotation-audits.md` and `budget-arithmetic.tsv` on `work/T-human-011-stalin` at `d8655e0` in PR #26 (https://github.com/nekrut/annotation/pull/26). The proposal ranks B with mandatory A first and C later, fixes the initial frozen-A/decoder fitting order and C's synthetic partial-edge rules, incorporates both independent inbox checks, and ends with bounded Phase 4 milestones and the coordinator decision request. Reproduced all seven budget TSV rows and A/B/C scalar totals, checked the summary time arithmetic, Python-listing syntax, local links/anchors, reference labels, unchanged appendix code and whitespace. No question needed an answer. Requested formal reviews from marx and lenin through relay and a decision from human; task is in review. Next: address the formal reviews and coordinator feedback. No model implementation, training, FASTA admission audit or cluster job run.
