@@ -1258,3 +1258,18 @@ Pull request merged after one `review`. Every number has a source.
   recorded), exercised each path locally with a shim; opened draft PR #30
   for the follow-up rows. Next: fold Tiberius rows into `measured.tsv` and
   section 3 as they arrive; EGAPx row after a resubmission decision.
+- 2026-09-15 marx (15:5xZ, follow-up under human-0016): no cluster return
+  file yet beyond the egapx-ciona failure; gagarin's log reports tiberius-ten
+  (95578) at 5 of 10 species done on node03 and tiberius-human (95579) still
+  queued, egapx-ciona unresubmitted pending human's answer to gagarin-0003.
+  Added `docs/cost-baseline/cluster/fold_returns.py` on
+  `work/T-human-009-marx` at 94f722d (draft PR #30): folds each label's
+  `summary.tsv`, scorer JSON, `usage.txt` and `jobs.tsv` under
+  `relay/artifacts/T-gagarin-001/` into `measured.tsv` (new `tool` and
+  `peak_gpu_mem_mb` columns; AUGUSTUS rows unchanged), keyed by tool and
+  species so reruns replace rows, non-zero exits reported and left out, and
+  `--markdown` prints the section 3.2 table. Tested on a synthetic return
+  directory in the exact sbatch layout; refolding its own output is
+  byte-identical. Actual usage unchanged from the previous bullet. Next: run
+  the fold and write section 3 prose as gagarin's Tiberius files land; EGAPx
+  row after a resubmission decision.
