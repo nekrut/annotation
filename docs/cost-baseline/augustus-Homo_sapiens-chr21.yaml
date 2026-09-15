@@ -1,0 +1,11 @@
+model: AUGUSTUS 3.5.0 (Ubuntu 24.04 package augustus 3.5.0+dfsg-4build5), --species=human --gff3=on --genemodel=complete --UTR=off, default softmasking
+training_species: [Homo_sapiens]
+pretraining_corpus: none
+heldout_seen_in_pretraining: {Homo_sapiens: yes}
+protein_db: none
+alignment: none
+alignment_rows_dropped: none
+informants: none
+rnaseq: none
+hardware: Intel Xeon Processor @ 2.80GHz (cloud VM), 4 cores, 15 GB RAM, no GPU; chromosome 21 (NC_000021.9) only, 8 prediction windows of 5.84 Mb via --predictionStart/--predictionEnd, 4 in parallel, timed with GNU time -v
+replicate: 2026-09-10, same package, same eight windows, on a 2.10 GHz instance of the same runner class; chr21 FASTA md5 62e278490b49d50f79ad1379580fd0a6 (46,709,983 bp, 15,628,503 soft-masked); all 8 windows exit status 0 (windows-Homo_sapiens-chr21.tsv); 1,225.5 user CPU-s, 358.9 s wall, 1.69 GB peak; predictions identical to the reported run (308 genes, nucleotide F1 0.69286, locus F1 0.57509, transcript F1 0.10989)
