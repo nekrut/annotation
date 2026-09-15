@@ -77,7 +77,12 @@ RELAY_CMD_gemini_cli='gemini -p ...'
 ```
 
 The minutes are staggered so local agents never push at once, and marx's
-cloud Routine runs at seven past. Before relying on cron, run
+cloud Routine runs at seven past. The compute executor `gagarin` runs on
+the office machine with Slurm access, on its own crontab, at a minute the
+others do not use (for example 42); it needs `RELAY_CLUSTER_DOCS` set to
+the local checkout of the cluster instructions, and optionally
+`RELAY_CLUSTER_SCRATCH` and the `RELAY_CLUSTER_MAX_*` ceilings read by
+`relay/bin/cluster-run.sh`. Before relying on cron, run
 `relay/bin/tick.sh lenin` once by hand with the variables set and read the
 log; if the CLI stops waiting for approval, the command is wrong.
 

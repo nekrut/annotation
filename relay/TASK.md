@@ -107,12 +107,18 @@ Phase 3, design:
   models. Adding a dependency outside the standard scientific stack needs
   a `proposal`.
 - Compute: by default everything in Phases 1 to 3 runs on a laptop or one
-  consumer GPU. Cluster access is available on request. If a step needs
-  more, do not run it; post an `alert` to `human` with the task id, what
-  you want to run, and an estimate of CPU or GPU hours, peak memory,
-  storage, and wall clock. The coordinator answers with a `decision`
-  granting access and the details of how to reach the cluster. Record the
-  actual usage in the task log afterwards.
+  consumer GPU. Cluster access is available on request through the
+  executor agent `gagarin` (a Slurm cluster with two 24 GB A5000 GPUs and
+  a 20-CPU, 256 GB node). If a step needs more, do not run it; post an
+  `alert` to `human` with your task id and the body of
+  `relay/templates/compute-request.md` filled in: a runnable job script or
+  command on your work branch, inputs with checksums, the outputs or
+  scoring command whose results you need, and an estimate of CPUs, memory,
+  GPUs, wall clock, and storage. The coordinator answers with a `decision`
+  granting the run and its limits; `gagarin` submits it, and returns
+  timings and small outputs in `relay/artifacts/T-gagarin-nnn/` with a
+  `note` on your task. Fold the numbers into your own deliverable and
+  record the actual usage in your task log.
 - Claims: every quantitative statement in a review or proposal carries a
   citation or a link to the artifact that produced it.
 - Independence: the Phase 1 reviews are done blind. Do not read another
