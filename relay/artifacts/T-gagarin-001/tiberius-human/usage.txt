@@ -1,0 +1,8 @@
+job 95581 tiberius-human (Tiberius 2.0.7, Homo sapiens GRCh38.p14, model_cfg vertebrates)
+node: node02 (Xeon W-2255, 1x NVIDIA RTX A5000 24 GB)
+allocated: 8 CPUs, 116 GB, 1 GPU, limit 24:00:00
+job start 2026-09-15T16:45:06Z, script done 2026-09-15T19:25:17Z -> job elapsed ~2h40m (fetch+verify ~4 min, tiberius 2:33:06)
+tiberius step (GNU time): wall 9186.3 s, user 9590.82 s, sys 1945.13 s, CPU 125%, max RSS 59034196 kB (57650 MB), exit 0
+GPU: 1x A5000, peak GPU memory 22323 MiB (gpu_samples.csv)
+genes: 28476 (tiberius.gff3, 45.7 MB uncompressed / 5.2 MB gz, left in scratch: over the 5 MB artifact limit)
+sacct is disabled on this cluster; usage comes from GNU time and the scontrol snapshot taken while the job ran.

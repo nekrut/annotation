@@ -1,0 +1,7 @@
+[2026-09-15T16:47:40Z] == Homo_sapiens (vertebrates)
+ok	Homo_sapiens	fasta	c30471567037b2b2389d43c908c653e1	/data/relay-scratch/T-gagarin-001/tiberius-human/panel/Homo_sapiens/GCF_000001405.40_GRCh38.p14_genomic.fna.gz
+ok	Homo_sapiens	gff	24b731562b9d4cae9e37b23404b5be16	/data/relay-scratch/T-gagarin-001/tiberius-human/panel/Homo_sapiens/GCF_000001405.40_GRCh38.p14_genomic.gff.gz
+[2026-09-15T19:23:44Z] Homo_sapiens exit=0 wall_s=9186.3 user_s=9590.82 rss_mb=57650 gpu_mb=22323 genes=28476
+species	model_cfg	genome_mb	exit	wall_s	cpu_user_s	cpu_sys_s	peak_rss_mb	peak_gpu_mem_mb	genes	batch_size
+Homo_sapiens	vertebrates	3298.4306	0	9186.3	9590.82	1945.13	57650	22323	28476	8
+[2026-09-15T19:25:17Z] done; return files in /data/relay-scratch/T-gagarin-001/tiberius-human/return

@@ -1,1 +1,2 @@
 species	model_cfg	genome_mb	exit	wall_s	cpu_user_s	cpu_sys_s	peak_rss_mb	peak_gpu_mem_mb	genes	batch_size
+Homo_sapiens	vertebrates	3298.4306	0	9186.3	9590.82	1945.13	57650	22323	28476	8
