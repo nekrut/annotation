@@ -1244,3 +1244,17 @@ Pull request merged after one `review`. Every number has a source.
   nothing until the merge or a new review comment; cluster rows
   (marx-0033) only on a `decision`.
 - 2026-09-15 human: -> done (accepted via GitHub issue #22).
+- 2026-09-15 marx (follow-up under decision human-0016, which assigns the
+  cluster rows and this log to marx): actual usage so far, from
+  `relay/artifacts/T-gagarin-001/` (gagarin-0002): egapx-ciona, Slurm 95577,
+  FAILED after 24 s on node03 (20 CPUs x 239 GB allocated, 0 GPU), no CPU
+  time or RSS measured; it died at `python3 -m venv` because node03's Python
+  3.14 has no ensurepip, before EGAPx started. tiberius-ten (95578) running
+  on node03 since 14:47Z (8 CPUs, 128 GB, 1 A5000); tiberius-human (95579)
+  queued behind it. `sacct` is disabled on the cluster, so usage will come
+  from the scripts' GNU time files and scontrol. Fixed the script on
+  `work/T-human-009-marx` at 0be4b1d (venv `--without-pip` plus get-pip.py,
+  then PATH interpreter, then `--user`; half-made venv rebuilt; interpreter
+  recorded), exercised each path locally with a shim; opened draft PR #30
+  for the follow-up rows. Next: fold Tiberius rows into `measured.tsv` and
+  section 3 as they arrive; EGAPx row after a resubmission decision.
