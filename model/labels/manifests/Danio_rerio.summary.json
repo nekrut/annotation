@@ -11,13 +11,13 @@
   "acceptor": 249181,
   "donor": 247967,
   "start": 38163,
-  "stop": 33263
+  "stop": 33262
  },
  "auxiliary_sites_unknown": {
   "acceptor": 34,
   "donor": 33,
   "start": 119,
-  "stop": 93
+  "stop": 94
  },
  "benchmark_filtered": {
   "biotype=C_region": 8,
@@ -34,7 +34,7 @@
  "loci": 28402,
  "m": 20,
  "manifest": "Danio_rerio.manifest.tsv.gz",
- "manifest_md5": "9e91fb6cc7ecd411d48cfdbfb35da45c",
+ "manifest_md5": "93dae933bd1b8138a7716455b1a4d69b",
  "masked_oriented_bases": 210880957,
  "masked_union": 8828,
  "metadata_masked": 8061,
@@ -43,9 +43,9 @@
  "reasons": {
   "exception": 7959,
   "frame_length": 5,
-  "internal_stop": 153,
+  "internal_stop": 154,
   "no_initiator": 26,
-  "no_stop": 15,
+  "no_stop": 16,
   "partial_3": 43,
   "partial_5": 82,
   "partial_away_from_edge": 107,
@@ -61,5 +61,5 @@
  "table": 1,
  "topology_components": 315,
  "topology_masked": 892,
- "wall_seconds": 79.3
+ "wall_seconds": 77.3
 }

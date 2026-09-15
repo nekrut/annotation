@@ -311,6 +311,53 @@ class Admission(unittest.TestCase):
         self.assertEqual(rows[("chrP", "+", "shared")]["reasons"], "no_initiator")
         self.assertEqual(rows[("chrP", "-", "shared")]["status"], "admitted")
 
+    def test_terminal_stop_must_reach_the_observed_end(self):
+        # engels-0040 (reproduced by stalin-0047): a complete stop followed by
+        # leftover bases is not the terminal stop. The end check fails
+        # (`no_stop`), the earlier stop is an internal in-frame stop, the
+        # valid start stays retained and the annotated end goes unknown in the
+        # auxiliary catalog, split or unsplit, on both strands
+        for strand, seqid in (("+", "chrP"), ("-", "chrB")):
+            for pieces, gaps in ((["ATGAAATAAC"], []), (["ATGAAATAACC"], []),
+                                 (["ATGAAAT", "AAC"], [25]), (["ATGAAATA", "AC"], [25])):
+                g = Genome()
+                tid = g.gene(seqid, strand, 100, pieces, gaps)
+                rows, summary = self.audit(g)
+                self.assertEqual(rows[tid]["status"], "masked", (strand, pieces))
+                self.assertEqual(set(rows[tid]["reasons"].split(",")),
+                                 {"frame_length", "seq_frame_length", "no_stop", "internal_stop"},
+                                 (strand, pieces))
+                self.assertEqual(summary["auxiliary_sites_retained"]["start"], 1, (strand, pieces))
+                self.assertEqual(summary["auxiliary_sites_unknown"]["start"], 0, (strand, pieces))
+                self.assertEqual(summary["auxiliary_sites_retained"]["stop"], 0, (strand, pieces))
+                self.assertEqual(summary["auxiliary_sites_unknown"]["stop"], 1, (strand, pieces))
+                if gaps:
+                    self.assertEqual(summary["auxiliary_sites_retained"]["donor"], 1, (strand, pieces))
+                    self.assertEqual(summary["auxiliary_sites_retained"]["acceptor"], 1, (strand, pieces))
+            # leftover bases after a non-stop codon: no internal stop is invented
+            g = Genome()
+            tid = g.gene(seqid, strand, 100, ["ATGAAAGCCC"], [])
+            rows, summary = self.audit(g)
+            self.assertEqual(set(rows[tid]["reasons"].split(",")),
+                             {"frame_length", "seq_frame_length", "no_stop"}, strand)
+            self.assertEqual(summary["auxiliary_sites_unknown"]["stop"], 1, strand)
+            # the complete stop in frame at the observed end still passes
+            g = Genome()
+            tid = g.gene(seqid, strand, 100, ["ATGAAAT", "AA"], [25])
+            rows, summary = self.audit(g)
+            self.assertEqual(rows[tid]["reasons"], "-", strand)
+            self.assertEqual(summary["auxiliary_sites_retained"]["stop"], 1, strand)
+            # a 3'-partial chain at its own edge may end mid-codon: the end
+            # check does not apply and its stop observation is unknown, not negative
+            L = len(Genome().seqs[seqid])
+            g = Genome()
+            tid = g.gene(seqid, strand, L - 7, ["ATGAAAT"], [], attrs=three_partial(strand))
+            rows, summary = self.audit(g)
+            self.assertEqual(rows[tid]["status"], "admitted", strand)
+            self.assertEqual(rows[tid]["reasons"], "partial_3", strand)
+            self.assertEqual(summary["auxiliary_sites_retained"]["start"], 1, strand)
+            self.assertEqual(summary["auxiliary_sites_unknown"]["stop"], 1, strand)
+
     def test_table_conflict_and_alt_initiator(self):
         g = Genome()
         t1 = g.gene("chrP", "+", 100, ["ATGAAATAA"], [], attrs=";transl_table=6")

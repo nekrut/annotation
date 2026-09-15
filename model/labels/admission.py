@@ -24,7 +24,9 @@ Admission order (3.6, in the order the proposal lists it):
    positive gaps shorter than m, invalid or inconsistent phase,
    translation-table conflicts.
 5. FASTA audit on the spliced CDS in transcriptional orientation: ambiguous
-   bases, coordinates beyond the sequence, initiator, terminal stop,
+   bases, coordinates beyond the sequence, initiator, terminal stop (the
+   last three observed bases, in frame, so a complete stop followed by
+   leftover bases does not pass the end check and counts as internal),
    in-frame stops and length modulo 3, with the missing prefix of a
    5'-partial chain marginalized rather than trimmed from every exon. The
    FASTA audit runs on every benchmark-accepted transcript, not only the
@@ -377,11 +379,19 @@ def sequence_flags(t: Transcript, seq: str, prefix: int, five: bool, three: bool
     body = spliced[3 - prefix:] if prefix else spliced
     codons = [body[i:i + 3] for i in range(0, len(body) - len(body) % 3, 3)]
     if not three:
+        # a complete chain ends on its terminal stop: the last three observed
+        # bases, in frame. Leftover bases after the last full codon mean the
+        # observed end is not a stop codon at all, so the end check fails and
+        # every complete codon, an earlier stop included, is internal; the
+        # earlier stop must not satisfy the end check (engels-0040)
         if len(body) % 3:
             flags.add("seq_frame_length")
-        if not codons or codons[-1] not in stops:
             flags.add("no_stop")
-        internal = codons[:-1]
+            internal = codons
+        else:
+            if not codons or codons[-1] not in stops:
+                flags.add("no_stop")
+            internal = codons[:-1]
     else:
         internal = codons
     if any(c in stops for c in internal):

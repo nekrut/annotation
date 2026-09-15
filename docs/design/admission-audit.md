@@ -38,6 +38,10 @@ species (`genetic_code` column). All ten ran on one laptop-class container (4 CP
 5. **FASTA audit** (3.6) on the spliced CDS in transcriptional orientation: any
    non-ACGT base, coordinates beyond the sequence, initiator (ATG; alternative
    initiators are not enabled), terminal stop, in-frame internal stop, length mod 3.
+   The terminal stop is the last three observed bases of the spliced CDS, in frame:
+   a complete chain whose observed length is not a multiple of 3 fails the end check
+   (`no_stop` with `seq_frame_length`), and a complete stop followed by leftover
+   bases is an `internal_stop`, never the terminal stop (review finding engels-0040).
    A 5'-partial chain with first-row phase h starts with p = (-h) % 3 missing bases;
    the observed suffix of that codon is marginalized (every suffix has a non-stop
    completion), and no leading bases are trimmed from later exons. The FASTA audit
@@ -119,8 +123,8 @@ reason including topology.
 | `coords_out_of_range` | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | `ambiguous_base` | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 18 |
 | `no_initiator` | 27 | 26 | 5 | 32 | 28 | 0 | 4 | 0 | 0 | 0 |
-| `no_stop` | 1 | 15 | 4 | 51 | 0 | 24 | 1 | 0 | 0 | 28 |
-| `internal_stop` | 43 | 153 | 112 | 413 | 1 | 32 | 121 | 0 | 0 | 39 |
+| `no_stop` | 1 | 16 | 4 | 51 | 0 | 24 | 1 | 0 | 0 | 28 |
+| `internal_stop` | 43 | 154 | 112 | 413 | 1 | 32 | 121 | 0 | 0 | 39 |
 | `seq_frame_length` | 1 | 5 | 2 | 51 | 0 | 24 | 1 | 0 | 0 | 28 |
 
 `partial_5` and `partial_3` are informational (declared ends); the masking partial
@@ -133,7 +137,7 @@ no FASTA sequence referenced by a representative was missing.
 | Species | Masked oriented bases (union of masked spans, one strand each) | Starts annotated / retained / unknown | Stops annotated / retained / unknown | Donors annotated / retained / unknown | Acceptors annotated / retained / unknown |
 |---|---:|---:|---:|---:|---:|
 | M. musculus | 27,311,554 | 35,932 / 35,860 / 72 | 30,188 / 30,168 / 20 | 187,365 / 187,361 / 4 | 189,666 / 189,662 / 4 |
-| D. rerio | 210,880,957 | 38,282 / 38,163 / 119 | 33,356 / 33,263 / 93 | 248,000 / 247,967 / 33 | 249,215 / 249,181 / 34 |
+| D. rerio | 210,880,957 | 38,282 / 38,163 / 119 | 33,356 / 33,262 / 94 | 248,000 / 247,967 / 33 | 249,215 / 249,181 / 34 |
 | X. tropicalis | 96,069,339 | 26,348 / 26,183 / 165 | 23,819 / 23,667 / 152 | 193,733 / 193,698 / 35 | 193,952 / 193,916 / 36 |
 | D. melanogaster | 12,249,013 | 16,320 / 16,267 / 53 | 16,114 / 16,058 / 56 | 44,113 / 44,113 / 0 | 44,500 / 44,500 / 0 |
 | C. elegans | 709,866 | 24,374 / 24,316 / 58 | 21,200 / 21,200 / 0 | 103,593 / 103,593 / 0 | 103,556 / 103,556 / 0 |
@@ -175,7 +179,7 @@ Annotated start/stop totals differ from 4.4 by distinct-site counting only.
 - **Sequence-level failures are rare and mostly tag-explained.** *D. melanogaster* has
   413 representatives with an in-frame stop, 368 of them carrying `transl_except`
   (stop-codon readthrough and selenocysteine are annotated this way in FlyBase);
-  *D. rerio* 168 and *X. tropicalis* 131, mostly with `exception`. Chains that fail only
+  *D. rerio* 154 and *X. tropicalis* 112, mostly with `exception`. Chains that fail only
   a sequence check with no tag are the declaration/sequence disagreements the
   proposal asks to list: they are in the manifests with `internal_stop`, `no_stop`,
   `no_initiator` or `seq_frame_length` alone.
@@ -212,6 +216,23 @@ now reports annotated, retained and unknown separately, with 4 to 36 donors and
 acceptors per vertebrate species made unknown by interior partial declarations and
 about 30 more starts and stops per species unknown because only an initiator-less
 or stop-less alternative observed them.
+
+A third review round (engels-0040, reproduced by stalin-0047) found that the FASTA
+audit read the terminal stop off the last *complete* codon, so a complete stop
+followed by leftover bases (`ATGAAATAAC`) passed the end check and the annotated end
+stayed a retained auxiliary stop although the chain's last three bases are not a stop.
+The check now requires the stop to be the last three observed bases in frame; leftover
+bases fail the end check and every complete codon, an earlier stop included, is
+internal (regressions on both strands, split and unsplit, with a 3'-partial control
+in `tests/test_label_admission.py`). Every manifest was regenerated from the same
+checksummed inputs: nine decompress byte-identical to the committed files, whose
+checksums therefore stand, and exactly one representative changes in the whole
+panel, zebrafish `rna-NM_001100045.1` (`gene-b3gnt5b`, minus strand,
+`NC_141022.1:8404574..8405778`, already masked on `exception`, `transl_except` and
+`frame_length`), which gains `no_stop` and `internal_stop`; its annotated end moves
+from retained to unknown (zebrafish stops 33,263 / 93 to 33,262 / 94). No admitted
+set changed, no other auxiliary count changed, and the zebrafish numerator sample
+(drawn from the unchanged admitted rows) reproduces with identical scores.
 
 ## 4. Finite legal numerator on admitted chains
 
@@ -255,7 +276,7 @@ Each manifest is a gzipped TSV with one row per representative: `transcript`, `g
 | Species | GFF md5 | FASTA md5 | Manifest | Manifest md5 | Wall (s) | Peak RSS (MB) |
 |---|---|---|---|---|---:|---:|
 | M. musculus | `f0bc4339da97f2301929d2028bbb35ce` | `c0b0c4c3f54d2b480efe68a18bf7e42b` | `Mus_musculus.manifest.tsv.gz` | `5358264dc6f509ec3de8996ecc3f7330` | 88 | 3,555 |
-| D. rerio | `4285795ae90599eec0163067a55ae965` | `0ede4b1f5c9d00b9287a90929858500f` | `Danio_rerio.manifest.tsv.gz` | `9e91fb6cc7ecd411d48cfdbfb35da45c` | 79 | 3,314 |
+| D. rerio | `4285795ae90599eec0163067a55ae965` | `0ede4b1f5c9d00b9287a90929858500f` | `Danio_rerio.manifest.tsv.gz` | `93dae933bd1b8138a7716455b1a4d69b` | 77 | 3,314 |
 | X. tropicalis | `620cd662848acfe02e262a858a4c1a19` | `0e5238f0b14d476f43f2f135f2640717` | `Xenopus_tropicalis.manifest.tsv.gz` | `c78cdad67319a5bf3e51a6a737e7b2f6` | 46 | 1,989 |
 | D. melanogaster | `1de22f17786c44ae98d7922116967b4e` | `869cf40e4f5c7ca27d04ca9ae7baee4f` | `Drosophila_melanogaster.manifest.tsv.gz` | `21457612546f7202deedefa8e76bb515` | 16 | 659 |
 | C. elegans | `1656bccd184bf57434724f35bea89738` | `177a91ec15063e305188306b7e709cb1` | `Caenorhabditis_elegans.manifest.tsv.gz` | `3d2ccf6aa9ede6edc2b65ca918a06a96` | 15 | 770 |
