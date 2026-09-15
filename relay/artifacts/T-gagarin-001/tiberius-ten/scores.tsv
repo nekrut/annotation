@@ -1,0 +1,11 @@
+species	model_cfg	nucleotide_f1	exon_f1	transcript_f1	locus_f1	start_f1	stop_f1	in_training_species
+Apis_mellifera	insecta	0.9313	0.85908	0.61542	0.77702	0.64387	0.71325	yes
+Danio_rerio	vertebrates	0.92928	0.87852	0.61782	0.89548	0.67558	0.7627	no
+Drosophila_melanogaster	insecta	0.93911	0.86308	0.76704	0.88051	0.77253	0.82062	no
+Gallus_gallus	vertebrates	0.9197	0.85884	0.5856	0.88561	0.61122	0.74079	no
+Mus_musculus	vertebrates	0.92565	0.86147	0.67638	0.87822	0.62195	0.71996	yes
+Neurospora_crassa	fungi	0.97479	0.85164	0.7884	0.94894	0.84546	0.91174	yes
+Saccharomyces_cerevisiae	fungi	0.98959	0.89166	0.90383	0.9591	0.92508	0.95678	yes
+Schizosaccharomyces_pombe	fungi	0.98981	0.91427	0.8847	0.97341	0.92788	0.95833	yes
+Takifugu_rubripes	vertebrates	0.93802	0.89109	0.64065	0.91783	0.74724	0.82341	no
+Xenopus_tropicalis	vertebrates	0.89393	0.85023	0.49549	0.84937	0.59782	0.7382	no

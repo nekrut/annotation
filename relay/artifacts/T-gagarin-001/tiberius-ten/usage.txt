@@ -1,0 +1,12 @@
+job 95578 tiberius-ten (Tiberius 2.0.7, ten panel species, model_cfg per species: fungi x3, insecta x2, vertebrates x5)
+node: node03 (Xeon W-2255, 1x NVIDIA RTX A5000 24 GB)
+allocated: 8 CPUs, 128 GB, 1 GPU, limit 24:00:00 (AllocTRES cpu=8,mem=128G, node03 GPU)
+job start 2026-09-15T14:47:34Z, script done 2026-09-15T21:25:18Z -> job elapsed 6h37m44s
+  of which tiberius steps (sum of GNU time wall over 10 species): 21807.8 s (6:03:28); the rest (~34 min) is the 14.7 GB image pull, insecta/fungi weight fetch, input fetch and MD5 verification, and scoring
+CPU (sum of GNU time over 10 species): user 23196.32 s, sys 4365.29 s (each species ran at 105-135% of one CPU)
+peak RSS: 50029 MB (Xenopus tropicalis); per species 5517 MB (S. pombe) to 50029 MB; see summary.tsv
+GPU: 1x A5000, peak GPU memory 22323 MiB on every species (gpu_samples.csv in scratch; TensorFlow reserves the card)
+exit: 0 for all 10 species; genes predicted 173735 in total over 7502.5 Mb of genome
+scores: per species in scores.tsv (nucleotide, exon, transcript, locus, start, stop F1 from benchmark/score.py; column in_training_species from the declaration yaml)
+predictions: tiberius.gff3 per species (1.8 MB to 48 MB) left in scratch under /data/relay-scratch/T-gagarin-001/tiberius/<species>/, over or near the 5 MB artifact limit
+sacct is disabled on this cluster; usage comes from GNU time (summary.tsv, *.time) and the scontrol snapshot usage-scontrol-95578.txt taken at 20:42Z while the job ran (the job had left Slurm by the 21:45Z tick, so there is no end-of-job snapshot).

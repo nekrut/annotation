@@ -1,4 +1,12 @@
-job_id=95577 label=egapx-ciona state=FAILED exit=NonZeroExitCode node=node03 elapsed=00:00:24 alloc_cpus=20 alloc_mem_gb=239 gpus=0
-cause: python3 -m venv failed on node03 (ensurepip not available; python3.14-venv not installed); EGAPx itself never started
-max_rss: not available (sacct disabled, job died before GNU time wrapper)
-cpu_time: not available (same)
+attempt 1: job_id=95577 label=egapx-ciona state=FAILED exit=NonZeroExitCode node=node03 elapsed=00:00:24 alloc_cpus=20 alloc_mem_gb=239 gpus=0
+  cause: python3 -m venv failed on node03 (ensurepip not available; python3.14-venv not installed); EGAPx itself never started
+  script: docs/cost-baseline/cluster/egapx_ciona.sbatch at acd5db5 (work/T-human-009-marx)
+  max_rss / cpu_time: not available (sacct disabled, job died before GNU time wrapper)
+
+attempt 2: job_id=95580 label=egapx-ciona state=FAILED (script exit 1) node=node03 start=2026-09-15T21:25:19Z end=2026-09-15T21:25:38Z elapsed=00:00:19 alloc_cpus=20 alloc_mem_gb=239 gpus=0 limit=12:00:00
+  script: docs/cost-baseline/cluster/egapx_ciona.sbatch at 0be4b1d (work/T-human-009-marx), resubmitted per human-0017
+  what worked: inputs fetched and MD5-verified (inputs.sha256), nextflow 24.10.5 / apptainer 1.4.5 / GNU time found, egapx clone at tag v1.0 (d7e0651), venv built --without-pip and pip bootstrapped from get-pip.py, PyYAML 6.0.3 imported (versions.txt), resource caps step ran (resource_caps.txt empty: no edits)
+  cause: EGAPx exited 1 in 0.16 s with "Local cache directory /data/relay-scratch/T-gagarin-001/egapx/cache does not exist" (egapx.stdout.tail). egapx v1.0 ui/egapx.py line 3118 requires the -lc path to exist; the script passes -lc "$SCRATCH/cache" but never creates it (it does mkdir -p for nxf and sif, not for cache). Nextflow never started: no trace.txt, no work/, no out/, so out_listing.txt, disk_usage.txt and egapx.stderr.tail are empty and summary.tsv has the failed row (tasks 0, wall 0).
+  egapx driver (GNU time): user 0.12 s, sys 0.02 s, wall 0.16 s, max RSS 35896 kB, exit 1
+  max_rss / cpu_time of the job: only the driver ran; sacct disabled, no scontrol snapshot (job started and ended between ticks)
+  scratch state left for a resubmission: egapx/venv is usable (imports yaml, would be reused by the script); egapx/egapx clone at v1.0; egapx/panel inputs present; no egapx/cache directory

@@ -1,11 +1,11 @@
 ---
 id: T-gagarin-001
 title: run: egapx-ciona, tiberius-ten, tiberius-human for T-human-009
-status: in_progress
-owner: gagarin
+status: blocked
+owner: null
 created_by: gagarin
 created: 2026-09-15T14:46:09Z
-lease_until: 2026-09-15T22:43:00Z
+lease_until: null
 depends_on: [T-human-009]
 touches: []
 pr: null
@@ -70,3 +70,7 @@ awaiting a decision.
 - 2026-09-15T19:43Z gagarin: job 95580 egapx-ciona PENDING (Resources) behind 95578 on node03; Slurm estimate unchanged (worst case 2026-09-16T10:47Z). Inbox: lenin-0048, marx-0054, engels-0039, stalin-0046 are PR #31 notes and reviews, no decision or question for gagarin. git over SSH still fails in this runner shell; pulled and pushing over HTTPS with the gh credential helper. Task stays in_progress (two jobs outstanding). Lease renewed to 2026-09-15T21:43:00Z.
 - 2026-09-15T20:42Z gagarin: job 95578 tiberius-ten RUNNING on node03 (5 h 55 min elapsed of 24 h; AllocTRES cpu=8,mem=128G,node03 GPU). Still 9 of 10 species done, all exit 0. M. musculus (last, GRCm39, 2.7 GB fasta) in progress since 19:20Z: `tiberius.gff3` in its work dir is 24.0 MB and was last written 20:37Z, no summary row yet; by the X. tropicalis rate (1451 Mb in 4219 s) it should finish around 21:40Z. `relay/artifacts/T-gagarin-001/tiberius-ten/` refreshed in place (9-species return files unchanged, scontrol snapshot updated).
 - 2026-09-15T20:42Z gagarin: job 95580 egapx-ciona PENDING (Resources), SchedNodeList=node03 behind 95578; Slurm estimate unchanged (worst case 2026-09-16T10:47Z, the tiberius-ten limit; realistically shortly after M. musculus finishes). Inbox: marx-0055, lenin-0049, engels-0040, stalin-0047 are PR #31 notes and reviews, no decision or question for gagarin. No note posted this tick (nothing finished). git over SSH still fails in this runner shell; pulled and pushing over HTTPS with the gh credential helper. Task stays in_progress. Lease renewed to 2026-09-15T22:43:00Z.
+- 2026-09-15T21:45Z gagarin: job 95578 tiberius-ten COMPLETED, exit 0 for all 10 species, on node03 (8 CPU, 128 GB, 1 GPU). Job ran 14:47:34Z to 21:25:18Z (6 h 37 min 44 s); M. musculus finished 21:23Z (7268.7 s wall, 7653.82 s user CPU, peak RSS 45.2 GB, GPU 22.3 GB, 25321 genes). Totals: tiberius wall 21807.8 s, CPU user 23196.32 s, sys 4365.29 s, peak RSS 50029 MB (X. tropicalis), GPU 22323 MiB every species, 173735 genes over 7502.5 Mb. All return files, `scores.tsv` (per-species F1 extracted from the json), Slurm stdout/stderr tails and `usage.txt` in `relay/artifacts/T-gagarin-001/tiberius-ten/` (408 KB); the 20:42Z scontrol snapshot is the last one (job left Slurm before this tick; sacct disabled). GFF3 predictions (1.8 to 48 MB) left in scratch. Note gagarin-0007 posted to marx on T-human-009.
+- 2026-09-15T21:45Z gagarin: job 95580 egapx-ciona FAILED on node03, 21:25:19Z to 21:25:38Z (19 s of 20 CPU, 239 GB, 0 GPU). The 0be4b1d venv bootstrap worked (venv --without-pip, get-pip.py, PyYAML 6.0.3); EGAPx v1.0 exited 1 in 0.16 s: "Local cache directory .../egapx/cache does not exist" (ui/egapx.py line 3118 requires the -lc path to exist; the script passes -lc "$SCRATCH/cache" but never mkdirs it). Nextflow never started; summary.tsv holds a zero row. Return files, slurm-95580 tails and a two-attempt `usage.txt` in `relay/artifacts/T-gagarin-001/egapx-ciona/` (refreshed in place, 95577 files kept). Usage: driver user 0.12 s, sys 0.02 s, max RSS 35.9 MB; no scontrol snapshot (job started and ended between ticks). Question gagarin-0008 to human: resubmit from a fixed commit (recommended) or pre-create the directory and resubmit 0be4b1d. Nothing submitted.
+- 2026-09-15T21:45Z gagarin: definition of done reached for the Tiberius half (both jobs done, notes posted); EGAPx failed twice and awaits a decision. Releasing the task `blocked`. Scratch under /data/relay-scratch/T-gagarin-001/ kept intact for a resubmission. git over SSH still fails in this runner shell; pulled and pushing over HTTPS with the gh credential helper.
+- 2026-09-15 gagarin: -> blocked.

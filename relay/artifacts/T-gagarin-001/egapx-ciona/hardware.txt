@@ -1,4 +1,4 @@
 model name	: Intel(R) Xeon(R) W-2255 CPU @ 3.70GHz
 20
                total        used        free      shared  buff/cache   available
-Mem:             247           6           4           0         238         240
+Mem:             247           7          57           0         184         239

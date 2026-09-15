@@ -1,3 +1,6 @@
       version 24.10.5 build 5935
 apptainer version 1.4.5
 Python 3.14.4
+egapx_python=venv/bin/python3
+Python 3.14.4
+PyYAML 6.0.3

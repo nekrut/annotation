@@ -1,0 +1,52 @@
+[2026-09-15T15:07:29Z] == Saccharomyces_cerevisiae (fungi)
+ok	Saccharomyces_cerevisiae	fasta	88c38b957b721dfc50e6c4df03b6242e	/data/relay-scratch/T-gagarin-001/tiberius/panel/Saccharomyces_cerevisiae/GCF_000146045.2_R64_genomic.fna.gz
+ok	Saccharomyces_cerevisiae	gff	1fddbd976c4ce61e8a36a3908d46c25d	/data/relay-scratch/T-gagarin-001/tiberius/panel/Saccharomyces_cerevisiae/GCF_000146045.2_R64_genomic.gff.gz
+[2026-09-15T15:08:45Z] Saccharomyces_cerevisiae exit=0 wall_s=73.6 user_s=78.50 rss_mb=6029 gpu_mb=22323 genes=5617
+[2026-09-15T15:08:48Z] == Schizosaccharomyces_pombe (fungi)
+ok	Schizosaccharomyces_pombe	fasta	2fe7c38312c8bd16a49a5a9363a732e4	/data/relay-scratch/T-gagarin-001/tiberius/panel/Schizosaccharomyces_pombe/GCF_000002945.2_ASM294v3_genomic.fna.gz
+ok	Schizosaccharomyces_pombe	gff	5691e5e3e5de70e2987dc44b75f41245	/data/relay-scratch/T-gagarin-001/tiberius/panel/Schizosaccharomyces_pombe/GCF_000002945.2_ASM294v3_genomic.gff.gz
+[2026-09-15T15:10:08Z] Schizosaccharomyces_pombe exit=0 wall_s=77.5 user_s=82.93 rss_mb=5517 gpu_mb=22323 genes=4976
+[2026-09-15T15:10:10Z] == Neurospora_crassa (fungi)
+ok	Neurospora_crassa	fasta	dbd205b23f3e95461207f46c7cec6314	/data/relay-scratch/T-gagarin-001/tiberius/panel/Neurospora_crassa/GCF_000182925.2_NC12_genomic.fna.gz
+ok	Neurospora_crassa	gff	511c0c3c3875ca39bc9ba298e05d97eb	/data/relay-scratch/T-gagarin-001/tiberius/panel/Neurospora_crassa/GCF_000182925.2_NC12_genomic.gff.gz
+[2026-09-15T15:12:49Z] Neurospora_crassa exit=0 wall_s=155.6 user_s=169.42 rss_mb=12377 gpu_mb=22323 genes=9075
+[2026-09-15T15:12:56Z] == Drosophila_melanogaster (insecta)
+ok	Drosophila_melanogaster	fasta	869cf40e4f5c7ca27d04ca9ae7baee4f	/data/relay-scratch/T-gagarin-001/tiberius/panel/Drosophila_melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna.gz
+ok	Drosophila_melanogaster	gff	1de22f17786c44ae98d7922116967b4e	/data/relay-scratch/T-gagarin-001/tiberius/panel/Drosophila_melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.gff.gz
+[2026-09-15T15:24:52Z] Drosophila_melanogaster exit=0 wall_s=707.0 user_s=953.57 rss_mb=26749 gpu_mb=22323 genes=15966
+[2026-09-15T15:25:10Z] == Apis_mellifera (insecta)
+ok	Apis_mellifera	fasta	2e53aa9ba7040a7b8cad2383faa58fa3	/data/relay-scratch/T-gagarin-001/tiberius/panel/Apis_mellifera/GCF_003254395.2_Amel_HAv3.1_genomic.fna.gz
+ok	Apis_mellifera	gff	1131d4a4996935cbee56f86fc94c185f	/data/relay-scratch/T-gagarin-001/tiberius/panel/Apis_mellifera/GCF_003254395.2_Amel_HAv3.1_genomic.gff.gz
+[2026-09-15T15:36:19Z] Apis_mellifera exit=0 wall_s=654.8 user_s=724.13 rss_mb=26756 gpu_mb=22323 genes=14509
+[2026-09-15T15:36:36Z] == Takifugu_rubripes (vertebrates)
+ok	Takifugu_rubripes	fasta	01c475df5347fa1beb4e761e5e6d182a	/data/relay-scratch/T-gagarin-001/tiberius/panel/Takifugu_rubripes/GCF_901000725.3_fTakRub1.3_genomic.fna.gz
+ok	Takifugu_rubripes	gff	ddb5cf065793fb7e4d94bf4d43077b33	/data/relay-scratch/T-gagarin-001/tiberius/panel/Takifugu_rubripes/GCF_901000725.3_fTakRub1.3_genomic.gff.gz
+[2026-09-15T15:58:04Z] Takifugu_rubripes exit=0 wall_s=1263.4 user_s=1327.40 rss_mb=27133 gpu_mb=22323 genes=23951
+[2026-09-15T15:59:07Z] == Gallus_gallus (vertebrates)
+ok	Gallus_gallus	fasta	51291297e6b693d8d73207509cbba6aa	/data/relay-scratch/T-gagarin-001/tiberius/panel/Gallus_gallus/GCF_016699485.2_bGalGal1.mat.broiler.GRCg7b_genomic.fna.gz
+ok	Gallus_gallus	gff	1e9bd90ac82b43f05a4ee4efe6b036d9	/data/relay-scratch/T-gagarin-001/tiberius/panel/Gallus_gallus/GCF_016699485.2_bGalGal1.mat.broiler.GRCg7b_genomic.gff.gz
+[2026-09-15T16:52:56Z] Gallus_gallus exit=0 wall_s=3156.0 user_s=3300.19 rss_mb=46066 gpu_mb=22323 genes=19058
+[2026-09-15T16:53:44Z] == Danio_rerio (vertebrates)
+ok	Danio_rerio	fasta	0ede4b1f5c9d00b9287a90929858500f	/data/relay-scratch/T-gagarin-001/tiberius/panel/Danio_rerio/GCF_052040795.1_GRCz12ab_genomic.fna.gz
+ok	Danio_rerio	gff	4285795ae90599eec0163067a55ae965	/data/relay-scratch/T-gagarin-001/tiberius/panel/Danio_rerio/GCF_052040795.1_GRCz12ab_genomic.gff.gz
+[2026-09-15T18:05:45Z] Danio_rerio exit=0 wall_s=4232.1 user_s=4440.37 rss_mb=38308 gpu_mb=22323 genes=29799
+[2026-09-15T18:07:27Z] == Xenopus_tropicalis (vertebrates)
+ok	Xenopus_tropicalis	fasta	0e5238f0b14d476f43f2f135f2640717	/data/relay-scratch/T-gagarin-001/tiberius/panel/Xenopus_tropicalis/GCF_000004195.4_UCB_Xtro_10.0_genomic.fna.gz
+ok	Xenopus_tropicalis	gff	620cd662848acfe02e262a858a4c1a19	/data/relay-scratch/T-gagarin-001/tiberius/panel/Xenopus_tropicalis/GCF_000004195.4_UCB_Xtro_10.0_genomic.gff.gz
+[2026-09-15T19:19:04Z] Xenopus_tropicalis exit=0 wall_s=4219.1 user_s=4465.99 rss_mb=50029 gpu_mb=22323 genes=25463
+[2026-09-15T19:20:16Z] == Mus_musculus (vertebrates)
+ok	Mus_musculus	fasta	c0b0c4c3f54d2b480efe68a18bf7e42b	/data/relay-scratch/T-gagarin-001/tiberius/panel/Mus_musculus/GCF_000001635.27_GRCm39_genomic.fna.gz
+ok	Mus_musculus	gff	f0bc4339da97f2301929d2028bbb35ce	/data/relay-scratch/T-gagarin-001/tiberius/panel/Mus_musculus/GCF_000001635.27_GRCm39_genomic.gff.gz
+[2026-09-15T21:23:48Z] Mus_musculus exit=0 wall_s=7268.7 user_s=7653.82 rss_mb=45180 gpu_mb=22323 genes=25321
+species	model_cfg	genome_mb	exit	wall_s	cpu_user_s	cpu_sys_s	peak_rss_mb	peak_gpu_mem_mb	genes	batch_size
+Saccharomyces_cerevisiae	fungi	12.1571	0	73.6	78.50	12.10	6029	22323	5617	8
+Schizosaccharomyces_pombe	fungi	12.5913	0	77.5	82.93	12.49	5517	22323	4976	8
+Neurospora_crassa	fungi	41.1024	0	155.6	169.42	25.26	12377	22323	9075	8
+Drosophila_melanogaster	insecta	143.7260	0	707.0	953.57	135.64	26749	22323	15966	8
+Apis_mellifera	insecta	225.2509	0	654.8	724.13	129.89	26756	22323	14509	8
+Takifugu_rubripes	vertebrates	384.1102	0	1263.4	1327.40	245.42	27133	22323	23951	8
+Gallus_gallus	vertebrates	1053.3323	0	3156.0	3300.19	647.58	46066	22323	19058	8
+Danio_rerio	vertebrates	1450.7102	0	4232.1	4440.37	854.80	38308	22323	29799	8
+Xenopus_tropicalis	vertebrates	1451.3012	0	4219.1	4465.99	846.45	50029	22323	25463	8
+Mus_musculus	vertebrates	2728.2225	0	7268.7	7653.82	1455.66	45180	22323	25321	8
+[2026-09-15T21:25:18Z] done; return files in /data/relay-scratch/T-gagarin-001/tiberius/return

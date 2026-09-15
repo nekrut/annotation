@@ -1,0 +1,11 @@
+[2026-09-15T21:25:19Z] host=node03 cpus=20 mem_gb=239 scratch=/data/relay-scratch/T-gagarin-001/egapx repo=/data/relay-scratch/T-gagarin-001/checkout
+[2026-09-15T21:25:20Z] fetching Ciona_intestinalis
+ok	Ciona_intestinalis	fasta	c9eacbcc32a5182a496cfa7e057b9aa2	/data/relay-scratch/T-gagarin-001/egapx/panel/Ciona_intestinalis/GCF_018327825.1_ASM1832782v2_genomic.fna.gz
+ok	Ciona_intestinalis	gff	5acd9a693eea48d5a944fa7f7273cf21	/data/relay-scratch/T-gagarin-001/egapx/panel/Ciona_intestinalis/GCF_018327825.1_ASM1832782v2_genomic.gff.gz
+[2026-09-15T21:25:23Z] genome_bp=140272626
+[2026-09-15T21:25:23Z] ensurepip unavailable; venv built --without-pip, bootstrapping pip from get-pip.py
+[2026-09-15T21:25:38Z] starting EGAPx
+[2026-09-15T21:25:38Z] EGAPx exit=1 wall_s=0
+species	genome_mb	exit	tasks	completed	failed	wall_s	cpu_s_trace	cpu_s_gnu_time	cpu_s_per_mb_trace	cpu_h_trace	peak_task_rss_mb	driver_rss_mb
+Ciona_intestinalis	140.2726	1	0	0	0	0.0	0.0	0.1	0.0	0.00	0	35
+[2026-09-15T21:25:38Z] FAIL: EGAPx failed; logs in /data/relay-scratch/T-gagarin-001/egapx/return

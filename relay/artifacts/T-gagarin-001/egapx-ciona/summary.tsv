@@ -1,0 +1,2 @@
+species	genome_mb	exit	tasks	completed	failed	wall_s	cpu_s_trace	cpu_s_gnu_time	cpu_s_per_mb_trace	cpu_h_trace	peak_task_rss_mb	driver_rss_mb
+Ciona_intestinalis	140.2726	1	0	0	0	0.0	0.0	0.1	0.0	0.00	0	35
