@@ -36,6 +36,7 @@ donor's true boundary in the earlier chunk.
 Standard library only; this is the semantics check, not the tensor
 implementation. Per boundary it keeps dictionaries keyed by state tuple.
 """
+from bisect import bisect_left
 from collections import deque
 from dataclasses import dataclass
 from math import isinf, isnan
@@ -86,12 +87,23 @@ class DelayedEntryDecoder(ReferenceDecoder):
             return
         raise ValueError(f"unknown state {state}")
 
-    def _run(self, x, sc: Scores, viterbi: bool, seams=()):
+    def _run(self, x, sc: Scores, viterbi: bool, seams=(), retain=False):
         """Forward (or Viterbi) pass over the whole sequence. `seams` lists
         interior boundaries at which the recurrence is checkpointed and
         resumed from the checkpoint alone (proposal 3.3): the chunk after a
         seam sees nothing of the chunk before it except the `Checkpoint`.
-        Interior seams offer no partial entry or exit."""
+        Interior seams offer no partial entry or exit.
+
+        Returns (checkpoints, layers, back, tail_exits). `checkpoints` holds
+        one `Checkpoint` per block boundary 0 = b_0 < b_1 < ... < b_K = n,
+        the last one carrying the scores at boundary n. With `retain=False`
+        (the default, and what `partition` and `viterbi` use) the per-
+        boundary score layers and back pointers of every block are
+        discarded as soon as the block's checkpoint exists, so the forward
+        pass keeps `K + 1` checkpoints and one block of scratch at a time;
+        `layers` and `back` are then empty and `viterbi` recomputes each
+        block from its checkpoint during traceback. `retain=True` keeps
+        everything, for the exhaustive tiny-lattice checks."""
         n = len(x)
         self._check_input(x, sc)
         seams = sorted(set(seams))
@@ -100,13 +112,19 @@ class DelayedEntryDecoder(ReferenceDecoder):
         layers: List[Dict[tuple, float]] = []
         back: List[Dict[tuple, Tuple[tuple, Optional[str]]]] = []
         state = Checkpoint.initial(self.initial())
+        checkpoints = [state]
         for t1 in seams + [n]:
             state = state.copy()            # the previous chunk's scratch is not reused
-            chunk_layers, chunk_back, state = self._run_chunk(x, sc, viterbi, state, t1)
-            layers += chunk_layers
-            back += chunk_back
-        layers.append(state.layer)
-        back.append(state.back)             # pointers into boundary n
+            chunk_layers, chunk_back, state = self._run_chunk(x, sc, viterbi, state, t1, retain)
+            if retain:
+                layers += chunk_layers
+                back += chunk_back
+            else:
+                state.back = {}             # pointers into b_k are the block's scratch, not checkpoint state
+            checkpoints.append(state)
+        if retain:
+            layers.append(state.layer)
+            back.append(state.back)         # pointers into boundary n
         # censored donors still pending at boundary n (reference: I(c,k) exit)
         tail_exits = {}
         if self.edges is not None:
@@ -115,20 +133,26 @@ class DelayedEntryDecoder(ReferenceDecoder):
                     p = len(c[1])
                     emit = sum(sc.intron[p][j] for j in range(s, n))
                     tail_exits[("I", c, n - s)] = (base + emit, ("P", s, c))
-        return layers, back, tail_exits
+        return checkpoints, layers, back, tail_exits
 
-    def _run_chunk(self, x, sc: Scores, viterbi: bool, cp: "Checkpoint", t1: int):
+    def _run_chunk(self, x, sc: Scores, viterbi: bool, cp: "Checkpoint", t1: int, retain=True):
         """Advance the recurrence from checkpoint `cp` (at boundary cp.t) to
         boundary t1, consuming x[cp.t:t1]. Returns the layers and back
-        pointers for boundaries cp.t .. t1-1 and the checkpoint at t1."""
+        pointers for boundaries cp.t .. t1-1 and the checkpoint at t1
+        (whose `back` holds the pointers into t1). With `retain=False` the
+        layer and back-pointer lists come back empty; only the checkpoint
+        is built. `self.chunk_calls` counts every call, so a test can show
+        that traceback replays each block at most once."""
+        self.chunk_calls = getattr(self, "chunk_calls", 0) + 1
         m, R = self.dur.m, self.dur.R
         combine = max if viterbi else logsumexp
         layers, back = [], []
         pending, window, rolling, masked = cp.pending, cp.window, cp.rolling, cp.masked
         layer = cp.layer
         for t in range(cp.t, t1):
-            layers.append(layer)
-            back.append(cp.back if t == cp.t else bp_prev)
+            if retain:
+                layers.append(layer)
+                back.append(cp.back if t == cp.t else bp_prev)
             cur: Dict[tuple, List[float]] = {}
             bp: Dict[tuple, Tuple[float, tuple, Optional[str]]] = {}
 
@@ -180,9 +204,9 @@ class DelayedEntryDecoder(ReferenceDecoder):
         return layers, back, Checkpoint(t1, layer, bp_prev if t1 > cp.t else cp.back,
                                         pending, window, rolling, masked)
 
-    def _finals(self, layers, tail_exits):
+    def _finals(self, final_layer, tail_exits):
         finals = {}
-        for k, v in layers[-1].items():
+        for k, v in final_layer.items():
             tot = v + self.terminal(k)
             if not (isinf(tot) or isnan(tot)):
                 finals[k] = tot
@@ -193,18 +217,44 @@ class DelayedEntryDecoder(ReferenceDecoder):
         return finals
 
     def partition(self, x, sc: Scores, seams=()):
-        layers, _, tail_exits = self._run(x, sc, viterbi=False, seams=seams)
-        finals = self._finals(layers, tail_exits)
+        checkpoints, _, _, tail_exits = self._run(x, sc, viterbi=False, seams=seams)
+        finals = self._finals(checkpoints[-1].layer, tail_exits)
         return logsumexp(list(finals.values())) if finals else NEG
 
     def viterbi(self, x, sc: Scores, seams=()):
-        layers, back, tail_exits = self._run(x, sc, viterbi=True, seams=seams)
+        """Viterbi score and chains with bounded-memory traceback replay
+        (proposal 3.3). The forward pass keeps only the block checkpoints.
+        Traceback walks the boundaries from n down to 0; whenever it needs
+        the back pointers of a block it does not hold, it recomputes that
+        block once from the block's own checkpoint (same emissions, same
+        recurrence, Viterbi mode) and drops the block it held before. The
+        boundary index only ever decreases, so each block is recomputed at
+        most once and at most one block's back pointers are alive at any
+        time. A tail entry whose donor lies in an earlier block resumes
+        from the donor's true boundary in that block, never from a state
+        fabricated at the seam."""
+        checkpoints, _, _, tail_exits = self._run(x, sc, viterbi=True, seams=seams)
         n = len(x)
-        finals = self._finals(layers, tail_exits)
+        finals = self._finals(checkpoints[-1].layer, tail_exits)
         if not finals:
             return NEG, []
         s = max(finals, key=finals.get)
         best = finals[s]
+        bounds = [cp.t for cp in checkpoints]        # b_0 = 0 < ... < b_K = n
+        held = {"k": None, "back": None, "end_back": None}
+        self.max_held_back = 0
+
+        def back_at(t):
+            """Back pointers into boundary t (0 < t <= n), replaying the
+            block b_k < t <= b_{k+1} from checkpoint k when it is not held."""
+            k = bisect_left(bounds, t) - 1
+            if held["k"] != k:
+                held["back"] = held["end_back"] = None      # drop the previous block first
+                _, blk, end = self._run_chunk(x, sc, True, checkpoints[k].copy(), bounds[k + 1], True)
+                held["k"], held["back"], held["end_back"] = k, blk, end.back
+                self.max_held_back = max(self.max_held_back, len(blk))
+            return held["end_back"] if t == bounds[k + 1] else held["back"][t - bounds[k]]
+
         states = [None] * (n + 1)
         tags = [None] * n
         t = n
@@ -218,7 +268,7 @@ class DelayedEntryDecoder(ReferenceDecoder):
             s = c
         while t > 0:
             states[t] = s
-            prev, tag = back[t][s]
+            prev, tag = back_at(t)[s]
             if prev[0] == "P":              # tail entry: replay the m-1 mandatory I states
                 _, donor_at, c = prev
                 for j in range(t - 1, donor_at, -1):

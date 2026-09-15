@@ -1,0 +1,48 @@
+{
+ "accepted_transcripts": 6002,
+ "admitted": 5858,
+ "auxiliary_sites_retained": {
+  "acceptor": 281,
+  "donor": 281,
+  "start": 5960,
+  "stop": 6001
+ },
+ "auxiliary_sites_unknown": {
+  "acceptor": 0,
+  "donor": 0,
+  "start": 0,
+  "stop": 0
+ },
+ "benchmark_filtered": {
+  "pseudogene": 6,
+  "sequence: organelle (genome=mitochondrion)": 19
+ },
+ "cds_transcripts_all": 6027,
+ "fasta": "GCF_000146045.2_R64_genomic.fna.gz",
+ "fasta_checked": true,
+ "fasta_md5": "88c38b957b721dfc50e6c4df03b6242e",
+ "fasta_sequences_missing": 0,
+ "gff": "GCF_000146045.2_R64_genomic.gff.gz",
+ "gff_md5": "1fddbd976c4ce61e8a36a3908d46c25d",
+ "loci": 6002,
+ "m": 20,
+ "manifest": "Saccharomyces_cerevisiae.manifest.tsv.gz",
+ "manifest_md5": "e283de282ded5fff0a284f6ea69438c9",
+ "masked_oriented_bases": 281218,
+ "masked_union": 144,
+ "metadata_masked": 47,
+ "nonrepresentative_omitted": 0,
+ "peak_rss_mb": 74.2,
+ "reasons": {
+  "exception": 47,
+  "short_gap": 47,
+  "topology": 138
+ },
+ "representatives": 6002,
+ "sequence_masked": 0,
+ "species": "Saccharomyces_cerevisiae",
+ "table": 1,
+ "topology_components": 69,
+ "topology_masked": 138,
+ "wall_seconds": 1.2
+}

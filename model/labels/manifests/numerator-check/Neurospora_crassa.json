@@ -1,0 +1,109 @@
+{
+ "species": "Neurospora_crassa",
+ "eligible_admitted": 7401,
+ "sampled": 10,
+ "max_span": 5000,
+ "failures": [],
+ "results": [
+  {
+   "transcript": "rna-XM_959493.1",
+   "seqid": "NC_026501.1",
+   "strand": "-",
+   "window_bp": 566,
+   "introns": 1,
+   "log_partition": 5472.212693451129,
+   "viterbi": 5471.738575061427,
+   "seconds": 0.41
+  },
+  {
+   "transcript": "rna-XM_960194.3",
+   "seqid": "NC_026501.1",
+   "strand": "+",
+   "window_bp": 2756,
+   "introns": 2,
+   "log_partition": 27387.956512932455,
+   "viterbi": 27387.185724052804,
+   "seconds": 1.87
+  },
+  {
+   "transcript": "rna-XM_959043.2",
+   "seqid": "NC_026501.1",
+   "strand": "+",
+   "window_bp": 2273,
+   "introns": 1,
+   "log_partition": 22544.278518893352,
+   "viterbi": 22543.818994583107,
+   "seconds": 1.68
+  },
+  {
+   "transcript": "rna-XM_957862.3",
+   "seqid": "NC_026503.1",
+   "strand": "+",
+   "window_bp": 1288,
+   "introns": 2,
+   "log_partition": 12706.82273286602,
+   "viterbi": 12706.502301214763,
+   "seconds": 0.93
+  },
+  {
+   "transcript": "rna-XM_011396498.1",
+   "seqid": "NC_026505.1",
+   "strand": "+",
+   "window_bp": 593,
+   "introns": 2,
+   "log_partition": 5756.823177636117,
+   "viterbi": 5756.431948863789,
+   "seconds": 0.37
+  },
+  {
+   "transcript": "rna-XM_956465.2",
+   "seqid": "NC_026505.1",
+   "strand": "+",
+   "window_bp": 3452,
+   "introns": 2,
+   "log_partition": 34348.500465344034,
+   "viterbi": 34347.60783815873,
+   "seconds": 2.39
+  },
+  {
+   "transcript": "rna-XM_955874.2",
+   "seqid": "NC_026505.1",
+   "strand": "+",
+   "window_bp": 4467,
+   "introns": 1,
+   "log_partition": 44484.49968422285,
+   "viterbi": 44483.869246262315,
+   "seconds": 3.08
+  },
+  {
+   "transcript": "rna-XM_952280.1",
+   "seqid": "NC_026505.1",
+   "strand": "-",
+   "window_bp": 2113,
+   "introns": 5,
+   "log_partition": 20993.808176457675,
+   "viterbi": 20992.935464631035,
+   "seconds": 1.51
+  },
+  {
+   "transcript": "rna-XM_955193.2",
+   "seqid": "NC_026506.1",
+   "strand": "+",
+   "window_bp": 641,
+   "introns": 1,
+   "log_partition": 6221.968982512614,
+   "viterbi": 6221.34661196314,
+   "seconds": 0.41
+  },
+  {
+   "transcript": "rna-XM_954406.2",
+   "seqid": "NC_026507.1",
+   "strand": "-",
+   "window_bp": 1187,
+   "introns": 2,
+   "log_partition": 11697.085926997384,
+   "viterbi": 11696.793760954517,
+   "seconds": 0.83
+  }
+ ]
+}

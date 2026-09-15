@@ -1,0 +1,57 @@
+{
+ "accepted_transcripts": 13179,
+ "admitted": 12937,
+ "auxiliary_sites_retained": {
+  "acceptor": 16730,
+  "donor": 16729,
+  "start": 13082,
+  "stop": 13057
+ },
+ "auxiliary_sites_unknown": {
+  "acceptor": 0,
+  "donor": 0,
+  "start": 86,
+  "stop": 102
+ },
+ "benchmark_filtered": {
+  "sequence: organelle (genome=mitochondrion)": 42,
+  "sequence: shorter than 10000 bp": 94
+ },
+ "cds_transcripts_all": 13315,
+ "fasta": "GCF_000004695.1_dicty_2.7_genomic.fna.gz",
+ "fasta_checked": true,
+ "fasta_md5": "45075a089e27703fdff5e574d3750525",
+ "fasta_sequences_missing": 0,
+ "gff": "GCF_000004695.1_dicty_2.7_genomic.gff.gz",
+ "gff_md5": "074ff2892412e4068538cf5df8dba350",
+ "loci": 13155,
+ "m": 20,
+ "manifest": "Dictyostelium_discoideum.manifest.tsv.gz",
+ "manifest_md5": "0e50e8f1cd1de59b27213dfea8d8510b",
+ "masked_oriented_bases": 366013,
+ "masked_union": 218,
+ "metadata_masked": 199,
+ "nonrepresentative_omitted": 24,
+ "peak_rss_mb": 160.4,
+ "reasons": {
+  "ambiguous_base": 18,
+  "exception": 35,
+  "frame_length": 28,
+  "internal_stop": 39,
+  "no_stop": 28,
+  "partial_3": 74,
+  "partial_5": 86,
+  "partial_away_from_edge": 153,
+  "seq_frame_length": 28,
+  "short_gap": 7,
+  "topology": 4,
+  "transl_except": 5
+ },
+ "representatives": 13155,
+ "sequence_masked": 57,
+ "species": "Dictyostelium_discoideum",
+ "table": 1,
+ "topology_components": 2,
+ "topology_masked": 4,
+ "wall_seconds": 3.1
+}

@@ -1,0 +1,60 @@
+{
+ "accepted_transcripts": 45054,
+ "admitted": 17660,
+ "auxiliary_sites_retained": {
+  "acceptor": 193952,
+  "donor": 193733,
+  "start": 26159,
+  "stop": 23658
+ },
+ "auxiliary_sites_unknown": {
+  "acceptor": 0,
+  "donor": 0,
+  "start": 189,
+  "stop": 161
+ },
+ "benchmark_filtered": {
+  "biotype=C_region": 7,
+  "biotype=V_segment": 65,
+  "sequence: organelle (genome=mitochondrion)": 13,
+  "sequence: shorter than 10000 bp": 32
+ },
+ "cds_transcripts_all": 45171,
+ "fasta": "GCF_000004195.4_UCB_Xtro_10.0_genomic.fna.gz",
+ "fasta_checked": true,
+ "fasta_md5": "0e5238f0b14d476f43f2f135f2640717",
+ "fasta_sequences_missing": 0,
+ "gff": "GCF_000004195.4_UCB_Xtro_10.0_genomic.gff.gz",
+ "gff_md5": "620cd662848acfe02e262a858a4c1a19",
+ "loci": 21788,
+ "m": 20,
+ "manifest": "Xenopus_tropicalis.manifest.tsv.gz",
+ "manifest_md5": "fc6fc186fe20fa3681208957391fc1e0",
+ "masked_oriented_bases": 96069339,
+ "masked_union": 4128,
+ "metadata_masked": 3926,
+ "nonrepresentative_omitted": 23266,
+ "peak_rss_mb": 1943.4,
+ "reasons": {
+  "exception": 3692,
+  "frame_length": 1,
+  "internal_stop": 131,
+  "no_initiator": 5,
+  "no_stop": 3,
+  "partial_3": 158,
+  "partial_5": 182,
+  "partial_away_from_edge": 259,
+  "partial_unlocated": 27,
+  "seq_frame_length": 1,
+  "short_gap": 141,
+  "topology": 217,
+  "transl_except": 108
+ },
+ "representatives": 21788,
+ "sequence_masked": 139,
+ "species": "Xenopus_tropicalis",
+ "table": 1,
+ "topology_components": 96,
+ "topology_masked": 217,
+ "wall_seconds": 26.8
+}

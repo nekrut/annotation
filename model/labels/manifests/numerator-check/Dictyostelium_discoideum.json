@@ -1,0 +1,109 @@
+{
+ "species": "Dictyostelium_discoideum",
+ "eligible_admitted": 8415,
+ "sampled": 10,
+ "max_span": 5000,
+ "failures": [],
+ "results": [
+  {
+   "transcript": "rna-XM_642365.1",
+   "seqid": "NC_007087.3",
+   "strand": "+",
+   "window_bp": 366,
+   "introns": 1,
+   "log_partition": 3473.8524131623435,
+   "viterbi": 3473.6581892094496,
+   "seconds": 0.22
+  },
+  {
+   "transcript": "rna-XM_639821.1",
+   "seqid": "NC_007088.5",
+   "strand": "-",
+   "window_bp": 1254,
+   "introns": 1,
+   "log_partition": 12351.385223201232,
+   "viterbi": 12351.072601671809,
+   "seconds": 0.85
+  },
+  {
+   "transcript": "rna-XM_639841.1",
+   "seqid": "NC_007088.5",
+   "strand": "-",
+   "window_bp": 2737,
+   "introns": 7,
+   "log_partition": 27265.98071487813,
+   "viterbi": 27264.5118378583,
+   "seconds": 1.89
+  },
+  {
+   "transcript": "rna-XM_638794.1",
+   "seqid": "NC_007088.5",
+   "strand": "+",
+   "window_bp": 2175,
+   "introns": 5,
+   "log_partition": 21615.3318827271,
+   "viterbi": 21614.140157339876,
+   "seconds": 1.58
+  },
+  {
+   "transcript": "rna-XM_638382.1",
+   "seqid": "NC_007088.5",
+   "strand": "+",
+   "window_bp": 2753,
+   "introns": 2,
+   "log_partition": 27358.052186594898,
+   "viterbi": 27357.38488652818,
+   "seconds": 1.98
+  },
+  {
+   "transcript": "rna-XM_637013.1",
+   "seqid": "NC_007089.4",
+   "strand": "+",
+   "window_bp": 1190,
+   "introns": 4,
+   "log_partition": 11753.523337451164,
+   "viterbi": 11752.833746720018,
+   "seconds": 0.8
+  },
+  {
+   "transcript": "rna-XM_634977.1",
+   "seqid": "NC_007089.4",
+   "strand": "-",
+   "window_bp": 2303,
+   "introns": 2,
+   "log_partition": 22857.740833342858,
+   "viterbi": 22857.336479090678,
+   "seconds": 1.59
+  },
+  {
+   "transcript": "rna-XM_633472.1",
+   "seqid": "NC_007090.3",
+   "strand": "-",
+   "window_bp": 2321,
+   "introns": 4,
+   "log_partition": 23063.917257078763,
+   "viterbi": 23063.25586082607,
+   "seconds": 1.61
+  },
+  {
+   "transcript": "rna-XM_631748.1",
+   "seqid": "NC_007091.3",
+   "strand": "+",
+   "window_bp": 4821,
+   "introns": 2,
+   "log_partition": 48035.61043194369,
+   "viterbi": 48035.065103187706,
+   "seconds": 3.36
+  },
+  {
+   "transcript": "rna-XM_630543.1",
+   "seqid": "NC_007091.3",
+   "strand": "-",
+   "window_bp": 1660,
+   "introns": 1,
+   "log_partition": 16413.756375956153,
+   "viterbi": 16412.86421267702,
+   "seconds": 1.11
+  }
+ ]
+}

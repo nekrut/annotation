@@ -1,0 +1,56 @@
+{
+ "accepted_transcripts": 48147,
+ "admitted": 27220,
+ "auxiliary_sites_retained": {
+  "acceptor": 118322,
+  "donor": 117134,
+  "start": 31777,
+  "stop": 32328
+ },
+ "auxiliary_sites_unknown": {
+  "acceptor": 0,
+  "donor": 0,
+  "start": 67,
+  "stop": 65
+ },
+ "benchmark_filtered": {
+  "sequence: organelle (genome=chloroplast)": 86,
+  "sequence: organelle (genome=mitochondrion)": 35
+ },
+ "cds_transcripts_all": 48268,
+ "fasta": "GCF_000001735.4_TAIR10.1_genomic.fna.gz",
+ "fasta_checked": true,
+ "fasta_md5": "0fed2d7901bf1488f20e7ef6842cd84c",
+ "fasta_sequences_missing": 0,
+ "gff": "GCF_000001735.4_TAIR10.1_genomic.gff.gz",
+ "gff_md5": "b809ab966e03e2a2d438b78656d9b409",
+ "loci": 27444,
+ "m": 20,
+ "manifest": "Arabidopsis_thaliana.manifest.tsv.gz",
+ "manifest_md5": "847661db65845733e3c1f67dc3859b81",
+ "masked_oriented_bases": 352898,
+ "masked_union": 224,
+ "metadata_masked": 159,
+ "nonrepresentative_omitted": 20703,
+ "peak_rss_mb": 1145.7,
+ "reasons": {
+  "ambiguous_base": 4,
+  "exception": 38,
+  "frame_length": 24,
+  "internal_stop": 32,
+  "no_stop": 24,
+  "partial_3": 38,
+  "partial_5": 54,
+  "partial_away_from_edge": 86,
+  "seq_frame_length": 24,
+  "short_gap": 39,
+  "topology": 61
+ },
+ "representatives": 27444,
+ "sequence_masked": 36,
+ "species": "Arabidopsis_thaliana",
+ "table": 1,
+ "topology_components": 30,
+ "topology_masked": 61,
+ "wall_seconds": 12.3
+}
