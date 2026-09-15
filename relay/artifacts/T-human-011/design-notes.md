@@ -5,8 +5,9 @@ Written 2026-09-15 UTC against accepted main `09b5386` (claim `9239764`);
 decoder/resource revision against main `86abfc5`, then layer/tile accounting
 against main `f424eb7` later that day. Support/strand and annotation-topology
 audit against main `0899198`, then representative-label and carried-quota
-audits against main `9fbe9cd` on the same date.
-Status: fifth bounded design pass, **in progress**. This is the working
+audits against main `9fbe9cd` on the same date. Raw-CDS exception and graph
+accounting revision against main `b49a41b`, also on 2026-09-15 UTC.
+Status: sixth bounded design pass, **in progress**. This is the working
 artifact for the eventual `docs/design/proposal.md`, not the submitted
 proposal or a Phase 4 implementation. Numerical architecture choices below
 are proposed settings; arithmetic is an estimate, not measured performance.
@@ -111,7 +112,8 @@ Use separate strand labels and real, ordered transcript CDS chains. The
 current cutter's union/owner-per-base labels cannot represent every
 overlapping transcript. A first chain loss can use its declared
 `longest-cds` policy with conflicting same-strand overlaps masked as
-specified and audited in section 4.4; keep all real boundary sites for
+specified and audited in section 4.4, followed by section 3.6's grammar
+admission; keep all real boundary sites for
 separate auxiliary losses and count the omitted chains.
 An isoform-union mask must never be presented as one valid transcript.
 Extending the loader to structured chains is an identified Phase 4 need.
@@ -434,6 +436,103 @@ so a chunk-seam check must hold that grid fixed. No full-chunk statistics,
 global attention or normalization over spatial positions is allowed in
 this radius argument; normalization is over channels at each position.
 
+### 3.6 Label admission, partial CDS and exceptions
+
+This is the proposed structured-loader contract for Phase 4. It does not
+change the accepted benchmark denominator or repair the reference GFF.
+[NCBI's GFF3 documentation][gff3] describes internal partial rows,
+translation exceptions, and short overlaps or micro-introns representing
+frame adjustments. Preserve the raw rows and attributes before the
+scorer's interval merging; its chains suffice for the topology audit,
+but not for establishing that a CDS is a legal ordinary ORF.
+
+**Admission order.** Apply the benchmark's sequence/transcript filters,
+select representatives and build the topology masks as in section 4.4.
+For each remaining representative, retain the source row number, phase,
+CDS/transcript exception tags, partial-boundary declarations and supplied
+translation table. Verify coordinates against the checksummed FASTA and
+order rows in transcriptional orientation. Reject overlapping rows from
+the ordinary chain target; they cannot consume each genomic base once.
+Adjacent rows may merge only after phase checks. A positive gap shorter
+than m is a grammar exception, even when the benchmark does not count it
+as a splice junction. Do not delete that gap or fill it with coding bases.
+
+Complete 5' ends require first-row phase zero. For a 5'-partial chain
+with supplied first-row phase h, initialize the ordinary prefix length
+as `p = (-h) % 3`; marginalize over compatible missing prefix identities.
+For every row require phase `(-p) % 3`, then advance p by its CDS length.
+Only the initial missing codon prefix is unknown: never discard the
+leading h bases of every exon. They may complete a codon from the previous
+exon. Translate the spliced sequence under the supplied table, permitting
+split codons. A complete chain must begin with an allowed initiator,
+terminate at its final complete stop and contain no earlier in-frame stop.
+Keep table conflicts, invalid/unknown phase, incompatible start/stop and
+ambiguous sequence as separate audit reasons. Reference protein sequences
+must not replace assembly bases to make a target fit the grammar.
+
+**Partial labels inside a sequence.** An annotated incomplete CDS end
+does not by itself license partial inference there. For the initial chain
+loss, mask the representative's full CDS span when a declared partial end
+is away from the corresponding true sequence edge. Also mask an internal
+partial row, or an unspecified partial declaration whose missing region
+cannot be located. Do not synthesize a start/stop or train a fragment as a
+complete gene. This deliberately sacrifices chain supervision; retain
+reliable boundary supervision as described below. It is a proposed
+training policy, not a change to benchmark scoring of those transcripts.
+
+An edge-partial target is admissible only when its observed ordinary CDS
+can be embedded in section 3.1's edge-initialized grammar. For example,
+observed CDS beginning at oriented coordinate zero may use a latent
+ordinary codon prefix; a missing upstream donor may use the residual-I
+entry only when the observed intronic flank really extends to that edge.
+The edge prior is shared by the numerator and denominator and never uses
+test annotation. A training crop through an otherwise complete gene may
+condition on the real chain state at the crop boundary, including an
+intron's pending minimum-length entry. Record this as training boundary
+conditioning; it grants no partial-start option at an inference chunk seam.
+
+**Exception masks.** Conservatively exclude representatives with any
+CDS/transcript `exception` or `transl_except` tag from the first ordinary
+chain loss. This includes tags whose sequence might still pass the ORF
+check; expose that lost supervision rather than interpreting each tag as
+a proven defect. Also exclude row/phase incompatibility, unsupported
+recoding, an unresolvable table conflict, and ambiguous CDS bases from
+that first fully supervised chain set. Ambiguity is still supported at
+inference through section 3.1's latent-base rule. A later ambiguous-label
+training arm may sum compatible bases but needs its own admission audit.
+
+For every exclusion, add the full representative CDS span to the
+unconstrained mask, keeping independent reason flags and their union.
+Union these with the topology masks. Chain constraints outside the masks
+stay attached to their original transcript; neither state reset nor an
+intergenic target is inserted at a mask edge. Within masks the numerator
+sums all legal paths using the same grammar as the denominator. If a
+training crop still has no compatible numerator path, record its IDs and
+exclude that crop from chain loss; fail the adapter check instead of
+clamping an infinite loss or silently altering labels.
+
+**Auxiliary targets and reporting.** Known alternative donor/acceptor
+sites remain positive even when their chains are masked. Suppress an
+unknown or internally partial boundary from both positive and negative
+auxiliary supervision at that coordinate/channel. A reliable positive
+from another transcript at the same site takes precedence. Start/stop
+positives require a complete, sequence-compatible end; a questionable
+codon must not become a negative merely because its chain was excluded.
+Report the original all-site catalog from section 4.4 and the subsequent
+admitted/unknown auxiliary sets separately. The earlier table measured
+the annotation catalog, not these sequence-audited training targets.
+
+Before fitting, emit per-species counts of all/selected/topology-masked/
+metadata-masked/sequence-masked/admitted chains, each reason and the union,
+masked oriented bases, and auxiliary sites retained or made unknown.
+Repeat the metadata audit on all train species, then perform the FASTA
+checks. Held-out annotations enter evaluation only and are never cleaned
+to improve the score. Required adapter fixtures include a complete split
+codon, a nonzero-phase edge partial, an interior partial, an internal
+range tag, a short-gap frame adjustment, a translation exception, an N,
+and a declaration/sequence disagreement, on both strands. No prototype
+loader or sequence-admission result is claimed by this design pass.
+
 ## 4. Candidate B: A plus a narrow comparative encoder
 
 **Candidate support.** Cheap sequence scans plus A's frozen DNA scores
@@ -627,8 +726,9 @@ criterion. Do not relax the targets using held-out annotations. A remains
 the usable control, and a predeclared full-tile GPU arm can isolate whether
 the comparative encoder works when gate recall is removed as a variable.
 
-**Bounded buffering.** Group 32 consecutive A cores, hence 98,304 oriented
-bases and 256 B cores. Retain their fine stem and 11 score channels, obtain
+**Bounded buffering.** One A core is 3,072 bases, or eight B tiles. Group
+32 consecutive A cores, hence 98,304 oriented bases and 256 B cores.
+Retain their fine stem and 11 score channels, obtain
 12 bases of right-hand score lookahead from the next A core, and carry
 12 scores of left-hand history. The next A core is computed once and kept
 for the next group. One group plus that entire lookahead A core reserves
@@ -677,7 +777,10 @@ budget, a positive B quota cannot make that run compliant. Alpha = 0.05
 is an illustrative upper allocation, not an approved CPU runtime setting.
 Keep counters for eligibility, quota truncation, unavailable alignment,
 K=1 and final supported outputs, with raw and post-cap recall separately.
-Also record earned/spent/forfeited credits and peak group allocation.
+Also record earned/spent/forfeited credits, peak credit balance and peak
+group allocation. A large balance is a scalar, not a larger neural buffer;
+it can nevertheless sustain several fully refined groups after a gene
+desert. Keep the B microbatch size fixed independently of that balance.
 Do not select or retry a cap using held-out accuracy. A timer-based cutoff
 would change predictions with machine/load and is not the first policy.
 
@@ -845,7 +948,9 @@ GFF's full exon lengths and first transcript appearance in file order,
 then calls the existing cutter's actual `select_isoforms(..., "longest-cds")`
 function. The adapter preserves the scorer's namespaced gene IDs and
 sequence/strand identity. Every retained transcript has exon records in
-these files, so no fabricated CDS-only tie breaker is needed. This is an
+these files, so no fabricated CDS-only tie breaker is needed. Annotation
+order breaks surviving ties: pin the exact GFF checksum and preserve its
+row order, rather than sorting transcript IDs before selection. This is an
 annotation audit using a proposed GFF adapter, not evidence that the
 current UCSC/Ensembl window loader already implements structured training.
 
@@ -903,8 +1008,9 @@ codon: this audit opens no FASTA.
 | M. musculus: selected | 22,108 | 22,084 | 178,957 | 178,919 |
 | M. musculus: after topology mask | 21,771 | 21,785 | 177,047 | 177,047 |
 
-Train the auxiliary boundary losses against the **all** sets, on each
-orientation and with independent boundary channels; the topology and
+Use the **all** sets as the auxiliary boundary catalog, followed by the
+sequence/unknown-site admission in section 3.6, on each orientation and
+with independent boundary channels; the topology and
 isoform policies must not turn known alternative sites into auxiliary
 negatives. These are soft auxiliary targets, not simultaneous hard
 constraints forcing every site into the CRF path. In particular, preserve
@@ -920,11 +1026,40 @@ There are 0 / 15 / 3 / 45 with a declared partial CDS end after the
 topology mask (0 / 17 / 3 / 51 before it). A partial end away from an
 actual sequence edge cannot simply receive section 3.1's edge-entry rule.
 Phase/translation consistency, recoding, short gaps and sequence ambiguity
-still need the declared grammar audit before Phase 4 fitting. Preserve
+need section 3.6's grammar audit before Phase 4 fitting. The raw-row audit
+below now checks metadata and row arithmetic, but opens no FASTA. Preserve
 these records as exceptions or unconstrained spans; never force an
 incompatible path into a numerator with zero compatible probability.
 The counts above isolate topology/isoform losses without claiming that
-these remaining checks have passed.
+the sequence checks have passed.
+
+**Raw-CDS metadata audit.** Re-read the original CDS rows before the
+scorer merges overlapping/adjacent intervals. Use the same post-topology
+representatives above. Count each flag once per transcript; columns
+overlap. `exception` includes tags on the CDS or its transcript;
+`transl_except` records a declared translation exception. These are
+conservative review flags, not assertions that the reference is wrong.
+The union excludes the descriptive `declared_partial` flag by itself:
+an otherwise admissible partial at a true sequence edge is not rejected.
+
+| Train species | Nonedge partial | Internal range tag | exception / transl_except | Short gap / overlapping rows | Initial phase without declared 5'-partial / terminal-frame remainder | Union of flags | No flag in this audit |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| S. cerevisiae | 0 | 0 | 6 / 0 | 6 / 0 | 0 / 0 | 6 | 5,858 |
+| C. elegans | 15 | 0 | 12 / 1 | 12 / 0 | 0 / 0 | 28 | 19,811 |
+| D. melanogaster | 3 | 0 | 106 / 349 | 1 / 0 | 9 / 31 | 455 | 12,980 |
+| M. musculus | 45 | 2 | 19 / 49 | 10 / 1 | 0 / 1 | 102 | 21,711 |
+
+All raw phases are 0, 1 or 2, and none disagrees with the next row's
+phase under `p_next = (p + row_length) % 3`, initializing
+`p = (-first_phase) % 3`. A nonzero terminal p is flagged only when the
+scorer does not declare the 3' end partial. A short gap means strictly
+between zero and 20 bases; an overlap means a negative oriented gap.
+Internal range tags occur on a CDS row boundary other than the first
+or last oriented CDS end. Every scorer-declared partial in this retained
+set has at least one declared end away from the corresponding sequence
+edge. `No flag` does **not** mean a sequence-validated complete CDS; it is
+only the remainder after the union of these metadata checks. The script
+below reproduces these counts along with the earlier tables.
 
 **Quota comparison.** [Marx's independent audit][quota-note] reproduced
 section 4.3 and identified wasted per-group slots. Recomputing from the
@@ -953,6 +1088,15 @@ cannot promise complete coverage or score-optimal spending in a real
 scan with false positives. Its forward direction is a declared property
 of the oriented schedule; test coordinate/strand mapping and sequence-edge
 sensitivity rather than assuming it ranks an entire chromosome globally.
+
+[Marx's second independent audit][quota-followup] reproduces both tables
+and reports that reversing the group scan changes served CDS tiles by
+0 / -7 / -102 / +419. It reports terminal credit forfeits of
+0 / 4 / 2,825 / 383,524 slots and peak balances of 12 / 32 / 506 / 15,782.
+These are attributed annotation-only diagnostics, not a trained-gate or
+runtime measurement. The large mouse balance does not increase the
+256-tile group maximum. A balance cap is a possible future policy
+ablation; it is not silently added to the present schedule.
 
 Dilating each annotated CDS block by 12 real bases on either side
 reproduces the inbox note's small oracle-density increase:
@@ -1047,9 +1191,16 @@ def load_txs(path, ann, chains):
                 tid = "\x00".join((f[0], f[6], raw_id))
                 if tid not in chains:
                     continue
-                meta = extras.setdefault(tid, {"order": line_no, "exons": []})
+                meta = extras.setdefault(tid, {"order": line_no, "exons": [],
+                                               "raw_cds": [], "tags": set()})
                 if f[2] == "exon":
                     meta["exons"].append((int(f[3])-1, int(f[4])))
+                if f[2] == "CDS":
+                    meta["raw_cds"].append((int(f[3])-1, int(f[4]), f[7], f[8]))
+                if f[2] == "CDS" or f[2] in score["TX_TYPES"]:
+                    for key in ("exception", "transl_except"):
+                        if score["_attr"](f[8], key) is not None:
+                            meta["tags"].add(key)
     assert set(extras) == set(chains), "missing GFF transcript order"
     txs = []
     for tid in sorted(chains, key=lambda tid: extras[tid]["order"]):
@@ -1059,8 +1210,53 @@ def load_txs(path, ann, chains):
         assert exons, ("missing full exons for longest-cds tie breaker", tid)
         txs.append(dict(id=tid, gene=ann.gene_of[tid], seqid=sid, strand=strand,
                         start=exons[0][0], end=exons[-1][1], cds=cds, exons=exons,
+                        raw_cds=extras[tid]["raw_cds"], tags=extras[tid]["tags"],
                         _partial5=tid in ann.partial5, _partial3=tid in ann.partial3))
     return txs
+
+def metadata_audit(txs, lengths):
+    counts, flagged = Counter(), 0
+    for t in txs:
+        flags = set(t["tags"])
+        rr = sorted(t["raw_cds"], reverse=t["strand"] == "-")
+        assert rr, ("missing raw CDS rows", t["id"])
+        L = lengths[t["seqid"]]
+        iv = [(L-b, L-a) if t["strand"] == "-" else (a,b)
+              for a,b,phase,attrs in rr]
+        if t["_partial5"] or t["_partial3"]:
+            flags.add("declared_partial")
+        if ((t["_partial5"] and iv[0][0] != 0) or
+                (t["_partial3"] and iv[-1][1] != L)):
+            flags.add("nonedge_partial")
+        for i, (a,b,phase,attrs) in enumerate(rr):
+            sr = score["_attr"](attrs, "start_range") is not None
+            er = score["_attr"](attrs, "end_range") is not None
+            if t["strand"] == "-":
+                sr, er = er, sr
+            if (sr and i != 0) or (er and i != len(rr)-1):
+                flags.add("internal_range")
+        phases = [int(r[2]) if r[2] in ("0","1","2") else None for r in rr]
+        if None in phases:
+            flags.add("invalid_phase")
+        else:
+            p = (-phases[0]) % 3
+            if p and not t["_partial5"]:
+                flags.add("nonzero_initial_phase_without_partial5")
+            for (a,b), phase in zip(iv, phases):
+                if phase != (-p) % 3:
+                    flags.add("phase_discontinuity")
+                p = (p+b-a) % 3
+            if not t["_partial3"] and p:
+                flags.add("incomplete_terminal_frame")
+        for (_,b), (a,_) in zip(iv, iv[1:]):
+            if a < b:
+                flags.add("overlapping_rows")
+            if 0 < a-b < 20:
+                flags.add("short_gap")
+        flagged += bool(flags - {"declared_partial"})
+        counts.update(flags)
+    return dict(flag_counts=dict(sorted(counts.items())), flag_union=flagged,
+                no_metadata_flag=len(txs)-flagged)
 
 def tile_audit(txs, lengths, flank):
     tiles = defaultdict(set)
@@ -1136,6 +1332,7 @@ for sp in ("Saccharomyces_cerevisiae", "Caenorhabditis_elegans",
                   auxiliary_sites_in_mask=count_sites({s for s in all_sites if in_mask(s)}),
                   selected_partial_transcripts=sum(t["_partial5"] or t["_partial3"] for t in selected),
                   retained_partial_transcripts=sum(t["_partial5"] or t["_partial3"] for t in retained),
+                  raw_cds_metadata=metadata_audit(retained, lengths),
                   quota=[tile_audit(txs,lengths,flank) for flank in (0,12)])
     print(json.dumps(result,sort_keys=True),flush=True)
 ```
@@ -1152,16 +1349,157 @@ attending to every intronic base. Permit multiple paths and independent
 overlapping loci; use the benchmark's all-emitted-transcript precision
 to prevent extra isoforms becoming free recall.
 
-A proposed **1.20 M ceiling** includes B and boundary/edge scoring; this
-remains a reservation, unlike the explicit A/B layer counts, until C's
-edge scorer and candidate-density audit are specified.
-Short introns follow the same configurable gap convention and finite
-noncanonical-motif scores as A. Long-distance bins retain candidate edges
-through the full chromosome, not just the encoder window. A proposed
-8-bin, 4-edge-per-bin pruning rule gives at most 32 retained successor
-edges per candidate, but it is an approximation: report complete-reference
-path survival, including the length-tail stratum, before scoring the model.
-No claim of exact all-path decoding survives this pruning.
+The concrete variant below has **495,598 learned scalars**, derived as B's
+495,021 plus a 577-scalar edge head. It reuses the pooled decoder's 54
+scalars for duration, motifs and transition terms instead of adding
+another set. This replaces the earlier 1.20 M reservation. The small
+parameter count says little about graph-construction or path-output cost.
+
+### 5.1 Vertex and edge policy
+
+Use the four boundary channels from the chosen frozen A/B encoder. Fit
+one threshold per kind on train development chromosomes; nominate every
+position above it, without a canonical-motif or minimum-exon-length gate.
+Map start/acceptor to the first CDS-base boundary, donor to the first
+intron-base boundary, and stop to the boundary after its last CDS base.
+Keep typed vertices separate even when their coordinates coincide.
+Apply the same orientation and sequence-edge rules as A. Synthetic
+sequence-edge entries/exits cannot create calls with no observed CDS.
+
+For a declared capped graph arm, retain the highest scoring
+`ceil(n/768)` vertices **per kind** in each n-real-base group from section
+4.2, ties by oriented coordinate. A full group therefore admits at most
+128 vertices per kind. Assign each vertex to the group of the base whose
+boundary channel nominated it. With S scored sequences, the count over
+both strands is bounded by
+`V <= 8*sum_groups ceil(n/768) + 4*S`, including synthetic edge vertices.
+For long sequences the ordinary-vertex term approaches 10,416.7/Mb;
+use the exact group sum for short sequences. This is a design cap, not an
+observed density or an acceptable-recall claim. An uncapped vertex arm
+must be reported separately and still pays for scanning all bases.
+
+An exon edge runs from a start/acceptor at s to a donor/stop at e,
+consumes `[s,e)` and requires e>s. An intron edge runs from a donor d to
+an acceptor a, preserves the full coding prefix and requires a-d>=m.
+Partition positive lengths into the proposed eight half-open bins with
+lower bounds `1, 20, 50, 200, 1000, 10000, 100000, 1000000`; the last
+extends to the sequence end. Apply the relevant type/minimum constraints.
+No maximum intron or exon span follows from the encoder window.
+
+Before any pair-dependent scoring, query the top four destination
+vertices by their own boundary score in each allowed length bin, combining
+allowed destination kinds in that same quota. Rank ties by coordinate
+then kind. A sorted range-maximum index can answer each top-four range
+query without enumerating all pairs. Build it in O(V log V) time or better;
+there are eight bounded queries per source. This gives **E<=32V** retained
+coordinate edges and O(V log V) candidate-query work with the fixed
+constants above. Do not score all possible pairs and then claim this
+bound for candidate generation. No new edges are backfilled after
+grammar rejection, and no separate quota is allocated per phase/prefix.
+
+The shortlist is deliberately approximate: a strong pair can lose to
+four stronger isolated endpoints, and codon-incompatible edges can use
+slots. Count these losses separately from vertex loss. Long-distance bins
+preserve some long connections, not every true long intron. Neither the
+vertex nor edge cap supports an exact-all-path claim.
+
+### 5.2 Edge score, compatibility and output
+
+The edge head is a shared `16 -> 32 -> 1` MLP with a GELU hidden layer
+and biases: `16*32+32+32+1 = 577` scalars. Its 16 inputs are two four-way
+endpoint-kind one-hots, source and destination boundary scores, log length,
+and five interval means: maximum CDS-minus-U evidence, maximum
+intron-minus-U evidence, comparative availability, alignment-gap fraction,
+and GC. Masked alignment positions contribute zero to the two alignment
+means, with availability kept separately. Freeze feature scaling on
+training data. The MLP adds a pair residual; it does not enforce coding
+legality. Sum the actual phase-specific emissions and shared boundary/
+duration terms separately, using the same joint-component choice as A's
+Viterbi when an intron has multiple duration components.
+
+For each exon edge, propagate section 3.1's S/E prefix states through its
+actual oriented bases. A start edge begins the initiator S state; the
+path must complete an allowed initiator before entering ordinary E,
+possibly after an intron. An ordinary edge cannot continue through a stop;
+a stop edge terminates
+exactly at its endpoint. Split initiators/stops and one-base exons remain
+legal when the state permits them. Intron edges carry the prefix without
+consuming coding bases. The first specification uses direct per-edge
+sequence scans, **O(P*W)** canonical-input work, where P=41 and W is the
+sum of retained exon-edge lengths, counting repeated genomic spans.
+This is not O(E), and W can be as large as E times sequence length.
+Ambiguous bases require weighted branching as in A and invalidate this
+deterministic canonical-input bound. A faster cached composition of exon
+transitions is a possible Phase 4 optimization, with its own proof/budget.
+
+The five interval means need one streaming prefix-sum pass and snapshots
+at retained endpoints, not five chromosome-sized arrays in RAM. This
+reserves `5*8*(V+2*S)` bytes in float64 over both orientations before
+processing them sequentially. Exact phase-emission scoring and grammar
+scans still need sequence/emission reads; charge their replay/scratch I/O.
+No estimate below treats those reads as free.
+
+Start with a frozen A/B encoder and fit the edge residual on train-only
+admitted reference edges versus generated alternatives. Record reference
+edges absent from the graph; do not inject them into evaluation candidates.
+Edge classification is a proposed first training objective, not a claim
+of calibrated transcript probability. Freeze a transcript-score threshold
+on train development chromosomes. Use additive log-odds against U and
+compute up to four best suffix paths per expanded vertex/prefix in reverse
+topological order, ending at a valid stop or partial sequence edge.
+Emit up to four threshold-passing chains per nominated start/partial entry,
+deduplicate identical CDS chains and retain distinct overlapping calls.
+Do not apply a four-transcript limit to an entire weak graph component,
+which could connect many genes. Canonical-input top-four bookkeeping
+is O(4*P*E) up to the fixed bounded-list selection factor; emitting actual
+CDS-block lists adds the total output length. Report that output volume
+and the benchmark's all-emitted-transcript precision.
+
+### 5.3 Observable graph cost and admission audit
+
+The MLP's counted matrix work is `2*(16*32+32)*E = 1088*E` FLOPs.
+The table sets E=32V and P=41; V includes both strands per physical Mb.
+It excludes activation functions, feature construction, grammar scans,
+top-four paths, output, I/O and the full A/B encoder cost.
+
+| Vertices/Mb (illustrative) | Edges/Mb at cap | Edge-head GFLOP/Mb | Edge/prefix pairs, P*E | Packed 16-byte coordinate edges |
+|---|---:|---:|---:|---:|
+| 1,000 | 32,000 | 0.034816 | 1,312,000 | 512,000 bytes |
+| 10,000 | 320,000 | 0.348160 | 13,120,000 | 5,120,000 bytes |
+| 100,000 | 3,200,000 | 3.481600 | 131,200,000 | 51,200,000 bytes |
+
+The 16-byte edge illustration uses 64-bit destination ID, float32 score,
+and a 32-bit metadata field, with source adjacency offsets stored
+separately. State compatibility, prefix scores and traceback are additional.
+At V=10,000, four path records per prefix with a float64 score and a
+64-bit backpointer need `4*41*10000*16 = 26,240,000` bytes before container
+overhead. These are explicit packed-storage choices, not Python object
+sizes or a total memory measurement.
+
+At V=10,000, the edge head alone adds `0.34816/30 = 0.0116053`
+conditional CPU-s/Mb at section 6's assumed throughput. With B's K=8,
+f=0.05 encoder scenario, counted matrix time becomes 10.917942 CPU-s/Mb.
+This illustrative arithmetic omits the graph/decoder work listed above;
+it is not an expected observed time or evidence of budget compliance.
+
+For every train development sequence/orientation, meter bases scanned,
+nominations/retained vertices by kind, range queries, E before/after
+compatibility checks, W, ambiguous-edge work, maximum simultaneous
+storage, prefix/path work, emitted chains/blocks, scratch bytes and time.
+Report true boundary, true edge conditional on endpoints, and complete
+reference-path survival after each pruning stage, including short exons,
+noncanonical sites and the longest introns. Original all-reference paths
+and grammar-admissible paths need separate denominators. The annotation
+counts in section 4.4 cannot stand in for learned candidate density.
+
+Freeze resource limits for V, E, W and output on the authorized Phase 4
+pilot. Compute W from edge coordinates before scanning their sequence.
+If a limit is exceeded, use A's valid chain output for that entire
+sequence/orientation and count both the fallback and graph work already
+spent. Apply limits identically across encoder comparisons. Until that
+pilot, C has no defensible numeric end-to-end seconds/Mb forecast: add
+section 6's A/B cost to candidate queries, O(P*W) scans, path work and
+I/O. Its small edge MLP does not establish the 15 CPU-s/Mb target.
 
 **Fallback.** With no informants the graph uses A's DNA evidence. Candidate
 graph failure can return A's valid chain output, with a declared fallback
@@ -1171,8 +1509,8 @@ counter. Structural recall then remains limited by A in those regions.
 path. (2) Long-distance pairing fuses neighboring genes or expands the
 graph on repeats. (3) Top-path output overpredicts isoforms and still has
 insufficient labels for overlapping loci. C is third because these risks
-are additional to the encoder question and its decoder cost is unbounded
-until candidate counts are measured.
+are additional to the encoder question; the edge-count bound does not
+control repeated exon scans or establish an end-to-end runtime.
 
 ## 6. Compute arithmetic and expected operating range
 
@@ -1364,15 +1702,18 @@ engineering question, not an accomplished optimization.
 - Review the now-specified prefix-state decoder, duration recurrence,
   partial-end rules and scratch/checkpoint accounting. Sections 4.3 and
   4.4 now quantify topology, longest-CDS selection, full-span conflict
-  masks and boundary supervision. Specify the remaining grammar-exception
-  handling, especially partial CDS ends inside sequences; retain the
-  Phase 4 correctness checks in section 3.4 as prerequisites
-  to any encoder comparison, without implementing the prototype now.
+  masks and raw-CDS metadata flags. Section 3.6 specifies grammar-exception
+  handling, including partial CDS ends inside sequences. Review that
+  admission contract; full train-panel/FASTA checks and the correctness
+  cases in section 3.4 are Phase 4 prerequisites to fitting/comparison,
+  not an implemented prototype or completed sequence audit.
 - A/B layer and token inventories are now explicit (sections 3.5, 4.1
   and 6). Review their fixed-grid/halo assumptions and streaming buffers;
   price non-matrix operations, decoder and I/O by measurement only after
-  Phase 4 authorization. Specify C's edge scorer and an observable
-  candidate/edge-density audit; its 1.20 M allocation remains a ceiling.
+  Phase 4 authorization. C now has an explicit edge head, retained-graph
+  bounds and a candidate/edge/span/output meter (sections 5.1 to 5.3).
+  Review the distinction between E<=32V and the O(P*W) repeated exon scan;
+  C's small parameter count is not evidence of meeting the time target.
 - Review the now-specified score scan, bounded buffering and carried-credit
   tile quota (sections 4.2 and 4.4). Threshold/alpha fitting and sequence-gate
   recall must wait for the Phase 4 trained-A pilot; the annotation-only audit establishes
@@ -1387,14 +1728,20 @@ engineering question, not an accomplished optimization.
 
 Accepted repository documents above are pinned to this draft's main commit.
 External sources were read through public pages on 2026-09-15 UTC; the
-NCBI genetic-code source was rechecked for the decoder revision. Only
+NCBI genetic-code source was rechecked for the decoder revision and the
+GFF3 documentation was read for raw-row exception semantics. Only
 metadata and our own design notes are stored here. Decoder state counts,
 storage quantities, layer/tile inventories and example strings are our
 proposed specification and arithmetic, not implemented-model results.
 Sections 4.3 and 4.4 separately report reproducible measurements of cached
 training annotations, under the named scorer/panel hashes; they are not model accuracy
 measurements. Section 4.4 also pins the cutter used for representative and
-boundary selection. The public axomeme page was rechecked in the fourth pass.
+boundary selection. The sixth pass adds an annotation-only raw-CDS audit
+to that same embedded reproduction; no FASTA was read. The public axomeme
+page was rechecked in the fourth pass. [Lenin's independent check][compute-review]
+reproduces the A/B layer, FLOP and sensitivity arithmetic; its conclusion
+is conditional and supports measuring A end-to-end before assigning any
+positive B quota, rather than making a speed claim.
 
 [synthesis]: ../../../docs/review/candidates.md
 [geometry]: ../../../docs/review/disagreements.md#54-is-tree-as-metric-mathematically-well-posed
@@ -1408,3 +1755,6 @@ boundary selection. The public axomeme page was rechecked in the fourth pass.
 [rope]: https://arxiv.org/abs/2104.09864v5
 [axomeme]: https://github.com/nekrut/axomeme
 [quota-note]: ../../messages/20260915T035634Z-marx-0045.md
+[quota-followup]: ../../messages/20260915T045623Z-marx-0046.md
+[compute-review]: ../../messages/20260915T050700Z-lenin-0041.md
+[gff3]: https://www.ncbi.nlm.nih.gov/datasets/docs/v2/reference-docs/file-formats/annotation-files/about-ncbi-gff3/
