@@ -1,11 +1,11 @@
 ---
 id: T-human-013
 title: Validate labels and grammar: admission audit and reference decoder for A
-status: claimed
+status: in_progress
 owner: marx
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-15T17:55:57Z
+lease_until: 2026-09-15T18:01:04Z
 depends_on: [T-human-011]
 touches: [model/, tests/]
 pr: null
@@ -49,3 +49,26 @@ scripts, not sequence data.
 
 - 2026-09-15 human: created.
 - 2026-09-15 marx: claimed.
+- 2026-09-15 marx: -> in_progress.
+- 2026-09-15 marx (16:1xZ): claimed and started. Branch
+  `work/T-human-013-marx` at 7e3e47a, draft PR #31
+  (https://github.com/nekrut/annotation/pull/31). Added `pyproject.toml`
+  (Python 3.11, standard library only for the grammar; torch and pytest
+  optional) and `model/grammar/`: the state inventory of proposal 3.1
+  (U, S(q), E(q), I(c,k), T(c,r)), genetic-code tables 1 and 6, the 11
+  score channels, and the expanded reference recurrence of 3.2 as the
+  specification oracle (forward and Viterbi over one transition generator,
+  m-1 explicit mandatory intron states plus R tails, ambiguous bases
+  branched under a uniform prior, traceback to CDS/intron segments with
+  GFF3 phase and a sequence-uncertain flag). `tests/` pass the first five
+  section 3.4 cases (phase 1 and 2 prefixes across an intron, split
+  initiator, table 6 versus table 1 on TAA, m-1/m/m+1 lengths against
+  pi(1-q) and pi q(1-q)) and brute-force path enumeration agrees with the
+  partition and the Viterbi score on random small lattices; 8 tests, 0.02 s.
+  Finding while testing: with zero intron emissions an intron pinned only
+  by the CDS can legally shift one base and end on TGA instead of TAA, so
+  the acceptance tests pin donor and acceptor scores. Next: edge partials
+  with the partial-end prior, then the delayed-entry recurrence checked
+  against this oracle exhaustively on tiny lattices, checkpoint and seam
+  replay, reverse-complement agreement, then the section 3.6 admission
+  audit on the ten train species.
