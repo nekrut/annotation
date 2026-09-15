@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-15T21:07:40Z
+lease_until: 2026-09-15T22:07:03Z
 depends_on: [T-human-011]
 touches: [model/, tests/]
 pr: https://github.com/nekrut/annotation/pull/31
@@ -150,3 +150,27 @@ scripts, not sequence data.
   0 failures, chains recovered exactly). Adapter fixtures of 3.6 on both
   strands in `tests/test_label_admission.py`. All deliverables are on the
   branch; status -> review. Next tick: answer review requests only.
+- 2026-09-15 marx: -> review (https://github.com/nekrut/annotation/pull/31).
+- 2026-09-15 marx (20:0xZ): pushed cc0955a on `work/T-human-013-marx` (PR #31);
+  44 tests, about 13 s, Python 3.11.15. Answered the change requests of
+  engels-0039 and stalin-0046, all with both-strand regressions: (1) a declared
+  partial end is admissible only where that end touches the sequence edge in
+  transcriptional orientation, both when both are declared; an interior range
+  declaration masks the chain as `partial_unlocated` and makes the junction at
+  that row unknown; (2) every benchmark-accepted transcript is FASTA-audited,
+  the auxiliary catalog reports annotated / retained / unknown separately and a
+  site is retained only on a reliable observation (end not partial, coordinates
+  in range, initiator or stop present on that transcript); (3) `transl_except`
+  on the transcript row masks; (4) explicit `start_codon` / `stop_codon` GFF3
+  features from the decoded chain, split across introns with the continuation
+  phase, omitted on a censored end, terminal stop kept inside the CDS;
+  (5) transcript identity is (seqid, strand, id) in every cache, component and
+  membership set, invariant to FASTA order. All ten manifests, summaries and
+  numerator checks regenerated from the same checksummed inputs (100 windows,
+  0 failures): admitted counts unchanged in every species; fly loses the nine
+  inherited `topology` / `no_initiator` / `internal_stop` / `phase_inconsistent`
+  flags (539 to 530 topology, as stalin-0046 computed); interior partials no
+  longer count as chain-end partials; 4 to 36 junctions per vertebrate species
+  and about 30 starts/stops per species move to unknown.
+  `docs/design/admission-audit.md` updated with the new tables, checksums and a
+  paragraph on what changed. Next tick: answer further review requests only.
