@@ -4,8 +4,9 @@ Task: [T-human-011](../../tasks/T-human-011.md). Author: stalin.
 Written 2026-09-15 UTC against accepted main `09b5386` (claim `9239764`);
 decoder/resource revision against main `86abfc5`, then layer/tile accounting
 against main `f424eb7` later that day. Support/strand and annotation-topology
-audit against main `0899198` on the same date.
-Status: fourth bounded design pass, **in progress**. This is the working
+audit against main `0899198`, then representative-label and carried-quota
+audits against main `9fbe9cd` on the same date.
+Status: fifth bounded design pass, **in progress**. This is the working
 artifact for the eventual `docs/design/proposal.md`, not the submitted
 proposal or a Phase 4 implementation. Numerical architecture choices below
 are proposed settings; arithmetic is an estimate, not measured performance.
@@ -109,8 +110,9 @@ gene-centered sampling cannot estimate their whole-genome false positives.
 Use separate strand labels and real, ordered transcript CDS chains. The
 current cutter's union/owner-per-base labels cannot represent every
 overlapping transcript. A first chain loss can use its declared
-`longest-cds` policy with conflicting same-strand overlaps masked; keep
-all real boundary sites for auxiliary losses and count the omitted chains.
+`longest-cds` policy with conflicting same-strand overlaps masked as
+specified and audited in section 4.4; keep all real boundary sites for
+separate auxiliary losses and count the omitted chains.
 An isoform-union mask must never be presented as one valid transcript.
 Extending the loader to structured chains is an identified Phase 4 need.
 
@@ -491,7 +493,7 @@ Coordinate-wise RoPE does not automatically inherit rotational invariance
 of an MDS embedding. [RoFormer][rope] establishes rotary relative-position
 encoding, not invariance to arbitrary rotations of tree coordinates.
 The charter's [axomeme repository][axomeme] returned HTTP 404 during the initial
-design pass and again in this tick's public-page check (2026-09-15 UTC).
+design pass and again in the fourth pass's public-page check (2026-09-15 UTC).
 Lenin independently reported the same result from another runner in
 [lenin-0040](../../messages/20260915T030649Z-lenin-0040.md). The actual
 Tree-RoPE implementation remains unaudited; the eventual decision must
@@ -641,17 +643,33 @@ arithmetic is not a total peak-memory measurement.
 
 **CPU cap.** Use a predeclared `alpha <= 0.05` and K <= 8. A group with n
 real bases in that orientation receives
-`q = floor(alpha*n/384)` tile slots; select at most q highest-ranked
-eligible tiles. Do not redistribute unused slots across groups or
-orientations and do not refill slots after alignment filtering. At the
-illustrative alpha = 0.05 a full group permits 12 of 256 tiles, a 0.046875
-allocated fraction. Summing q across groups and strands gives
+`q = floor(alpha*n/384)` new tile slots. Start a scalar credit balance at
+zero for each (sequence, orientation). Add q to the balance, select
+`min(balance, eligible_tile_count)` highest-ranked tiles in the current
+group, then subtract that selected count. Carry unused slots forward on that same oriented
+sequence; discard the final balance. Do not transfer credits across
+sequences or orientations, borrow from future groups, revisit released
+groups, or refill credits after alignment filtering. The same tile
+choices are held fixed across tree arms.
+
+At the illustrative alpha = 0.05 a full group earns 12 slots for its 256
+tiles, a 0.046875 incremental allocated fraction. With saved credit it
+may refine up to all 256 current tiles, processed in the same bounded
+B batches. No additional A group is retained. After any group prefix,
+the number selected is at most the sum of q earned in that prefix.
+Summing q across groups and strands gives
 `384*sum(q)/(2*N) <= alpha`, including short terminal groups. Thus this
 bounds allocated B work under the stated K, halo and batch assumptions.
-Groups shorter than 7,680 real bases get no slots at that alpha; report
-this short-sequence fallback. Padding across batches must stay within K=8,
+Groups shorter than 7,680 real bases earn no new slots at that alpha,
+but may spend prior credit; an entire sequence shorter than that gets
+none. Report this short-sequence fallback. Padding across batches must
+stay within K=8,
 and unselected tiles must never acquire residual outputs from neighbors'
-halos. The same tile choices are held fixed across tree arms.
+halos. The earlier per-group rule that forfeited all unused q is retained
+as a policy ablation; section 4.4 compares it with this carried-credit
+schedule using exactly the same earned slots. Credit can only help later
+groups: this is not global score ranking, and early false positives can
+consume slots needed by later true candidates.
 
 This bounds work, not elapsed time. Freeze alpha from a Phase 4 pilot
 that prices the full A/decoder/I/O path first; if A exhausts the CPU
@@ -659,6 +677,7 @@ budget, a positive B quota cannot make that run compliant. Alpha = 0.05
 is an illustrative upper allocation, not an approved CPU runtime setting.
 Keep counters for eligibility, quota truncation, unavailable alignment,
 K=1 and final supported outputs, with raw and post-cap recall separately.
+Also record earned/spent/forfeited credits and peak group allocation.
 Do not select or retry a cap using held-out accuracy. A timer-based cutoff
 would change predictions with machine/load and is not the first policy.
 
@@ -680,7 +699,7 @@ control on GPU too when measuring comparative overhead on that device.
 
 ### 4.3 Annotation-only support and single-path topology audit
 
-Measured locally in this tick from four cached **train** species' panel
+Measured locally in the fourth pass from four cached **train** species' panel
 GFFs, verifying every `md5_gff` before parsing. This audit uses the accepted
 scorer's sequence and transcript filters, including the 10 kb sequence
 floor and declared pseudogene/biotype exclusions. Its denominators therefore
@@ -746,9 +765,9 @@ chains with one path per strand.
 This is **not a ceiling on benchmark transcript F1**. The accepted scorer's
 `_transcripts` matches emitted isoforms within matched loci and does not
 count unused reference isoforms there as false negatives. Nor is the last
-column a count of distinct loci. The remaining training-label audit must
-apply the actual longest-CDS choice and conflict masks, then quantify lost
-loci and boundary supervision. Opposite-strand overlaps are already
+column a count of distinct loci. Section 4.4 applies the actual longest-CDS
+choice and a proposed conflict mask, then quantifies affected loci and
+boundary supervision. Opposite-strand overlaps are already
 allowed by separate paths.
 
 **Reproduction.** Run the following read-only arithmetic/annotation audit
@@ -816,6 +835,309 @@ for sp in species:
                   oracle_CDS_allocated_f=f, B8_conditional_CPU_s_per_Mb=7.71535+1914.592*f/30,
                   max_nonoverlapping_unique_chains=max_pack)
     print(json.dumps(result, sort_keys=True), flush=True)
+```
+
+### 4.4 Representative-label losses and quota sensitivity
+
+This fifth-pass audit uses the same four **train** GFFs and scorer/panel
+hashes as section 4.3. It supplements the scorer's CDS records with the
+GFF's full exon lengths and first transcript appearance in file order,
+then calls the existing cutter's actual `select_isoforms(..., "longest-cds")`
+function. The adapter preserves the scorer's namespaced gene IDs and
+sequence/strand identity. Every retained transcript has exon records in
+these files, so no fabricated CDS-only tie breaker is needed. This is an
+annotation audit using a proposed GFF adapter, not evidence that the
+current UCSC/Ensembl window loader already implements structured training.
+
+**Conflict-mask contract.** After one representative per locus is chosen,
+form connected components of overlapping *full CDS spans*, separately
+on each sequence and strand. Spans are half-open; touching endpoints do
+not overlap. Mask every representative in a component containing more
+than one locus and make that component's complete span unconstrained in
+the chain-loss numerator. This includes same-strand genes nested inside
+another selected gene's intron. Do not mask only the CDS intersections,
+assign the masked region an intergenic target, or cut and rejoin fragments
+from different transcripts. Keep the original ordered chains for the
+other representatives. This conservative policy discards every member
+of a conflict rather than choosing an arbitrary winner; it is a training
+policy, not the interval-packing optimum of section 4.3.
+
+| Train species | Retained transcript IDs | Selected loci / representatives | Nonrepresentative IDs omitted from chain target | Conflicting components / representatives masked | Representatives after topology mask |
+|---|---:|---:|---:|---:|---:|
+| S. cerevisiae | 6,002 | 6,002 | 0 | 69 / 138 | 5,864 |
+| C. elegans | 28,590 | 19,971 | 8,619 | 65 / 132 | 19,839 |
+| D. melanogaster | 30,746 | 13,965 | 16,781 | 234 / 530 | 13,435 |
+| M. musculus | 97,324 | 22,183 | 75,141 | 137 / 370 | 21,813 |
+
+The masked representatives are respectively 2.2992%, 0.6610%, 3.7952% and
+1.6679% of the selected loci, derived from the preceding counts. The union
+of their component spans is 263,347 / 604,025 / 6,070,755 / 25,019,190
+oriented bases: 1.0908% / 0.3012% / 2.1640% / 0.4585% of the corresponding
+**2N** scored-base denominators in section 4.3. These are full-span masks,
+including introns; they are neither physical CDS coverage nor an accuracy
+ceiling. Nonrepresentative transcript IDs include identical CDS chains
+with different UTRs, so their count is not the number of lost distinct
+coding structures.
+
+**Boundary supervision stays separate.** Count distinct
+(sequence, strand, kind, position) targets over all accepted transcripts,
+over the selected representatives, and over representatives surviving
+the topology mask. Here start and stop mean the first and last CDS base
+under the cutter's boundary convention, omitting ends declared partial by
+the scorer. Donor/acceptor are the first/last intron base between CDS
+blocks with a gap of at least 20 bases; UTR junctions and shorter gaps are
+not included. Missing declarations are not a sequence-confirmed intact
+codon: this audit opens no FASTA.
+
+| Train species / chain-label stage | Start sites | Stop sites | CDS donors | CDS acceptors |
+|---|---:|---:|---:|---:|
+| S. cerevisiae: all / selected | 5,960 | 6,001 | 281 | 281 |
+| S. cerevisiae: after topology mask | 5,864 | 5,864 | 274 | 274 |
+| C. elegans: all | 24,350 | 21,195 | 103,593 | 103,556 |
+| C. elegans: selected | 19,951 | 19,965 | 101,609 | 101,611 |
+| C. elegans: after topology mask | 19,824 | 19,835 | 100,950 | 100,950 |
+| D. melanogaster: all | 16,316 | 16,111 | 44,113 | 44,500 |
+| D. melanogaster: selected | 13,943 | 13,954 | 41,268 | 41,273 |
+| D. melanogaster: after topology mask | 13,432 | 13,432 | 39,354 | 39,354 |
+| M. musculus: all | 35,881 | 30,159 | 187,365 | 189,666 |
+| M. musculus: selected | 22,108 | 22,084 | 178,957 | 178,919 |
+| M. musculus: after topology mask | 21,771 | 21,785 | 177,047 | 177,047 |
+
+Train the auxiliary boundary losses against the **all** sets, on each
+orientation and with independent boundary channels; the topology and
+isoform policies must not turn known alternative sites into auxiliary
+negatives. These are soft auxiliary targets, not simultaneous hard
+constraints forcing every site into the CRF path. In particular, preserve
+sites inside chain-masked components. The reproduction prints those
+counts too. Translate cutter positions into the decoder's oriented
+coordinates: its acceptor score is attached to the first following CDS
+base, one oriented base after the cutter's last-intron-base mark.
+Duplicated start/stop positions shared by different genes count once;
+this explains why even yeast's all-site counts need not equal its loci.
+
+The surviving representatives are **not yet certified legal CRF targets**.
+There are 0 / 15 / 3 / 45 with a declared partial CDS end after the
+topology mask (0 / 17 / 3 / 51 before it). A partial end away from an
+actual sequence edge cannot simply receive section 3.1's edge-entry rule.
+Phase/translation consistency, recoding, short gaps and sequence ambiguity
+still need the declared grammar audit before Phase 4 fitting. Preserve
+these records as exceptions or unconstrained spans; never force an
+incompatible path into a numerator with zero compatible probability.
+The counts above isolate topology/isoform losses without claiming that
+these remaining checks have passed.
+
+**Quota comparison.** [Marx's independent audit][quota-note] reproduced
+section 4.3 and identified wasted per-group slots. Recomputing from the
+GFFs with perfect annotation-only tile ranking gives the following counts.
+All three policies receive the *identical* sum of per-group
+`floor(0.05*n/384)` slots; changing rounding is not part of this comparison.
+Pooling is an offline upper bound per (sequence, orientation), independent
+of candidate scores. The carried policy follows section 4.2 with zero
+initial credit; an eligible tile can be served only while its group is
+buffered.
+
+| Train species | Oracle CDS tiles | Served by old per-group rule | Served by carried credit | Served by offline pooling |
+|---|---:|---:|---:|---:|
+| S. cerevisiae | 28,385 | 2,950 (10.3928%) | 2,950 (10.3928%) | 2,950 (10.3928%) |
+| C. elegans | 126,770 | 24,336 (19.1970%) | 24,476 (19.3074%) | 24,480 (19.3106%) |
+| D. melanogaster | 91,376 | 26,776 (29.3031%) | 31,333 (34.2902%) | 32,929 (36.0368%) |
+| M. musculus | 284,713 | 168,501 (59.1828%) | 282,530 (99.2333%) | 284,700 (99.9954%) |
+
+For mouse, the two online policies have exactly 666,054 earned slots.
+Carrying credit changes where those slots can be spent; it neither
+increases alpha nor uses a whole-sequence stem/score buffer. Pooled mouse
+coverage rounds to 100% in the inbox note but leaves 13 tiles unserved
+under the exact per-sequence/orientation quota. The carried schedule
+leaves 2,183, reflecting its additional prefix-budget constraint. It
+cannot promise complete coverage or score-optimal spending in a real
+scan with false positives. Its forward direction is a declared property
+of the oriented schedule; test coordinate/strand mapping and sequence-edge
+sensitivity rather than assuming it ranks an entire chromosome globally.
+
+Dilating each annotated CDS block by 12 real bases on either side
+reproduces the inbox note's small oracle-density increase:
+
+| Train species | Flanked oracle tiles | Flanked allocated f | Served by old / carried / pooled quotas |
+|---|---:|---:|---:|
+| S. cerevisiae | 28,670 | 0.456010 | 2,950 / 2,950 / 2,950 |
+| C. elegans | 129,379 | 0.247732 | 24,340 / 24,476 / 24,480 |
+| D. melanogaster | 92,821 | 0.127057 | 26,844 / 31,348 / 32,937 |
+| M. musculus | 295,051 | 0.020765 | 170,880 / 292,587 / 295,036 |
+
+Those counts increase oracle allocated support by 1.0041% / 2.0581% /
+1.5814% / 3.6310% relative, computed from the two tile tables. Dilation of
+every CDS block is an oracle flank sensitivity, not the actual learned
+score-seed dilation in section 4.2. No alignment filtering, trained seed
+scores, held-out data or runtime measurements enter either table.
+
+**Reproduction.** The following read-only script uses the same cached
+paths as section 4.3, verifies GFF MD5s before parsing, asserts train-only
+membership and prints the counts above. It calls the existing selector
+and boundary helper, with the full CDS block list temporarily supplied
+as exons only for *CDS-boundary counting*. The longest-CDS selection uses
+the real full exon list. At this revision `scripts/data/cut_windows.py`
+has SHA-256
+`235af56d0a605b2b6bc560aa034c8a7e13fe56c0b8a25c1d77a89e40fab5a6ce`;
+the other two hashes remain those in section 4.3. All are printed.
+
+<!-- representative-quota-audit -->
+```python
+from collections import Counter, defaultdict
+from pathlib import Path
+import bisect, csv, gzip, hashlib, json, runpy, sys
+sys.dont_write_bytecode = True
+score = runpy.run_path("benchmark/score.py")
+cut = runpy.run_path("scripts/data/cut_windows.py")
+panel_path = Path("benchmark/panel.tsv")
+panel = {r["species"]: r for r in csv.DictReader(panel_path.open(), delimiter="\t")}
+for source in ("benchmark/score.py", "scripts/data/cut_windows.py", "benchmark/panel.tsv"):
+    print(json.dumps({"source": source, "sha256": hashlib.sha256(Path(source).read_bytes()).hexdigest()}), flush=True)
+
+def components(txs):
+    # Zero-based, half-open FULL CDS spans, grouped by sequence AND strand.
+    by = defaultdict(list)
+    for t in txs:
+        by[t["seqid"], t["strand"]].append(t)
+    masked, masks = set(), defaultdict(list)
+    for key, group in by.items():
+        members, lo, hi = [], None, None
+        for t in sorted(group, key=lambda t: (t["cds"][0][0], t["cds"][-1][1], t["id"])):
+            a, b = t["cds"][0][0], t["cds"][-1][1]
+            if members and a >= hi:
+                if len(members) > 1:
+                    masked.update(members); masks[key].append((lo, hi))
+                members, lo, hi = [], None, None
+            if not members:
+                lo, hi = a, b
+            members.append(t["id"]); hi = max(hi, b)
+        if len(members) > 1:
+            masked.update(members); masks[key].append((lo, hi))
+    return masked, masks
+
+def sites(txs):
+    # CDS-chain boundary convention, including short-gap exclusions.
+    out = set()
+    for t in txs:
+        cds_only = dict(t, exons=t["cds"])
+        out.update((t["seqid"], kind, strand, pos)
+                   for kind, strand, pos in cut["distinct_sites"]([cds_only])
+                   if kind in ("start", "stop", "donor", "acceptor"))
+    return out
+
+def count_sites(ss):
+    c = Counter(kind for sid, kind, strand, pos in ss)
+    return {kind: c[kind] for kind in ("start", "stop", "donor", "acceptor")}
+
+def load_txs(path, ann, chains):
+    # Keep scorer gene/sequence/strand namespacing; supplement full exon lengths
+    # and first appearance in GFF order for the cutter's real tie breakers.
+    extras = {}
+    with gzip.open(path, "rt") as fh:
+        for line_no, line in enumerate(fh):
+            if line.startswith("#"):
+                continue
+            f = line.rstrip("\n").split("\t")
+            if len(f) != 9:
+                continue
+            raw = (score["_attr"](f[8], "Parent") or score["_attr"](f[8], "transcript_id")) if f[2] in ("exon", "CDS") else (score["_attr"](f[8], "ID") or score["_attr"](f[8], "transcript_id"))
+            if not raw:
+                continue
+            ids = raw.split(",") if f[2] == "exon" else [raw.split(",")[0]]
+            for raw_id in ids:
+                tid = "\x00".join((f[0], f[6], raw_id))
+                if tid not in chains:
+                    continue
+                meta = extras.setdefault(tid, {"order": line_no, "exons": []})
+                if f[2] == "exon":
+                    meta["exons"].append((int(f[3])-1, int(f[4])))
+    assert set(extras) == set(chains), "missing GFF transcript order"
+    txs = []
+    for tid in sorted(chains, key=lambda tid: extras[tid]["order"]):
+        sid, strand, blocks = chains[tid]
+        cds = [(a-1, b) for a, b in blocks]
+        exons = sorted(extras[tid]["exons"])
+        assert exons, ("missing full exons for longest-cds tie breaker", tid)
+        txs.append(dict(id=tid, gene=ann.gene_of[tid], seqid=sid, strand=strand,
+                        start=exons[0][0], end=exons[-1][1], cds=cds, exons=exons,
+                        _partial5=tid in ann.partial5, _partial3=tid in ann.partial3))
+    return txs
+
+def tile_audit(txs, lengths, flank):
+    tiles = defaultdict(set)
+    for t in txs:
+        sid, strand = t["seqid"], t["strand"]
+        L = lengths[sid]
+        for a, b in t["cds"]:
+            a, b = max(0, a-flank), min(L, b+flank)
+            if strand == "-":
+                a, b = L-b, L-a
+            tiles[sid, strand].update(range(a//384, (b-1)//384+1))
+    served_local = served_carried = served_pooled = slots = groups_exceeding = 0
+    for sid, L in lengths.items():
+        for strand in ("+", "-"):
+            counts = Counter(t//256 for t in tiles[sid, strand])
+            credit = local = carried = qtotal = 0
+            for g, lo in enumerate(range(0, L, 98304)):
+                n = min(98304, L-lo)
+                q = n//7680  # exact floor(0.05*n/384)
+                demand = counts[g]
+                qtotal += q; local += min(q, demand)
+                credit += q
+                take = min(credit, demand)
+                carried += take; credit -= take
+                assert carried <= qtotal
+                groups_exceeding += int(demand > q)
+            served_local += local; served_carried += carried
+            served_pooled += min(qtotal, len(tiles[sid, strand]))
+            slots += qtotal
+    total = sum(map(len, tiles.values()))
+    return dict(flank=flank, tiles=total, oracle_f=384*total/(2*sum(lengths.values())),
+                slots=slots, served_local=served_local, served_carried=served_carried,
+                served_pooled=served_pooled, groups_over_local_quota=groups_exceeding)
+
+for sp in ("Saccharomyces_cerevisiae", "Caenorhabditis_elegans",
+           "Drosophila_melanogaster", "Mus_musculus"):
+    row = panel[sp]
+    assert row["split"] == "train"
+    path = Path("/tmp/bench007/data") / sp / (row["ftp_dir"] + "_genomic.gff.gz")
+    md5 = hashlib.md5(path.read_bytes()).hexdigest()
+    assert md5 == row["md5_gff"], (sp, md5)
+    ann = score["load_gff"](str(path))
+    seqids = score["select_seqids"](ann)
+    chains = score["select_transcripts"]({t:c for t,c in ann.chains().items() if c[0] in seqids}, ann)
+    txs = load_txs(path, ann, chains)
+    selected, dropped, fallback = cut["select_isoforms"](txs, "longest-cds")
+    assert not fallback
+    assert len(selected) == len(score["loci_of"](ann, chains, seqids))
+    masked, masks = components(selected)
+    retained = [t for t in selected if t["id"] not in masked]
+    assert not components(retained)[0]
+    all_sites, selected_sites, retained_sites = sites(txs), sites(selected), sites(retained)
+    assert retained_sites <= selected_sites <= all_sites
+    lengths = {sid:ann.seq_len[sid] for sid in seqids}
+    N = sum(lengths.values())
+    cds_bp_masked = sum(sum(b-a for a,b in t["cds"]) for t in selected if t["id"] in masked)
+    selected_cds_bp = sum(sum(b-a for a,b in t["cds"]) for t in selected)
+    starts = {key:[a for a,b in iv] for key,iv in masks.items()}
+    def in_mask(site):
+        sid, kind, strand, pos = site
+        key = sid, "+" if strand == 1 else "-"
+        i = bisect.bisect_right(starts.get(key, []), pos)-1
+        return i >= 0 and pos < masks[key][i][1]
+    result = dict(species=sp, md5_gff=md5, transcripts=len(txs), loci=len(selected),
+                  nonrepresentative_transcripts=len(dropped),
+                  overlapping_components=sum(map(len,masks.values())),
+                  masked_representatives=len(masked), retained_representatives=len(retained),
+                  mask_oriented_span_bp=sum(b-a for iv in masks.values() for a,b in iv),
+                  scored_oriented_bp=2*N, selected_cds_bp_sum=selected_cds_bp,
+                  masked_selected_cds_bp_sum=cds_bp_masked,
+                  all_sites=count_sites(all_sites), selected_sites=count_sites(selected_sites),
+                  retained_sites=count_sites(retained_sites),
+                  auxiliary_sites_in_mask=count_sites({s for s in all_sites if in_mask(s)}),
+                  selected_partial_transcripts=sum(t["_partial5"] or t["_partial3"] for t in selected),
+                  retained_partial_transcripts=sum(t["_partial5"] or t["_partial3"] for t in retained),
+                  quota=[tile_audit(txs,lengths,flank) for flank in (0,12)])
+    print(json.dumps(result,sort_keys=True),flush=True)
 ```
 
 ## 5. Candidate C: B's evidence with a splice graph
@@ -1040,19 +1362,20 @@ engineering question, not an accomplished optimization.
 ## 8. Work remaining before a review PR
 
 - Review the now-specified prefix-state decoder, duration recurrence,
-  partial-end rules and scratch/checkpoint accounting. Extend section 4.3's
-  annotation-topology bound to the actual longest-CDS training selection
-  and conflict masks, including retained loci and boundary supervision;
-  retain the Phase 4 correctness checks in section 3.4 as prerequisites
+  partial-end rules and scratch/checkpoint accounting. Sections 4.3 and
+  4.4 now quantify topology, longest-CDS selection, full-span conflict
+  masks and boundary supervision. Specify the remaining grammar-exception
+  handling, especially partial CDS ends inside sequences; retain the
+  Phase 4 correctness checks in section 3.4 as prerequisites
   to any encoder comparison, without implementing the prototype now.
 - A/B layer and token inventories are now explicit (sections 3.5, 4.1
   and 6). Review their fixed-grid/halo assumptions and streaming buffers;
   price non-matrix operations, decoder and I/O by measurement only after
   Phase 4 authorization. Specify C's edge scorer and an observable
   candidate/edge-density audit; its 1.20 M allocation remains a ceiling.
-- Review the now-specified score scan, bounded buffering and tile quota
-  (section 4.2). Threshold/alpha fitting and sequence-gate recall must wait
-  for the Phase 4 trained-A pilot; the annotation-only audit establishes
+- Review the now-specified score scan, bounded buffering and carried-credit
+  tile quota (sections 4.2 and 4.4). Threshold/alpha fitting and sequence-gate
+  recall must wait for the Phase 4 trained-A pilot; the annotation-only audit establishes
   neither. Preserve the distinction between gate targets, work bounds
   and measured runtime, including the sensitivities in section 6.1.
 - Turn this working artifact into `docs/design/proposal.md` on
@@ -1068,9 +1391,10 @@ NCBI genetic-code source was rechecked for the decoder revision. Only
 metadata and our own design notes are stored here. Decoder state counts,
 storage quantities, layer/tile inventories and example strings are our
 proposed specification and arithmetic, not implemented-model results.
-Section 4.3 separately reports reproducible measurements of cached training
-annotations, under the named scorer/panel hashes; they are not model accuracy
-measurements. The public axomeme page was rechecked in the fourth pass.
+Sections 4.3 and 4.4 separately report reproducible measurements of cached
+training annotations, under the named scorer/panel hashes; they are not model accuracy
+measurements. Section 4.4 also pins the cutter used for representative and
+boundary selection. The public axomeme page was rechecked in the fourth pass.
 
 [synthesis]: ../../../docs/review/candidates.md
 [geometry]: ../../../docs/review/disagreements.md#54-is-tree-as-metric-mathematically-well-posed
@@ -1083,3 +1407,4 @@ measurements. The public axomeme page was rechecked in the fourth pass.
 [graphormer]: https://arxiv.org/abs/2106.05234v5
 [rope]: https://arxiv.org/abs/2104.09864v5
 [axomeme]: https://github.com/nekrut/axomeme
+[quota-note]: ../../messages/20260915T035634Z-marx-0045.md
