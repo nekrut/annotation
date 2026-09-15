@@ -3,8 +3,9 @@
 Task: [T-human-011](../../tasks/T-human-011.md). Author: stalin.
 Written 2026-09-15 UTC against accepted main `09b5386` (claim `9239764`);
 decoder/resource revision against main `86abfc5`, then layer/tile accounting
-against main `f424eb7` later that day.
-Status: third bounded design pass, **in progress**. This is the working
+against main `f424eb7` later that day. Support/strand and annotation-topology
+audit against main `0899198` on the same date.
+Status: fourth bounded design pass, **in progress**. This is the working
 artifact for the eventual `docs/design/proposal.md`, not the submitted
 proposal or a Phase 4 implementation. Numerical architecture choices below
 are proposed settings; arithmetic is an estimate, not measured performance.
@@ -20,9 +21,12 @@ It follows the accepted [encoder/decoder ablation plan][synthesis].
 
 The recommendation is conditional on candidate coverage, geometry checks,
 and measured cost. The present arithmetic does **not** establish that B
-meets the CPU budget on gene-dense genomes. A fixed compute cap may disable
-comparative refinement on such genomes; that must be declared as a distinct
-input regime and evaluated, not hidden inside an aggregate.
+meets the CPU budget on gene-dense genomes. Declare A on CPU, B with capped
+support on CPU, and B with unrestricted support on GPU as separate regimes.
+The cap withholds comparative refinement from excess tiles; A still predicts
+those positions. Neither partial comparative support nor GPU matrix arithmetic
+establishes the end-to-end time target. Sections 4.2 and 6.1 make those
+distinctions explicit.
 
 ### Accepted evidence that constrains the design
 
@@ -439,8 +443,8 @@ comparison. Count CDS-base, exon, donor/acceptor and complete-chain support
 recall against development truth, including short/noncanonical cases.
 Report both the raw selected intervals and the actual emitted tokens
 after tile expansion, halos, padding, both strands and all frame hypotheses.
-Section 4.1 fixes the accounting geometry; the seed scan and its thresholds
-still require a training-development density/recall audit.
+Sections 4.1 and 4.2 fix the accounting geometry and proposed seed/cap rule;
+threshold fitting and its density/recall audit require a trained A in Phase 4.
 
 **Encoder.** Two axial blocks at width 32 act along local codon positions
 (32 attended neighbors) and taxa. Each block has separate site and taxon
@@ -487,7 +491,11 @@ Coordinate-wise RoPE does not automatically inherit rotational invariance
 of an MDS embedding. [RoFormer][rope] establishes rotary relative-position
 encoding, not invariance to arbitrary rotations of tree coordinates.
 The charter's [axomeme repository][axomeme] returned HTTP 404 during the initial
-design pass, so the actual Tree-RoPE implementation was not audited. Retain it
+design pass and again in this tick's public-page check (2026-09-15 UTC).
+Lenin independently reported the same result from another runner in
+[lenin-0040](../../messages/20260915T030649Z-lenin-0040.md). The actual
+Tree-RoPE implementation remains unaudited; the eventual decision must
+record this access gap. Retain it
 as a named comparison arm, contingent on an accessible implementation and
 either invariant operations or a stable canonical convention. Do not
 represent the distance-bias candidate as an implementation of Tree-RoPE.
@@ -576,19 +584,239 @@ CDS-base support, fully covered exons, donor/acceptor neighborhoods and
 whole-chain support, stratified by exon length, motif class and clade.
 Whole-chain comparative support means all its required coding/boundary
 positions are supported, not that the entire intron interior is selected.
-These counters are a required density/recall audit, not results obtained
-in this tick. The exact seed scan, threshold selection and density policy
-remain outstanding. In particular, this draft does not assume a scan can
-retain 5% allocated support on every genome with useful recall.
+The sequence-score counters remain a required Phase 4 density/recall audit.
+Section 4.3 now measures annotation-only tile requirements on four train
+species; those oracle counts are not a sequence candidate detector. This
+draft does not assume useful support recall at 5% allocation on every genome.
 
-The one-pass arithmetic assumes A's current core scores and stem features
-stay buffered while B refines its eight eligible cores in that orientation,
-then the combined
-11-channel emissions are spooled. A decision based on whole-genome A
-scores cannot be known at that time. Any global density-cap policy that
-first completes A must separately charge storage/reload of its stem and
-scores, or their regeneration. This dependency must be resolved before
-claiming a concrete CPU-capped inference schedule.
+The one-pass arithmetic assumes A's scores and stem features stay buffered
+until B refines that region, then the combined 11-channel emissions are
+spooled. Section 4.2 uses bounded groups to satisfy that dependency. A
+decision based on whole-genome A scores would instead require separate
+storage/reload of its stem and scores, or their regeneration; it is not
+part of the first schedule.
+
+### 4.2 A concrete streaming support rule and cap
+
+This is a proposed Phase 4 schedule, not a trained gate. Begin with A alone.
+At each oriented base define the local ranking score
+`s(t) = max_p emission_CDS[p,t] - emission_U[t]`. It is a score contrast,
+not a CRF marginal or a calibrated coding probability. Nominate bases with
+`s(t) >= tau`, dilate their intervals by 12 real bases on each side, then
+expand to the fixed 384-base cores. The dilation is a design setting.
+A tile's rank is the maximum seed score among seeds whose dilated interval
+intersects it; ties use increasing oriented coordinate. No minimum ORF or
+exon length, canonical motif, alignment coverage, tree, or KA/KS threshold
+is a hard eligibility condition. A supplies the only learned scan, already
+charged genome-wide; the subsequent max/threshold/dilation pass is
+non-neural work whose time must be counted. Separate motif/ORF seed unions
+would be additional, independently audited policies.
+
+Fit the single shared threshold on reserved chromosomes of train species
+only, with A frozen and before comparing tree arms. Proposed gate targets
+before applying a compute cap are at least 99% CDS-base support, 99% support
+of each donor/acceptor site's clipped 12-base flanks on each side, and 95%
+whole-CDS-chain support, macro-averaged over train development species.
+These percentages are design acceptance criteria, not observed recall.
+Display each species and the short-exon/noncanonical strata as well.
+Among thresholds satisfying all three, choose the one with the lowest
+allocated token count; if none does, the gate has failed its acceptance
+criterion. Do not relax the targets using held-out annotations. A remains
+the usable control, and a predeclared full-tile GPU arm can isolate whether
+the comparative encoder works when gate recall is removed as a variable.
+
+**Bounded buffering.** Group 32 consecutive A cores, hence 98,304 oriented
+bases and 256 B cores. Retain their fine stem and 11 score channels, obtain
+12 bases of right-hand score lookahead from the next A core, and carry
+12 scores of left-hand history. The next A core is computed once and kept
+for the next group. One group plus that entire lookahead A core reserves
+`(98_304 + 3_072) * (16 + 11) * 4 = 10_948_608` bytes for float32
+stem/scores, by this inventory. Rank/refine the current group's tiles,
+spool its combined emissions in coordinate order, and release its buffer.
+Process the opposite orientation separately. This does not require
+whole-chromosome A-score storage or neural regeneration. B's alignment
+halos can be fetched independently; charge their input buffers, packed
+tensors, activations, ranking arrays and I/O separately. The buffer
+arithmetic is not a total peak-memory measurement.
+
+**CPU cap.** Use a predeclared `alpha <= 0.05` and K <= 8. A group with n
+real bases in that orientation receives
+`q = floor(alpha*n/384)` tile slots; select at most q highest-ranked
+eligible tiles. Do not redistribute unused slots across groups or
+orientations and do not refill slots after alignment filtering. At the
+illustrative alpha = 0.05 a full group permits 12 of 256 tiles, a 0.046875
+allocated fraction. Summing q across groups and strands gives
+`384*sum(q)/(2*N) <= alpha`, including short terminal groups. Thus this
+bounds allocated B work under the stated K, halo and batch assumptions.
+Groups shorter than 7,680 real bases get no slots at that alpha; report
+this short-sequence fallback. Padding across batches must stay within K=8,
+and unselected tiles must never acquire residual outputs from neighbors'
+halos. The same tile choices are held fixed across tree arms.
+
+This bounds work, not elapsed time. Freeze alpha from a Phase 4 pilot
+that prices the full A/decoder/I/O path first; if A exhausts the CPU
+budget, a positive B quota cannot make that run compliant. Alpha = 0.05
+is an illustrative upper allocation, not an approved CPU runtime setting.
+Keep counters for eligibility, quota truncation, unavailable alignment,
+K=1 and final supported outputs, with raw and post-cap recall separately.
+Do not select or retry a cap using held-out accuracy. A timer-based cutoff
+would change predictions with machine/load and is not the first policy.
+
+**Separate benchmark rows.**
+
+| Declared regime | Comparative allocation | Interpretation |
+|---|---|---|
+| A-CPU | None | Common sequence/decoder control; measure its full CPU time. |
+| B-capped-CPU | Above ranked quota, frozen alpha, K<=8 | Partial comparative rescue; A supplies every omitted position. |
+| B-gated-GPU | All nominated tiles, fixed tau and K | Gate recall still limits comparative improvement. |
+| B-full-GPU | Every tile, fixed K | Removes seed/quota omissions; still limited by actual alignment. |
+
+GPU labels identify proposed execution regimes, not evidence of meeting
+0.5 s/Mb. In particular, a CPU-hosted chromosome decoder can dominate GPU
+end-to-end wall time. A dense genome need not become literally A-only
+under a positive cap: some tiles still receive B. Its capped result must
+not be reported as the unrestricted comparative result. Run the matched A
+control on GPU too when measuring comparative overhead on that device.
+
+### 4.3 Annotation-only support and single-path topology audit
+
+Measured locally in this tick from four cached **train** species' panel
+GFFs, verifying every `md5_gff` before parsing. This audit uses the accepted
+scorer's sequence and transcript filters, including the 10 kb sequence
+floor and declared pseudogene/biotype exclusions. Its denominators therefore
+need not equal all-primary-assembly counts in `cds_union.tsv`.
+All retained CDS-bearing chains are included, including partial ones that
+the scorer retains for structure metrics. No held-out annotation was
+opened for this audit; no threshold, weights or development split was fitted.
+
+For each retained CDS interval, select every 384-base core it intersects
+on its **own** orientation, with the reverse grid anchored at the reverse
+sequence origin. Count every tile once per strand. This is the minimum
+tile set covering these annotated CDS bases on this grid, before boundary
+flanks, alignment filtering, and false-positive sequence candidates.
+It is an oracle diagnostic, not a runnable prediction input or the cost
+of every possible sparse comparative model. Compute K=8 estimates from
+section 6 using its measured f; do not interpret them as timings.
+
+| Train species | Scored sequences / bp | Plus / minus CDS tiles | Oracle allocated f | Counted conditional B CPU-s/Mb |
+|---|---:|---:|---:|---:|
+| S. cerevisiae | 16 / 12,071,326 | 14,355 / 14,030 | 0.451476 | 36.528 |
+| C. elegans | 6 / 100,272,607 | 64,263 / 62,507 | 0.242737 | 23.207 |
+| D. melanogaster | 119 / 140,264,371 | 45,432 / 45,944 | 0.125079 | 15.698 |
+| M. musculus | 58 / 2,728,195,764 | 142,625 / 142,088 | 0.020037 | 8.994 |
+
+The first three exceed 15 conditional CPU-s/Mb from counted encoder work
+alone if every retained CDS must have comparative support. Mouse's oracle
+allocation leaves room only under that arithmetic; boundary flanks,
+false-positive candidates, poor alignment and omitted operations may remove
+it. These results are neither a guarantee of near-complete recall at a
+smaller cap nor a requirement that B refine every CDS to help accuracy.
+
+**Strand denominator correction.** The [cost baseline][cost] reports a
+physical-coordinate CDS union, whereas f divides orientation-specific
+allocated bases by **2N**. If U is the physical union and U+ and U- the two
+strand unions, then `U <= U+ + U- <= 2U`; before tile expansion the
+corresponding fraction lies between U/(2N) and U/N. Do not directly
+substitute its 72.35% yeast CDS union for f. In this filtered yeast audit
+the physical union is 8,726,635 bp and the summed oriented union is
+8,735,738 bp; tiling yields f=0.451476. The cost note's qualitative warning
+about dense genomes survives, but the conversion requires this strand
+accounting rather than an equality between physical CDS coverage and f.
+No unmeasured S. pombe coding fraction is needed.
+
+**Single-path topology.** Collapse identical (sequence, strand, CDS-block)
+chains, map each remaining chain to its full first-to-last-CDS span, and
+greedily pack intervals in increasing end order separately per sequence
+and strand. Earliest-finish interval scheduling gives the maximum number
+of pairwise non-overlapping spans: choosing an earlier finishing eligible
+span cannot remove a later choice available after a later finishing one.
+The CRF keeps its chain state through introns, so even a gene nested wholly
+inside a same-strand intron conflicts. This calculation deliberately
+ignores codon legality, partial-end restrictions and minimum gaps; it is
+an optimistic bound for simultaneously retaining all these reference
+chains with one path per strand.
+
+| Train species | Retained transcript IDs | Distinct CDS chains | Maximum non-overlapping distinct chains |
+|---|---:|---:|---:|
+| S. cerevisiae | 6,002 | 6,002 | 5,933 |
+| C. elegans | 28,590 | 28,590 | 20,081 |
+| D. melanogaster | 30,746 | 22,438 | 13,849 |
+| M. musculus | 97,324 | 68,828 | 22,436 |
+
+This is **not a ceiling on benchmark transcript F1**. The accepted scorer's
+`_transcripts` matches emitted isoforms within matched loci and does not
+count unused reference isoforms there as false negatives. Nor is the last
+column a count of distinct loci. The remaining training-label audit must
+apply the actual longest-CDS choice and conflict masks, then quantify lost
+loci and boundary supervision. Opposite-strand overlaps are already
+allowed by separate paths.
+
+**Reproduction.** Run the following read-only arithmetic/annotation audit
+from this checkout after placing the panel's named GFFs under
+`/tmp/bench007/data/<species>/` (the path used here). It emits the counts
+above plus hashes and union lengths; it stores no full text, sequence,
+model, or new data files. GFF checksums come from the panel. At this audit,
+`benchmark/score.py` SHA-256 was
+`c738514d1a3d6b73535c543acf8baa9e12d940ed607863182e027baa4096ea24`,
+and `benchmark/panel.tsv` SHA-256 was
+`c9fc2b6925ac10e94164a210e9edd62a8e0f45a4e79608e020e0531a2a9b9342`;
+the code prints both to expose a changed filter or panel.
+
+```python
+from collections import defaultdict
+from pathlib import Path
+import csv, hashlib, json, runpy
+
+score = runpy.run_path("benchmark/score.py")
+panel = {r["species"]: r for r in csv.DictReader(open("benchmark/panel.tsv"), delimiter="\t")}
+species = ["Saccharomyces_cerevisiae", "Caenorhabditis_elegans",
+           "Drosophila_melanogaster", "Mus_musculus"]
+print("score_sha256", hashlib.sha256(Path("benchmark/score.py").read_bytes()).hexdigest())
+print("panel_sha256", hashlib.sha256(Path("benchmark/panel.tsv").read_bytes()).hexdigest())
+for sp in species:
+    row = panel[sp]
+    assert row["split"] == "train"
+    path = Path("/tmp/bench007/data") / sp / (row["ftp_dir"] + "_genomic.gff.gz")
+    md5 = hashlib.md5(path.read_bytes()).hexdigest()
+    assert md5 == row["md5_gff"], (sp, md5)
+    ann = score["load_gff"](str(path))
+    seqids = score["select_seqids"](ann)
+    chains = score["select_transcripts"](
+        {t: c for t, c in ann.chains().items() if c[0] in seqids}, ann)
+    unique = set(chains.values())
+    N = sum(ann.seq_len[s] for s in seqids)
+    oriented, physical, spans = defaultdict(list), defaultdict(list), defaultdict(list)
+    tiles = {"+": set(), "-": set()}
+    for sid, strand, blocks in unique:
+        assert strand in tiles
+        L = ann.seq_len[sid]
+        spans[sid, strand].append((min(a for a, b in blocks), max(b for a, b in blocks)))
+        for lo, hi in blocks:
+            assert 1 <= lo <= hi <= L
+            oriented[sid, strand].append((lo, hi))
+            physical[sid].append((lo, hi))
+            a, b = (lo-1, hi) if strand == "+" else (L-hi, L-lo+1)
+            tiles[strand].update((sid, t) for t in range(a//384, (b-1)//384+1))
+    def union_bp(groups):
+        return sum(e-s+1 for iv in groups.values()
+                   for s, e in score["merge_intervals"](iv))
+    max_pack = 0
+    for intervals in spans.values():
+        last = 0
+        for lo, hi in sorted(intervals, key=lambda v: (v[1], v[0])):
+            if lo > last:
+                max_pack += 1
+                last = hi
+    f = 384 * sum(map(len, tiles.values())) / (2*N)
+    result = dict(species=sp, md5_gff=md5, scored_sequences=len(seqids), scored_bp=N,
+                  transcripts=len(chains), unique_CDS_chains=len(unique),
+                  physical_CDS_union_bp=union_bp(physical),
+                  oriented_CDS_union_bp=union_bp(oriented),
+                  plus_tiles=len(tiles["+"]), minus_tiles=len(tiles["-"]),
+                  oracle_CDS_allocated_f=f, B8_conditional_CPU_s_per_Mb=7.71535+1914.592*f/30,
+                  max_nonoverlapping_unique_chains=max_pack)
+    print(json.dumps(result, sort_keys=True), flush=True)
+```
 
 ## 5. Candidate C: B's evidence with a splice graph
 
@@ -731,6 +959,54 @@ host and 8 GB device for every candidate; tiling makes these plausible but
 does not establish a peak. CPU-only mode and missing-alignment mode are
 separate declared runs, using the same frozen model weights.
 
+### 6.1 Sensitivity to stem efficiency, decoding and scratch
+
+[Marx's cost note](../../messages/20260915T025415Z-marx-0044.md)
+identified three costs hidden by a common matrix-throughput divisor.
+The following independently recomputed scenarios expose their effect;
+the efficiency factors, cycle costs and bandwidth are **assumptions**,
+not measured or asserted typical values. Let eta be the stem's throughput
+relative to 30 GFLOP/s, c the average CPU cycles per counted decoder
+candidate, and v the sustained scratch bandwidth in decimal MB/s:
+
+`T_A = 218.892/30 + 12.5685/(30*eta) + (1.648/2.8)*c + 176/v`
+
+`T_B(K=8,f) = T_A + (1914.592/30)*f`.
+
+The 218.892 GFLOP/Mb term is the remainder of A after its 12.5685 stem;
+the candidate and traffic counts come from section 3.3. The 2.8 GHz clock
+is the named cost-baseline CPU, not a decoder throughput measurement.
+These are additive serial CPU scenarios, with v=500 below. They still
+omit nonlinearities, normalization, packing, donor buffers and other
+decoder operations, reading alignments, and output overhead; no entry is
+a full runtime forecast. More decoder successors at ambiguous bases are
+also absent from the canonical-input candidate count.
+
+| Stem eta | Cycles/candidate c | A conditional CPU-s/Mb | B at f=0.05 | Maximum f left under 15 s/Mb, before remaining omissions |
+|---|---:|---:|---:|---:|
+| 1 | 3 | 9.833064 | 13.024051 | 0.080961 |
+| 1 | 10 | 13.953064 | 17.144051 | 0.016405 |
+| 0.1 | 3 | 13.603614 | 16.794601 | 0.021880 |
+| 0.1 | 10 | 17.723614 | 20.914601 | None; A already exceeds target |
+| 1/30 | 3 | 21.982614 | 25.173601 | None; A already exceeds target |
+
+Reproduce each row with the two expressions above and
+`f_max = (15-T_A)*30/1914.592` when T_A <= 15. For example, decreasing
+the stem rate tenfold while assuming three cycles per candidate removes
+the 5% cap's conditional headroom. These scenarios justify measuring A's
+full execution first and retaining alpha=0 as an explicit fallback;
+they do not identify a feasible positive cap without that measurement.
+
+The portable CPU target in [cost] section 5.2 is 1/11 of AUGUSTUS's
+CPU-s/Mb on **S. pombe on the same machine**. It is not an 11-fold speedup
+promise for each genome: the baseline's human-chromosome-21 comparison
+is about 1.6-fold at the absolute ceiling. Preserve that denominator in
+the eventual proposal. On GPU, the dense K=8 counted encoder rate is
+0.214605 conditional GPU-s/Mb (section 6), but a serial host decoder
+plus synchronization and scratch cannot be inferred to fit the remaining
+wall time. GPU-resident decoding or a different decoder is a Phase 4
+engineering question, not an accomplished optimization.
+
 ## 7. Experiments specified for Phase 4
 
 1. Freeze data, candidate policy, decoder and training budget. Compare
@@ -764,8 +1040,9 @@ separate declared runs, using the same frozen model weights.
 ## 8. Work remaining before a review PR
 
 - Review the now-specified prefix-state decoder, duration recurrence,
-  partial-end rules and scratch/checkpoint accounting. Quantify which
-  overlapping transcripts the single-path training control cannot emit;
+  partial-end rules and scratch/checkpoint accounting. Extend section 4.3's
+  annotation-topology bound to the actual longest-CDS training selection
+  and conflict masks, including retained loci and boundary supervision;
   retain the Phase 4 correctness checks in section 3.4 as prerequisites
   to any encoder comparison, without implementing the prototype now.
 - A/B layer and token inventories are now explicit (sections 3.5, 4.1
@@ -773,10 +1050,11 @@ separate declared runs, using the same frozen model weights.
   price non-matrix operations, decoder and I/O by measurement only after
   Phase 4 authorization. Specify C's edge scorer and an observable
   candidate/edge-density audit; its 1.20 M allocation remains a ceiling.
-- Decide the exact non-neural support scan, density cap/fallback policy and
-  support-recall criteria on train development data. Use the explicit tile
-  counters, replacing the old 1.2 multiplier, and resolve any whole-genome
-  decision's need to buffer or regenerate A's scores and stem features.
+- Review the now-specified score scan, bounded buffering and tile quota
+  (section 4.2). Threshold/alpha fitting and sequence-gate recall must wait
+  for the Phase 4 trained-A pilot; the annotation-only audit establishes
+  neither. Preserve the distinction between gate targets, work bounds
+  and measured runtime, including the sensitivities in section 6.1.
 - Turn this working artifact into `docs/design/proposal.md` on
   `work/T-human-011-stalin`, open a PR, request reviews from at least two
   other agents through relay, and send the final ranked proposal to human
@@ -789,8 +1067,10 @@ External sources were read through public pages on 2026-09-15 UTC; the
 NCBI genetic-code source was rechecked for the decoder revision. Only
 metadata and our own design notes are stored here. Decoder state counts,
 storage quantities, layer/tile inventories and example strings are our
-proposed specification and arithmetic, not biological measurements or
-implemented-model results.
+proposed specification and arithmetic, not implemented-model results.
+Section 4.3 separately reports reproducible measurements of cached training
+annotations, under the named scorer/panel hashes; they are not model accuracy
+measurements. The public axomeme page was rechecked in the fourth pass.
 
 [synthesis]: ../../../docs/review/candidates.md
 [geometry]: ../../../docs/review/disagreements.md#54-is-tree-as-metric-mathematically-well-posed
