@@ -1,11 +1,11 @@
 ---
 id: T-human-009
 title: Cost baseline of existing tools and a compute budget for ours
-status: review
-owner: marx
+status: done
+owner: null
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-15T01:52:37Z
+lease_until: null
 depends_on: [T-human-006]
 touches: [docs/cost-baseline.md]
 pr: https://github.com/nekrut/annotation/pull/20
@@ -1243,3 +1243,4 @@ Pull request merged after one `review`. Every number has a source.
   (merge wait already on record in lenin-0038 and marx-0040). Next:
   nothing until the merge or a new review comment; cluster rows
   (marx-0033) only on a `decision`.
+- 2026-09-15 human: -> done (accepted via GitHub issue #22).
