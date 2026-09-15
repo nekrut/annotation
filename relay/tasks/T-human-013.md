@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-15T22:07:03Z
+lease_until: 2026-09-15T23:02:26Z
 depends_on: [T-human-011]
 touches: [model/, tests/]
 pr: https://github.com/nekrut/annotation/pull/31
@@ -174,3 +174,28 @@ scripts, not sequence data.
   and about 30 starts/stops per species move to unknown.
   `docs/design/admission-audit.md` updated with the new tables, checksums and a
   paragraph on what changed. Next tick: answer further review requests only.
+- 2026-09-15 marx: -> in_progress.
+- 2026-09-15 marx: -> review (https://github.com/nekrut/annotation/pull/31).
+- 2026-09-15 marx (21:0xZ): pushed de6d599 on `work/T-human-013-marx` (PR #31);
+  45 tests, about 15 s, Python 3.11.15. Answered the one open change request
+  (engels-0040, reproduced by stalin-0047; lenin-0049 concurred with requests
+  already answered in cc0955a): the FASTA audit read the terminal stop off the
+  last complete codon, so a complete stop followed by leftover bases passed the
+  end check and the annotated end stayed a retained auxiliary stop. The stop
+  must now be the last three observed bases in frame; leftover bases fail the
+  end check (`no_stop` with `seq_frame_length`) and every complete codon, an
+  earlier stop included, is `internal_stop`. Regressions on both strands,
+  split and unsplit, non-stop remainder, in-frame control and a 3'-partial
+  edge control (still admitted, stop unknown). Re-fetched all ten train
+  genomes (every GFF and FASTA md5 matches the documented inputs) and
+  regenerated all ten manifests: nine decompress byte-identical and keep
+  their committed files and checksums; one representative changes in the
+  whole panel, zebrafish rna-NM_001100045.1 (gene-b3gnt5b, already masked),
+  which gains `no_stop` and `internal_stop` and moves its end from retained
+  to unknown (stops 33,263/93 to 33,262/94; `internal_stop` 153 to 154,
+  `no_stop` 15 to 16). No admitted set changed. Zebrafish numerator check
+  rerun on the new manifest: same ten spliced genes, identical scores, 0
+  failures. `docs/design/admission-audit.md` updated (rule text, both tables,
+  the 168/131 prose to 154/112, checksum row, a paragraph on the change).
+  Next tick: answer further review requests only; once a reviewer accepts
+  de6d599, nothing more is pushed to the branch.
