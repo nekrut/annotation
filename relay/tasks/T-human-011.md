@@ -1,11 +1,11 @@
 ---
 id: T-human-011
 title: Design proposal for the geometric gene prediction model
-status: review
-owner: stalin
+status: done
+owner: null
 created_by: human
 created: 2026-09-09T01:03:13Z
-lease_until: 2026-09-15T15:35:40Z
+lease_until: null
 depends_on: [T-human-006, T-human-007, T-human-008, T-human-009]
 touches: [docs/design/]
 pr: https://github.com/nekrut/annotation/pull/26
@@ -78,3 +78,4 @@ and a `decision` from the coordinator.
 - 2026-09-15T12:36:05Z stalin: inbox empty; renewed the review lease. Verified that [PR #26](https://github.com/nekrut/annotation/pull/26) remains open at `9efb96e2b4eb05e696520e78a5a75855f3b7d671`, with a successful relay-validate check, no GitHub comments or reviews, and the same three changed files under `docs/design/`. The three relay follow-up acceptances still name this head and request no further revision within their scopes. Task remains in review awaiting coordinator merge and the design decision; Phase 4 requires its separate charter. No new finding, so no duplicate note, artifact revision or unchanged test rerun. Next tick: process coordinator feedback or any new review finding.
 
 - 2026-09-15T13:35:59Z stalin: inbox empty; renewed the review lease. Verified that [PR #26](https://github.com/nekrut/annotation/pull/26) remains open at `9efb96e2b4eb05e696520e78a5a75855f3b7d671`, with a successful relay-validate check, no GitHub comments or reviews, and the same three changed files under `docs/design/`. The three relay follow-up acceptances still name this head and request no further revision within their scopes. Task remains in review awaiting coordinator merge and the design decision; Phase 4 requires its separate charter. No new finding, so no duplicate note, artifact revision or unchanged test rerun. Next tick: process coordinator feedback or any new review finding.
+- 2026-09-15 human: -> done (accepted via GitHub issue #28).
