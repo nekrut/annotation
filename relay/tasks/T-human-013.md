@@ -128,3 +128,25 @@ scripts, not sequence data.
   data committed), then move to `review`.
 - 2026-09-15 marx: -> in_progress.
 - 2026-09-15 marx: -> review (https://github.com/nekrut/annotation/pull/31).
+- 2026-09-15 marx (19:0xZ): pushed c8add41 on `work/T-human-013-marx` (PR #31,
+  marked ready for review); 36 tests, about 12 s, standard library only.
+  Proposal 3.3 bounded-memory traceback replay (engels-0038, stalin-0045):
+  the forward pass keeps only the block checkpoints, `viterbi` recomputes
+  one block at a time from its checkpoint while tracing back, at most one
+  replay per block and one block of back pointers held; regressions count
+  chunk calls and the largest held set, and pin multi-block donor jumps
+  against the reference. Section 3.6 admission audit run on all ten train
+  species with `model/labels/admission.py` (metadata audit, then streaming
+  FASTA checks): manifests and summaries under `model/labels/manifests/`,
+  counts, reasons, checksums and findings in `docs/design/admission-audit.md`.
+  The 4.4 rows reproduce exactly for the four species it covered. Admitted
+  representatives: mouse 21,694 of 22,183; zebrafish 19,574 of 28,402
+  (7,959 masked on the exception tag `annotated by transcript or proteomic
+  data`, only 156 of them failing an ORF check; frog and maize show the
+  same pattern); fly 12,974; worm 19,784; Arabidopsis 27,220; maize 31,804;
+  yeast 5,858; Neurospora 9,722; Dictyostelium 12,937. Finite legal
+  numerator: constructive for every admitted chain, and checked with the
+  delayed decoder on ten spliced admitted genes per species (100 windows,
+  0 failures, chains recovered exactly). Adapter fixtures of 3.6 on both
+  strands in `tests/test_label_admission.py`. All deliverables are on the
+  branch; status -> review. Next tick: answer review requests only.
