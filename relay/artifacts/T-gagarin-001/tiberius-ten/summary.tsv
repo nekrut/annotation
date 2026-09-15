@@ -1,0 +1,7 @@
+species	model_cfg	genome_mb	exit	wall_s	cpu_user_s	cpu_sys_s	peak_rss_mb	peak_gpu_mem_mb	genes	batch_size
+Saccharomyces_cerevisiae	fungi	12.1571	0	73.6	78.50	12.10	6029	22323	5617	8
+Schizosaccharomyces_pombe	fungi	12.5913	0	77.5	82.93	12.49	5517	22323	4976	8
+Neurospora_crassa	fungi	41.1024	0	155.6	169.42	25.26	12377	22323	9075	8
+Drosophila_melanogaster	insecta	143.7260	0	707.0	953.57	135.64	26749	22323	15966	8
+Apis_mellifera	insecta	225.2509	0	654.8	724.13	129.89	26756	22323	14509	8
+Takifugu_rubripes	vertebrates	384.1102	0	1263.4	1327.40	245.42	27133	22323	23951	8

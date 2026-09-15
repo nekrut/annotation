@@ -1,0 +1,5 @@
+model name	: Intel(R) Xeon(R) W-2255 CPU @ 3.70GHz
+8
+               total        used        free      shared  buff/cache   available
+Mem:             247           6           3           0         238         240
+apptainer version 1.4.5

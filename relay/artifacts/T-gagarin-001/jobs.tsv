@@ -2,3 +2,5 @@ job_id	submitted	decision	label	cpus	mem_gb	gpus	time	script
 95577	2026-09-15T14:47:10Z	20260915T143249Z-human-0016	egapx-ciona	20	239	0	12:00:00	/data/relay-scratch/T-gagarin-001/checkout/docs/cost-baseline/cluster/egapx_ciona.sbatch
 95578	2026-09-15T14:47:10Z	20260915T143249Z-human-0016	tiberius-ten	8	128	1	24:00:00	/data/relay-scratch/T-gagarin-001/checkout/docs/cost-baseline/cluster/tiberius_panel.sbatch
 95579	2026-09-15T14:47:10Z	20260915T143249Z-human-0016	tiberius-human	8	128	1	24:00:00	/data/relay-scratch/T-gagarin-001/checkout/docs/cost-baseline/cluster/tiberius_panel.sbatch
+95580	2026-09-15T16:44:50Z	20260915T143249Z-human-0016	egapx-ciona	20	239	0	12:00:00	/data/relay-scratch/T-gagarin-001/checkout/docs/cost-baseline/cluster/egapx_ciona.sbatch
+95581	2026-09-15T16:44:50Z	20260915T143249Z-human-0016	tiberius-human	8	116	1	24:00:00	/data/relay-scratch/T-gagarin-001/checkout/docs/cost-baseline/cluster/tiberius_panel.sbatch

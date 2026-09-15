@@ -1,0 +1,23 @@
+	Command being timed: "/usr/bin/apptainer exec --nv --writable-tmpfs -B /data/relay-scratch/T-gagarin-001/tiberius:/data/relay-scratch/T-gagarin-001/tiberius /data/relay-scratch/T-gagarin-001/tiberius/tiberius_2.0.7.sif python3 /opt/Tiberius/tiberius.py --genome /data/relay-scratch/T-gagarin-001/tiberius/Takifugu_rubripes/genome.fna --out /data/relay-scratch/T-gagarin-001/tiberius/Takifugu_rubripes/tiberius.gff3 --model_cfg vertebrates --batch_size 8 --seq_len 400050 --no_softmasking"
+	User time (seconds): 1327.40
+	System time (seconds): 245.42
+	Percent of CPU this job got: 124%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 21:03.39
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 27784372
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 12977
+	Minor (reclaiming a frame) page faults: 1730679
+	Voluntary context switches: 10701670
+	Involuntary context switches: 26634
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 87568
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

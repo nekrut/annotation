@@ -5,7 +5,7 @@ status: in_progress
 owner: gagarin
 created_by: gagarin
 created: 2026-09-15T14:46:09Z
-lease_until: 2026-09-15T17:43:09Z
+lease_until: 2026-09-15T18:46:00Z
 depends_on: [T-human-009]
 touches: []
 pr: null
@@ -35,9 +35,9 @@ under scratch, user-level, with `JAVA_HOME` and `PATH` set inside the job;
 if staging fails, block and ask; Tiberius jobs proceed regardless; return
 summary files and usage with a `note` on T-human-009.
 
-Scratch: `/data/relay-scratch/T-gagarin-001/` (`checkout/` = acd5db5,
+Scratch: `/data/relay-scratch/T-gagarin-001/` (`checkout/` = 0be4b1d since 16:44Z, acd5db5 before,
 `tools/jdk` = Temurin 21.0.12.1, `tools/nextflow` = Nextflow 24.10.5 dist,
-`egapx/`, `tiberius/`). Slurm stdout/stderr: `/data/relay-scratch/T-gagarin-001/<jobid>.{out,err}`.
+`egapx/`, `tiberius/`, `tiberius-human/`). Slurm stdout/stderr: `/data/relay-scratch/T-gagarin-001/<jobid>.{out,err}`.
 
 ## Definition of done
 
@@ -56,3 +56,6 @@ awaiting a decision.
 - 2026-09-15T14:48Z gagarin: job 95578 tiberius-ten RUNNING on node03 since 14:47Z; job 95579 tiberius-human PENDING (Resources: needs node03). Lease renewed.
 - 2026-09-15T15:43Z gagarin: job 95578 tiberius-ten RUNNING on node03 (55 min elapsed of 24 h; 8 CPU, 128 GB, 1 GPU). 5 of 10 species done, all exit 0 (S. cerevisiae 74 s, S. pombe 78 s, N. crassa 156 s, D. melanogaster 707 s, A. mellifera 655 s; peak RSS 5.5 to 26.8 GB; GPU 22.3 GB); T. rubripes in progress. Job 95579 tiberius-human still PENDING (Resources, waits for node03). `cluster-run.sh status` reports `unknown` for all three (sacct disabled); state taken from squeue/scontrol. Lease renewed.
 - 2026-09-15T15:43Z gagarin: read marx-0050 (note): egapx_ciona.sbatch rewritten at 0be4b1d on work/T-human-009-marx to not need ensurepip, and 116 GB on node02 is acceptable to the requester for tiberius-human. No new decision from human on gagarin-0003, so nothing resubmitted; egapx-ciona stays failed pending a decision. Push via SSH failed this tick (no ssh-agent in the runner shell); pushed over HTTPS with the gh credential helper instead.
+- 2026-09-15T16:44Z gagarin: human-0017 (answer to gagarin-0003, within the grant of decision human-0016) authorised both deviations: resubmit egapx-ciona from work/T-human-009-marx at 0be4b1d at the same limits, and cancel 95579 to resubmit tiberius-human at 116 GB on node02. Deviation 1: `checkout/` advanced acd5db5 -> 0be4b1d (whole-tree diff is only `docs/cost-baseline/cluster/{README.md,REQUEST.md,egapx_ciona.sbatch}`, so the running tiberius-ten job, which reads `benchmark/` from the same checkout, is unaffected). Removed the half-made `egapx/venv`. Submitted job 95580 egapx-ciona (20 CPU, 239 GB, 0 GPU, 12:00:00, `<checkout> egapx/`), JAVA_HOME and PATH (jdk, nextflow) and NXF_HOME propagated as before. It is PENDING (Resources) behind tiberius-ten: 239 GB only fits node03, which holds 128 GB for 95578, so EGAPx starts when the ten-species job ends.
+- 2026-09-15T16:44Z gagarin: Deviation 2: cancelled 95579 (was PENDING, never started) and submitted job 95581 tiberius-human (8 CPU, 116 GB, 1 GPU, 24:00:00). The request's "(same dir)" was not followed: `tiberius_panel.sbatch` truncates `return/summary.tsv` at start, so a concurrent run in `tiberius/` would have wiped the ten-species rows. It runs in `tiberius-human/` with the 14.7 GB image and the three weight tarballs hardlinked from `tiberius/` (script skips the pull when the files exist; checksums are recomputed into its own `return/`). Backfilled onto node02 at 16:45Z (AllocTRES cpu=8,mem=116G, node02's GPU); its `return/` is being written under `/data`, so the NFS mount on node02 is live (ssh to node02 is not possible from this runner shell; the nfsd client list on head also shows node02 connected).
+- 2026-09-15T16:46Z gagarin: job 95578 tiberius-ten RUNNING on node03 (1 h 58 min elapsed). 6 of 10 species done, all exit 0 (T. rubripes 1263 s, peak RSS 27.1 GB, GPU 22.3 GB); G. gallus in progress since 15:59Z; D. rerio, X. tropicalis, M. musculus remain. Partial return files (all species finished so far, 232 KB) copied to `relay/artifacts/T-gagarin-001/tiberius-ten/` so marx can start folding; the directory is refreshed in place on later ticks. Lease renewed to 18:46Z.
