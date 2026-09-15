@@ -15,10 +15,13 @@ genome sizes, and GC content without per-clade retraining.
 
 The project has two halves. First, a rigorous evaluation of what exists:
 methods, data, and their real costs. Second, a design and prototype of the
-new model, informed by that evaluation. Finished for this charter means the
-Phase 1 to Phase 3 deliverables below are merged and the coordinator has
-issued a `decision` selecting a model design to prototype. Prototyping is
-Phase 4 and will get its own charter revision.
+new model, informed by that evaluation. Phases 1 to 3 are merged and the
+coordinator's decision of 2026-09-15 selected the design: candidate B of
+`docs/design/proposal.md` (a narrow comparative refinement over a shared
+DNA model A), with A implemented and measured first and the splice graph C
+deferred. Phase 4 below is the prototype. Finished for this charter means
+the Phase 4 deliverables are merged and the coordinator has issued a
+`decision` on T-human-016, the encoder comparison.
 
 ## Background the agents should start from
 
@@ -57,10 +60,13 @@ Phase 4 and will get its own charter revision.
   a benchmark with held-out species across clades; cost baselines of
   existing tools; simple comparative baselines; design of the new model;
   a decision on what to prototype.
+- In scope from Phase 4: implementing candidates A and B as specified in
+  `docs/design/proposal.md`, training them on the train species of the
+  panel within the Phase 4 budget, and the controlled encoder comparison.
 - Out of scope for this charter: functional annotation, non-coding RNA
   genes, organelle genomes, genome assembly, building a production
-  pipeline, and training a large model. A prototype is Phase 4, after a
-  `decision`.
+  pipeline, training beyond the Phase 4 budget, and any model over the
+  5 M parameter cap.
 
 ## Deliverables
 
@@ -95,6 +101,26 @@ Phase 3, design:
    training data plan, expected failure modes, and a recommendation. Ends
    with a `proposal` message to `human` requesting a `decision`.
 
+Phase 4, prototype (the milestones of `docs/design/proposal.md` section 8,
+in order; each depends on the one before):
+
+8. `model/grammar/` and `docs/design/admission-audit.md` (T-human-013):
+   the label admission audit on the train panel and the reference and
+   delayed-entry decoders for A, with the proposal's acceptance cases as
+   tests.
+9. `model/a/` and `docs/design/a-pilot.md` (T-human-014): candidate A
+   trained on train development chromosomes and measured end to end in
+   both regimes against the accepted budgets. Ends with a coordinator
+   `decision` on whether A meets the budget.
+10. `model/b/` and `docs/design/b-support.md` (T-human-015): B's residual
+    over frozen A, with the support policy fitted from measured cost.
+11. `docs/results/encoder-comparison.md` (T-human-016): the controlled
+    comparison of DNA-only, MSA without tree, tree tokens and patristic
+    bias on the held-out panel, with the KA/KS floor and the strongest
+    external tool in the same table. Ends with a `proposal` to `human`.
+12. `docs/design/c-admission.md` (T-human-017): the splice graph metered
+    and, if admitted under the cap, fitted and compared.
+
 ## Constraints
 
 - Literature access: use open sources only (PubMed Central OA, Europe PMC,
@@ -106,6 +132,17 @@ Phase 3, design:
 - Code: Python 3.11, dependencies declared in `pyproject.toml`; PyTorch for
   models. Adding a dependency outside the standard scientific stack needs
   a `proposal`.
+- Phase 4 training budget: models stay under 5 M parameters and 8 GB
+  memory. Fitting uses the train species only, with checkpoints selected
+  on train development chromosomes; `benchmark/leakage_check.py` runs
+  before every held-out evaluation. Compute is capped per task, all of it
+  through gagarin: T-human-014 at most 24 GPU-hours, T-human-015 at most
+  24, T-human-016 at most 96, T-human-017 at most 24, and at most 200
+  GPU-hours for Phase 4 in total; one request per task may exceed 24 h
+  wall clock only with a `decision` saying so. Sampled bases and repeats
+  per fitting run are declared in the run manifest before the run.
+  Actual usage is recorded in the task log after every run. The
+  coordinator revises these caps after the T-human-014 pilot.
 - Compute: by default everything in Phases 1 to 3 runs on a laptop or one
   consumer GPU. Cluster access is available on request through the
   executor agent `gagarin` (a Slurm cluster with two 24 GB A5000 GPUs and
@@ -133,13 +170,20 @@ Phase 3, design:
    can proceed in parallel.
 4. Cost baseline and KA/KS baseline (T-human-009, T-human-010).
 5. Design proposal (T-human-011).
+6. Phase 4 in milestone order: T-human-013, then 014, 015, 016, 017. Each
+   depends on the previous one's merge. While one agent owns the current
+   milestone, the others review its pull request, reproduce its numbers,
+   or prepare the next milestone's data and scripts on their own branches
+   without claiming it.
 
 Among open tasks, prefer the one that unblocks the most others.
 
 ## Review and acceptance
 
 A task moves to `done` when the coordinator merges its pull request after
-at least one `review` message from an agent other than the owner. Review
+at least one `review` message from an agent other than the owner; Phase 4
+tasks T-human-014 and T-human-016 need two, because later work depends on
+their measurements. Review
 artifacts under `relay/artifacts/` do not need a pull request; the owner
 moves the task to `review` and the coordinator marks it `done`.
 
