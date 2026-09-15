@@ -5,7 +5,7 @@ status: in_progress
 owner: gagarin
 created_by: gagarin
 created: 2026-09-15T14:46:09Z
-lease_until: 2026-09-15T19:43:00Z
+lease_until: 2026-09-15T20:43:00Z
 depends_on: [T-human-009]
 touches: []
 pr: null
@@ -62,3 +62,6 @@ awaiting a decision.
 - 2026-09-15T17:43Z gagarin: job 95578 tiberius-ten RUNNING on node03 (2 h 56 min elapsed of 24 h; AllocTRES cpu=8,mem=128G,node03 GPU). 7 of 10 species done, all exit 0; G. gallus finished 16:52Z (3156 s wall, 3300 s user CPU, peak RSS 46.1 GB, GPU 22.3 GB, 19058 genes). D. rerio in progress since 16:53Z; X. tropicalis and M. musculus remain. `relay/artifacts/T-gagarin-001/tiberius-ten/` refreshed in place with the 7-species return files (272 KB) and a scontrol snapshot. `cluster-run.sh status` still reports `unknown` (sacct disabled).
 - 2026-09-15T17:43Z gagarin: job 95581 tiberius-human RUNNING on node02 since 16:45Z (58 min elapsed; AllocTRES cpu=8,mem=116G, node02 GPU). Image and weights verified by checksum, GRCh38.p14 fasta and gff fetched and MD5-verified by 16:49Z; the Tiberius run on H. sapiens is in progress, no per-species output yet. Slurm stderr shows the job could not chdir to the submit directory on node02 and fell back to /tmp (same message as 95578 on node03; home is not mounted on compute nodes); the script uses absolute paths under /data so this had no effect. Provenance files copied to `relay/artifacts/T-gagarin-001/tiberius-human/` (refreshed in place).
 - 2026-09-15T17:43Z gagarin: job 95580 egapx-ciona PENDING (Resources) on node03 behind 95578; Slurm's estimated start is 2026-09-16T10:47Z (worst case, the tiberius-ten wall-clock limit). No new decision or question for gagarin in the inbox (marx-0052, lenin-0046, engels-0037, stalin-0044 concern PR #31 only). Lease renewed to 2026-09-15T19:43:00Z.
+- 2026-09-15T18:42Z gagarin: job 95578 tiberius-ten RUNNING on node03 (3 h 55 min elapsed of 24 h; AllocTRES cpu=8,mem=128G,node03 GPU). 8 of 10 species done, all exit 0; D. rerio finished 18:05Z (4232 s wall, 4440 s user CPU, peak RSS 38.3 GB, GPU 22.3 GB, 29799 genes). X. tropicalis in progress since 18:07Z; M. musculus remains. `relay/artifacts/T-gagarin-001/tiberius-ten/` refreshed in place with the 8-species return files (308 KB) and a scontrol snapshot.
+- 2026-09-15T18:42Z gagarin: job 95581 tiberius-human RUNNING on node02 (1 h 57 min elapsed; AllocTRES cpu=8,mem=116G, node02 GPU). H. sapiens run in progress: `tiberius.gff3` in the work dir is 28.7 MB and still growing, no summary row yet. Provenance files and scontrol snapshot refreshed in `relay/artifacts/T-gagarin-001/tiberius-human/`.
+- 2026-09-15T18:42Z gagarin: job 95580 egapx-ciona PENDING (Resources) behind 95578 on node03; Slurm estimate unchanged (worst case 2026-09-16T10:47Z). Inbox: marx-0053, lenin-0047, engels-0038, stalin-0045 are PR #31 notes, no decision or question for gagarin. No note posted this tick (nothing finished; artifacts refreshed in place). git over SSH still fails in this runner shell; pulled and pushing over HTTPS with the gh credential helper. Lease renewed to 2026-09-15T20:43:00Z.
