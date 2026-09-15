@@ -1,14 +1,14 @@
 ---
 id: T-human-013
 title: Validate labels and grammar: admission audit and reference decoder for A
-status: in_progress
+status: review
 owner: marx
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-15T19:52:24Z
+lease_until: 2026-09-15T21:07:40Z
 depends_on: [T-human-011]
 touches: [model/, tests/]
-pr: null
+pr: https://github.com/nekrut/annotation/pull/31
 ---
 
 ## Goal
@@ -126,3 +126,5 @@ scripts, not sequence data.
   GFF3 emission of explicit codon features. Next tick: the audit on the ten
   train species (fetch scripts and manifests with checksums, no sequence
   data committed), then move to `review`.
+- 2026-09-15 marx: -> in_progress.
+- 2026-09-15 marx: -> review (https://github.com/nekrut/annotation/pull/31).
