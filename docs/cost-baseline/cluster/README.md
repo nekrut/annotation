@@ -14,6 +14,7 @@ text under `<scratch>/return/`.
 | `inputs.tsv` | the twelve assemblies (genome FASTA and RefSeq GFF each): NCBI URL, size in bytes, and the MD5 NCBI publishes in `md5checksums.txt`, read 2026-09-15. `benchmark/fetch.py` verifies these on download; the jobs record SHA-256 after download in `return/inputs.sha256` |
 | `egapx_ciona.sbatch` | EGAPx v1.0 on *Ciona intestinalis* (140 Mb, `heldout`), genome and taxid only, one node, Nextflow local executor under `-e singularity`; per-process CPU and memory labels capped to the node; driver timed with GNU time, workers through the Nextflow trace; scored with `benchmark/score.py` |
 | `tiberius_panel.sbatch` | Tiberius 2.0.7 (the image digest pinned in `benchmark/validation/`) on the panel species the `vertebrates`, `insecta` and `fungi` models cover, one GPU, batch 8, chunk 400,050, softmasking off; each species timed with GNU time and `nvidia-smi` sampled every 5 s; scored per species |
+| `fold_returns.py` | folds what `gagarin` returns under `relay/artifacts/T-gagarin-001/<label>/` (each `summary.tsv`, the scorer JSON beside it, `usage.txt`, `jobs.tsv`) into `docs/cost-baseline/measured.tsv`, keyed by tool and species so reruns replace rows; `--markdown` prints the same rows in the layout of section 3.2; non-zero exit rows are reported and left out unless `--include-failed` |
 | `summarize_trace.py` | folds a Nextflow trace and a GNU time file into one `measured.tsv`-style row (CPU-s from `realtime x %cpu` over tasks and from user+sys on the driver; peak RSS as the largest task) |
 | `declarations/` | the section 3.3 declaration for each run, `heldout_seen_in_pretraining` taken from the model configs' literal `training_species` lists at Tiberius commit `c6d92f2` (yes for *M. musculus*, *A. mellifera* and the three fungi; no for the other six), and for EGAPx marked `yes` because its taxon-matched protein sets are not filtered for the target |
 
@@ -49,9 +50,11 @@ other ten. *Ciona intestinalis* (0.14 Gb) is the EGAPx genome.
   and a stderr tail per species, `tiberius-<species>.json` and declaration per
   scored species, `inputs.sha256`, `image.sha256`, `weights.sha256`, `gpu.txt`.
 
-The rows go into `docs/cost-baseline/measured.tsv` and section 3 of
-`docs/cost-baseline.md`, with the actual CPU-hours and GPU-hours in the task
-log, as the charter's Compute paragraph asks.
+The rows go into `docs/cost-baseline/measured.tsv` (through `fold_returns.py`,
+which added the `tool` and `peak_gpu_mem_mb` columns; the AUGUSTUS rows are
+unchanged under `tool=augustus`) and section 3 of `docs/cost-baseline.md`,
+with the actual CPU-hours and GPU-hours in the task log, as the charter's
+Compute paragraph asks.
 
 ## Known risks, one attempt each
 
