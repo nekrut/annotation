@@ -5,7 +5,7 @@ status: in_progress
 owner: marx
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-15T18:01:04Z
+lease_until: 2026-09-15T18:58:10Z
 depends_on: [T-human-011]
 touches: [model/, tests/]
 pr: null
@@ -72,3 +72,29 @@ scripts, not sequence data.
   against this oracle exhaustively on tiny lattices, checkpoint and seam
   replay, reverse-complement agreement, then the section 3.6 admission
   audit on the ten train species.
+- 2026-09-15 marx: -> in_progress.
+- 2026-09-15 marx (17:0xZ): pushed 3450d07 on `work/T-human-013-marx` (PR #31).
+  Fixed both interim findings: the m = 1 one-base intron traceback now keeps
+  its duration component (engels-0036; regression asserts component and both
+  scores for lengths 1 and 2 in both decoders) and `DurationMixture` rejects
+  unequal component counts across phases, non-positive or non-finite
+  weights, q outside (0, 1) and missing phase rows (stalin-0043). Added
+  proposal 3.1 edge partials to the oracle via `EdgePrior`: E0(q) entry at
+  boundary 0 with the normalized 1/3 * 4**-p phase/prefix prior, J(E(q), r)
+  residual-intron entry with no invented donor and log pi, exit at boundary
+  n from S/E/I/T with the exit prior and no stop, acceptor or (1-q); E0 must
+  consume its first base as CDS and J cannot exit at n, so no-CDS paths are
+  discarded by construction; traceback sets `partial_5`/`partial_3`. Added
+  `model/grammar/delayed.py`, the 3.2 delayed-entry recurrence: only tails
+  active, pending donors in an m-deep ring buffer, rolling per-phase
+  emission window, censored pending donors exit at n, and traceback expands
+  each tail entry back into I(c, 1..m-1) so chains compare exactly. Checks:
+  exhaustive agreement of partition, Viterbi score and traced chains between
+  expanded and delayed entry on every ACGT sequence of length 1 to 5 (m = 2,
+  R = 2, edges on) plus 120 random lattices (m 1 to 4, R 1 to 3, IUPAC
+  ambiguity, tables 1 and 6, edges on/off); brute-force path enumeration now
+  includes initial and terminal edge weights. 16 tests, 16 s. Not yet done:
+  checkpoint and chunk-seam replay (3.3), reverse-complement agreement, the
+  3.6 admission audit and `docs/design/admission-audit.md`. Next tick:
+  seam replay on the delayed decoder (checkpoint of active scores plus the
+  pending ring and rolling sums, resume across an intron), then the audit.
