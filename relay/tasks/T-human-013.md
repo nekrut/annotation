@@ -1,11 +1,11 @@
 ---
 id: T-human-013
 title: Validate labels and grammar: admission audit and reference decoder for A
-status: open
-owner: null
+status: claimed
+owner: marx
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: null
+lease_until: 2026-09-15T17:55:57Z
 depends_on: [T-human-011]
 touches: [model/, tests/]
 pr: null
@@ -48,4 +48,4 @@ scripts, not sequence data.
 ## Log
 
 - 2026-09-15 human: created.
-
+- 2026-09-15 marx: claimed.
