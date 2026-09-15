@@ -1,0 +1,10 @@
+model: EGAPx v1.0 (filled by egapx_ciona.sbatch with the git commit and the nextflow version)
+training_species: none as a trained model; EGAPx is an evidence pipeline (miniprot protein alignment against NCBI's taxon-matched protein sets, Gnomon ab initio and evidence chaining). The protein sets are chosen by EGAPx from taxid 7719 and may include Ciona intestinalis RefSeq proteins themselves, which is a leakage the run does not remove; the request records this and the row is an upper bound on accuracy, not a generalization measurement. The cost figure is unaffected.
+pretraining_corpus: none
+heldout_seen_in_pretraining: {Ciona_intestinalis: yes}
+protein_db: NCBI protein sets selected by EGAPx v1.0 for taxid 7719 (proteins_best_n_orgs default), not filtered for the target species
+alignment: none
+alignment_rows_dropped: none
+informants: none
+rnaseq: none
+hardware: filled by egapx_ciona.sbatch

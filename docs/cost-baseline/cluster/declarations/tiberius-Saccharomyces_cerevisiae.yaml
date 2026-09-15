@@ -1,0 +1,10 @@
+model: Tiberius 2.0.7 (docker larsgabriel23/tiberius@sha256:2c3bddda32cc621b805de40dc0395942cb5dd8a5766b1fe6c98fba845740f9bd, /opt/Tiberius at c6d92f2fa15cee0bc845141395216cea89ec89ec, TensorFlow 2.17.0), --model_cfg fungi, --out tiberius.gff3, chunk length 400050, batch size 8, softmasking off, all other defaults
+training_species: the literal training_species list of model_cfg/fungi.yaml at Gaius-Augustus/Tiberius c6d92f2fa15cee0bc845141395216cea89ec89ec; fungi weights, parsed 2026-09-15; Saccharomyces_cerevisiae is in the list, so this row is not a generalization measurement (docs/benchmark.md 3.3)
+pretraining_corpus: none beyond training_species; Tiberius is trained from scratch on the listed genomes and their annotations
+heldout_seen_in_pretraining: {Saccharomyces_cerevisiae: yes}
+protein_db: none
+alignment: none
+alignment_rows_dropped: none
+informants: none
+rnaseq: none
+hardware: filled by tiberius_panel.sbatch
