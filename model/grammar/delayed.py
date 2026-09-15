@@ -9,7 +9,11 @@ boundaries later it enters every tail r with
     D[s, c] + d[s] + sum(u[p, j] for j in range(s, s + m)) + log pi[p, r]
 
 where the emission sum is the rolling window of the last m per-phase
-intron emissions. A tail continues with `u[p, t-1] + log q[p, r]` and
+intron emissions. Masked (-inf) emissions are not added to the rolling
+sum; a per-phase count of masked positions inside the window makes the
+jump emission -inf while any is present and lets the finite sum recover
+once the last one leaves (engels-0037: a -inf that enters a plain running
+sum leaves it as NaN, -inf - -inf, and poisons every later donor). A tail continues with `u[p, t-1] + log q[p, r]` and
 exits with `log(1 - q[p, r])`, the acceptor at t and the ordinary coding
 transition consuming x[t]. Pending entries younger than m boundaries live
 in a ring buffer (a deque of at most m layers). Edge partials use the same
@@ -26,7 +30,7 @@ Standard library only; this is the semantics check, not the tensor
 implementation. Per boundary it keeps dictionaries keyed by state tuple.
 """
 from collections import deque
-from math import isinf
+from math import isinf, isnan
 from typing import Dict, List, Optional, Tuple
 
 from .reference import (ReferenceDecoder, DurationMixture, EdgePrior, Chain,
@@ -66,6 +70,8 @@ class DelayedEntryDecoder(ReferenceDecoder):
             _, c, r = state
             p = len(c[1])
             yield state, sc.intron[p][t] + self.dur.log_q(p, r), None
+            if kind == "J" and t == 0:
+                return                      # residual intron: at least one observed base before closing
             exit_score = self.dur.log_1mq(p, r) + sc.acceptor[t]
             for nxt, s, b in self._coding_transitions(c, x, t, sc):
                 yield nxt, s + exit_score, b
@@ -74,8 +80,7 @@ class DelayedEntryDecoder(ReferenceDecoder):
 
     def _run(self, x, sc: Scores, viterbi: bool):
         n = len(x)
-        if sc.n != n:
-            raise ValueError("scores and sequence length differ")
+        self._check_input(x, sc)
         m, R = self.dur.m, self.dur.R
         combine = max if viterbi else logsumexp
         layers: List[Dict[tuple, float]] = [self.initial()]
@@ -84,13 +89,14 @@ class DelayedEntryDecoder(ReferenceDecoder):
         back: List[Dict[tuple, Tuple[tuple, Optional[str]]]] = [{}]
         pending: deque = deque()            # (s, {c: D[s,c] + d[s]}), at most m layers
         window: deque = deque()             # last m boundaries' per-phase intron emissions
-        rolling = [0.0, 0.0, 0.0]           # sum over the window per phase
+        rolling = [0.0, 0.0, 0.0]           # sum of the *finite* emissions in the window per phase
+        masked = [0, 0, 0]                  # number of -inf emissions in the window per phase
         for t in range(n):
             cur: Dict[tuple, List[float]] = {}
             bp: Dict[tuple, Tuple[float, tuple, Optional[str]]] = {}
 
             def add(nxt, tot, prev, tag):
-                if isinf(tot):
+                if isinf(tot) or isnan(tot):
                     return
                 cur.setdefault(nxt, []).append(tot)
                 if viterbi and (nxt not in bp or tot > bp[nxt][0]):
@@ -113,16 +119,24 @@ class DelayedEntryDecoder(ReferenceDecoder):
             #    window covers boundaries t-m+1 .. t
             window.append([sc.intron[p][t] for p in range(3)])
             for p in range(3):
-                rolling[p] += sc.intron[p][t]
+                if isinf(sc.intron[p][t]):
+                    masked[p] += 1
+                else:
+                    rolling[p] += sc.intron[p][t]
             if len(window) > m:
                 old = window.popleft()
                 for p in range(3):
-                    rolling[p] -= old[p]
+                    if isinf(old[p]):
+                        masked[p] -= 1
+                    else:
+                        rolling[p] -= old[p]
             # 4. the donor parked at s = t+1-m enters the tails at boundary t+1
             if len(pending) == m:
                 s, parked = pending.popleft()
                 for c, base in parked.items():
                     p = len(c[1])
+                    if masked[p]:
+                        continue                # a forbidden intronic base inside the mandatory interval
                     for r in range(R):
                         add(("T", c, r), base + rolling[p] + self.dur.log_pi(p, r), ("P", s, c), None)
             layers.append({k: combine(v) for k, v in cur.items()})
@@ -141,11 +155,11 @@ class DelayedEntryDecoder(ReferenceDecoder):
         finals = {}
         for k, v in layers[-1].items():
             tot = v + self.terminal(k)
-            if not isinf(tot):
+            if not (isinf(tot) or isnan(tot)):
                 finals[k] = tot
         for k, (v, _) in tail_exits.items():
             tot = v + self.terminal(k)
-            if not isinf(tot):
+            if not (isinf(tot) or isnan(tot)):
                 finals[k] = tot
         return finals
 

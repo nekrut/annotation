@@ -29,12 +29,21 @@ end; both carry the entry prior and a prior normalized over phase and
 prefix (1/3 * 4**-p), and J adds log pi[p, r]. At boundary n any S, E, I or
 T state may exit with the exit prior and no stop, acceptor or (1-q) factor:
 a censored codon or intron. Together these discard every path with no
-observed CDS. Interior chunk boundaries never get these options. Entry in
-an intron holding an S state (an initiator split around the sequence edge)
-is not offered.
+observed CDS: E0 is never terminal (it must consume its first base as
+CDS, so an empty sequence has partition 0 and no chains), and J must
+consume at least one observed intronic base before it may close, so a
+residual intron is never a zero-length interval and the "CDS from the
+edge" hypothesis is priced once, by E0, not a second time by an empty J
+(stalin-0044). Interior chunk boundaries never get these options. Entry
+in an intron holding an S state (an initiator split around the sequence
+edge) is not offered.
+
+Score channels must be finite or -inf; NaN and +inf are rejected at the
+API boundary, since a -inf is the exact "forbidden" mask that constrained
+numerators rely on and anything else would silently corrupt reductions.
 """
 from dataclasses import dataclass, field
-from math import log, exp, inf, isinf, isfinite
+from math import log, exp, inf, isinf, isfinite, isnan
 from typing import Dict, List, Optional, Tuple
 
 from .codes import GeneticCode, TABLES, permitted_bases
@@ -178,12 +187,24 @@ class ReferenceDecoder:
         return init
 
     def terminal(self, state):
-        """Log weight for ending at boundary n in `state`; -inf if not allowed."""
+        """Log weight for ending at boundary n in `state`; -inf if not allowed.
+        E0 and J are the boundary-0 entry states and never terminal: E0 has
+        not yet consumed its mandatory CDS base and J has not yet consumed an
+        observed intronic base, so both would be paths without observed CDS."""
         if state == U:
             return 0.0
-        if self.edges is None or state[0] == "J":
+        if self.edges is None or state[0] in ("J", "E0"):
             return NEG
         return self.edges.exit
+
+    @staticmethod
+    def _check_input(x, sc: Scores):
+        if sc.n != len(x):
+            raise ValueError("scores and sequence length differ")
+        for name, arr in sc.channels():
+            for t, v in enumerate(arr):
+                if isnan(v) or v == inf:
+                    raise ValueError(f"score channel {name}[{t}] is {v}; channels must be finite or -inf")
 
     # -- coding transition of state c consuming one concrete base b at boundary t
     def _coding_step(self, c, b, t, sc: Scores):
@@ -257,6 +278,8 @@ class ReferenceDecoder:
             _, c, r = state
             p = len(c[1])
             yield state, sc.intron[p][t] + self.dur.log_q(p, r), None
+            if kind == "J" and t == 0:
+                return                      # a residual intron must consume one observed base first
             exit_score = self.dur.log_1mq(p, r) + sc.acceptor[t]
             for nxt, s, b in self._coding_transitions(c, x, t, sc):
                 yield nxt, s + exit_score, b
@@ -265,8 +288,7 @@ class ReferenceDecoder:
 
     def _run(self, x, sc: Scores, viterbi: bool):
         n = len(x)
-        if sc.n != n:
-            raise ValueError("scores and sequence length differ")
+        self._check_input(x, sc)
         layers: List[Dict[tuple, float]] = [self.initial()]
         back: List[Dict[tuple, Tuple[tuple, Optional[str]]]] = [{}]
         for t in range(n):

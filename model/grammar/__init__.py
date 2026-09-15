@@ -8,7 +8,9 @@ from .codes import GeneticCode, TABLES, permitted_bases
 from .scores import Scores
 from .reference import ReferenceDecoder, DurationMixture, EdgePrior, Chain, Segment
 from .delayed import DelayedEntryDecoder
+from .strand import reverse_complement, genomic_features, gff3_rows, Feature
 
 __all__ = ["GeneticCode", "TABLES", "permitted_bases", "Scores",
            "ReferenceDecoder", "DelayedEntryDecoder", "DurationMixture",
-           "EdgePrior", "Chain", "Segment"]
+           "EdgePrior", "Chain", "Segment",
+           "reverse_complement", "genomic_features", "gff3_rows", "Feature"]

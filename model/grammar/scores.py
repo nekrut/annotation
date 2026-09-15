@@ -41,6 +41,14 @@ class Scores:
     def zeros(cls, n):
         return cls(n)
 
+    def channels(self):
+        """(name, list) for all eleven channels, in a fixed order."""
+        out = [("u", self.u)]
+        out += [(f"cds[{p}]", self.cds[p]) for p in range(3)]
+        out += [(f"intron[{p}]", self.intron[p]) for p in range(3)]
+        out += [(n, getattr(self, n)) for n in ("start", "stop", "donor", "acceptor")]
+        return out
+
     def favour(self, cds_ranges, intron_ranges, weight=10.0):
         """Test helper: reward CDS bases in `cds_ranges` and intronic bases in
         `intron_ranges` (half-open oriented intervals) in every phase channel;
