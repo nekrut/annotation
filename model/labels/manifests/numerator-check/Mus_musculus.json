@@ -13,7 +13,7 @@
    "introns": 2,
    "log_partition": 45788.600430760765,
    "viterbi": 45788.60043065798,
-   "seconds": 3.34
+   "seconds": 3.47
   },
   {
    "transcript": "rna-XM_036163500.1",
@@ -23,7 +23,7 @@
    "introns": 1,
    "log_partition": 9213.190968631396,
    "viterbi": 9213.014967714824,
-   "seconds": 0.7
+   "seconds": 0.77
   },
   {
    "transcript": "rna-NM_008366.3",
@@ -33,7 +33,7 @@
    "introns": 3,
    "log_partition": 48062.34201494469,
    "viterbi": 48062.206415704844,
-   "seconds": 3.41
+   "seconds": 3.43
   },
   {
    "transcript": "rna-NM_011422.4",
@@ -43,7 +43,7 @@
    "introns": 1,
    "log_partition": 36908.25519273038,
    "viterbi": 36908.25519273038,
-   "seconds": 2.68
+   "seconds": 2.66
   },
   {
    "transcript": "rna-NM_009131.3",
@@ -53,7 +53,7 @@
    "introns": 3,
    "log_partition": 22286.09384825737,
    "viterbi": 22285.46418998991,
-   "seconds": 1.6
+   "seconds": 1.64
   },
   {
    "transcript": "rna-NM_001346771.1",
@@ -63,7 +63,7 @@
    "introns": 2,
    "log_partition": 5136.970404223869,
    "viterbi": 5136.693257595981,
-   "seconds": 0.41
+   "seconds": 0.43
   },
   {
    "transcript": "rna-NM_026911.4",
@@ -73,7 +73,7 @@
    "introns": 3,
    "log_partition": 11477.043291786644,
    "viterbi": 11476.012188992796,
-   "seconds": 0.82
+   "seconds": 0.88
   },
   {
    "transcript": "rna-NM_001402877.1",
@@ -83,7 +83,7 @@
    "introns": 5,
    "log_partition": 16795.23139669226,
    "viterbi": 16794.099955996327,
-   "seconds": 1.19
+   "seconds": 1.21
   },
   {
    "transcript": "rna-NM_011415.3",
@@ -93,7 +93,7 @@
    "introns": 2,
    "log_partition": 23251.545250762592,
    "viterbi": 23251.49187662526,
-   "seconds": 1.64
+   "seconds": 1.72
   },
   {
    "transcript": "rna-XM_017317183.1",
@@ -103,7 +103,7 @@
    "introns": 1,
    "log_partition": 32198.70241638038,
    "viterbi": 32198.7024163802,
-   "seconds": 2.18
+   "seconds": 2.22
   }
  ]
 }

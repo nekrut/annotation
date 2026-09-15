@@ -1,6 +1,12 @@
 {
  "accepted_transcripts": 48147,
  "admitted": 27220,
+ "auxiliary_sites_annotated": {
+  "acceptor": 118322,
+  "donor": 117134,
+  "start": 31844,
+  "stop": 32393
+ },
  "auxiliary_sites_retained": {
   "acceptor": 118322,
   "donor": 117134,
@@ -27,12 +33,12 @@
  "loci": 27444,
  "m": 20,
  "manifest": "Arabidopsis_thaliana.manifest.tsv.gz",
- "manifest_md5": "847661db65845733e3c1f67dc3859b81",
+ "manifest_md5": "03e4b6871e159f1803f92184b0b0d1bb",
  "masked_oriented_bases": 352898,
  "masked_union": 224,
  "metadata_masked": 159,
  "nonrepresentative_omitted": 20703,
- "peak_rss_mb": 1145.7,
+ "peak_rss_mb": 1203.1,
  "reasons": {
   "ambiguous_base": 4,
   "exception": 38,
@@ -52,5 +58,5 @@
  "table": 1,
  "topology_components": 30,
  "topology_masked": 61,
- "wall_seconds": 12.3
+ "wall_seconds": 22.0
 }

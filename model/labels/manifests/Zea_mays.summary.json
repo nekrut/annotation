@@ -1,17 +1,23 @@
 {
  "accepted_transcripts": 57071,
  "admitted": 31804,
- "auxiliary_sites_retained": {
+ "auxiliary_sites_annotated": {
   "acceptor": 142881,
   "donor": 140738,
-  "start": 37429,
-  "stop": 36722
+  "start": 37573,
+  "stop": 36790
+ },
+ "auxiliary_sites_retained": {
+  "acceptor": 142880,
+  "donor": 140737,
+  "start": 37428,
+  "stop": 36713
  },
  "auxiliary_sites_unknown": {
-  "acceptor": 0,
-  "donor": 0,
-  "start": 144,
-  "stop": 68
+  "acceptor": 1,
+  "donor": 1,
+  "start": 145,
+  "stop": 77
  },
  "benchmark_filtered": {
   "sequence: organelle (genome=chloroplast)": 111,
@@ -27,20 +33,20 @@
  "loci": 34039,
  "m": 20,
  "manifest": "Zea_mays.manifest.tsv.gz",
- "manifest_md5": "0228ad155220d48f75bd8183983fde33",
+ "manifest_md5": "98c2b27f7ab21ccd8dcf088d17611632",
  "masked_oriented_bases": 10524942,
  "masked_union": 2235,
  "metadata_masked": 2076,
  "nonrepresentative_omitted": 23032,
- "peak_rss_mb": 1829.9,
+ "peak_rss_mb": 1873.6,
  "reasons": {
   "exception": 1851,
   "frame_length": 1,
-  "internal_stop": 122,
+  "internal_stop": 121,
   "no_initiator": 4,
   "no_stop": 1,
-  "partial_3": 67,
-  "partial_5": 140,
+  "partial_3": 66,
+  "partial_5": 139,
   "partial_away_from_edge": 190,
   "partial_unlocated": 3,
   "seq_frame_length": 1,
@@ -49,10 +55,10 @@
   "transl_except": 122
  },
  "representatives": 34039,
- "sequence_masked": 127,
+ "sequence_masked": 126,
  "species": "Zea_mays",
  "table": 1,
  "topology_components": 81,
  "topology_masked": 166,
- "wall_seconds": 32.0
+ "wall_seconds": 47.3
 }

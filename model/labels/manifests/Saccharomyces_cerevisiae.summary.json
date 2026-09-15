@@ -1,6 +1,12 @@
 {
  "accepted_transcripts": 6002,
  "admitted": 5858,
+ "auxiliary_sites_annotated": {
+  "acceptor": 281,
+  "donor": 281,
+  "start": 5960,
+  "stop": 6001
+ },
  "auxiliary_sites_retained": {
   "acceptor": 281,
   "donor": 281,
@@ -27,12 +33,12 @@
  "loci": 6002,
  "m": 20,
  "manifest": "Saccharomyces_cerevisiae.manifest.tsv.gz",
- "manifest_md5": "e283de282ded5fff0a284f6ea69438c9",
+ "manifest_md5": "d688bddc42660c9da3d479a9af93972a",
  "masked_oriented_bases": 281218,
  "masked_union": 144,
  "metadata_masked": 47,
  "nonrepresentative_omitted": 0,
- "peak_rss_mb": 74.2,
+ "peak_rss_mb": 79.6,
  "reasons": {
   "exception": 47,
   "short_gap": 47,
@@ -44,5 +50,5 @@
  "table": 1,
  "topology_components": 69,
  "topology_masked": 138,
- "wall_seconds": 1.2
+ "wall_seconds": 1.3
 }

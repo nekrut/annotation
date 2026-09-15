@@ -1,17 +1,23 @@
 {
  "accepted_transcripts": 45054,
  "admitted": 17660,
- "auxiliary_sites_retained": {
+ "auxiliary_sites_annotated": {
   "acceptor": 193952,
   "donor": 193733,
-  "start": 26159,
-  "stop": 23658
+  "start": 26348,
+  "stop": 23819
+ },
+ "auxiliary_sites_retained": {
+  "acceptor": 193916,
+  "donor": 193698,
+  "start": 26183,
+  "stop": 23667
  },
  "auxiliary_sites_unknown": {
-  "acceptor": 0,
-  "donor": 0,
-  "start": 189,
-  "stop": 161
+  "acceptor": 36,
+  "donor": 35,
+  "start": 165,
+  "stop": 152
  },
  "benchmark_filtered": {
   "biotype=C_region": 7,
@@ -29,32 +35,32 @@
  "loci": 21788,
  "m": 20,
  "manifest": "Xenopus_tropicalis.manifest.tsv.gz",
- "manifest_md5": "fc6fc186fe20fa3681208957391fc1e0",
+ "manifest_md5": "c78cdad67319a5bf3e51a6a737e7b2f6",
  "masked_oriented_bases": 96069339,
  "masked_union": 4128,
  "metadata_masked": 3926,
  "nonrepresentative_omitted": 23266,
- "peak_rss_mb": 1943.4,
+ "peak_rss_mb": 1988.7,
  "reasons": {
   "exception": 3692,
-  "frame_length": 1,
-  "internal_stop": 131,
+  "frame_length": 2,
+  "internal_stop": 112,
   "no_initiator": 5,
-  "no_stop": 3,
-  "partial_3": 158,
-  "partial_5": 182,
+  "no_stop": 4,
+  "partial_3": 135,
+  "partial_5": 155,
   "partial_away_from_edge": 259,
   "partial_unlocated": 27,
-  "seq_frame_length": 1,
+  "seq_frame_length": 2,
   "short_gap": 141,
   "topology": 217,
   "transl_except": 108
  },
  "representatives": 21788,
- "sequence_masked": 139,
+ "sequence_masked": 120,
  "species": "Xenopus_tropicalis",
  "table": 1,
  "topology_components": 96,
  "topology_masked": 217,
- "wall_seconds": 26.8
+ "wall_seconds": 45.5
 }

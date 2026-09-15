@@ -1,6 +1,12 @@
 {
  "accepted_transcripts": 13179,
  "admitted": 12937,
+ "auxiliary_sites_annotated": {
+  "acceptor": 16730,
+  "donor": 16729,
+  "start": 13168,
+  "stop": 13159
+ },
  "auxiliary_sites_retained": {
   "acceptor": 16730,
   "donor": 16729,
@@ -27,12 +33,12 @@
  "loci": 13155,
  "m": 20,
  "manifest": "Dictyostelium_discoideum.manifest.tsv.gz",
- "manifest_md5": "0e50e8f1cd1de59b27213dfea8d8510b",
+ "manifest_md5": "3a2609da8b413fdba9c47fd9b74f231b",
  "masked_oriented_bases": 366013,
  "masked_union": 218,
  "metadata_masked": 199,
  "nonrepresentative_omitted": 24,
- "peak_rss_mb": 160.4,
+ "peak_rss_mb": 172.7,
  "reasons": {
   "ambiguous_base": 18,
   "exception": 35,
@@ -53,5 +59,5 @@
  "table": 1,
  "topology_components": 2,
  "topology_masked": 4,
- "wall_seconds": 3.1
+ "wall_seconds": 3.4
 }

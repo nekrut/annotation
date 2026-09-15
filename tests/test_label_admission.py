@@ -24,12 +24,14 @@ class Genome:
         self.n = 0
 
     def gene(self, seqid, strand, pos, pieces, gaps, phases=None, attrs="", tx_attrs="",
-             biotype="protein_coding", gene_id=None, pseudo=False):
+             biotype="protein_coding", gene_id=None, pseudo=False, tid=None, row_attrs=None):
         """Plant CDS `pieces` (transcriptional order) separated by `gaps`
         genomic bases from oriented coordinate `pos`; phases follow the
-        spliced frame unless given. Returns the transcript id."""
+        spliced frame unless given. `attrs` go on the first row in
+        transcriptional order, `row_attrs` (a list) on each row. Returns the
+        transcript id, which `tid` may force (to plant a repeated id)."""
         self.n += 1
-        tid, gid = "t%d" % self.n, gene_id or "g%d" % self.n
+        tid, gid = tid or "t%d" % self.n, gene_id or "g%d" % self.n
         L = len(self.seqs[seqid])
         # oriented coordinates: 0-based along the strand
         cur = pos
@@ -55,10 +57,11 @@ class Genome:
         for i, (gs, ge, ph) in enumerate(genomic):
             # row attributes go on the first row in transcriptional order only
             self.lines.append("%s\tt\texon\t%d\t%d\t.\t%s\t.\tParent=%s" % (seqid, gs, ge, strand, tid))
-            self.lines.append("%s\tt\tCDS\t%d\t%d\t.\t%s\t%s\tID=cds-%s;Parent=%s%s" % (seqid, gs, ge, strand, ph, tid, tid, attrs if i == 0 else ""))
+            extra = (attrs if i == 0 else "") + (row_attrs[i] if row_attrs else "")
+            self.lines.append("%s\tt\tCDS\t%d\t%d\t.\t%s\t%s\tID=cds-%s;Parent=%s%s" % (seqid, gs, ge, strand, ph, tid, tid, extra))
         return tid
 
-    def write(self, d):
+    def write(self, d, order=("chrP", "chrB")):
         gff = os.path.join(d, "x.gff")
         fna = os.path.join(d, "x.fna.gz")
         with open(gff, "w") as fh:
@@ -67,17 +70,32 @@ class Genome:
                 fh.write("##sequence-region %s 1 %d\n" % (name, len(s)))
             fh.write("\n".join(self.lines) + "\n")
         with gzip.open(fna, "wt") as fh:
-            for name, s in self.seqs.items():
-                fh.write(">%s\n%s\n" % (name, "".join(s)))
+            for name in order:
+                fh.write(">%s\n%s\n" % (name, "".join(self.seqs[name])))
         return gff, fna
 
 
+def five_partial(strand):
+    return ";start_range=.,1" if strand == "+" else ";end_range=1,."
+
+
+def three_partial(strand):
+    return ";end_range=1,." if strand == "+" else ";start_range=.,1"
+
+
 class Admission(unittest.TestCase):
-    def audit(self, g):
+    def audit(self, g, order=("chrP", "chrB")):
         with tempfile.TemporaryDirectory() as d:
-            gff, fna = g.write(d)
+            gff, fna = g.write(d, order)
             res = audit_species("fixture", gff, fna, m=20, table=1)
         return {r["transcript"]: r for r in res.manifest_rows}, res.summary
+
+    def audit_keyed(self, g, order=("chrP", "chrB")):
+        """Rows keyed on the full identity, for repeated transcript ids."""
+        with tempfile.TemporaryDirectory() as d:
+            gff, fna = g.write(d, order)
+            res = audit_species("fixture", gff, fna, m=20, table=1)
+        return {(r["seqid"], r["strand"], r["transcript"]): r for r in res.manifest_rows}, res.summary
 
     def test_fixtures_on_both_strands(self):
         for strand, seqid in (("+", "chrP"), ("-", "chrB")):
@@ -172,6 +190,126 @@ class Admission(unittest.TestCase):
         rows, summary = self.audit(g)
         self.assertEqual(rows[tid]["status"], "admitted")
         self.assertEqual(rows[tid]["missing_prefix"], 2)
+
+    def test_partial_end_must_touch_its_own_edge(self):
+        # engels-0039 finding 1: a declared partial end is admissible only at
+        # the edge of that end in transcriptional orientation; the opposite
+        # end touching the boundary does not count. One chain per genome so
+        # the fixtures cannot overlap or overwrite each other's bases.
+        for strand, seqid in (("+", "chrP"), ("-", "chrB")):
+            L = len(Genome().seqs[seqid])
+            cases = {
+                # 5'-partial declared, but the chain sits at the 3' edge
+                "wrong5": (L - 8, ["AAGCCTAA"], [2], five_partial(strand), "masked", "partial_5,partial_away_from_edge"),
+                # 3'-partial declared, but the chain sits at the 5' edge
+                "wrong3": (0, ["ATGAAA"], [0], three_partial(strand), "masked", "partial_3,partial_away_from_edge"),
+                # the same declarations at their own edges are admitted
+                "right5": (0, ["AAGCCTAA"], [2], five_partial(strand), "admitted", "partial_5"),
+                "right3": (L - 6, ["ATGAAA"], [0], three_partial(strand), "admitted", "partial_3"),
+                # both ends declared on a chain touching only one edge: masked
+                "both_one": (0, ["AAGCCAAA"], [2], five_partial(strand) + three_partial(strand),
+                             "masked", "partial_5,partial_3,partial_away_from_edge"),
+                # both ends declared on a chain spanning the whole sequence: admitted
+                "both": (0, ["AAGCC" + "C" * (L - 8) + "AAA"], [2], five_partial(strand) + three_partial(strand),
+                         "admitted", "partial_5,partial_3"),
+            }
+            for name, (pos, pieces, phases, attrs, status, reasons) in cases.items():
+                g = Genome()
+                tid = g.gene(seqid, strand, pos, pieces, [], phases=phases, attrs=attrs)
+                rows, _ = self.audit(g)
+                self.assertEqual(rows[tid]["status"], status, (strand, name))
+                self.assertEqual(rows[tid]["reasons"], reasons, (strand, name))
+
+    def test_transcript_level_transl_except_masks(self):
+        # engels-0039 finding 3: transl_except on the mRNA row alone
+        for strand, seqid in (("+", "chrP"), ("-", "chrB")):
+            g = Genome()
+            tid = g.gene(seqid, strand, 100, ["ATGAAATAA"], [], tx_attrs=";transl_except=(pos:1..3,aa:Met)")
+            rows, _ = self.audit(g)
+            self.assertEqual(rows[tid]["status"], "masked", strand)
+            self.assertEqual(rows[tid]["reasons"], "transl_except", strand)
+
+    def test_auxiliary_sites_need_a_reliable_observation(self):
+        # engels-0039 finding 2: alternative transcripts are sequence-audited
+        # too; a start observed only by an initiator-less alternative is unknown
+        for strand, seqid in (("+", "chrP"), ("-", "chrB")):
+            g = Genome()
+            g.gene(seqid, strand, 100, ["CTGAAATAA"], [], gene_id="shared")
+            g.gene(seqid, strand, 400, ["ATGAAAAAATAA"], [], gene_id="shared")
+            _, summary = self.audit(g)
+            self.assertEqual(summary["auxiliary_sites_annotated"]["start"], 2, strand)
+            self.assertEqual(summary["auxiliary_sites_retained"]["start"], 1, strand)
+            self.assertEqual(summary["auxiliary_sites_unknown"]["start"], 1, strand)
+            self.assertEqual(summary["auxiliary_sites_retained"]["stop"], 2, strand)
+            # the same site observed reliably by another transcript stays positive
+            g = Genome()
+            g.gene(seqid, strand, 100, ["CTGAAATAA"], [], gene_id="shared")
+            g.gene(seqid, strand, 100, ["ATGAAATAA"], [], gene_id="shared")
+            _, summary = self.audit(g)
+            self.assertEqual(summary["auxiliary_sites_annotated"]["start"], 1, strand)
+            self.assertEqual(summary["auxiliary_sites_retained"]["start"], 1, strand)
+            self.assertEqual(summary["auxiliary_sites_unknown"]["start"], 0, strand)
+
+    def test_interior_partial_makes_its_junction_unknown(self):
+        # engels-0039 finding 2, second case: a range declaration at the first
+        # row's 3' boundary masks the chain and makes that donor unknown; the
+        # acceptor across the intron keeps its observation
+        for strand, seqid in (("+", "chrP"), ("-", "chrB")):
+            g = Genome()
+            tid = g.gene(seqid, strand, 100, ["ATGAAA", "TAA"], [25], attrs=three_partial(strand))
+            rows, summary = self.audit(g)
+            self.assertEqual(rows[tid]["status"], "masked", strand)
+            self.assertIn("partial_unlocated", rows[tid]["reasons"].split(","), strand)
+            self.assertNotIn("partial_3", rows[tid]["reasons"].split(","), strand)
+            self.assertEqual(summary["auxiliary_sites_annotated"]["donor"], 1, strand)
+            self.assertEqual(summary["auxiliary_sites_retained"]["donor"], 0, strand)
+            self.assertEqual(summary["auxiliary_sites_unknown"]["donor"], 1, strand)
+            self.assertEqual(summary["auxiliary_sites_retained"]["acceptor"], 1, strand)
+            self.assertEqual(summary["auxiliary_sites_retained"]["start"], 1, strand)
+            self.assertEqual(summary["auxiliary_sites_retained"]["stop"], 1, strand)
+            # the mirror: a range at the second row's 5' boundary hides the acceptor
+            g = Genome()
+            tid = g.gene(seqid, strand, 100, ["ATGAAA", "TAA"], [25], row_attrs=["", five_partial(strand)])
+            rows, summary = self.audit(g)
+            self.assertIn("partial_unlocated", rows[tid]["reasons"].split(","), strand)
+            self.assertEqual(summary["auxiliary_sites_retained"]["donor"], 1, strand)
+            self.assertEqual(summary["auxiliary_sites_unknown"]["acceptor"], 1, strand)
+
+    def test_repeated_transcript_ids_keep_their_own_audit(self):
+        # stalin-0046: a transcript id reused on another sequence (or strand)
+        # must never overwrite the other record's metadata, sequence result or
+        # topology membership, whatever the FASTA order
+        for strand in ("+", "-"):
+            for order in (("chrP", "chrB"), ("chrB", "chrP")):
+                g = Genome()
+                g.gene("chrP", strand, 100, ["CTGAAATAA"], [], tid="shared")
+                g.gene("chrB", strand, 100, ["ATGAAATAA"], [], tid="shared")
+                rows, _ = self.audit_keyed(g, order)
+                self.assertEqual(rows[("chrP", strand, "shared")]["reasons"], "no_initiator", (strand, order))
+                self.assertEqual(rows[("chrB", strand, "shared")]["status"], "admitted", (strand, order))
+            g = Genome()
+            g.gene("chrP", strand, 100, ["ATGAAATAA"], [], tid="shared", attrs=";exception=ribosomal slippage")
+            g.gene("chrB", strand, 100, ["ATGAAATAA"], [], tid="shared")
+            rows, _ = self.audit_keyed(g)
+            self.assertEqual(rows[("chrP", strand, "shared")]["reasons"], "exception", strand)
+            self.assertEqual(rows[("chrB", strand, "shared")]["status"], "admitted", strand)
+            # topology: only the overlapping chrP pair is masked, not chrB's copy
+            g = Genome()
+            g.gene("chrP", strand, 100, ["ATGAAA", "TAA"], [60], tid="shared")
+            g.gene("chrB", strand, 100, ["ATGAAATAA"], [], tid="shared")
+            g.gene("chrP", strand, 120, ["ATGCCCTAA"], [])
+            rows, summary = self.audit_keyed(g)
+            self.assertEqual(rows[("chrP", strand, "shared")]["reasons"], "topology", strand)
+            self.assertEqual(rows[("chrB", strand, "shared")]["reasons"], "-", strand)
+            self.assertEqual(summary["topology_masked"], 2, strand)
+            self.assertEqual(sum(1 for r in rows.values() if "topology" in r["reasons"]), 2, strand)
+        # the same id on both strands of one sequence: independent records
+        g = Genome()
+        g.gene("chrP", "+", 100, ["CTGAAATAA"], [], tid="shared")
+        g.gene("chrP", "-", 100, ["ATGAAATAA"], [], tid="shared")
+        rows, _ = self.audit_keyed(g)
+        self.assertEqual(rows[("chrP", "+", "shared")]["reasons"], "no_initiator")
+        self.assertEqual(rows[("chrP", "-", "shared")]["status"], "admitted")
 
     def test_table_conflict_and_alt_initiator(self):
         g = Genome()

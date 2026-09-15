@@ -1,16 +1,22 @@
 {
  "accepted_transcripts": 28590,
  "admitted": 19784,
+ "auxiliary_sites_annotated": {
+  "acceptor": 103556,
+  "donor": 103593,
+  "start": 24374,
+  "stop": 21200
+ },
  "auxiliary_sites_retained": {
   "acceptor": 103556,
   "donor": 103593,
-  "start": 24322,
+  "start": 24316,
   "stop": 21200
  },
  "auxiliary_sites_unknown": {
   "acceptor": 0,
   "donor": 0,
-  "start": 52,
+  "start": 58,
   "stop": 0
  },
  "benchmark_filtered": {
@@ -27,12 +33,12 @@
  "loci": 19971,
  "m": 20,
  "manifest": "Caenorhabditis_elegans.manifest.tsv.gz",
- "manifest_md5": "bf56d4b29ead0d28afd0f1dfe5b01b53",
+ "manifest_md5": "3d2ccf6aa9ede6edc2b65ca918a06a96",
  "masked_oriented_bases": 709866,
  "masked_union": 187,
  "metadata_masked": 30,
  "nonrepresentative_omitted": 8619,
- "peak_rss_mb": 744.6,
+ "peak_rss_mb": 769.6,
  "reasons": {
   "exception": 12,
   "internal_stop": 1,
@@ -49,5 +55,5 @@
  "table": 1,
  "topology_components": 65,
  "topology_masked": 132,
- "wall_seconds": 9.0
+ "wall_seconds": 15.0
 }

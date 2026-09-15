@@ -19,12 +19,29 @@ Admission order (3.6, in the order the proposal lists it):
    spans on one sequence and strand; every representative in a component
    with more than one locus is masked.
 4. Metadata audit on the raw rows: exception and translation-exception
-   tags, partial-end declarations, overlapping rows, positive gaps shorter
-   than m, invalid or inconsistent phase, translation-table conflicts.
+   tags (on CDS rows or on the transcript row), partial-end declarations
+   read per declared end in transcriptional orientation, overlapping rows,
+   positive gaps shorter than m, invalid or inconsistent phase,
+   translation-table conflicts.
 5. FASTA audit on the spliced CDS in transcriptional orientation: ambiguous
    bases, coordinates beyond the sequence, initiator, terminal stop,
    in-frame stops and length modulo 3, with the missing prefix of a
-   5'-partial chain marginalized rather than trimmed from every exon.
+   5'-partial chain marginalized rather than trimmed from every exon. The
+   FASTA audit runs on every benchmark-accepted transcript, not only the
+   representatives, because alternative transcripts contribute auxiliary
+   boundary targets and those must be as reliable as the representatives'.
+
+A declared 5'-partial end is admissible only where the chain's own 5' end
+touches the sequence edge in transcriptional orientation (position 1 on
+the plus strand, the last base on the minus strand), a 3'-partial end
+only where its own 3' end does; a chain declaring both must satisfy both.
+A range declaration on an interior row is an interior partial: it masks
+the chain and makes the junction site at that row's boundary unknown.
+
+Transcript identity is the triple (seqid, strand, transcript id)
+throughout; FlyBase and other sources reuse a transcript id on more than
+one sequence or strand, and every cache and membership test keys on the
+full triple so an unrelated record can never overwrite another's audit.
 
 Each representative gets a status (`admitted` or `masked`) and its reason
 flags; masked spans are the full CDS span, including introns. The manifest
@@ -133,6 +150,11 @@ class Transcript:
     tx_attrs: Dict[str, str] = field(default_factory=dict)
 
     @property
+    def key(self):
+        """Full identity: a transcript id may recur on another sequence or strand."""
+        return (self.seqid, self.strand, self.tid)
+
+    @property
     def cds_len(self):
         return sum(r.end - r.start + 1 for r in self.rows)
 
@@ -232,12 +254,29 @@ def revcomp(s: str) -> str:
     return s.translate(COMP)[::-1]
 
 
-def metadata_flags(t: Transcript, m: int, table: int):
-    """Section 3.6 metadata audit of one transcript's raw rows. Returns
-    (flags, prefix p, five_partial, three_partial)."""
+@dataclass
+class Meta:
+    """Result of the metadata audit of one transcript."""
+    flags: set
+    prefix: int                 # missing codon bases before a 5'-partial chain
+    five: bool                  # chain's own 5' end declared partial (or unlocated)
+    three: bool                 # chain's own 3' end declared partial (or unlocated)
+    unknown_donors: set = field(default_factory=set)      # genomic positions made unknown
+    unknown_acceptors: set = field(default_factory=set)   # by interior partial declarations
+
+    def __iter__(self):
+        # backwards-compatible unpacking: (flags, prefix, five, three)
+        return iter((self.flags, self.prefix, self.five, self.three))
+
+    def __getitem__(self, i):
+        return (self.flags, self.prefix, self.five, self.three)[i]
+
+
+def metadata_flags(t: Transcript, m: int, table: int) -> Meta:
+    """Section 3.6 metadata audit of one transcript's raw rows."""
     flags = set()
     rows = t.oriented_rows()
-    # exception tags on CDS or transcript rows
+    # exception tags on CDS rows or on the transcript row
     for r in rows:
         if "exception" in r.attrs:
             flags.add("exception")
@@ -245,26 +284,39 @@ def metadata_flags(t: Transcript, m: int, table: int):
             flags.add("transl_except")
     if "exception" in t.tx_attrs:
         flags.add("exception")
-    # partial declarations, in genome coordinates; swap on the minus strand
-    sr = any("start_range" in r.attrs for r in t.rows)
-    er = any("end_range" in r.attrs for r in t.rows)
-    if t.strand == "-":
-        sr, er = er, sr
-    five, three = sr, er
-    if not sr and not er and any(r.attrs.get("partial") == "true" for r in t.rows):
+    if "transl_except" in t.tx_attrs:
+        flags.add("transl_except")
+    # partial declarations, read per row in transcriptional orientation: a
+    # start_range is the row's 5' boundary on the plus strand and its 3'
+    # boundary on the minus strand, and the other way round for end_range
+    five = three = False
+    unknown_donors, unknown_acceptors = set(), set()
+    last = len(rows) - 1
+    for i, r in enumerate(rows):
+        has_sr, has_er = "start_range" in r.attrs, "end_range" in r.attrs
+        five_side, three_side = (has_sr, has_er) if t.strand == "+" else (has_er, has_sr)
+        if five_side:
+            if i == 0:
+                five = True
+            else:
+                # the acceptor of the intron before this row is uncertain
+                flags.add("partial_unlocated")
+                unknown_acceptors.add(r.start - 1 if t.strand == "+" else r.end + 1)
+        if three_side:
+            if i == last:
+                three = True
+            else:
+                # the donor of the intron after this row is uncertain
+                flags.add("partial_unlocated")
+                unknown_donors.add(r.end + 1 if t.strand == "+" else r.start - 1)
+    if not five and not three and not flags & {"partial_unlocated"} and \
+            any(r.attrs.get("partial") == "true" for r in t.rows):
         flags.add("partial_unlocated")
         five = three = True
     if five:
         flags.add("partial_5")
     if three:
         flags.add("partial_3")
-    # a declared partial row that is not at the chain's end is an interior partial
-    for i, r in enumerate(rows):
-        has_sr, has_er = "start_range" in r.attrs, "end_range" in r.attrs
-        if t.strand == "-":
-            has_sr, has_er = has_er, has_sr
-        if (has_sr and i != 0) or (has_er and i != len(rows) - 1):
-            flags.add("partial_unlocated")
     # overlapping rows and short gaps
     srt = sorted(t.rows, key=lambda r: r.start)
     for a, b in zip(srt, srt[1:]):
@@ -298,7 +350,8 @@ def metadata_flags(t: Transcript, m: int, table: int):
             p = (p + r.end - r.start + 1) % 3
         if not three and p != 0:
             flags.add("frame_length")
-    return flags, ((-phases[0]) % 3 if five and phases[0] is not None else 0), five, three
+    prefix = (-phases[0]) % 3 if five and phases[0] is not None else 0
+    return Meta(flags, prefix, five, three, unknown_donors, unknown_acceptors)
 
 
 def sequence_flags(t: Transcript, seq: str, prefix: int, five: bool, three: bool, table: int):
@@ -360,14 +413,14 @@ def _components(reps: List[Transcript]):
             if cur and s >= cur_end:
                 if len({u.gid for u in cur}) > 1:
                     n_comp += 1
-                    masked.update(u.tid for u in cur)
+                    masked.update(u.key for u in cur)
                     spans_masked.append((key, min(u.span[0] for u in cur), max(u.span[1] for u in cur) + 1))
                 cur, cur_end = [], -1
             cur.append(t)
             cur_end = max(cur_end, e)
         if cur and len({u.gid for u in cur}) > 1:
             n_comp += 1
-            masked.update(u.tid for u in cur)
+            masked.update(u.key for u in cur)
             spans_masked.append((key, min(u.span[0] for u in cur), max(u.span[1] for u in cur) + 1))
     return masked, n_comp, spans_masked
 
@@ -429,51 +482,56 @@ def audit_species(species: str, gff: str, fasta: Optional[str], m: int = 20, tab
     topo_masked, n_comp, topo_spans = _components(reps)
     counts["topology_components"] = n_comp
     counts["topology_masked"] = len(topo_masked)
-    # 4. metadata audit
-    meta = {}
-    for t in reps:
-        meta[t.tid] = metadata_flags(t, m, table)
-    # 5. FASTA audit, streaming one sequence at a time
-    seqf = {t.tid: (set(), None) for t in reps}
+    # 4. metadata audit, on every accepted transcript (alternatives feed the
+    #    auxiliary catalog); keyed on the full identity
+    meta: Dict[tuple, Meta] = {t.key: metadata_flags(t, m, table) for t in accepted}
+    # 5. FASTA audit, streaming one sequence at a time, on every accepted transcript
+    seqf = {t.key: (set(), None) for t in accepted}
     fasta_seen = set()
     if fasta:
         need = defaultdict(list)
-        for t in reps:
+        for t in accepted:
             need[t.seqid].append(t)
         for name, seq in _iter_fasta(fasta):
             if name not in need:
                 continue
             fasta_seen.add(name)
             for t in need[name]:
-                flags, _, five, three = meta[t.tid]
-                p = meta[t.tid][1]
-                seqf[t.tid] = sequence_flags(t, seq, p, five, three, table)
+                mt = meta[t.key]
+                seqf[t.key] = sequence_flags(t, seq, mt.prefix, mt.five, mt.three, table)
             need.pop(name)
         missing = sorted(need)
         for name in missing:
             for t in need[name]:
-                seqf[t.tid] = ({"coords_out_of_range"}, None)
+                seqf[t.key] = ({"coords_out_of_range"}, None)
         counts["fasta_sequences_missing"] = len(missing)
+
+    def own_edge(t: Transcript, end: str) -> bool:
+        """Does the chain's declared `end` ('5' or '3') touch the sequence edge
+        in transcriptional orientation?"""
+        s, e = t.span
+        n = shim.seq_len.get(t.seqid, -1)
+        low = (end == "5") == (t.strand == "+")     # 5' end of a plus chain, 3' end of a minus chain
+        return s == 1 if low else e == n
+
     # assemble
     rows_out = []
     reason_counts = defaultdict(int)
     masked_spans = list(topo_spans)
     n_meta = n_seq = n_adm = 0
-    aux = {"start": set(), "stop": set(), "donor": set(), "acceptor": set()}
-    aux_unknown = {"start": set(), "stop": set(), "donor": set(), "acceptor": set()}
     for t in reps:
-        mflags, p, five, three = meta[t.tid]
-        sflags, _ = seqf[t.tid]
+        mt = meta[t.key]
+        mflags, p, five, three = mt.flags, mt.prefix, mt.five, mt.three
+        sflags, _ = seqf[t.key]
         reasons = []
-        if t.tid in topo_masked:
+        if t.key in topo_masked:
             reasons.append("topology")
         reasons += [r for r in META_REASONS if r in mflags]
         reasons += [r for r in SEQ_REASONS if r in sflags]
-        # a declared edge partial is masked unless it really touches the sequence edge
-        if five or three:
-            s, e = t.span
-            at_edge = (s == 1) or (e == shim.seq_len.get(t.seqid, -1))
-            if not at_edge and "partial_unlocated" not in mflags:
+        # a declared partial end is masked unless that end really touches the
+        # sequence edge; each declared end is checked at its own edge
+        if (five or three) and "partial_unlocated" not in mflags:
+            if (five and not own_edge(t, "5")) or (three and not own_edge(t, "3")):
                 reasons.append("partial_away_from_edge")
         for r in reasons:
             reason_counts[r] += 1
@@ -496,27 +554,42 @@ def audit_species(species: str, gff: str, fasta: Optional[str], m: int = 20, tab
                          "strand": t.strand, "cds_start": s, "cds_end": e, "rows": len(t.rows),
                          "cds_len": t.cds_len, "missing_prefix": p, "status": status,
                          "reasons": ",".join(reasons) or "-"})
-    # auxiliary catalog over all accepted transcripts: distinct sites; a site
-    # from a partial or sequence-incompatible end is unknown, not negative
-    rep_ids = {t.tid for t in reps}
+    # auxiliary catalog over all accepted transcripts: distinct sites. The
+    # annotated catalog is every declared site; a site is retained when at
+    # least one transcript observes it reliably (its end not declared partial
+    # or unlocated, its coordinates in range, and its sequence passing the
+    # initiator/stop check for starts and stops), otherwise unknown: suppressed
+    # from both positive and negative supervision, never negative
+    annotated = {"start": set(), "stop": set(), "donor": set(), "acceptor": set()}
+    reliable = {"start": set(), "stop": set(), "donor": set(), "acceptor": set()}
     for t in accepted:
         rows = t.oriented_rows()
-        mflags, p, five, three = meta[t.tid] if t.tid in rep_ids else metadata_flags(t, m, table)
-        sflags = seqf[t.tid][0] if t.tid in rep_ids else set()
+        mt = meta[t.key]
+        sflags = seqf[t.key][0]
         first, last = rows[0], rows[-1]
         start_pos = first.start if t.strand == "+" else first.end
         stop_pos = last.end if t.strand == "+" else last.start
         key = (t.seqid, t.strand)
-        (aux_unknown if (five or "no_initiator" in sflags or "partial_unlocated" in mflags) else aux)["start"].add(key + (start_pos,))
-        (aux_unknown if (three or "no_stop" in sflags or "partial_unlocated" in mflags) else aux)["stop"].add(key + (stop_pos,))
+        in_range = "coords_out_of_range" not in sflags
+        unlocated = "partial_unlocated" in mt.flags and not (mt.unknown_donors or mt.unknown_acceptors)
+        annotated["start"].add(key + (start_pos,))
+        annotated["stop"].add(key + (stop_pos,))
+        if in_range and not mt.five and not unlocated and "no_initiator" not in sflags:
+            reliable["start"].add(key + (start_pos,))
+        if in_range and not mt.three and not unlocated and "no_stop" not in sflags:
+            reliable["stop"].add(key + (stop_pos,))
         srt = sorted(t.rows, key=lambda r: r.start)
         for a, b in zip(srt, srt[1:]):
             gap = b.start - a.end - 1
             if gap < m:
                 continue                                      # short gaps are not junctions (4.4)
             d, ac = (a.end + 1, b.start - 1) if t.strand == "+" else (b.start - 1, a.end + 1)
-            aux["donor"].add(key + (d,))
-            aux["acceptor"].add(key + (ac,))
+            annotated["donor"].add(key + (d,))
+            annotated["acceptor"].add(key + (ac,))
+            if in_range and d not in mt.unknown_donors:
+                reliable["donor"].add(key + (d,))
+            if in_range and ac not in mt.unknown_acceptors:
+                reliable["acceptor"].add(key + (ac,))
     # masked oriented bases: union of masked spans per (seqid, strand)
     masked_bases = 0
     by = defaultdict(list)
@@ -540,8 +613,9 @@ def audit_species(species: str, gff: str, fasta: Optional[str], m: int = 20, tab
         "reasons": dict(sorted(reason_counts.items())),
         "masked_oriented_bases": masked_bases,
         "fasta_checked": bool(fasta),
-        "auxiliary_sites_retained": {k: len(v) for k, v in aux.items()},
-        "auxiliary_sites_unknown": {k: len(v - aux[k]) for k, v in aux_unknown.items()},
+        "auxiliary_sites_annotated": {k: len(v) for k, v in annotated.items()},
+        "auxiliary_sites_retained": {k: len(v) for k, v in reliable.items()},
+        "auxiliary_sites_unknown": {k: len(v - reliable[k]) for k, v in annotated.items()},
         "m": m, "table": table,
     })
     return AuditResult(species, rows_out, counts)

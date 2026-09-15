@@ -1,6 +1,12 @@
 {
  "accepted_transcripts": 10784,
  "admitted": 9722,
+ "auxiliary_sites_annotated": {
+  "acceptor": 15862,
+  "donor": 15845,
+  "start": 9973,
+  "stop": 9832
+ },
  "auxiliary_sites_retained": {
   "acceptor": 15862,
   "donor": 15845,
@@ -26,12 +32,12 @@
  "loci": 9729,
  "m": 20,
  "manifest": "Neurospora_crassa.manifest.tsv.gz",
- "manifest_md5": "28adfc914eb25b33268fbae85c83211a",
+ "manifest_md5": "0c4cd9b0c77aa45868f742d3578d46d7",
  "masked_oriented_bases": 12218,
  "masked_union": 7,
  "metadata_masked": 7,
  "nonrepresentative_omitted": 1055,
- "peak_rss_mb": 143.4,
+ "peak_rss_mb": 152.7,
  "reasons": {
   "partial_3": 1,
   "partial_5": 6,
@@ -43,5 +49,5 @@
  "table": 1,
  "topology_components": 0,
  "topology_masked": 0,
- "wall_seconds": 2.6
+ "wall_seconds": 3.3
 }

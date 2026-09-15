@@ -2,8 +2,8 @@
 phase derived along the traced chain, with strand-aware coordinates)."""
 import unittest
 
-from model.grammar import (ReferenceDecoder, DelayedEntryDecoder, DurationMixture, Scores,
-                           TABLES, reverse_complement, genomic_features, gff3_rows)
+from model.grammar import (ReferenceDecoder, DelayedEntryDecoder, DurationMixture, Scores, EdgePrior,
+                           TABLES, reverse_complement, genomic_features, codon_features, gff3_rows)
 
 M = 20
 INTRON = "GT" + "A" * (M - 4) + "AG"
@@ -47,8 +47,26 @@ class ReverseComplement(unittest.TestCase):
         plus = genomic_features(chain, n, "+")
         self.assertEqual([(f.start, f.end, f.phase) for f in plus if f.kind == "cds"], [(0, 7, 0), (7 + M, n, 2)])
         rows = gff3_rows(chain, "chrT", n, "-", "g1")
+        # CDS rows, then the explicit codon features: the stop TAA is split
+        # T|AA across the intron, so it is two pieces; on the minus strand
+        # the AA piece is genomic 1..2 (phase 2, like the CDS row starting
+        # there: one base of the codon came before it, two remain to the next
+        # codon boundary) and the T piece is genomic n-4 (phase 0); the
+        # initiator is genomic n-2..n
         self.assertEqual(rows, ["chrT\tgrammar\tCDS\t1\t2\t.\t-\t2\tParent=g1",
-                                f"chrT\tgrammar\tCDS\t{3 + M}\t{n}\t.\t-\t0\tParent=g1"])
+                                f"chrT\tgrammar\tCDS\t{3 + M}\t{n}\t.\t-\t0\tParent=g1",
+                                "chrT\tgrammar\tstop_codon\t1\t2\t.\t-\t2\tParent=g1",
+                                f"chrT\tgrammar\tstop_codon\t{3 + M}\t{3 + M}\t.\t-\t0\tParent=g1",
+                                f"chrT\tgrammar\tstart_codon\t{n - 2}\t{n}\t.\t-\t0\tParent=g1"])
+        # the codon pieces re-read as the codons on either strand
+        for strand, seq in (("+", oriented), ("-", genome)):
+            by = {}
+            for f in codon_features(chain, n, strand):
+                by.setdefault(f.kind, []).append(seq[f.start:f.end])
+            joined = {k: "".join(v) for k, v in by.items()}
+            if strand == "-":
+                joined = {k: reverse_complement(v) for k, v in joined.items()}
+            self.assertEqual(joined, {"start_codon": "ATG", "stop_codon": "TAA"})
         # spliced genomic minus-strand CDS re-reads as the oriented CDS
         spliced = "".join(genome[f.start:f.end] for f in feats if f.kind == "cds")
         self.assertEqual(reverse_complement(spliced), "ATGAAATAA")
@@ -68,6 +86,80 @@ class ReverseComplement(unittest.TestCase):
                 self.assertEqual(f.phase, (3 - emitted % 3) % 3)
                 emitted += f.end - f.start
             self.assertEqual(emitted % 3, 0)
+
+
+class CodonFeatures(unittest.TestCase):
+    """Explicit start_codon / stop_codon output (proposal 3.1): complete
+    codons, codons split across an intron in every phase, and censored ends."""
+
+    def decode(self, oriented, cds, introns, edges=None):
+        n = len(oriented)
+        sc = Scores.zeros(n).favour(cds, introns)
+        kw = {"edges": edges} if edges is not None else {}
+        _, chains = DelayedEntryDecoder(TABLES[1], DurationMixture(m=M), **kw).viterbi(oriented, sc)
+        self.assertEqual(len(chains), 1)
+        return chains[0]
+
+    def test_complete_codons_unsplit(self):
+        oriented = "ATGAAACCCTAA"
+        n = len(oriented)
+        chain = self.decode(oriented, [(0, n)], [])
+        feats = codon_features(chain, n, "+")
+        self.assertEqual([(f.kind, f.start, f.end, f.phase) for f in feats],
+                         [("start_codon", 0, 3, 0), ("stop_codon", 9, 12, 0)])
+        feats = codon_features(chain, n, "-")
+        self.assertEqual([(f.kind, f.start, f.end, f.phase) for f in feats],
+                         [("stop_codon", 0, 3, 0), ("start_codon", 9, 12, 0)])
+        # the terminal stop stays inside the CDS row
+        rows = gff3_rows(chain, "c", n, "+", "g")
+        self.assertEqual(rows[0].split("\t")[3:5], ["1", str(n)])
+
+    def test_split_codons_every_phase(self):
+        # initiator split A|TG and AT|G, stop split T|AA and TA|A
+        for k in (1, 2):
+            head, tail = "ATG"[:k], "ATG"[k:]
+            oriented = head + INTRON + tail + "AAACCCTAA"
+            n = len(oriented)
+            chain = self.decode(oriented, [(0, k), (k + M, n)], [(k, k + M)])
+            feats = [f for f in codon_features(chain, n, "+") if f.kind == "start_codon"]
+            self.assertEqual([(f.start, f.end, f.phase) for f in feats],
+                             [(0, k, 0), (k + M, k + M + 3 - k, (3 - k) % 3)], k)
+            self.assertEqual("".join(oriented[f.start:f.end] for f in feats), "ATG")
+        for k in (1, 2):
+            head, tail = "TAA"[:k], "TAA"[k:]
+            oriented = "ATGAAACCC" + head + INTRON + tail
+            n = len(oriented)
+            chain = self.decode(oriented, [(0, 9 + k), (9 + k + M, n)], [(9 + k, 9 + k + M)])
+            feats = [f for f in codon_features(chain, n, "+") if f.kind == "stop_codon"]
+            self.assertEqual([(f.start, f.end, f.phase) for f in feats],
+                             [(9, 9 + k, 0), (9 + k + M, n, (3 - k) % 3)], k)
+            self.assertEqual("".join(oriented[f.start:f.end] for f in feats), "TAA")
+            # minus-strand mapping preserves the pieces and their phases
+            minus = [f for f in codon_features(chain, n, "-") if f.kind == "stop_codon"]
+            self.assertEqual(sorted((n - f.end, n - f.start, f.phase) for f in minus),
+                             sorted((f.start, f.end, f.phase) for f in feats))
+
+    def test_censored_ends_emit_no_codon(self):
+        # a 5'-partial chain from the edge has no initiator feature but keeps
+        # its stop; a 3'-partial chain at the far edge has no stop feature
+        oriented = "AAACCCTAA"
+        n = len(oriented)
+        chain = self.decode(oriented, [(0, n)], [], edges=EdgePrior())
+        self.assertTrue(chain.partial_5)
+        self.assertFalse(chain.partial_3)
+        kinds = [f.kind for f in codon_features(chain, n, "+")]
+        self.assertEqual(kinds, ["stop_codon"])
+        rows = gff3_rows(chain, "c", n, "+", "g")
+        self.assertIn("partial_5=true", rows[0])
+        self.assertEqual([r.split("\t")[2] for r in rows], ["CDS", "stop_codon"])
+        oriented = "ATGAAACCCAA"
+        n = len(oriented)
+        chain = self.decode(oriented, [(0, n)], [], edges=EdgePrior())
+        self.assertTrue(chain.partial_3)
+        self.assertEqual([f.kind for f in codon_features(chain, n, "+")], ["start_codon"])
+        rows = gff3_rows(chain, "c", n, "-", "g")
+        self.assertIn("partial_3=true", rows[0])
+        self.assertEqual([r.split("\t")[2] for r in rows], ["CDS", "start_codon"])
 
 
 if __name__ == "__main__":
