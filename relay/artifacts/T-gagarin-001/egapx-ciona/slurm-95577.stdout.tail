@@ -1,0 +1,16 @@
+[2026-09-15T14:47:11Z] host=node03 cpus=20 mem_gb=239 scratch=/data/relay-scratch/T-gagarin-001/egapx repo=/data/relay-scratch/T-gagarin-001/checkout
+[2026-09-15T14:47:12Z] fetching Ciona_intestinalis
+ok	Ciona_intestinalis	fasta	c9eacbcc32a5182a496cfa7e057b9aa2	/data/relay-scratch/T-gagarin-001/egapx/panel/Ciona_intestinalis/GCF_018327825.1_ASM1832782v2_genomic.fna.gz
+ok	Ciona_intestinalis	gff	5acd9a693eea48d5a944fa7f7273cf21	/data/relay-scratch/T-gagarin-001/egapx/panel/Ciona_intestinalis/GCF_018327825.1_ASM1832782v2_genomic.gff.gz
+[2026-09-15T14:47:32Z] genome_bp=140272626
+The virtual environment was not created successfully because ensurepip is not
+available.  On Debian/Ubuntu systems, you need to install the python3-venv
+package using the following command.
+
+    apt install python3.14-venv
+
+You may need to use sudo with that command.  After installing the python3-venv
+package, recreate your virtual environment.
+
+Failing command: /data/relay-scratch/T-gagarin-001/egapx/venv/bin/python3
+

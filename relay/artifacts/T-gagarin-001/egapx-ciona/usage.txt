@@ -1,0 +1,4 @@
+job_id=95577 label=egapx-ciona state=FAILED exit=NonZeroExitCode node=node03 elapsed=00:00:24 alloc_cpus=20 alloc_mem_gb=239 gpus=0
+cause: python3 -m venv failed on node03 (ensurepip not available; python3.14-venv not installed); EGAPx itself never started
+max_rss: not available (sacct disabled, job died before GNU time wrapper)
+cpu_time: not available (same)

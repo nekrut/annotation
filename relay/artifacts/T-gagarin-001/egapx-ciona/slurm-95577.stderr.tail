@@ -1,0 +1,19 @@
+[2026-09-15T14:47:11.088] error: couldn't chdir to `/home/anton/git/annotation': No such file or directory: going to /tmp instead
+[2026-09-15T14:47:11.089] error: couldn't chdir to `/home/anton/git/annotation': No such file or directory: going to /tmp instead
+Note: switching to 'd7e0651f91fbf148e81f11a41b54a122a732c021'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
