@@ -2,8 +2,9 @@
 
 Task: [T-human-011](../../tasks/T-human-011.md). Author: stalin.
 Written 2026-09-15 UTC against accepted main `09b5386` (claim `9239764`);
-decoder/resource revision against main `86abfc5` later that day.
-Status: second bounded design pass, **in progress**. This is the working
+decoder/resource revision against main `86abfc5`, then layer/tile accounting
+against main `f424eb7` later that day.
+Status: third bounded design pass, **in progress**. This is the working
 artifact for the eventual `docs/design/proposal.md`, not the submitted
 proposal or a Phase 4 implementation. Numerical architecture choices below
 are proposed settings; arithmetic is an estimate, not measured performance.
@@ -44,8 +45,9 @@ same windows for continuity, then report the benchmark evaluation separately.
 **Sequence.** Target nuclear FASTA, assembly accession/checksum, sequence
 selection, ambiguity mask, local GC, and a declared nuclear translation
 table. Use the same weights on both orientations and map outputs back to
-reference coordinates. Start with 4,096-base chunks retaining 3,072 central
-bases; the 512-base halos cover the proposed local encoder receptive field.
+reference coordinates. Use 4,104-base chunks retaining 3,072 central
+bases, with 516-base halos. All three lengths are divisible by 12 so the
+context-pooling grid stays fixed on chromosome coordinates (section 3.5).
 The chromosome decoder carries state across chunk boundaries. These sizes
 are design settings, not limits on gene or intron length.
 
@@ -118,14 +120,15 @@ Per-genome parameter fitting is outside this initial training plan.
 
 ## 3. Candidate A: compact DNA encoder and duration-mixture CRF
 
-**Encoder.** A narrow nucleotide-resolution convolutional stem and boundary
-heads accompany a context path downsampled by 12. The context path has four
-local transformer blocks, width 96, with 16 attended positions per token.
-It supplies contextual features to the fine-resolution heads; interpolation
-does not decide splice coordinates. The four-block context has approximately
-442,368 weight-matrix parameters; reserve a total **0.70 M** for the stem,
-projections, heads, conditioning and decoder. This reservation is a design
-ceiling pending a layer-by-layer inventory, not an instantiated count.
+**Encoder.** A nucleotide-resolution stem of width 16 accompanies a context
+path downsampled by 12. The context path has four local transformer blocks,
+width 96, with 16 attended positions per token. Repeat each contextual
+vector over its 12 target positions and fuse it with the fine-resolution
+stem before the emission head; this coarse vector does not decide splice
+coordinates. The explicit inventory in section 3.5 gives **455,841 total
+trainable scalars**, including biases, normalization and the pooled decoder.
+This is a count of a specified design, not an instantiated model. Covariate
+conditioning beyond the input GC channel is a separately budgeted ablation.
 
 **Encoded structure.** Shared orientation processing avoids separate strand
 models. Relative genomic offsets express locality; the nucleotide heads
@@ -332,11 +335,12 @@ explicit resource regimes:
 - **Regenerate emissions.** Replay the same frozen chunks, masks, support
   and kernels, with dropout disabled and deterministic tie handling.
   This approximately doubles the counted neural work as well as replaying
-  the decoder. The companion [TSV](budget-arithmetic.tsv) now includes
-  those scenarios. Even A's counted core rises to 13.47 conditional
-  CPU-s/Mb; B at K=8 and f=0.05 rises to 18.32, before omitted operations.
-  Regeneration therefore removes most or all of the claimed CPU headroom
-  under the assumed throughput. It cannot be silently treated as free.
+  the decoder. The companion [TSV](budget-arithmetic.tsv) includes those
+  scenarios. With the revised layer/tile inventory, A's counted neural
+  work alone rises to 15.43 conditional CPU-s/Mb; B at K=8 and f=0.05
+  rises to 21.81, before omitted operations. Regeneration therefore
+  exceeds the CPU target even for A under the assumed throughput.
+  It cannot be silently treated as free.
 
 Adopt emission spooling as the proposed first implementation regime,
 with scratch usage reported alongside RAM. Preserve emission precision
@@ -372,6 +376,58 @@ single-path label ceiling on train development chromosomes by comparing
 the retained real chains with all reference chains and their overlapping
 spans. No ceiling percentage is asserted without that count.
 
+### 3.5 Explicit layer inventory and receptive field
+
+All dimensions and counts here are proposed settings; the formulas are
+the source of the counts. A uses eight scalar channels per base: four
+ACGT indicators, ambiguity, soft masking, local GC and real-sequence
+availability. GC is the fraction of G/C among unambiguous bases in a
+centered 129-base window, with a fixed zero value if none exist. Ambiguity
+and availability remain separate channels. These features need no
+reference annotation. There are no species embeddings or pretrained
+parameters in the first model.
+
+After a kernel-nine convolution from eight to 16 channels, use three
+residual blocks, each with one layer normalization, a kernel-nine
+depthwise convolution and a 16-to-16 pointwise convolution. Their
+dilations are 1, 2 and 4. Use GELU in the residual branches. Mean-pool
+groups of 12 stem positions, project to width 96, and apply four
+pre-normalized attention/MLP blocks with four heads, attention offsets
+-8 through +7, and expansion-four MLPs. Each block has its own learned
+relative-offset bias. Repeat the context vector at nucleotide resolution;
+concatenate it with the 16-channel stem, project 112 to 32 with GELU,
+then 32 to the 11 emission channels. Evaluate these last heads only on
+the retained central positions.
+
+| A component | Trainable-scalar formula | Count |
+|---|---|---:|
+| Stem convolution, including bias | `8*16*9 + 16` | 1,168 |
+| Three depthwise/pointwise residual blocks, biases and norms | `3*(16*9 + 16 + 16*16 + 16 + 2*16)` | 1,392 |
+| Pooled-context projection and bias | `16*96 + 96` | 1,632 |
+| Four attention/MLP blocks, biases, two norms and offset biases | `4*(12*96**2 + 9*96 + 4*96 + 4*16)` | 447,616 |
+| Fine/context fusion and bias | `112*32 + 32` | 3,616 |
+| Emission projection and bias | `32*11 + 11` | 363 |
+| Pooled decoder | `3*3*2 + 2*16 + 4` | 54 |
+| **A total** | Sum above | **455,841** |
+
+The decoder count includes phase/component mixture logits and hazard
+logits, donor/acceptor dinucleotide score tables, and four partial-entry/
+exit family scores (coding versus intron). All start/stop compatibility
+and prefix transitions are fixed by the declared genetic code. Learned
+covariate-to-duration maps and taxonomy-conditioned variants are absent
+from this initial inventory, and must add their own parameters and work.
+
+The stem has nucleotide radius `4 + 4*(1+2+4) = 32`; the GC channel
+adds at most 64. Pooling and repetition add at most 11, and four context
+blocks add at most `4*8*12 = 384`. The maximum dependency radius is thus
+**491 bases**, below the proposed 516-base halo. A full 4,104-base chunk
+has exactly **342 context tokens**. Core starts and pooling groups are
+anchored to the oriented chromosome origin; masked edge padding adds no
+new sequence. An alternative downsampling grid is a distinct computation,
+so a chunk-seam check must hold that grid fixed. No full-chunk statistics,
+global attention or normalization over spatial positions is allowed in
+this radius argument; normalization is over channels at each position.
+
 ## 4. Candidate B: A plus a narrow comparative encoder
 
 **Candidate support.** Cheap sequence scans plus A's frozen DNA scores
@@ -381,15 +437,25 @@ gate limits comparative improvement rather than deleting all predictions
 there. Freeze the support independently of informants/tree for the encoder
 comparison. Count CDS-base, exon, donor/acceptor and complete-chain support
 recall against development truth, including short/noncanonical cases.
-Report both the fraction of genome selected and the actual emitted tokens
-after merging, halos, padding, both strands and all frame hypotheses.
+Report both the raw selected intervals and the actual emitted tokens
+after tile expansion, halos, padding, both strands and all frame hypotheses.
+Section 4.1 fixes the accounting geometry; the seed scan and its thresholds
+still require a training-development density/recall audit.
 
 **Encoder.** Two axial blocks at width 32 act along local codon positions
-(32 attended neighbors) and taxa. Each block has two attention projections
-and one expansion-four MLP: approximately 16 d^2 parameters per block,
-or 32,768 for the two-block core. Pool along taxa before wider target-side
-projections. Reserve **0.90 M total** including A and all extra heads;
-parameter reuse across frame hypotheses does not eliminate their FLOPs.
+(32 attended neighbors) and taxa. Each block has separate site and taxon
+attention modules and one expansion-four MLP: 16 d^2 matrix parameters
+per block. Each triplet input concatenates its three bases' eight
+categories (ACGT, ambiguous, gap, unaligned, padding) and one `log1p`
+insertion-length value per base, for 27 inputs projected to 32. The two
+axial blocks use four heads, three pre-norms per block and GELU in the MLP.
+After taxa mixing, gather the designated target row, with the designation
+permuted alongside rows in symmetry checks. At each retained target base,
+concatenate the three covering frame-hypothesis vectors with A's local
+stem (3*32 + 16 = 112), then project 112 to 32 to 11 residual channels.
+The all-frame gather preserves distinct hypotheses without using truth
+phase. Section 4.1 counts **39,180 additional scalars**, or **495,021
+total including A**. Parameter sharing does not eliminate repeated FLOPs.
 Masked residual comparative scores augment A's emissions; for K = 1
 (target only), the comparative residual is identically disabled.
 Training includes whole-alignment dropout and taxon/gap degradation, so
@@ -420,8 +486,8 @@ distance distortion if testing a compressed coordinate arm.
 Coordinate-wise RoPE does not automatically inherit rotational invariance
 of an MDS embedding. [RoFormer][rope] establishes rotary relative-position
 encoding, not invariance to arbitrary rotations of tree coordinates.
-The charter's [axomeme repository][axomeme] returned HTTP 404 during this
-tick, so the actual Tree-RoPE implementation was not audited. Retain it
+The charter's [axomeme repository][axomeme] returned HTTP 404 during the initial
+design pass, so the actual Tree-RoPE implementation was not audited. Retain it
 as a named comparison arm, contingent on an accessible implementation and
 either invariant operations or a stable canonical convention. Do not
 represent the distance-bias candidate as an implementation of Tree-RoPE.
@@ -442,6 +508,88 @@ exactly on weak/short exons. (2) Alignment/paralog errors and sparse training
 clades make the residual misleading elsewhere. (3) Dense candidate support
 or many informants defeat the CPU budget even with very few parameters.
 
+### 4.1 Comparative inventory and an observable token meter
+
+Each axial block has site offsets -16 through +15 and a learned
+four-head offset-bias table. For taxon attention, use eight fixed linear
+hat basis functions with evenly spaced knots on `D/(1+D)` in [0,1], with
+four learned coefficient vectors per block. Supplied distances must be
+nonnegative with documented units; a change of branch-length scale is
+a change of input evidence. Precompute the bias per selected tree/K and
+charge its attention-time additions separately from matrix products.
+
+| B addition | Trainable-scalar formula | Count |
+|---|---|---:|
+| Triplet projection and bias | `27*32 + 32` | 896 |
+| Two axial blocks: matrices, biases, three norms, site and tree biases | `2*(16*32**2 + 13*32 + 6*32 + 4*32 + 4*8)` | 34,304 |
+| Frame/fine fusion and bias | `112*32 + 32` | 3,616 |
+| Residual emission head and bias | `32*11 + 11` | 363 |
+| Shared scalar residual scale | `1` | 1 |
+| **B additional / total with A** | Sum above / plus section 3.5 | **39,180 / 495,021** |
+
+The scale is bounded with tanh. The residual is zero at bases with no
+observed informant base, as well as for K=1; gap-only or unaligned rows
+therefore cannot create negative evidence by themselves. An observed
+base includes an explicitly ambiguous observation; its category remains
+available to the network. Degradation/dropout must recompute this mask.
+Padding is always excluded from taxon attention. All-masked cases bypass
+the comparative module rather than normalizing an empty attention set.
+
+Replace the old provisional 1.2 halo multiplier with this explicit first
+schedule. Partition each oriented chromosome into **384-base cores**,
+anchored at that orientation's coordinate zero. Expand its nominated
+intervals to the cores they intersect, and score all three frame
+hypotheses on every selected core. Process the strands independently;
+support in one orientation does not wait for the other's DNA scores.
+Adjacent cores remain separate in the initial meter; do not credit hypothetical
+halo reuse. Each core gets 102 flanking bases per side, hence a 588-base
+nominal span, and each frame hypothesis allocates **196 triplet tokens**.
+Offsets one and two need at most two additional right-flank input bases;
+fetch them but do not add tokens. Reverse orientation fetches the mirrored
+flank. Two site-attention blocks reach at most 32 triplets, or 96 bases,
+and token extent adds at most two bases, within the 102-base halo.
+The nucleotide stem fused at the target base is A's already-counted stem.
+
+For S_plus and S_minus selected cores and constant K, the exact allocated
+comparative token count is `3*(S_plus+S_minus)*196*K`. Cores have unique
+central coordinates within each orientation, so
+each has one owner of its residual outputs; its neighbors' halos never
+emit duplicate predictions. A 3,072-base A core contains exactly eight
+such B cores. For variable K, sum the expression per core using allocated
+rows, including any batch padding. Report useful observed rows separately.
+Clip output coordinates at sequence edges, but charge padded tokens.
+
+Use `f = 384*(S_plus+S_minus)/(2*N)` for **mean allocated support across
+orientations** in the scenarios in section 6. Then the halo factor is
+`588/384 = 1.53125`, before the extra
+raw input bases needed for the other offsets. This replaces the previous
+1.2 assumption; it is not a measured data property. Distinguish raw seed
+coverage, real bases in selected cores, allocated central bases and token
+count, reporting each orientation and the physical-coordinate union
+separately. On a genome of many short sequences the allocated fraction can
+exceed one. For example, a one-base isolated seed occupies a whole
+384-base core in this schedule; annotated CDS fraction cannot predict
+that allocation. Thresholds selected before core expansion would hide it.
+
+On train development chromosomes, report these four counters alongside
+CDS-base support, fully covered exons, donor/acceptor neighborhoods and
+whole-chain support, stratified by exon length, motif class and clade.
+Whole-chain comparative support means all its required coding/boundary
+positions are supported, not that the entire intron interior is selected.
+These counters are a required density/recall audit, not results obtained
+in this tick. The exact seed scan, threshold selection and density policy
+remain outstanding. In particular, this draft does not assume a scan can
+retain 5% allocated support on every genome with useful recall.
+
+The one-pass arithmetic assumes A's current core scores and stem features
+stay buffered while B refines its eight eligible cores in that orientation,
+then the combined
+11-channel emissions are spooled. A decision based on whole-genome A
+scores cannot be known at that time. Any global density-cap policy that
+first completes A must separately charge storage/reload of its stem and
+scores, or their regeneration. This dependency must be resolved before
+claiming a concrete CPU-capped inference schedule.
+
 ## 5. Candidate C: B's evidence with a splice graph
 
 Use the identical A/B encoders, inputs, masks and training split. Replace
@@ -454,7 +602,9 @@ attending to every intronic base. Permit multiple paths and independent
 overlapping loci; use the benchmark's all-emitted-transcript precision
 to prevent extra isoforms becoming free recall.
 
-A proposed **1.20 M** total allocation includes B and boundary/edge scoring.
+A proposed **1.20 M ceiling** includes B and boundary/edge scoring; this
+remains a reservation, unlike the explicit A/B layer counts, until C's
+edge scorer and candidate-density audit are specified.
 Short introns follow the same configurable gap convention and finite
 noncanonical-motif scores as A. Long-distance bins retain candidate edges
 through the full chromosome, not just the encoder window. A proposed
@@ -477,53 +627,101 @@ until candidate counts are measured.
 ## 6. Compute arithmetic and expected operating range
 
 The companion [budget-arithmetic.tsv](budget-arithmetic.tsv) is reproduced
-by the formula below using Python standard-library arithmetic. It counts
-matrix projections and attention products only. Values divided by the
-[cost baseline][cost]'s assumed 3e10 CPU FLOP/s and 1e13 GPU FLOP/s are
-**conditional arithmetic times**, not measured runtimes or guarantees.
-Packing, stem/heads, nonlinearities, masking, I/O, tree setup, decoder and
-device synchronization are omitted and must be added in a complete budget.
-Section 3.3 separately counts decoder transitions and scratch traffic;
-those cannot be converted to seconds using the matrix-throughput rate.
-The table below assumes emissions are spooled for traceback. The TSV's
-`regenerated_emissions_*` columns instead count two neural evaluations
-and are reproduced by doubling flopA + flopB before dividing by each rate.
+by the Python standard-library arithmetic below; the rows are stored to
+six decimal places. It now counts all specified A/B matrix projections,
+convolutions and attention products, including stem, embeddings, fusion
+and output heads. Bias additions, layer normalization, nonlinearities,
+softmax, pooling, gathers, residual additions, masks, feature extraction,
+I/O, tree setup, decoder and synchronization remain **uncounted work**.
+Parameter counts include these layers' trainable scalars; FLOP counts do
+not price every scalar operation they perform. Small depthwise kernels
+also need not sustain the same throughput as large matrix products.
 
-Let N = 1,000,000 bases, f be pre-halo comparative support fraction, K total
-rows including target, and use a provisional comparative halo/padding factor
-1.2. All are scenario assumptions; f is not the genome's annotated CDS
-fraction. Dense coding genomes are why f = 0.75 and 1 are included.
+Division by the [cost baseline][cost]'s assumed 3e10 CPU FLOP/s and
+1e13 GPU FLOP/s gives **conditional arithmetic times**, not measured
+runtimes or guarantees. Section 3.3 separately counts decoder transitions
+and scratch traffic; those cannot be timed using a matrix-throughput rate.
+The table assumes one neural evaluation followed by emission replay from
+scratch, under the streaming dependency in section 4.1. The TSV also
+shows the two-neural-evaluation regime. No model, decoder or GPU inference
+was implemented to obtain these numbers.
+
+Let N = 1,000,000 bases and K include the target. Here f is the mean
+allocated central support across orientations after 384-base tile
+expansion, before halos, as defined
+in section 4.1. Both encoder counts are normalized long-sequence rates;
+for a real assembly, sum `ceil(sequence_length/3072)` A chunks and count
+selected B cores and their actual allocated rows. The A output heads can
+skip terminal padding. The scenario f is not raw seed coverage, alignment
+coverage, nor the genome's annotated CDS fraction. Use the explicit
+1.53125 B halo allocation, not the earlier 1.2 placeholder.
 
 ```python
-nA = 2 * N * (4096 / 3072) / 12       # strands, halo repeats, downsampling
-pA = 4 * 12 * 96**2
-flopA = 2 * pA * nA + 4 * 4 * nA * 16 * 96
-nB = 6 * N * f * K * 1.2 / 3         # every strand/frame, not known CDS
-pB = 2 * 16 * 32**2
-flopB = 2 * pB * nB + 2 * 4 * nB * 32 * (32 + K)
+N = 1_000_000
+nStem = 2 * N * 4104 / 3072          # both strands and stem halos
+nA = 2 * N * 342 / 3072             # 342 context tokens per A chunk
+nOut = 2 * N                       # heads only on retained positions
+flopA = (
+    2 * (8*16*9 + 3*(16*9 + 16*16)) * nStem
+    + 2 * (16*96) * nA
+    + 2 * (4*12*96**2) * nA
+    + 4 * 4 * nA * 16 * 96
+    + 2 * (112*32 + 32*11) * nOut
+)
+rows = []
+for K, f in [(0, 0), (8, .05), (8, .75), (8, 1),
+             (16, .05), (16, .75), (16, 1)]:
+    nB = 6 * N * f * K * 196 / 384  # both strands, all frames, halo tokens
+    flopB = (
+        2 * (27*32 + 2*16*32**2) * nB
+        + 2 * 4 * nB * 32 * (32 + K)
+        + 2 * (112*32 + 32*11) * nOut * f
+    ) if K else 0
+    total = flopA + flopB
+    rows.append([
+        'B' if K else 'A', K, float(f),
+        flopA/1e9, flopB/1e9, total/1e9,
+        total/3e10, total/1e13,
+        2*total/1e9, 2*total/3e10, 2*total/1e13,
+    ])
 ```
 
 | Candidate/scenario | Counted GFLOP/Mb | CPU s/Mb at assumed rate | GPU s/Mb at assumed rate |
 |---|---:|---:|---:|
-| A core | 202.069 | 6.74 | 0.020 |
-| B, K=8, f=0.05 | 274.814 | 9.16 | 0.027 |
-| B, K=8, f=0.75 | 1293.244 | 43.11 | 0.129 |
-| B, K=8, f=1 | 1656.969 | 55.23 | 0.166 |
-| B, K=16, f=0.05 | 351.491 | 11.72 | 0.035 |
-| B, K=16, f=0.75 | 2443.401 | 81.45 | 0.244 |
-| B, K=16, f=1 | 3190.511 | 106.35 | 0.319 |
+| A, full listed layers | 231.460 | 7.72 | 0.023 |
+| B, K=8, f=0.05 | 327.190 | 10.91 | 0.033 |
+| B, K=8, f=0.75 | 1667.405 | 55.58 | 0.167 |
+| B, K=8, f=1 | 2146.052 | 71.54 | 0.215 |
+| B, K=16, f=0.05 | 427.150 | 14.24 | 0.043 |
+| B, K=16, f=0.75 | 3166.805 | 105.56 | 0.317 |
+| B, K=16, f=1 | 4145.252 | 138.18 | 0.415 |
 
-A's initial engineering target is <=15 CPU-s/Mb and <=0.5 GPU-s/Mb.
-For B, sparse support leaves conditional CPU headroom only in the
-one-neural-evaluation regime; decoder work and scratch I/O may consume it.
-Dense support already exceeds the CPU ceiling in counted operations
-alone at the assumed sustained rate. On a GPU the arithmetic leaves
-headroom but does not predict small-kernel, I/O or decoder efficiency.
-C inherits B's encoder time **plus an as-yet unpriced
-graph/traceback cost**; assigning it a precise seconds/Mb forecast now
-would invent a measurement. A two-pass strand computation shares weights,
-not execution time. All three must include preprocessing other than the
-separately displayed alignment construction bill in these targets.
+For A the components are 12.5685 GFLOP/Mb for the stem convolutions,
+0.684 for context projection, 202.464 for context blocks/attention, and
+15.744 for fusion/output heads: **231.4605 GFLOP/Mb** in total by the
+formulas above. The revised B count includes the triplet projection and
+all three frame-hypothesis gathers' shared output head, as well as the
+larger token allocation. These values supersede the previous core-only
+202.069 and sparse-B 274.814 GFLOP/Mb scenarios.
+
+A's engineering targets remain <=15 CPU-s/Mb and <=0.5 GPU-s/Mb.
+B at K=8, f=0.05 leaves only **4.09 conditional CPU-s/Mb** of the 15-second
+budget for every omitted operation, including decoding and scratch I/O.
+That subtraction is arithmetic, not a measured allowance. At K=16 the
+same support leaves only **0.76 seconds**. Before pricing any omitted
+work, the formal maximum allocated fractions at the assumed CPU rate are
+`(450e9-flopA)/flopB(f=1)` = **0.1141 at K=8** and **0.05584 at K=16**.
+These are necessary conditions under the throughput assumption, not
+support policies or promises of sufficient recall. Dense support exceeds
+the CPU ceiling in the counted work alone. A's regenerated-emission
+scenario also exceeds it (15.43 CPU-s/Mb before omitted operations).
+
+On a GPU the matrix arithmetic leaves headroom, but it does not predict
+small-kernel, I/O or serial decoder efficiency. C inherits B's encoder
+work **plus an unpriced graph/traceback cost**; assigning a precise total
+seconds/Mb forecast now would invent evidence. A two-pass strand schedule
+shares weights, not execution time. All three must include preprocessing
+other than the separately displayed alignment-construction bill.
 
 Report cold setup and warm prepared-input inference separately, then the
 end-to-end total including retrieval/construction of alignments as required
@@ -570,14 +768,15 @@ separate declared runs, using the same frozen model weights.
   overlapping transcripts the single-path training control cannot emit;
   retain the Phase 4 correctness checks in section 3.4 as prerequisites
   to any encoder comparison, without implementing the prototype now.
-- Replace parameter reservations with an explicit layer inventory and
-  include stem/heads in the CPU/GPU arithmetic. Reserve measured runtime
-  tests for decoder and I/O; transition counts alone are not timings.
-  Specify an observable candidate/edge-density experiment to price C
-  without prototype training.
+- A/B layer and token inventories are now explicit (sections 3.5, 4.1
+  and 6). Review their fixed-grid/halo assumptions and streaming buffers;
+  price non-matrix operations, decoder and I/O by measurement only after
+  Phase 4 authorization. Specify C's edge scorer and an observable
+  candidate/edge-density audit; its 1.20 M allocation remains a ceiling.
 - Decide the exact non-neural support scan, density cap/fallback policy and
-  support-recall criteria on train development data. Resolve how selected
-  short-exon halos change the provisional 1.2 token multiplier.
+  support-recall criteria on train development data. Use the explicit tile
+  counters, replacing the old 1.2 multiplier, and resolve any whole-genome
+  decision's need to buffer or regenerate A's scores and stem features.
 - Turn this working artifact into `docs/design/proposal.md` on
   `work/T-human-011-stalin`, open a PR, request reviews from at least two
   other agents through relay, and send the final ranked proposal to human
@@ -589,8 +788,9 @@ Accepted repository documents above are pinned to this draft's main commit.
 External sources were read through public pages on 2026-09-15 UTC; the
 NCBI genetic-code source was rechecked for the decoder revision. Only
 metadata and our own design notes are stored here. Decoder state counts,
-storage quantities and example strings are our proposed specification
-and arithmetic, not biological measurements or implemented-model results.
+storage quantities, layer/tile inventories and example strings are our
+proposed specification and arithmetic, not biological measurements or
+implemented-model results.
 
 [synthesis]: ../../../docs/review/candidates.md
 [geometry]: ../../../docs/review/disagreements.md#54-is-tree-as-metric-mathematically-well-posed
