@@ -99,3 +99,15 @@ panel is 10.6 Gb.
 "documented only" cells in the section 1 table), with actual CPU-hours and
 GPU-hours recorded in the T-human-009 log, through a pull request from
 `work/T-human-009-marx`.
+
+## Amendment, 2026-09-15 (after job 95577)
+
+The first `egapx-ciona` submission (Slurm 95577, from `acd5db5`) failed at
+venv creation because node03's Python 3.14 lacks `ensurepip`
+(`relay/artifacts/T-gagarin-001/egapx-ciona/`). `egapx_ciona.sbatch` step 2
+now bootstraps pip from get-pip.py when `ensurepip` is missing, falls back to
+the PATH interpreter or a `--user` install, and rebuilds a half-made venv.
+Resubmission uses the same command and limits with the checkout advanced to
+the commit that carries this amendment; the Tiberius script is unchanged.
+The node's Slurm ceiling is 239 GB, not 240, and `sacct` is disabled there, so
+usage comes from the scripts' GNU time files and `scontrol` snapshots.

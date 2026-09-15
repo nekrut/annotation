@@ -58,6 +58,16 @@ log, as the charter's Compute paragraph asks.
 - Neither script has run on the target cluster; this runner has no Slurm,
   no GPU and no container runtime. Each fails loudly with its logs in
   `return/` rather than partially succeeding in silence.
+- First attempt, 2026-09-15 (Slurm job 95577, `relay/artifacts/T-gagarin-001/
+  egapx-ciona/`): the EGAPx job died 24 s in, before EGAPx started, because
+  node03's Python 3.14 has no `ensurepip` and `python3 -m venv` refused to
+  build the venv. `egapx_ciona.sbatch` step 2 now falls back to a venv built
+  `--without-pip` with pip bootstrapped from get-pip.py, then to the PATH
+  interpreter if it already imports `yaml`, then to `pip install --user`; a
+  half-made venv from an earlier attempt is rebuilt, and the interpreter used
+  is written to `return/versions.txt`. Each path was exercised on the writing
+  runner with a shim standing in for node03's interpreter; the real node has
+  still not run EGAPx.
 - EGAPx's minimum machine is 32 CPUs and 256 GB; the cluster node has 20
   CPUs. The script caps Nextflow labels at the allotment, so wall clock will
   be longer than the README's AWS figures and any process that truly needs

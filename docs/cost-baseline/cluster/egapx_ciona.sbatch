@@ -14,10 +14,11 @@
 # Arguments: $1 = path of a checkout of nekrut/annotation at the commit named
 # in the request (needs benchmark/fetch.py and benchmark/score.py);
 # $2 = scratch directory (default $RELAY_CLUSTER_SCRATCH/T-human-009/egapx).
-# Needs on PATH: python3 >= 3.11, git, nextflow (23.10 or later), and
-# singularity or apptainer, plus /usr/bin/time (GNU time) and network access
-# for the NCBI download, the egapx clone, the ncbi/egapx:1.0 image and EGAPx's
-# support files. Everything that comes back to the relay is written to
+# Needs on PATH: python3 >= 3.11 (venv with ensurepip preferred, but not
+# required: see step 2), git, curl, nextflow (23.10 or later), and singularity
+# or apptainer, plus /usr/bin/time (GNU time) and network access for the NCBI
+# download, the egapx clone, the ncbi/egapx:1.0 image, EGAPx's support files
+# and, on a node without ensurepip, bootstrap.pypa.io and pypi.org. Everything that comes back to the relay is written to
 # $SCRATCH/return/ and is small (text only).
 set -euo pipefail
 
@@ -58,14 +59,39 @@ FNA="${FNA_GZ%.gz}"; [ -s "$FNA" ] || gunzip -kf "$FNA_GZ"
 GENOME_BP=$(grep -v '^>' "$FNA" | tr -d '\n' | wc -c)
 log "genome_bp=$GENOME_BP"
 
-# 2. EGAPx at a pinned tag, in a venv with its Python requirement (PyYAML).
+# 2. EGAPx at a pinned tag. Its only Python dependency is PyYAML
+# (requirements.txt at v1.0). Preferred: a venv. Job 95577 (2026-09-15) died
+# here because node03's python3 has no ensurepip (Debian without
+# python3-venv), so the fallbacks are, in order: a venv built --without-pip
+# with pip bootstrapped from get-pip.py; the interpreter on PATH if it already
+# imports yaml; a --user install. A venv left half-made by an earlier attempt
+# is rebuilt, never reused, unless it already imports yaml. The interpreter
+# chosen is recorded in versions.txt and used for every EGAPx call below.
 if [ ! -d egapx ]; then git clone -q --depth 1 --branch "$EGAPX_TAG" https://github.com/ncbi/egapx.git egapx; fi
 git -C egapx rev-parse HEAD > "$RET/egapx_commit.txt"
-[ -d venv ] || python3 -m venv venv
-# shellcheck disable=SC1091
-. venv/bin/activate
-pip install -q pyyaml
-[ -f egapx/ui/requirements.txt ] && pip install -q -r egapx/ui/requirements.txt || true
+has_yaml() { "$1" -c 'import yaml' >/dev/null 2>&1; }
+PY=python3
+if [ -x venv/bin/python3 ] && has_yaml venv/bin/python3; then
+  PY=venv/bin/python3; log "reusing venv"
+else
+  rm -rf venv
+  if python3 -m venv venv > "$RET/venv.log" 2>&1; then
+    log "venv created with ensurepip"
+    venv/bin/python3 -m pip install -q pyyaml >> "$RET/venv.log" 2>&1 && PY=venv/bin/python3
+  elif python3 -m venv --without-pip venv >> "$RET/venv.log" 2>&1; then
+    log "ensurepip unavailable; venv built --without-pip, bootstrapping pip from get-pip.py"
+    curl -sSfL https://bootstrap.pypa.io/get-pip.py -o get-pip.py >> "$RET/venv.log" 2>&1 \
+      && venv/bin/python3 get-pip.py -q >> "$RET/venv.log" 2>&1 \
+      && venv/bin/python3 -m pip install -q pyyaml >> "$RET/venv.log" 2>&1 \
+      && PY=venv/bin/python3
+  fi
+  if [ "$PY" = python3 ]; then
+    log "no usable venv (see return/venv.log); trying the interpreter on PATH"
+    has_yaml python3 || python3 -m pip install -q --user pyyaml >> "$RET/venv.log" 2>&1 || true
+  fi
+fi
+has_yaml "$PY" || die "no interpreter with PyYAML for EGAPx; see $RET/venv.log"
+{ echo "egapx_python=$PY"; "$PY" --version; "$PY" -c 'import yaml; print("PyYAML", yaml.__version__)'; } >> "$RET/versions.txt" 2>&1
 
 # 3. Cap per-process CPU and memory requests so the Nextflow local executor
 # does not refuse them on a 20-CPU node (EGAPx's labels go up to 32 CPUs and
@@ -112,7 +138,7 @@ log "starting EGAPx"
 T0=$(date +%s)
 set +e
 /usr/bin/time -v -o "$RET/egapx.time" \
-  python3 egapx/ui/egapx.py input.yaml -e singularity -w "$SCRATCH/work" -o "$SCRATCH/out" -lc "$SCRATCH/cache" \
+  "$PY" egapx/ui/egapx.py input.yaml -e singularity -w "$SCRATCH/work" -o "$SCRATCH/out" -lc "$SCRATCH/cache" \
   > "$SCRATCH/egapx.stdout" 2> "$SCRATCH/egapx.stderr"
 STATUS=$?
 set -e
