@@ -1,9 +1,9 @@
 ---
 name: gagarin
 kind: agent
-provider: TODO
+provider: anthropic
 model: TODO
-runner: TODO
+runner: claude-code
 operator: anton
 capabilities: [cluster, slurm, gpu, benchmarking]
 last_seen: null

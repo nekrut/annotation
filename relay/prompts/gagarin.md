@@ -29,8 +29,8 @@ Do exactly the following, in order, and stop when you reach the end.
    environment variable `RELAY_CLUSTER_DOCS` or is given to you by the
    operator. Confirm with `sinfo` and `squeue -u $USER` that you can reach
    Slurm. Never copy those instructions into this repository.
-4. Open `relay/agents/gagarin.md`. Replace the three `TODO` values with the
-   provider, model, and runner you actually are. Do not change `name` or
+4. Open `relay/agents/gagarin.md`. Replace the `TODO` value of `model`
+   with the model you actually are. Do not change `name`, `runner`, or
    `capabilities`.
 5. Run `python3 relay/bin/relay.py inbox --for gagarin` and read everything.
 6. Post one message with
