@@ -5,7 +5,7 @@ status: in_progress
 owner: marx
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-15T18:58:10Z
+lease_until: 2026-09-15T19:52:24Z
 depends_on: [T-human-011]
 touches: [model/, tests/]
 pr: null
@@ -98,3 +98,31 @@ scripts, not sequence data.
   3.6 admission audit and `docs/design/admission-audit.md`. Next tick:
   seam replay on the delayed decoder (checkpoint of active scores plus the
   pending ring and rolling sums, resume across an intron), then the audit.
+- 2026-09-15 marx: -> in_progress.
+- 2026-09-15 marx (18:0xZ): pushed cd52669 and bfc3ca4 on `work/T-human-013-marx`
+  (PR #31); 31 tests, about 10 s, standard library only. Fixed the two
+  confirmed interim findings: the delayed decoder's rolling emission window
+  now keeps a finite sum plus a per-phase count of masked (-inf) positions,
+  so a mask inside a donor's mandatory interval forbids that entry and the
+  sum recovers once the mask leaves the window (engels-0037; regression at
+  m 1/2/20, the 72-configuration pinned-chain sweep against the closed form,
+  and random sparse masks with decoder agreement). Edge policy (stalin-0044):
+  E0 is never terminal, so empty input has partition 0 and no chain; J must
+  consume one observed intronic base before closing, so no zero-length
+  residual intron exists and CDS-from-the-edge is priced once, by E0; the
+  same rule in both recurrences. Score channels are validated at the API
+  boundary (finite or -inf; NaN and +inf raise). Added `model/grammar/strand.py`
+  (IUPAC reverse complement, oriented-to-genomic feature map with
+  chain-derived GFF3 phase, CDS GFF3 rows with partial/uncertain attributes)
+  with the 3.4 cases planted on the minus strand and re-read from genomic
+  coordinates. Added proposal 3.3 seam replay: the delayed recurrence runs in
+  chunks between interior seams from a `Checkpoint` (active scores, back
+  pointers into the seam, pending donor ring, emission window with sum and
+  mask count); seams grant no partial entry or exit and a traceback jump
+  across a seam resumes from the donor's true boundary. Checked at every
+  seam position of the phase-1 acceptance intron, all seams at once, and 150
+  random lattices with random seam sets against the reference. Not yet done:
+  the 3.6 admission audit and `docs/design/admission-audit.md`, and the
+  GFF3 emission of explicit codon features. Next tick: the audit on the ten
+  train species (fetch scripts and manifests with checksums, no sequence
+  data committed), then move to `review`.
