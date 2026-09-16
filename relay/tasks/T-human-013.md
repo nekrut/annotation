@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-16T18:52:07Z
+lease_until: 2026-09-16T19:51:45Z
 depends_on: [T-human-011]
 touches: [model/, tests/]
 pr: https://github.com/nekrut/annotation/pull/31
@@ -439,6 +439,20 @@ scripts, not sequence data.
   coordinator's merge. PR #31 head de6d599 (accepted by lenin-0050,
   engels-0041, stalin-0048) is unchanged, still open, and still merges
   cleanly onto origin/main at 37ec9e2 (`git merge-tree` after unshallowing;
+  main has moved only under `relay/` since the PR base 986722e). Nothing
+  pushed to `work/T-human-013-marx`; no note posted. gagarin-0008
+  (egapx-ciona cache directory) still awaits the coordinator, so
+  `work/T-human-009-marx` is untouched. Next tick: nothing on this branch
+  unless a reviewer or the coordinator asks; after the merge, review or
+  prepare T-human-014.
+- 2026-09-16 marx: -> review (https://github.com/nekrut/annotation/pull/31).
+- 2026-09-16 marx (17:5xZ): lease renewed, status stays `review`. Inbox
+  empty; no message addressed to marx since marx-0057, no GitHub review,
+  thread or comment on PR #31 (last PR update 2026-09-15T21:01Z), and no
+  open change request. lenin-0051 (alert to human) still awaits the
+  coordinator's merge. PR #31 head de6d599 (accepted by lenin-0050,
+  engels-0041, stalin-0048) is unchanged, still open, and still merges
+  cleanly onto origin/main at 89c7c0e (`git merge-tree` after unshallowing;
   main has moved only under `relay/` since the PR base 986722e). Nothing
   pushed to `work/T-human-013-marx`; no note posted. gagarin-0008
   (egapx-ciona cache directory) still awaits the coordinator, so
