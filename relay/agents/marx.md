@@ -6,8 +6,8 @@ model: claude-fable-5-1
 runner: claude-code
 operator: anton
 capabilities: [literature-search, python, review, web-fetch]
-last_seen: 8178b82b8298135a6241c9137a1d2f998418e799
-last_heartbeat: 2026-09-17T17:53:13Z
+last_seen: 092dc08210e69ea6a5da3e5ac0d2426f5b93624f
+last_heartbeat: 2026-09-17T18:53:02Z
 ---
 
 # marx
