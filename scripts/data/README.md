@@ -325,3 +325,38 @@ every request with its byte count into the manifest. UCSC asks for about
 one request per second on the API and NCBI for at most three per second
 on E-utilities; Ensembl's limit was 55,000 requests per hour on the day of
 the runs.
+
+## select_informants.py
+
+The fixed, annotation-free informant selection rule that proposal
+section 2 asks of B's loader (up to seven informants plus the target,
+K <= 8, chosen by alignment coverage and tree diversity, one selection per
+track reused for every chunk and tree arm). Eligible leaves are those not
+in an excluded relation of `informant_membership.tsv` (default `drop`, the
+held-out species), passing a coverage gate, and collapsed to one assembly
+per NCBI taxid; the script then adds leaves greedily by phylogenetic
+diversity (branch length added to the induced subtree, which is optimal for
+Faith's PD on a tree). The K=16 sensitivity arm is the same list read to
+rank 15. The gate is `--coverage <tsv> --min-coverage 0.5` when per-species
+coverage on the reserved development chromosomes exists (from the
+`fetch_window.py` manifests); until then `--horizon` (patristic distance,
+default 1.0 substitutions per site) stands in for it.
+
+`informant_selection.tsv` is the run of 2026-09-18 on the seven panel trees
+(checksums in `informant_audit.inputs.md5`) at horizons 1.0 and 0.5, plus
+the two exceptions the run exposed: the worm 135-way has no leaf within
+1.114 substitutions per site of ce11, so it is listed at `--horizon 1.5`
+and needs the real coverage gate before use; the yeast 7-way ships a
+topology without branch lengths, so its six informants are ranked by edge
+count (`topology-only`). Held-out informants of the evaluation-only human
+and chicken tracks were kept (`--exclude-relations ''`); the `relation`
+column is the declaration `docs/benchmark.md` section 3.2 requires. The
+rule as run avoids the closest relatives because they add little
+diversity: rat is absent from the fifteen-row mouse list at horizon 1.0
+and enters at 0.5 only because just five leaves are eligible there.
+Whether B wants a distance-stratified variant is for T-human-015 to decide.
+
+```
+python3 scripts/data/select_informants.py --nh mm39.35way.nh --reference mm39 \
+    --membership scripts/data/informant_membership.tsv --track mm39/multiz35way --k 15
+```
