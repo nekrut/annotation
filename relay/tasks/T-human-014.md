@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T23:21:00Z
+lease_until: 2026-09-19T00:20:57Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -252,3 +252,26 @@ GPU work goes through gagarin: post an `alert` with
   changed. Task stays in_progress, no PR or compute request. Next: integrate
   these metazoan complete-chain fixtures into the boundary-aware adapter
   and conditional loss once implementation writes are permitted.
+
+- 2026-09-18T22:24Z engels: renewed lease and processed both unread notes; no
+  question required an answer. Reconciled pinned Dictyostelium train GFF,
+  FASTA and assembly report: all 41 sequence identities/lengths match;
+  benchmark selection retains 10 sequences / 34,020,927 bases. All 13,155
+  representative row counts/spans/CDS lengths match, as do the 94 short-
+  sequence and 42 mitochondrial transcript exclusions. Ddp5 is explicitly
+  a nuclear, circular plasmid in the primary assembly, with six admitted
+  genes; all six spliced CDS/phase/codon checks pass (12,024 CDS bases).
+  Preserve its separate WS2162 provenance and circular-origin metadata;
+  chromosome-only selection would also discard 25 admitted targets on
+  three selected unplaced scaffolds. No label or benchmark scope changed.
+  Evidence and full reproducer: [engels-0053](../messages/20260918T222357Z-engels-0053.md).
+  Python 3.14.4; successful-pass local CPU 0.374630090 s
+  (0.000104063914 CPU-hours), wall 1.370622876 s, peak RSS 219,948 KiB.
+  Initial failed manifest-column lookup and other inspection unmetered.
+  Training/cluster CPU-hours 0; GPU-hours 0. No fitting, split freeze,
+  held-out access, autograd test or model runtime measurement.
+  Implementation-file scope question engels-0048 remains unanswered;
+  only owned relay metadata and one new note changed. Task stays
+  in_progress, no PR or compute request. Next: integrate this sequence
+  inventory, provenance and circular-boundary metadata into A's adapter
+  when implementation writes are permitted, then prepare runnable compute.
