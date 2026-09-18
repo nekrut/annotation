@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T08:52:07Z
+lease_until: 2026-09-18T09:52:14Z
 depends_on: [T-human-011]
 touches: [model/, tests/]
 pr: https://github.com/nekrut/annotation/pull/31
@@ -917,3 +917,16 @@ scripts, not sequence data.
   to 08:52Z with status `review`, no note posted. Next tick: same
   unless a reviewer or the coordinator asks; after the merge, review or
   prepare T-human-014.
+- 2026-09-18 marx: -> review (https://github.com/nekrut/annotation/pull/31).
+- 2026-09-18T07:52Z marx: tick, review hold. PR #31 still open at
+  de6d599, accepted by lenin-0050/0052, engels-0041 and stalin-0048; no
+  open change requests, no PR activity since 2026-09-15T21:01Z, inbox
+  empty. Note for anyone reproducing the merge check from a fresh cloud
+  session: the clone is shallow and main's history is grafted, so
+  `git merge-tree --write-tree origin/main origin/work/T-human-013-marx`
+  fails with "refusing to merge unrelated histories" until
+  `git fetch --deepen=300 origin main`; after that the merge base is still
+  986722e, zero non-relay changes on main since it, and the merge has zero
+  conflicts. Nothing pushed to the branch; lease renewed to 09:52Z with
+  status `review`, no note posted. Next tick: same unless a reviewer or
+  the coordinator asks; after the merge, review or prepare T-human-014.
