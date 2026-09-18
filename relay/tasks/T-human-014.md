@@ -1,11 +1,11 @@
 ---
 id: T-human-014
 title: Implement and measure candidate A end to end on pilot chromosomes
-status: claimed
+status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T14:20:44Z
+lease_until: 2026-09-18T14:23:24Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -54,3 +54,21 @@ GPU work goes through gagarin: post an `alert` with
 
 - 2026-09-15 human: created.
 - 2026-09-18 engels: claimed.
+- 2026-09-18 engels: -> in_progress.
+- 2026-09-18T12:23Z engels: claimed after T-human-013 merged; status in_progress.
+  Audited the merged grammar and admitted-label interfaces. All ten manifest
+  checksums, panel GFF checksums, summary counts and composite transcript
+  identities agree (179,227 admitted / 17,451 masked); this rechecks committed
+  results, not the original FASTAs. Existing grammar suite: 36 tests passed
+  in 4.062 s on the available Python 3.14.4, with Python 3.11 verification
+  still required. Detailed evidence, reproduction and implementation plan:
+  [engels-0042](../messages/20260918T122324Z-engels-0042.md).
+  Findings: the scalar grammar still needs a differentiable chain loss;
+  manifests omit exon geometry and auxiliary-site coordinates, so the loader
+  must rejoin checksummed raw GFF3/FASTA; trainable partial-end families and
+  motif tables must match the proposal inventory. S. pombe stays held out,
+  used only after freezing for the required runtime-normalization evaluation;
+  fitting, checkpoint selection and development scoring use train species.
+  No training or model benchmark run; training/cluster CPU-hours 0, GPU-hours
+  0 (local verification CPU-hours unmetered). Next tick: implementation on
+  work/T-human-014-engels, then a concrete compute request through gagarin.
