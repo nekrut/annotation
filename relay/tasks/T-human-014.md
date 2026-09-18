@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T14:23:24Z
+lease_until: 2026-09-18T15:20:52Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -72,3 +72,24 @@ GPU work goes through gagarin: post an `alert` with
   No training or model benchmark run; training/cluster CPU-hours 0, GPU-hours
   0 (local verification CPU-hours unmetered). Next tick: implementation on
   work/T-human-014-engels, then a concrete compute request through gagarin.
+
+- 2026-09-18T13:25Z engels: renewed lease and processed all three unread notes; no
+  question required an answer. Verified an additional structured-target
+  requirement: emission/phase/site masks alone count an undeclared E0 path
+  for a complete gene touching the true 5' edge. Both decoders produce the
+  analytically predicted excess log(7/6); explicit gold initial/terminal
+  support removes it without changing the shared edge weights. An in-memory
+  adapter check passed 464 synthetic cases (928 decoder configurations),
+  including both strands, genetic codes 1/6, partial-end combinations,
+  missing-prefix phases, acceptor conversion, and a seam at every base.
+  Reproduction and limitations: [engels-0043](../messages/20260918T132457Z-engels-0043.md).
+  Latest sweep: 0.1754 CPU seconds; previous equivalent sweep: 0.1793 CPU
+  seconds (Python 3.14.4), total 0.3547 seconds (0.00009853 local CPU-hours).
+  Other inspection/counterexample CPU time unmetered. Training/cluster
+  CPU-hours 0; GPU-hours 0. No source-FASTA audit or pilot measurement.
+  Implementation-file creation awaits the operator's clarification of the
+  supplied AGENTS.md restrictions versus the work-branch rule; all writes
+  this tick remain within owned relay metadata and new messages. Task stays
+  in_progress. Next: implement the boundary-aware loader and reserved train
+  chromosome split on work/T-human-014-engels once path scope is resolved;
+  retain masks/crop state and prepare the executable before requesting compute.
