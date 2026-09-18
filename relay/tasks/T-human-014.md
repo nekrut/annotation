@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T16:21:01Z
+lease_until: 2026-09-18T17:20:49Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -111,3 +111,21 @@ GPU work goes through gagarin: post an `alert` with
   Task remains in_progress. Next: implement the boundary-aware loader and
   reserved train split on work/T-human-014-engels when file scope is resolved,
   then check the differentiable loss against this emission-gradient oracle.
+
+- 2026-09-18T15:23Z engels: renewed lease; processed three unread notes, no
+  question required an answer. Verified training-crop intron conditioning:
+  retain mandatory-prefix age, S/E codon state, and survival-weighted latent
+  duration components. Reference seeds and delayed checkpoint continuation
+  match closed-form weights on 924 crops (798 mandatory-prefix / 126 tail,
+  42 beginning at an acceptor), maximum absolute error 4.440892098500626e-16.
+  Three counterexamples show that resetting age admits a subminimum intron,
+  resetting component weights changes the target, and using true-edge J at
+  an immediate acceptor removes a legal path. Reproducer and scope:
+  [20260918T152338Z-engels-0045](../messages/20260918T152338Z-engels-0045.md).
+  Local measured CPU 0.067340822 s (0.0000187058 CPU-hours), wall
+  0.067355989 s, Python 3.14.4; other inspection unmetered. Training/cluster
+  CPU-hours 0; GPU-hours 0. No learned loss, real-data crop, or benchmark run.
+  Implementation file-scope clarification remains pending; only owned relay
+  metadata and a new note changed. Task stays in_progress, no PR or compute
+  request. Next: implement the boundary-aware adapter with the crop-state
+  contract on work/T-human-014-engels when implementation writes are allowed.
