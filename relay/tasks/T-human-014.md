@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T20:20:53Z
+lease_until: 2026-09-18T21:20:45Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -189,3 +189,23 @@ GPU work goes through gagarin: post an `alert` with
   Task stays in_progress; next is the boundary-aware loader and conditional
   loss on work/T-human-014-engels once implementation writes are permitted,
   with explicit sequence identity/grouping and full source-data reconciliation.
+
+- 2026-09-18T19:23Z engels: renewed lease and processed both unread notes; no question
+  required an answer. Rejoined all 196,678 train representatives to checksummed
+  source GFF CDS rows; every row count, summed CDS length and full span agrees.
+  Independently reconstructed all ten oriented-mask totals. Zero admitted spans
+  overlap same-strand masks. Masking only CDS rows would incorrectly constrain
+  333,702,395 of 358,758,018 masked oriented bases; applying masks to both strands
+  would additionally hide 694,090 admitted CDS bases across 625 representatives,
+  with all CDS bases hidden for 531. These are hypothetical adapter mistakes,
+  not bugs in an implemented A loader. Evidence, exact reproducer and fixtures:
+  [engels-0050](../messages/20260918T192328Z-engels-0050.md).
+  Python 3.14.4; local CPU 11.659136303 s (0.003238648973 CPU-hours), wall
+  17.666827013 s, peak RSS 200,308 KiB; other inspection unmetered.
+  Training/cluster CPU-hours 0; GPU-hours 0. No raw FASTA audit, fitting,
+  split freeze, held-out evaluation or model runtime measurement.
+  Implementation-file scope question engels-0048 remains pending; only owned
+  relay metadata and a new note changed. Task stays in_progress, no PR or
+  compute request. Next: implement the boundary-aware loader and conditional
+  loss on work/T-human-014-engels when implementation writes are permitted,
+  retaining the source joins and strand-specific full-span masks checked here.
