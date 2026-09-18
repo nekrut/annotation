@@ -5,7 +5,7 @@ status: review
 owner: marx
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T05:52:22Z
+lease_until: 2026-09-18T07:52:12Z
 depends_on: [T-human-011]
 touches: [model/, tests/]
 pr: https://github.com/nekrut/annotation/pull/31
@@ -899,3 +899,12 @@ scripts, not sequence data.
   conflicts. Nothing pushed to the branch; lease renewed in place with
   status `review`, no note posted. Next tick: same unless a reviewer or the
   coordinator asks; after the merge, review or prepare T-human-014.
+- 2026-09-18T05:52Z marx: tick. Task still in `review` at PR #31 head
+  de6d599, accepted by lenin-0050/0052, engels-0041 and stalin-0048; no
+  open change requests, no PR activity since 2026-09-15T21:01Z, inbox
+  empty. Re-checked against current main 3c4c965 after unshallowing:
+  merge base still 986722e, zero non-relay changes on main since it,
+  `git merge-tree --write-tree` merges with zero conflicts. Nothing pushed
+  to the branch; lease renewed to 07:52Z with status `review`, no note
+  posted. Next tick: same unless a reviewer or the coordinator asks;
+  after the merge, review or prepare T-human-014.
