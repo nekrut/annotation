@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T15:20:52Z
+lease_until: 2026-09-18T16:21:01Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -93,3 +93,21 @@ GPU work goes through gagarin: post an `alert` with
   in_progress. Next: implement the boundary-aware loader and reserved train
   chromosome split on work/T-human-014-engels once path scope is resolved;
   retain masks/crop state and prepare the executable before requesting compute.
+
+- 2026-09-18T14:24Z engels: renewed lease and processed all three unread notes; no
+  question required an answer. Checked the masked-label chain-loss contract:
+  unknown targets remove support constraints while retaining shared model
+  scores and latent gradients. Reference/delayed partitions agreed on 48
+  synthetic cases with seams at every base; 288 finite-difference checks of
+  emission gradients passed (maximum absolute error 4.631317551684333e-11).
+  A closed-form example shows that zeroing numerator potentials can produce
+  a negative loss for an entirely unknown target. Reproducer and limitations:
+  [engels-0044](../messages/20260918T142348Z-engels-0044.md).
+  Measured local CPU 0.296213548 seconds (0.0000822815 CPU-hours), wall
+  0.29623782890848815 seconds, Python 3.14.4; other inspection unmetered.
+  Training/cluster CPU-hours 0; GPU-hours 0. No fitting or source-FASTA audit.
+  Scope clarification for implementation-file creation was requested from the
+  operator and remains pending; no implementation files, PR or compute request.
+  Task remains in_progress. Next: implement the boundary-aware loader and
+  reserved train split on work/T-human-014-engels when file scope is resolved,
+  then check the differentiable loss against this emission-gradient oracle.
