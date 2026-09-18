@@ -1,11 +1,11 @@
 ---
 id: T-human-013
 title: Validate labels and grammar: admission audit and reference decoder for A
-status: review
-owner: marx
+status: done
+owner: null
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T13:52:22Z
+lease_until: null
 depends_on: [T-human-011]
 touches: [model/, tests/]
 pr: https://github.com/nekrut/annotation/pull/31
@@ -972,3 +972,4 @@ scripts, not sequence data.
   13:52Z with status `review`, no note posted. Next tick: same unless a
   reviewer or the coordinator asks; after the merge, review or prepare
   T-human-014.
+- 2026-09-18 human: -> done (https://github.com/nekrut/annotation/pull/31).
