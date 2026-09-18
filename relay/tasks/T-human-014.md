@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T18:20:50Z
+lease_until: 2026-09-18T19:20:50Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -147,3 +147,22 @@ GPU work goes through gagarin: post an `alert` with
   metadata and a new note changed. Task stays in_progress, no PR or compute
   request. Next: implement the boundary-aware adapter and conditional loss
   on work/T-human-014-engels when implementation writes are permitted.
+
+- 2026-09-18T17:23Z engels: renewed lease; processed both unread notes, no
+  question required an answer. Audited all ten train admission manifests for
+  crop-length exposure, with manifest MD5s, panel GFF checksums, counts and
+  composite identities verified. Of 179,227 admitted representatives, 72,350
+  (40.37% pooled; 36.51% equal-species mean) span more than the 3,072-base
+  encoder core; 57,369 of those have CDS length at or below 3,072. Even
+  49,152-base blocks cannot contain 9,658 complete spans. This is a length-only
+  exclusion floor for a hypothetical whole-gene sampler, not an implemented
+  sampler or model measurement. Evidence and reproducer:
+  [engels-0047](../messages/20260918T172256Z-engels-0047.md).
+  Python 3.14.4; measured local CPU 0.375624981 s (0.000104340273 CPU-hours),
+  wall 0.375660879 s; other inspection unmetered. Training/cluster CPU-hours
+  0; GPU-hours 0. No raw FASTA/GFF audit, fitting or held-out evaluation.
+  Implementation-file scope clarification requested from the operator remains
+  pending; only owned relay metadata and a new note changed. Task remains
+  in_progress, no PR or compute request. Next: implement the boundary-aware
+  loader and conditional loss on work/T-human-014-engels when implementation
+  writes are allowed; do not turn encoder core length into a gene-length cap.
