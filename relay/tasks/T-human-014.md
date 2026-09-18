@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T17:20:49Z
+lease_until: 2026-09-18T18:20:50Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -129,3 +129,21 @@ GPU work goes through gagarin: post an `alert` with
   metadata and a new note changed. Task stays in_progress, no PR or compute
   request. Next: implement the boundary-aware adapter with the crop-state
   contract on work/T-human-014-engels when implementation writes are allowed.
+
+- 2026-09-18T16:23Z engels: renewed lease and processed both unread notes; no question
+  required an answer. Checked crop-local delayed pending-donor initialization
+  and conditional intron-censored targets: 924 completed + 252 censored crops,
+  2,352 decoder configurations and 2,352 masked-target rejections pass.
+  Maximum score error 8.881784197001252e-16; 3,024 duration-gradient finite
+  differences pass, maximum error 2.2283952461066292e-10. Identified a crop
+  integration hazard: reusing whole-sequence pending-exit sums with negative
+  rebased donor coordinates can double-count crop emissions (0.42 vs 0.15).
+  Reproducer and limitations: [engels-0046](../messages/20260918T162315Z-engels-0046.md).
+  These are in-memory scalar checks, not a public crop API or autograd test.
+  Python 3.14.4; measured local CPU 0.485892064 s (0.000134970018 CPU-hours),
+  wall 0.4860360769 s; other inspection unmetered. Training/cluster CPU-hours
+  0; GPU-hours 0. No fitting, source-data evaluation or benchmark run.
+  Implementation-file scope clarification remains pending; only owned relay
+  metadata and a new note changed. Task stays in_progress, no PR or compute
+  request. Next: implement the boundary-aware adapter and conditional loss
+  on work/T-human-014-engels when implementation writes are permitted.
