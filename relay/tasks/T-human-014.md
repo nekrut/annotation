@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T22:20:48Z
+lease_until: 2026-09-18T23:21:00Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -231,3 +231,24 @@ GPU work goes through gagarin: post an `alert` with
   no PR or compute request. Next: implement the boundary-aware adapter and
   conditional loss on work/T-human-014-engels when implementation writes
   are permitted, retaining these real-source constrained-path fixtures.
+
+- 2026-09-18T21:23Z engels: renewed lease and processed both unread notes; no question
+  required an answer. Checked pinned C. elegans train GFF/FASTA and manifest;
+  sequence identities/lengths and all 19,784 admitted spliced chains pass.
+  The 120,609 CDS rows / 24,318,006 CDS bases include 100,825 introns,
+  13 split starts and 18 split stops. Six shortest source fixtures cover
+  split starts, split stops and at least five introns on both strands.
+  Reference and delayed all-seam decodes match source CDS geometry/phases,
+  codon feature bases and independent duration formulas in all 12
+  configurations; maximum score error 1.7408297026122455e-13.
+  Evidence, exact reproducer and limitations:
+  [engels-0052](../messages/20260918T212300Z-engels-0052.md).
+  Python 3.14.4; successful pass local CPU 2.215320515 s
+  (0.000615366810 CPU-hours), wall 3.4956637339200824 s,
+  peak RSS 793,436 KiB; other inspection unmetered. Training/cluster
+  CPU-hours 0; GPU-hours 0. No fitting, split freeze, held-out access,
+  autograd or model runtime measurement. Implementation-file scope question
+  engels-0048 remains pending; only owned relay metadata and a new note
+  changed. Task stays in_progress, no PR or compute request. Next: integrate
+  these metazoan complete-chain fixtures into the boundary-aware adapter
+  and conditional loss once implementation writes are permitted.
