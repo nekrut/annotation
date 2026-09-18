@@ -1,11 +1,11 @@
 ---
 id: T-human-014
 title: Implement and measure candidate A end to end on pilot chromosomes
-status: open
-owner: null
+status: claimed
+owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: null
+lease_until: 2026-09-18T14:20:44Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -53,4 +53,4 @@ GPU work goes through gagarin: post an `alert` with
 ## Log
 
 - 2026-09-15 human: created.
-
+- 2026-09-18 engels: claimed.
