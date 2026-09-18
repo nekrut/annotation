@@ -1101,12 +1101,12 @@ Applying them to what exists:
 | Panel species | Split | Public multiple alignment referenced on it | Conservation | Fit |
 |---|---|---|---|---|
 | human | heldout_paired | hg38 100/30/470-way, Ensembl mammals/primates/amniotes (Cactus 241/447 excluded for now, section 5) | phyloP, phastCons | evaluation only; any of these is a declarable informant set at inference. Not usable to train, because training on human windows means training on human labels |
-| mouse | train | mm39 35-way; Ensembl 44/92-mammal EPO and 22-murinae re-referenced on mouse | mm39 phyloP35way | training source, but every one of these alignments contains human (held-out) sequence. For the 35-way (multiz) drop the `hg38` row at cut time and declare it in `alignment_rows_dropped`; the EPO sets are jointly inferred, so dropping the row is not enough and they would have to be rebuilt |
+| mouse | train | mm39 35-way; Ensembl 44/92-mammal EPO and 22-murinae re-referenced on mouse | mm39 phyloP35way | training source, but every one of these alignments contains human (held-out) sequence, and the 35-way also carries chicken (`galGal6`, held-out). For the 35-way (multiz) drop the `hg38` and `galGal6` rows at cut time and declare `alignment_rows_dropped: [hg38, galGal6]` (`scripts/data/informant_membership.tsv`); the EPO sets are jointly inferred, so dropping the row is not enough and they would have to be rebuilt |
 | chicken | heldout | Ensembl sauropsids EPO on GRCg7b (exact panel assembly); galGal6 77-way (older assembly, liftover needed) | galGal6 phyloP77way only | evaluation with a declared informant set; the sauropsid set contains no other panel species |
 | zebrafish | train | Ensembl fish EPO on GRCz11 (panel is GRCz12ab; `docs/benchmark.md` section 2.4 keeps it there) | none on either assembly (danRer11 has no `*way`, phyloP or phastCons track; GRCz12ab has no hub yet) | no usable training alignment: both fish EPO sets (32 and 65 species) contain fugu (held-out) and are jointly inferred, so under section 3.2 they must be rebuilt without fugu whichever assembly zebrafish sits on; dropping the row does not qualify. Lifting to GRCz11 through UCSC's `danRer11ToGCA_052040795.1.over.chain.gz` buys only that same unusable alignment and was rejected in section 2.4. Counts with the thirteen in section 8 |
 | fugu | heldout_paired | Ensembl fish EPO on fTakRub1.2 (panel 1.3) | none | evaluation; informant set contains zebrafish (train), which the rules allow at inference if declared |
 | fruit fly | train | dm6 124-way and 27-way | dm6 phyloP124way | training; the 124-way contains honey bee (`apiMel4`, held-out): drop that row at cut time and declare `alignment_rows_dropped: [apiMel4]` |
-| C. elegans | train | ce11 135-way (raw MAF only, readable by Range from `/gbdb`) | ce11 phyloP135way | training; no panel species among informants; but no informant within 1 substitution per site either (section 6.1), so comparative evidence for non-coding classes is thin |
+| C. elegans | train | ce11 135-way (raw MAF only, readable by Range from `/gbdb`) | ce11 phyloP135way | training; the tree carries Ciona (`ci3`, held-out) as a distant outgroup, so drop it at cut time and declare `alignment_rows_dropped: [ci3]`; no other panel species among informants, but no informant within 1 substitution per site either (section 6.1), so comparative evidence for non-coding classes is thin |
 | yeast | train | sacCer3 7-way | phastCons7way | training; near-intronless, so mostly a negative control for the intron machinery |
 | frog, honey bee, sea anemone, ciona, thale cress, rice, maize, S. pombe, Neurospora, Dictyostelium, Plasmodium, Tetrahymena | 5 train, 7 held-out | none (rice: 8-way EPO on IRGSP, not the panel's AGIS1.0) | none | no comparative input available; the model runs single-genome on these unless we build alignments |
 
@@ -1128,9 +1128,11 @@ Two consequences for the design:
   benefited from it. For an honest held-out test on those, the informant
   set at inference is the right tool, and it is allowed. `docs/benchmark.md`
   section 3.2 now states exactly this split, and section 3.3 makes the
-  `alignment_rows_dropped` declaration mandatory: for the two affected
-  panel alignments it is `[apiMel4]` for dm6 124-way and `[hg38]` for mm39
-  35-way, and `benchmark/score.py` refuses a run that omits the key.
+  `alignment_rows_dropped` declaration mandatory: audited leaf by leaf
+  against all ten held-out species (`scripts/data/informant_audit.py`,
+  2026-09-18), it is `[apiMel4]` for dm6 124-way and 27-way, `[hg38,
+  galGal6]` for mm39 35-way, `[ci3]` for ce11 135-way and empty for
+  sacCer3 7-way, and `benchmark/score.py` refuses a run that omits the key.
 
 ## 8. What we would have to build, with costs
 

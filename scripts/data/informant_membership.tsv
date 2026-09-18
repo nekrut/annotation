@@ -1,0 +1,506 @@
+track	use	leaf	scientific_name	taxid	relation	panel_species	panel_split
+mm39/multiz35way	train	mm39	Mus musculus	10090	train	Mus_musculus	train
+mm39/multiz35way	train	rn6	Rattus norvegicus	10116	other		
+mm39/multiz35way	train	GCF_003668045v3	Cricetulus griseus	10029	other		
+mm39/multiz35way	train	casCan1	Castor canadensis	51338	other		
+mm39/multiz35way	train	speTri2	Spermophilus tridecemlineatus	43179	other		
+mm39/multiz35way	train	cavPor3	Cavia porcellus	10141	other		
+mm39/multiz35way	train	oryCun2	Oryctolagus cuniculus	9986	other		
+mm39/multiz35way	train	ochPri3	Ochotona princeps	9978	other		
+mm39/multiz35way	train	hg38	Homo sapiens	9606	drop	Homo_sapiens	heldout_paired
+mm39/multiz35way	train	panTro6	Pan troglodytes	9598	other		
+mm39/multiz35way	train	panPan3	Pan paniscus	9597	other		
+mm39/multiz35way	train	gorGor6	Gorilla gorilla gorilla	9595	other		
+mm39/multiz35way	train	rheMac10	Macaca mulatta	9544	other		
+mm39/multiz35way	train	calJac4	Callithrix jacchus	9483	other		
+mm39/multiz35way	train	tarSyr2	Tarsius syrichta	9478	other		
+mm39/multiz35way	train	otoGar3	Otolemur garnettii	30611	other		
+mm39/multiz35way	train	tupBel1	Tupaia belangeri	37347	other		
+mm39/multiz35way	train	galVar1	Galeopterus variegatus	482537	other		
+mm39/multiz35way	train	susScr3	Sus scrofa	9823	other		
+mm39/multiz35way	train	turTru2	Tursiops truncatus	9739	other		
+mm39/multiz35way	train	bosTau9	Bos taurus	9913	other		
+mm39/multiz35way	train	oviAri4	Ovis aries	9940	other		
+mm39/multiz35way	train	equCab3	Equus caballus	9796	other		
+mm39/multiz35way	train	manPen1	Manis pentadactyla	143292	other		
+mm39/multiz35way	train	canFam4	Canis lupus familiaris	9615	other		
+mm39/multiz35way	train	neoSch1	Neomonachus schauinslandi	29088	other		
+mm39/multiz35way	train	eriEur2	Erinaceus europaeus	9365	other		
+mm39/multiz35way	train	sorAra2	Sorex araneus	42254	other		
+mm39/multiz35way	train	loxAfr3	Loxodonta africana	9785	other		
+mm39/multiz35way	train	echTel2	Echinops telfairi	9371	other		
+mm39/multiz35way	train	monDom5	Monodelphis domestica	13616	other		
+mm39/multiz35way	train	galGal6	Gallus gallus	9031	drop	Gallus_gallus	heldout
+mm39/multiz35way	train	xenTro9	Xenopus tropicalis	8364	train	Xenopus_tropicalis	train
+mm39/multiz35way	train	danRer11	Danio rerio	7955	train	Danio_rerio	train
+mm39/multiz35way	train	petMar3	Petromyzon marinus	7757	other		
+dm6/multiz124way	train	dm6	Drosophila melanogaster	7227	train	Drosophila_melanogaster	train
+dm6/multiz124way	train	droSim2	Drosophila simulans	7240	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droSec1	Drosophila sechellia	7238	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droEre2	Drosophila erecta	7220	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droYak3	Drosophila yakuba	7245	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droFic2	Drosophila ficusphila	30025	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droEug2	Drosophila eugracilis	29029	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droBia2	Drosophila biarmipes	125945	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droSuz1	Drosophila suzukii	28584	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droTak2	Drosophila takahashii	29030	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droEle2	Drosophila elegans	30023	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droRho2	Drosophila rhopaloa	1041015	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	D_serrata	Drosophila serrata	7274	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droKik2	Drosophila kikkawai	30033	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droAna3	Drosophila ananassae	7217	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droBip2	Drosophila bipectinata	42026	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	D_americana	Drosophila americana	40366	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	D_novamexicana	Drosophila novamexicana	47314	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droVir3	Drosophila virilis	7244	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	D_montana	Drosophila montana	40370	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	D_arizonae	Drosophila arizonae	7263	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droMoj3	Drosophila mojavensis	7230	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	D_navojoa	Drosophila navojoa	7232	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	D_hydei	Drosophila hydei	7224	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	D_busckii	Drosophila busckii	30019	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droGri2	Drosophila grimshawi	7222	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	D_athabasca	Drosophila athabasca	7248	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	D_pseudoobscura_1	Drosophila pseudoobscura 1	46245	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droMir2	Drosophila miranda	7229	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droPer1	Drosophila persimilis	7234	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droPse3	Drosophila pseudoobscura	46245	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	D_subobscura	Drosophila subobscura	7241	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	D_obscura	Drosophila obscura	7282	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	Zaprionus_indianus	Zaprionus indianus	76712	other		
+dm6/multiz124way	train	D_nasuta	Drosophila nasuta	42062	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	droAlb1	Drosophila albomicans	7291	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	Scaptodrosophila_lebanonensis	Scaptodrosophila lebanonensis	7225	other		
+dm6/multiz124way	train	Phortica_variegata	Phortica variegata	462259	other		
+dm6/multiz124way	train	droWil2	Drosophila willistoni	7260	genus	Drosophila_melanogaster	train
+dm6/multiz124way	train	Liriomyza_trifolii	Liriomyza trifolii	198433	other		
+dm6/multiz124way	train	Eutreta_diana	Eutreta diana	1577624	other		
+dm6/multiz124way	train	Trupanea_jonesi	Trupanea jonesi	1582032	other		
+dm6/multiz124way	train	Tephritis_californica	Tephritis californica	594049	other		
+dm6/multiz124way	train	Stomoxys_calcitrans	Stomoxys calcitrans	35570	other		
+dm6/multiz124way	train	Trichoceridae_BV_2014	Trichoceridae BV 2014	1577620	other		
+dm6/multiz124way	train	Proctacanthus_coquilletti	Proctacanthus coquilletti	1717472	other		
+dm6/multiz124way	train	triCas2	Tribolium castaneum	7070	other		
+dm6/multiz124way	train	Chironomus_riparius	Chironomus riparius	315576	other		
+dm6/multiz124way	train	Chironomus_tentans	Chironomus tentans	7153	other		
+dm6/multiz124way	train	Clunio_marinus	Clunio marinus	568069	other		
+dm6/multiz124way	train	Lutzomyia_longipalpis	Lutzomyia longipalpis	7200	other		
+dm6/multiz124way	train	Phlebotomus_papatasi	Phlebotomus papatasi	29031	other		
+dm6/multiz124way	train	Coboldia_fuscipes	Coboldia fuscipes	170625	other		
+dm6/multiz124way	train	Mayetiola_destructor	Mayetiola destructor	39758	other		
+dm6/multiz124way	train	Clogmia_albipunctata	Clogmia albipunctata	85120	other		
+dm6/multiz124way	train	apiMel4	Apis mellifera	7460	drop	Apis_mellifera	heldout_paired
+dm6/multiz124way	train	Bactrocera_dorsalis	Bactrocera dorsalis	27457	other		
+dm6/multiz124way	train	Bactrocera_latifrons	Bactrocera latifrons	174628	other		
+dm6/multiz124way	train	Bactrocera_tryoni	Bactrocera tryoni	59916	other		
+dm6/multiz124way	train	Bactrocera_oleae	Bactrocera oleae	104688	other		
+dm6/multiz124way	train	Zeugodacus_cucurbitae	Zeugodacus cucurbitae	28588	other		
+dm6/multiz124way	train	Ceratitis_capitata	Ceratitis capitata	7213	other		
+dm6/multiz124way	train	Cirrula_hians	Cirrula hians	1577616	other		
+dm6/multiz124way	train	Ephydra_gracilis	Ephydra gracilis	1577615	other		
+dm6/multiz124way	train	Sphyracephala_brevicornis	Sphyracephala brevicornis	139677	other		
+dm6/multiz124way	train	Glossina_austeni	Glossina austeni	7395	other		
+dm6/multiz124way	train	Glossina_morsitans_1	Glossina morsitans 1	7394	other		
+dm6/multiz124way	train	Glossina_morsitans_2	Glossina morsitans 2	37546	other		
+dm6/multiz124way	train	Glossina_pallidipes	Glossina pallidipes	7398	other		
+dm6/multiz124way	train	Glossina_fuscipes	Glossina fuscipes	201502	other		
+dm6/multiz124way	train	Glossina_palpalis_gambiensis	Glossina palpalis gambiensis	67801	other		
+dm6/multiz124way	train	Glossina_brevipalpis	Glossina brevipalpis	37001	other		
+dm6/multiz124way	train	Neobellieria_bullata	Neobellieria bullata	7385	other		
+dm6/multiz124way	train	Calliphora_vicina	Calliphora vicina	7373	other		
+dm6/multiz124way	train	Lucilia_cuprina	Lucilia cuprina	7375	other		
+dm6/multiz124way	train	Lucilia_sericata	Lucilia sericata	13632	other		
+dm6/multiz124way	train	Condylostylus_patibulatus	Condylostylus patibulatus	1577614	other		
+dm6/multiz124way	train	Phormia_regina	Phormia regina	7380	other		
+dm6/multiz124way	train	Sarcophagidae_BV_2014	Sarcophagidae BV 2014	1577618	other		
+dm6/multiz124way	train	Paykullia_maculata	Paykullia maculata	559696	other		
+dm6/multiz124way	train	Teleopsis_dalmanni	Teleopsis dalmanni	139649	other		
+dm6/multiz124way	train	Holcocephala_fusca	Holcocephala fusca	1577617	other		
+dm6/multiz124way	train	Megaselia_abdita	Megaselia abdita	88686	other		
+dm6/multiz124way	train	Tipula_oleracea	Tipula oleracea	312236	other		
+dm6/multiz124way	train	Haematobia_irritans	Haematobia irritans	7368	other		
+dm6/multiz124way	train	musDom2	Musca domestica	7370	other		
+dm6/multiz124way	train	Chaoborus_trivitattus	Chaoborus trivitattus	204567	other		
+dm6/multiz124way	train	Culicoides_sonorensis	Culicoides sonorensis	179676	other		
+dm6/multiz124way	train	Mochlonyx_cinctipes	Mochlonyx cinctipes	1577623	other		
+dm6/multiz124way	train	Megaselia_scalaris	Megaselia scalaris	36166	other		
+dm6/multiz124way	train	Aedes_aegypti	Aedes aegypti	7159	other		
+dm6/multiz124way	train	Aedes_albopictus	Aedes albopictus	7160	other		
+dm6/multiz124way	train	Hermetia_illucens	Hermetia illucens	343691	other		
+dm6/multiz124way	train	Rhagoletis_zephyria	Rhagoletis zephyria	28612	other		
+dm6/multiz124way	train	Culex_quinquefasciatus	Culex quinquefasciatus	7176	other		
+dm6/multiz124way	train	Belgica_antarctica	Belgica antarctica	315563	other		
+dm6/multiz124way	train	Eristalis_dimidiata	Eristalis dimidiata	1352481	other		
+dm6/multiz124way	train	Themira_minor	Themira minor	292402	other		
+dm6/multiz124way	train	A_maculatus	Anopheles maculatus	74869	other		
+dm6/multiz124way	train	A_nili	Anopheles nili	185578	other		
+dm6/multiz124way	train	A_sinensis	Anopheles sinensis	74873	other		
+dm6/multiz124way	train	A_culicifacies	Anopheles culicifacies	139723	other		
+dm6/multiz124way	train	A_minimus	Anopheles minimus	112268	other		
+dm6/multiz124way	train	A_funestus	Anopheles funestus	62324	other		
+dm6/multiz124way	train	A_christyi	Anopheles christyi	43041	other		
+dm6/multiz124way	train	A_arabiensis	Anopheles arabiensis	7173	other		
+dm6/multiz124way	train	A_coluzzii	Anopheles coluzzii	1518534	other		
+dm6/multiz124way	train	A_quadriannulatus	Anopheles quadriannulatus	34691	other		
+dm6/multiz124way	train	A_merus	Anopheles merus	30066	other		
+dm6/multiz124way	train	anoGam3	Anopheles gambiae	180454	other		
+dm6/multiz124way	train	A_gambiae_1	Anopheles gambiae 1	7165	other		
+dm6/multiz124way	train	A_melas	Anopheles melas	34690	other		
+dm6/multiz124way	train	A_epiroticus	Anopheles epiroticus	199890	other		
+dm6/multiz124way	train	A_cracens	Anopheles cracens	123217	other		
+dm6/multiz124way	train	A_dirus	Anopheles dirus	7168	other		
+dm6/multiz124way	train	A_stephensi	Anopheles stephensi	30069	other		
+dm6/multiz124way	train	A_farauti	Anopheles farauti	69004	other		
+dm6/multiz124way	train	A_koliensis	Anopheles koliensis	30065	other		
+dm6/multiz124way	train	A_farauti_No4	Anopheles farauti No4	59191	other		
+dm6/multiz124way	train	A_punctulatus	Anopheles punctulatus	30068	other		
+dm6/multiz124way	train	A_atroparvus	Anopheles atroparvus	41427	other		
+dm6/multiz124way	train	A_darlingi	Anopheles darlingi	43151	other		
+dm6/multiz124way	train	A_aquasalis	Anopheles aquasalis	42839	other		
+dm6/multiz124way	train	A_albimanus	Anopheles albimanus	7167	other		
+dm6/multiz27way	train	dm6	Drosophila melanogaster	7227	train	Drosophila_melanogaster	train
+dm6/multiz27way	train	droSim1	Drosophila simulans	7240	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droSec1	Drosophila sechellia	7238	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droYak3	Drosophila yakuba	7245	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droEre2	Drosophila erecta	7220	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droBia2	Drosophila biarmipes	125945	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droSuz1	Drosophila suzukii	28584	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droAna3	Drosophila ananassae	7217	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droBip2	Drosophila bipectinata	42026	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droEug2	Drosophila eugracilis	29029	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droEle2	Drosophila elegans	30023	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droKik2	Drosophila kikkawai	30033	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droTak2	Drosophila takahashii	29030	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droRho2	Drosophila rhopaloa	1041015	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droFic2	Drosophila ficusphila	30025	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droPse3	Drosophila pseudoobscura	46245	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droPer1	Drosophila persimilis	7234	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droMir2	Drosophila miranda	7229	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droWil2	Drosophila willistoni	7260	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droVir3	Drosophila virilis	7244	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droMoj3	Drosophila mojavensis	7230	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droAlb1	Drosophila albomicans	7291	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	droGri2	Drosophila grimshawi	7222	genus	Drosophila_melanogaster	train
+dm6/multiz27way	train	musDom2	Musca domestica	7370	other		
+dm6/multiz27way	train	anoGam1	Anopheles gambiae	7165	other		
+dm6/multiz27way	train	apiMel4	Apis mellifera	7460	drop	Apis_mellifera	heldout_paired
+dm6/multiz27way	train	triCas2	Tribolium castaneum	7070	other		
+ce11/multiz135way	train	ce11	Caenorhabditis elegans	6239	train	Caenorhabditis_elegans	train
+ce11/multiz135way	train	C_sp38_MB_2015	Caenorhabditis sp. 38 MB-2015	1729975	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	caeAng2	Caenorhabditis angaria	860376	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	caeJap4	Caenorhabditis japonica	281687	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	C_sp34_TK_2017	Caenorhabditis sp. 34 TK-2017	1978547	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	C_briggsae	Caenorhabditis briggsae	6238	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	cb4	Caenorhabditis briggsae	6238	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	C_nigoni	Caenorhabditis nigoni	1611254	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	C_sp26_LS_2015	Caenorhabditis sp. 26 LS-2015	1737333	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	caeSp51	Caenorhabditis sp5 ju800	1550068	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	C_sp40_LS_2015	Caenorhabditis sp. 40 LS-2015	1737337	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	C_latens	Caenorhabditis latens	1503980	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	caeRem4	Caenorhabditis remanei	31234	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	caePb3	Caenorhabditis brenneri	135651	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	caeSp111	Caenorhabditis tropicalis	1561998	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	C_sp31_LS_2015	Caenorhabditis sp. 31 LS-2015	1737334	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	C_sp21_LS_2015	Caenorhabditis sp. 21 LS-2015	1737332	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	C_sp32_LS_2015	Caenorhabditis sp. 32 LS-2015	1737335	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	C_sp39_LS_2015	Caenorhabditis sp. 39 LS-2015	1737336	genus	Caenorhabditis_elegans	train
+ce11/multiz135way	train	Pristionchus_arcanus	Pristionchus arcanus	1195655	other		
+ce11/multiz135way	train	Pristionchus_exspectatus	Pristionchus exspectatus	1195656	other		
+ce11/multiz135way	train	priExs1	Pristionchus exspectatus	1195656	other		
+ce11/multiz135way	train	Pristionchus_pacificus	Pristionchus pacificus	54126	other		
+ce11/multiz135way	train	priPac3	Pristionchus pacificus	54126	other		
+ce11/multiz135way	train	Pristionchus_maxplancki	Pristionchus maxplancki	1317128	other		
+ce11/multiz135way	train	Pristionchus_entomophagus	Pristionchus entomophagus	358040	other		
+ce11/multiz135way	train	Bursaphelenchus_xylophilus	Bursaphelenchus xylophilus	6326	other		
+ce11/multiz135way	train	burXyl1	Bursaphelenchus xylophilus	6326	other		
+ce11/multiz135way	train	Subanguina_moxae	Subanguina moxae	1120120	other		
+ce11/multiz135way	train	Oscheius_MCB	Oscheius sp. MCB	1523172	other		
+ce11/multiz135way	train	Oscheius_TEL_2014	Oscheius sp. TEL-2014	1573569	other		
+ce11/multiz135way	train	Angiostrongylus_cantonensis	Angiostrongylus cantonensis	6313	other		
+ce11/multiz135way	train	Necator_americanus	Necator americanus	51031	other		
+ce11/multiz135way	train	necAme1	Necator americanus	51031	other		
+ce11/multiz135way	train	Nippostrongylus_brasiliensis	Nippostrongylus brasiliensis	27835	other		
+ce11/multiz135way	train	Ancylostoma_caninum	Ancylostoma caninum	29170	other		
+ce11/multiz135way	train	Ancylostoma_duodenale	Ancylostoma duodenale	51022	other		
+ce11/multiz135way	train	ancCey1	Ancylostoma ceylanicum	53326	other		
+ce11/multiz135way	train	Ascaris_suum	Ascaris suum	6253	other		
+ce11/multiz135way	train	ascSuu1	Ascaris suum	6253	other		
+ce11/multiz135way	train	Parascaris_univalens	Parascaris univalens	6257	other		
+ce11/multiz135way	train	Toxocara_canis	Toxocara canis	6265	other		
+ce11/multiz135way	train	Oesophagostomum_dentatum	Oesophagostomum dentatum	61180	other		
+ce11/multiz135way	train	Haemonchus_contortus	Haemonchus contortus	6289	other		
+ce11/multiz135way	train	haeCon2	Haemonchus contortus	6289	other		
+ce11/multiz135way	train	Teladorsagia_circumcincta	Teladorsagia circumcincta	45464	other		
+ce11/multiz135way	train	Clonorchis_sinensis	Clonorchis sinensis	79923	other		
+ce11/multiz135way	train	Opisthorchis_viverrini	Opisthorchis viverrini	6198	other		
+ce11/multiz135way	train	Dicrocoelium_dendriticum	Dicrocoelium dendriticum	57078	other		
+ce11/multiz135way	train	Elaeophora_elaphi	Elaeophora elaphi	1147741	other		
+ce11/multiz135way	train	Macrostomum_lignano	Macrostomum lignano	282301	other		
+ce11/multiz135way	train	Fasciola_gigantica	Fasciola gigantica	46835	other		
+ce11/multiz135way	train	Fasciola_hepatica	Fasciola hepatica	6192	other		
+ce11/multiz135way	train	Spirometra_erinaceieuropaei	Spirometra erinaceieuropaei	99802	other		
+ce11/multiz135way	train	Heligmosomoides_polygyrus_bakeri	Heligmosomoides polygyrus bakeri	375939	other		
+ce11/multiz135way	train	Oscheius_tipulae	Oscheius tipulae	141969	other		
+ce11/multiz135way	train	Steinernema_carpocapsae	Steinernema carpocapsae	34508	other		
+ce11/multiz135way	train	Steinernema_scapterisci	Steinernema scapterisci	90986	other		
+ce11/multiz135way	train	Steinernema_feltiae	Steinernema feltiae	52066	other		
+ce11/multiz135way	train	Steinernema_glaseri	Steinernema glaseri	37863	other		
+ce11/multiz135way	train	Echinococcus_canadensis	Echinococcus canadensis	519352	other		
+ce11/multiz135way	train	Echinococcus_granulosus	Echinococcus granulosus	6210	other		
+ce11/multiz135way	train	Echinococcus_multilocularis	Echinococcus multilocularis	6211	other		
+ce11/multiz135way	train	Taenia_asiatica	Taenia asiatica	60517	other		
+ce11/multiz135way	train	Taenia_saginata	Taenia saginata	6206	other		
+ce11/multiz135way	train	Taenia_multiceps	Taenia multiceps	94034	other		
+ce11/multiz135way	train	Taenia_solium	Taenia solium	6204	other		
+ce11/multiz135way	train	Trichuris_muris	Trichuris muris	70415	other		
+ce11/multiz135way	train	Trichuris_trichiura	Trichuris trichiura	36087	other		
+ce11/multiz135way	train	triSui1	Trichuris suis	68888	other		
+ce11/multiz135way	train	Plectus_sambesii	Plectus sambesii	2011161	other		
+ce11/multiz135way	train	Steinernema_monticolum	Steinernema monticolum	90984	other		
+ce11/multiz135way	train	panRed1	Panagrellus redivivus	6233	other		
+ce11/multiz135way	train	Diploscapter_coronatus	Diploscapter coronatus	288516	other		
+ce11/multiz135way	train	Diploscapter_pachys	Diploscapter pachys	2018661	other		
+ce11/multiz135way	train	Brugia_malayi	Brugia malayi	6279	other		
+ce11/multiz135way	train	bruMal2	Brugia malayi	6279	other		
+ce11/multiz135way	train	Brugia_pahangi	Brugia pahangi	6280	other		
+ce11/multiz135way	train	Wuchereria_bancrofti	Wuchereria bancrofti	6293	other		
+ce11/multiz135way	train	Dirofilaria_immitis	Dirofilaria immitis	6287	other		
+ce11/multiz135way	train	dirImm1	Dirofilaria immitis	6287	other		
+ce11/multiz135way	train	Onchocerca_ochengi	Onchocerca ochengi	42157	other		
+ce11/multiz135way	train	Onchocerca_volvulus	Onchocerca volvulus	6282	other		
+ce11/multiz135way	train	oncVol1	Onchocerca volvulus	6282	other		
+ce11/multiz135way	train	Loa_loa	Loa loa	7209	other		
+ce11/multiz135way	train	loaLoa1	Loa loa	7209	other		
+ce11/multiz135way	train	Setaria_digitata	Setaria digitata	48799	other		
+ce11/multiz135way	train	Setaria_equina	Setaria equina	221942	other		
+ce11/multiz135way	train	Onchocerca_flexuosa	Onchocerca flexuosa	387005	other		
+ce11/multiz135way	train	Dugesia_japonica	Dugesia japonica	6161	other		
+ce11/multiz135way	train	Girardia_tigrina	Girardia tigrina	6162	other		
+ce11/multiz135way	train	Schmidtea_mediterranea	Schmidtea mediterranea	79327	other		
+ce11/multiz135way	train	Meloidogyne_arenaria	Meloidogyne arenaria	6304	other		
+ce11/multiz135way	train	Meloidogyne_javanica	Meloidogyne javanica	6303	other		
+ce11/multiz135way	train	Meloidogyne_incognita	Meloidogyne incognita	6306	other		
+ce11/multiz135way	train	Meloidogyne_floridensis	Meloidogyne floridensis	298350	other		
+ce11/multiz135way	train	melInc2	Meloidogyne incognita	6306	other		
+ce11/multiz135way	train	Meloidogyne_graminicola	Meloidogyne graminicola	189291	other		
+ce11/multiz135way	train	melHap1	Meloidogyne hapla	6305	other		
+ce11/multiz135way	train	Parastrongyloides_trichosuri	Parastrongyloides trichosuri	131310	other		
+ce11/multiz135way	train	Strongyloides_papillosus	Strongyloides papillosus	174720	other		
+ce11/multiz135way	train	Strongyloides_venezuelensis	Strongyloides venezuelensis	75913	other		
+ce11/multiz135way	train	Strongyloides_stercoralis	Strongyloides stercoralis	6248	other		
+ce11/multiz135way	train	strRat2	Strongyloides ratti	34506	other		
+ce11/multiz135way	train	Schistosoma_haematobium	Schistosoma haematobium	6185	other		
+ce11/multiz135way	train	Schistosoma_mansoni	Schistosoma mansoni	6183	other		
+ce11/multiz135way	train	Schistosoma_japonicum	Schistosoma japonicum	6182	other		
+ce11/multiz135way	train	Dictyocaulus_viviparus	Dictyocaulus viviparus	29172	other		
+ce11/multiz135way	train	Hymenolepis_microstoma	Hymenolepis microstoma	85433	other		
+ce11/multiz135way	train	Rhabditophanes_KR3021	Rhabditophanes sp. KR3021	114890	other		
+ce11/multiz135way	train	ci3	Ciona intestinalis	7719	drop	Ciona_intestinalis	heldout
+ce11/multiz135way	train	hetBac1	Heterorhabditis bacteriophora	37862	other		
+ce11/multiz135way	train	Gyrodactylus_salaris	Gyrodactylus salaris	37629	other		
+ce11/multiz135way	train	Parapristionchus_giblindavisi	Parapristionchus giblindavisi	1187980	other		
+ce11/multiz135way	train	Ditylenchus_destructor	Ditylenchus destructor	166010	other		
+ce11/multiz135way	train	Trichinella_T6	Trichinella sp. T6	92179	other		
+ce11/multiz135way	train	Trichinella_patagoniensis	Trichinella patagoniensis	990121	other		
+ce11/multiz135way	train	Trichinella_T8	Trichinella sp. T8	92180	other		
+ce11/multiz135way	train	Trichinella_T9	Trichinella sp. T9	181606	other		
+ce11/multiz135way	train	Trichinella_britovi	Trichinella britovi	45882	other		
+ce11/multiz135way	train	Trichinella_murrelli	Trichinella murrelli	144512	other		
+ce11/multiz135way	train	Trichinella_nativa	Trichinella nativa	6335	other		
+ce11/multiz135way	train	Trichinella_nelsoni	Trichinella nelsoni	6336	other		
+ce11/multiz135way	train	Trichinella_spiralis	Trichinella spiralis	6334	other		
+ce11/multiz135way	train	triSpi1	Trichinella spiralis	6334	other		
+ce11/multiz135way	train	Trichinella_papuae	Trichinella papuae	268474	other		
+ce11/multiz135way	train	Trichinella_zimbabwensis	Trichinella zimbabwensis	268475	other		
+ce11/multiz135way	train	Trichinella_pseudospiralis	Trichinella pseudospiralis	6337	other		
+ce11/multiz135way	train	Romanomermis_culicivorax	Romanomermis culicivorax	13658	other		
+ce11/multiz135way	train	Globodera_ellingtonae	Globodera ellingtonae	1517492	other		
+ce11/multiz135way	train	Globodera_rostochiensis	Globodera rostochiensis	31243	other		
+ce11/multiz135way	train	Globodera_pallida	Globodera pallida	36090	other		
+ce11/multiz135way	train	Heterodera_glycines	Heterodera glycines	51029	other		
+ce11/multiz135way	train	Rotylenchulus_reniformis	Rotylenchulus reniformis	239373	other		
+ce11/multiz135way	train	Acrobeloides_nanus	Acrobeloides nanus	290746	other		
+sacCer3/multiz7way	train	sacCer3	Saccharomyces cerevisiae	559292	train	Saccharomyces_cerevisiae	train
+sacCer3/multiz7way	train	sacPar	Saccharomyces paradoxus	27291	genus	Saccharomyces_cerevisiae	train
+sacCer3/multiz7way	train	sacMik	Saccharomyces mikatae	114525	genus	Saccharomyces_cerevisiae	train
+sacCer3/multiz7way	train	sacKud	Saccharomyces kudriavzevii	114524	genus	Saccharomyces_cerevisiae	train
+sacCer3/multiz7way	train	sacBay	Saccharomyces bayanus	4931	genus	Saccharomyces_cerevisiae	train
+sacCer3/multiz7way	train	sacCas	Naumovozyma castellii	27288	other		
+sacCer3/multiz7way	train	sacKlu	Lachancea kluyveri	4934	other		
+hg38/multiz100way	eval	hg38	Homo sapiens	9606	drop	Homo_sapiens	heldout_paired
+hg38/multiz100way	eval	panTro4	Pan troglodytes	9598	other		
+hg38/multiz100way	eval	gorGor3	Gorilla gorilla gorilla	9595	other		
+hg38/multiz100way	eval	ponAbe2	Pongo pygmaeus abelii	9601	other		
+hg38/multiz100way	eval	nomLeu3	Nomascus leucogenys	61853	other		
+hg38/multiz100way	eval	rheMac3	Macaca mulatta	9544	other		
+hg38/multiz100way	eval	macFas5	Macaca fascicularis	9541	other		
+hg38/multiz100way	eval	papAnu2	Papio anubis	9555	other		
+hg38/multiz100way	eval	chlSab2	Chlorocebus sabaeus	60711	other		
+hg38/multiz100way	eval	calJac3	Callithrix jacchus	9483	other		
+hg38/multiz100way	eval	saiBol1	Saimiri boliviensis	39432	other		
+hg38/multiz100way	eval	otoGar3	Otolemur garnettii	30611	other		
+hg38/multiz100way	eval	tupChi1	Tupaia chinensis		other		
+hg38/multiz100way	eval	speTri2	Spermophilus tridecemlineatus	43179	other		
+hg38/multiz100way	eval	jacJac1	Jaculus jaculus		other		
+hg38/multiz100way	eval	micOch1	Microtus ochrogaster		other		
+hg38/multiz100way	eval	criGri1	Cricetulus griseus	10029	other		
+hg38/multiz100way	eval	mesAur1	Mesocricetus auratus		other		
+hg38/multiz100way	eval	mm10	Mus musculus	10090	train	Mus_musculus	train
+hg38/multiz100way	eval	rn6	Rattus norvegicus	10116	other		
+hg38/multiz100way	eval	hetGla2	Heterocephalus glaber	10181	other		
+hg38/multiz100way	eval	cavPor3	Cavia porcellus	10141	other		
+hg38/multiz100way	eval	chiLan1	Chinchilla lanigera		other		
+hg38/multiz100way	eval	octDeg1	Octodon degus		other		
+hg38/multiz100way	eval	oryCun2	Oryctolagus cuniculus	9986	other		
+hg38/multiz100way	eval	ochPri3	Ochotona princeps	9978	other		
+hg38/multiz100way	eval	susScr3	Sus scrofa	9823	other		
+hg38/multiz100way	eval	vicPac2	Vicugna pacos	30538	other		
+hg38/multiz100way	eval	camFer1	Camelus ferus		other		
+hg38/multiz100way	eval	turTru2	Tursiops truncatus	9739	other		
+hg38/multiz100way	eval	orcOrc1	Orcinus orca		other		
+hg38/multiz100way	eval	panHod1	Pantholops hodgsonii		other		
+hg38/multiz100way	eval	bosTau8	Bos taurus	9913	other		
+hg38/multiz100way	eval	oviAri3	Ovis aries	9940	other		
+hg38/multiz100way	eval	capHir1	Capra hircus		other		
+hg38/multiz100way	eval	equCab2	Equus caballus	9796	other		
+hg38/multiz100way	eval	cerSim1	Ceratotherium simum	73337	other		
+hg38/multiz100way	eval	felCat8	Felis catus	9685	other		
+hg38/multiz100way	eval	canFam3	Canis lupus familiaris	9615	other		
+hg38/multiz100way	eval	musFur1	Mustela putorius furo	9669	other		
+hg38/multiz100way	eval	ailMel1	Ailuropoda melanoleuca	9646	other		
+hg38/multiz100way	eval	odoRosDiv1	Odobenus rosmarus divergens		other		
+hg38/multiz100way	eval	lepWed1	Leptonychotes weddellii		other		
+hg38/multiz100way	eval	pteAle1	Pteropus alecto		other		
+hg38/multiz100way	eval	pteVam1	Pteropus vampyrus	132908	other		
+hg38/multiz100way	eval	eptFus1	Eptesicus fuscus		other		
+hg38/multiz100way	eval	myoDav1	Myotis davidii		other		
+hg38/multiz100way	eval	myoLuc2	Myotis lucifugus		other		
+hg38/multiz100way	eval	eriEur2	Erinaceus europaeus	9365	other		
+hg38/multiz100way	eval	sorAra2	Sorex araneus	42254	other		
+hg38/multiz100way	eval	conCri1	Condylura cristata		other		
+hg38/multiz100way	eval	loxAfr3	Loxodonta africana	9785	other		
+hg38/multiz100way	eval	eleEdw1	Elephantulus edwardii		other		
+hg38/multiz100way	eval	triMan1	Trichechus manatus latirostris	127582	other		
+hg38/multiz100way	eval	chrAsi1	Chrysochloris asiatica		other		
+hg38/multiz100way	eval	echTel2	Echinops telfairi	9371	other		
+hg38/multiz100way	eval	oryAfe1	Orycteropus afer afer		other		
+hg38/multiz100way	eval	dasNov3	Dasypus novemcinctus	9361	other		
+hg38/multiz100way	eval	monDom5	Monodelphis domestica	13616	other		
+hg38/multiz100way	eval	sarHar1	Sarcophilus harrisii	9305	other		
+hg38/multiz100way	eval	macEug2	Macropus eugenii	9315	other		
+hg38/multiz100way	eval	ornAna1	Ornithorhynchus anatinus	9258	other		
+hg38/multiz100way	eval	colLiv1	Columba livia		other		
+hg38/multiz100way	eval	falChe1	Falco cherrug		other		
+hg38/multiz100way	eval	falPer1	Falco peregrinus		other		
+hg38/multiz100way	eval	ficAlb2	Ficedula albicollis		other		
+hg38/multiz100way	eval	zonAlb1	Zonotrichia albicollis		other		
+hg38/multiz100way	eval	geoFor1	Geospiza fortis	48883	other		
+hg38/multiz100way	eval	taeGut2	Taeniopygia guttata	59729	other		
+hg38/multiz100way	eval	pseHum1	Pseudopodoces humilis		other		
+hg38/multiz100way	eval	melUnd1	Melopsittacus undulatus	13146	other		
+hg38/multiz100way	eval	amaVit1	Amazona vittata		other		
+hg38/multiz100way	eval	araMac1	Ara macao		other		
+hg38/multiz100way	eval	anaPla1	Anas platyrhynchos		other		
+hg38/multiz100way	eval	galGal4	Gallus gallus	9031	drop	Gallus_gallus	heldout
+hg38/multiz100way	eval	melGal1	Meleagris gallopavo	9103	other		
+hg38/multiz100way	eval	allMis1	Alligator mississippiensis	8496	other		
+hg38/multiz100way	eval	cheMyd1	Chelonia mydas		other		
+hg38/multiz100way	eval	chrPic2	Chrysemys picta bellii		other		
+hg38/multiz100way	eval	pelSin1	Pelodiscus sinensis		other		
+hg38/multiz100way	eval	apaSpi1	Apalone spinifera		other		
+hg38/multiz100way	eval	anoCar2	Anolis carolinensis	28377	other		
+hg38/multiz100way	eval	xenTro7	Xenopus tropicalis	8364	train	Xenopus_tropicalis	train
+hg38/multiz100way	eval	latCha1	Latimeria chalumnae	7897	other		
+hg38/multiz100way	eval	tetNig2	Tetraodon nigroviridis	99883	other		
+hg38/multiz100way	eval	fr3	Takifugu rubripes	31033	drop	Takifugu_rubripes	heldout_paired
+hg38/multiz100way	eval	takFla1	Takifugu flavidus		genus	Takifugu_rubripes	heldout_paired
+hg38/multiz100way	eval	oreNil2	Oreochromis niloticus	8128	other		
+hg38/multiz100way	eval	neoBri1	Neolamprologus brichardi		other		
+hg38/multiz100way	eval	hapBur1	Haplochromis burtoni		other		
+hg38/multiz100way	eval	mayZeb1	Maylandia zebra		other		
+hg38/multiz100way	eval	punNye1	Pundamilia nyererei		other		
+hg38/multiz100way	eval	oryLat2	Oryzias latipes	8090	other		
+hg38/multiz100way	eval	xipMac1	Xiphophorus maculatus		other		
+hg38/multiz100way	eval	gasAcu1	Gasterosteus aculeatus	69293	other		
+hg38/multiz100way	eval	gadMor1	Gadus morhua	8049	other		
+hg38/multiz100way	eval	danRer10	Danio rerio	7955	train	Danio_rerio	train
+hg38/multiz100way	eval	astMex1	Astyanax mexicanus		other		
+hg38/multiz100way	eval	lepOcu1	Lepisosteus oculatus		other		
+hg38/multiz100way	eval	petMar2	Petromyzon marinus	7757	other		
+galGal6/multiz77way	eval	galGal6	Gallus gallus	9031	drop	Gallus_gallus	heldout
+galGal6/multiz77way	eval	cotJap2	Coturnix japonica		other		
+galGal6/multiz77way	eval	melGal5	Meleagris gallopavo	9103	other		
+galGal6/multiz77way	eval	tytAlb1	Tyto alba		other		
+galGal6/multiz77way	eval	bucRhi1	Buceros rhinoceros silvestris		other		
+galGal6/multiz77way	eval	anaPla1	Anas platyrhynchos		other		
+galGal6/multiz77way	eval	apaVit1	Apaloderma vittatum		other		
+galGal6/multiz77way	eval	calAnn1	Calypte anna		other		
+galGal6/multiz77way	eval	cucCan1	Cuculus canorus		other		
+galGal6/multiz77way	eval	chaVoc2	Charadrius vociferus		other		
+galGal6/multiz77way	eval	fulGla1	Fulmarus glacialis		other		
+galGal6/multiz77way	eval	tauEry1	Tauraco erythrolophus		other		
+galGal6/multiz77way	eval	opiHoa1	Opisthocomus hoazin		other		
+galGal6/multiz77way	eval	phoRub1	Phoenicopterus ruber ruber		other		
+galGal6/multiz77way	eval	colLiv1	Columba livia		other		
+galGal6/multiz77way	eval	lepDis1	Leptosomus discolor		other		
+galGal6/multiz77way	eval	merNub1	Merops nubicus		other		
+galGal6/multiz77way	eval	pelCri1	Pelecanus crispus		other		
+galGal6/multiz77way	eval	phaCar1	Phalacrocorax carbo		other		
+galGal6/multiz77way	eval	phaLep1	Phaethon lepturus		other		
+galGal6/multiz77way	eval	pteGut1	Pterocles gutturalis		other		
+galGal6/multiz77way	eval	nipNip1	Nipponia nippon		other		
+galGal6/multiz77way	eval	egrGar1	Egretta garzetta		other		
+galGal6/multiz77way	eval	pygAde1	Pygoscelis adeliae		other		
+galGal6/multiz77way	eval	aptFor1	Aptenodytes forsteri		other		
+galGal6/multiz77way	eval	carCri1	Cariama cristata		other		
+galGal6/multiz77way	eval	mesUni1	Mesitornis unicolor		other		
+galGal6/multiz77way	eval	eurHel1	Eurypyga helias		other		
+galGal6/multiz77way	eval	balPav1	Balearica pavonina gibbericeps		other		
+galGal6/multiz77way	eval	chlUnd1	Chlamydotis undulata macqueenii		other		
+galGal6/multiz77way	eval	falChe1	Falco cherrug		other		
+galGal6/multiz77way	eval	falPer1	Falco peregrinus		other		
+galGal6/multiz77way	eval	aquChr2	Aquila chrysaetos canadensis	216574	other		
+galGal6/multiz77way	eval	halAlb1	Haliaeetus albicilla		other		
+galGal6/multiz77way	eval	halLeu1	Haliaeetus leucocephalus		other		
+galGal6/multiz77way	eval	corBra1	Corvus brachyrhynchos		other		
+galGal6/multiz77way	eval	corCor1	Corvus cornix cornix		other		
+galGal6/multiz77way	eval	acaChl1	Acanthisitta chloris		other		
+galGal6/multiz77way	eval	ficAlb2	Ficedula albicollis		other		
+galGal6/multiz77way	eval	serCan1	Serinus canaria		other		
+galGal6/multiz77way	eval	zonAlb1	Zonotrichia albicollis		other		
+galGal6/multiz77way	eval	geoFor1	Geospiza fortis	48883	other		
+galGal6/multiz77way	eval	taeGut2	Taeniopygia guttata	59729	other		
+galGal6/multiz77way	eval	pseHum1	Pseudopodoces humilis		other		
+galGal6/multiz77way	eval	gavSte1	Gavia stellata		other		
+galGal6/multiz77way	eval	capCar1	Caprimulgus carolinensis		other		
+galGal6/multiz77way	eval	melUnd1	Melopsittacus undulatus	13146	other		
+galGal6/multiz77way	eval	amaVit1	Amazona vittata		other		
+galGal6/multiz77way	eval	araMac1	Ara macao		other		
+galGal6/multiz77way	eval	colStr1	Colius striatus		other		
+galGal6/multiz77way	eval	picPub1	Picoides pubescens		other		
+galGal6/multiz77way	eval	strCam1	Struthio camelus australis		other		
+galGal6/multiz77way	eval	tinGut2	Tinamus guttatus		other		
+galGal6/multiz77way	eval	allMis1	Alligator mississippiensis	8496	other		
+galGal6/multiz77way	eval	allSin1	Alligator sinensis		other		
+galGal6/multiz77way	eval	cheMyd1	Chelonia mydas		other		
+galGal6/multiz77way	eval	chrPic2	Chrysemys picta bellii		other		
+galGal6/multiz77way	eval	pelSin1	Pelodiscus sinensis		other		
+galGal6/multiz77way	eval	apaSpi1	Apalone spinifera		other		
+galGal6/multiz77way	eval	pytBiv1	Python bivittatus		other		
+galGal6/multiz77way	eval	thaSir1	Thamnophis sirtalis	35019	other		
+galGal6/multiz77way	eval	anoCar2	Anolis carolinensis	28377	other		
+galGal6/multiz77way	eval	hg38	Homo sapiens	9606	drop	Homo_sapiens	heldout_paired
+galGal6/multiz77way	eval	mm10	Mus musculus	10090	train	Mus_musculus	train
+galGal6/multiz77way	eval	xenTro9	Xenopus tropicalis	8364	train	Xenopus_tropicalis	train
+galGal6/multiz77way	eval	xenLae2	Xenopus laevis	8355	genus	Xenopus_tropicalis	train
+galGal6/multiz77way	eval	nanPar1	Nanorana parkeri	125878	other		
+galGal6/multiz77way	eval	tetNig2	Tetraodon nigroviridis	99883	other		
+galGal6/multiz77way	eval	fr3	Takifugu rubripes	31033	drop	Takifugu_rubripes	heldout_paired
+galGal6/multiz77way	eval	oreNil3	Oreochromis niloticus		other		
+galGal6/multiz77way	eval	mayZeb1	Maylandia zebra		other		
+galGal6/multiz77way	eval	oryLat2	Oryzias latipes	8090	other		
+galGal6/multiz77way	eval	gasAcu1	Gasterosteus aculeatus	69293	other		
+galGal6/multiz77way	eval	angJap1	Anguilla japonica		other		
+galGal6/multiz77way	eval	danRer11	Danio rerio	7955	train	Danio_rerio	train
+galGal6/multiz77way	eval	petMar3	Petromyzon marinus	7757	other		
+galGal6/multiz77way	eval	letCam1	Lethenteron camtschaticum		other		
