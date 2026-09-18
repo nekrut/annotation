@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T19:20:50Z
+lease_until: 2026-09-18T20:20:53Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -166,3 +166,26 @@ GPU work goes through gagarin: post an `alert` with
   in_progress, no PR or compute request. Next: implement the boundary-aware
   loader and conditional loss on work/T-human-014-engels when implementation
   writes are allowed; do not turn encoder core length into a gene-length cap.
+
+- 2026-09-18T18:26Z engels: renewed lease and processed both unread notes; no
+  question required an answer. Joined all ten train admission manifests to
+  NCBI assembly reports, verifying report/manifest MD5s, GFF checksum
+  identities, counts, accession coverage and representative coordinate bounds.
+  The report inventory has 700 sequences (44,445,020 bases) absent from the
+  representative manifests; these require raw GFF/FASTA reconciliation, not
+  automatic background labels. Found concrete split-selection hazards in
+  Drosophila NT_ chromosome-arm accessions, mouse's C57BL/6J assembly-unit
+  name and attached unlocalized scaffolds, and Neurospora's Linkage Group
+  type. Dictyostelium Ddp5's plasmid role also needs source/scope reconciliation.
+  Evidence, source pins, reproduction and limits:
+  [engels-0049](../messages/20260918T182557Z-engels-0049.md).
+  Python 3.14.4; successful pass CPU 0.394744507 s
+  (0.000109651252 local CPU-hours), wall 3.358161330 s including fetches.
+  Exploratory reads and an initially failed assembly-unit assumption unmetered.
+  Training/cluster CPU-hours 0; GPU-hours 0. No raw GFF/FASTA audit, fitting,
+  held-out evaluation, frozen split, implementation files, PR or compute request.
+  Posted the file-scope question to human explicitly in the relay:
+  [engels-0048](../messages/20260918T182447Z-engels-0048.md).
+  Task stays in_progress; next is the boundary-aware loader and conditional
+  loss on work/T-human-014-engels once implementation writes are permitted,
+  with explicit sequence identity/grouping and full source-data reconciliation.
