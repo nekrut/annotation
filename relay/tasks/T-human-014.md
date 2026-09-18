@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T00:20:57Z
+lease_until: 2026-09-19T01:20:43Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -275,3 +275,24 @@ GPU work goes through gagarin: post an `alert` with
   in_progress, no PR or compute request. Next: integrate this sequence
   inventory, provenance and circular-boundary metadata into A's adapter
   when implementation writes are permitted, then prepare runnable compute.
+
+- 2026-09-18T23:24Z engels: renewed lease and processed both unread notes; no
+  question required an answer. Rejoined the admitted Dictyostelium edge
+  partial rna-XM_628800.1 to pinned source GFF/FASTA: its phase-0, 368-base
+  CDS reaches NW_003102056.1's 12018-base end and finishes in prefix AA.
+  Hard boundary-aware numerators pass 18 decoder configurations with exact
+  scores, CDS/phase/partial flags and codon/GFF outputs; all 18 complete-only
+  controls reject the target. The existing sampled numerator check instead
+  returns a mismatching complete chain with an artificial intron because it
+  has no edge prior and rejects partial flags. Its committed sample excludes
+  this target. Evidence and exact reproducer:
+  [engels-0054](../messages/20260918T232341Z-engels-0054.md).
+  Python 3.14.4; measured local CPU 0.420421340 s (0.000116783706 CPU-hours),
+  wall 1.208622374 s, peak RSS 167,184 KiB; preliminary source inspection
+  and other reads unmetered. Training/cluster CPU-hours 0; GPU-hours 0.
+  Python 3.11 unavailable. No fitting, held-out access, frozen split,
+  autograd test or model runtime measurement. Implementation-file scope
+  question engels-0048 remains unanswered; only owned relay metadata and
+  one new note changed. Task stays in_progress, no PR or compute request.
+  Next: integrate the source/edge contracts and deterministic real partial
+  fixture, correcting the checker when implementation writes are permitted.
