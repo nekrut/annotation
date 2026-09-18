@@ -1,0 +1,109 @@
+{
+ "species": "Saccharomyces_cerevisiae",
+ "eligible_admitted": 259,
+ "sampled": 10,
+ "max_span": 5000,
+ "failures": [],
+ "results": [
+  {
+   "transcript": "rna-NM_001178290.1",
+   "seqid": "NC_001134.8",
+   "strand": "+",
+   "window_bp": 1015,
+   "introns": 1,
+   "log_partition": 9963.375052145879,
+   "viterbi": 9963.226024767748,
+   "seconds": 0.69
+  },
+  {
+   "transcript": "rna-NM_001180437.3",
+   "seqid": "NC_001136.10",
+   "strand": "-",
+   "window_bp": 2060,
+   "introns": 1,
+   "log_partition": 20413.420164178013,
+   "viterbi": 20413.276276447017,
+   "seconds": 1.38
+  },
+  {
+   "transcript": "rna-NM_001180446.3",
+   "seqid": "NC_001136.10",
+   "strand": "-",
+   "window_bp": 327,
+   "introns": 1,
+   "log_partition": 3083.8524131623426,
+   "viterbi": 3083.658189209449,
+   "seconds": 0.18
+  },
+  {
+   "transcript": "rna-NM_001178818.1",
+   "seqid": "NC_001137.3",
+   "strand": "+",
+   "window_bp": 444,
+   "introns": 1,
+   "log_partition": 4253.6462339118625,
+   "viterbi": 4253.507434171646,
+   "seconds": 0.26
+  },
+  {
+   "transcript": "rna-NM_001179935.1",
+   "seqid": "NC_001138.5",
+   "strand": "+",
+   "window_bp": 989,
+   "introns": 1,
+   "log_partition": 9702.293667483267,
+   "viterbi": 9701.859179091669,
+   "seconds": 0.68
+  },
+  {
+   "transcript": "rna-NM_001181426.1",
+   "seqid": "NC_001140.6",
+   "strand": "+",
+   "window_bp": 317,
+   "introns": 1,
+   "log_partition": 2984.077183975619,
+   "viterbi": 2983.758692567985,
+   "seconds": 0.18
+  },
+  {
+   "transcript": "rna-NM_001180028.3",
+   "seqid": "NC_001143.9",
+   "strand": "-",
+   "window_bp": 455,
+   "introns": 1,
+   "log_partition": 4363.156628051065,
+   "viterbi": 4362.97476637141,
+   "seconds": 0.29
+  },
+  {
+   "transcript": "rna-NM_001182162.1",
+   "seqid": "NC_001144.5",
+   "strand": "+",
+   "window_bp": 443,
+   "introns": 1,
+   "log_partition": 4243.624235072937,
+   "viterbi": 4243.487333499939,
+   "seconds": 0.27
+  },
+  {
+   "transcript": "rna-NM_001182749.1",
+   "seqid": "NC_001145.3",
+   "strand": "-",
+   "window_bp": 1016,
+   "introns": 1,
+   "log_partition": 9971.24057183382,
+   "viterbi": 9971.025578156146,
+   "seconds": 0.65
+  },
+  {
+   "transcript": "rna-NM_001183302.1",
+   "seqid": "NC_001147.6",
+   "strand": "-",
+   "window_bp": 1127,
+   "introns": 1,
+   "log_partition": 11083.77253434133,
+   "viterbi": 11083.607937530182,
+   "seconds": 0.71
+  }
+ ]
+}

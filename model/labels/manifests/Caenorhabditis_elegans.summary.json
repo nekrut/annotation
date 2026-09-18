@@ -1,0 +1,59 @@
+{
+ "accepted_transcripts": 28590,
+ "admitted": 19784,
+ "auxiliary_sites_annotated": {
+  "acceptor": 103556,
+  "donor": 103593,
+  "start": 24374,
+  "stop": 21200
+ },
+ "auxiliary_sites_retained": {
+  "acceptor": 103556,
+  "donor": 103593,
+  "start": 24316,
+  "stop": 21200
+ },
+ "auxiliary_sites_unknown": {
+  "acceptor": 0,
+  "donor": 0,
+  "start": 58,
+  "stop": 0
+ },
+ "benchmark_filtered": {
+  "pseudogene": 1958,
+  "sequence: organelle (genome=mitochondrion)": 12
+ },
+ "cds_transcripts_all": 30560,
+ "fasta": "GCF_000002985.6_WBcel235_genomic.fna.gz",
+ "fasta_checked": true,
+ "fasta_md5": "177a91ec15063e305188306b7e709cb1",
+ "fasta_sequences_missing": 0,
+ "gff": "GCF_000002985.6_WBcel235_genomic.gff.gz",
+ "gff_md5": "1656bccd184bf57434724f35bea89738",
+ "loci": 19971,
+ "m": 20,
+ "manifest": "Caenorhabditis_elegans.manifest.tsv.gz",
+ "manifest_md5": "3d2ccf6aa9ede6edc2b65ca918a06a96",
+ "masked_oriented_bases": 709866,
+ "masked_union": 187,
+ "metadata_masked": 30,
+ "nonrepresentative_omitted": 8619,
+ "peak_rss_mb": 769.6,
+ "reasons": {
+  "exception": 12,
+  "internal_stop": 1,
+  "no_initiator": 28,
+  "partial_5": 17,
+  "partial_away_from_edge": 17,
+  "short_gap": 12,
+  "topology": 132,
+  "transl_except": 1
+ },
+ "representatives": 19971,
+ "sequence_masked": 29,
+ "species": "Caenorhabditis_elegans",
+ "table": 1,
+ "topology_components": 65,
+ "topology_masked": 132,
+ "wall_seconds": 15.0
+}

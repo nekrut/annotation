@@ -1,0 +1,53 @@
+{
+ "accepted_transcripts": 10784,
+ "admitted": 9722,
+ "auxiliary_sites_annotated": {
+  "acceptor": 15862,
+  "donor": 15845,
+  "start": 9973,
+  "stop": 9832
+ },
+ "auxiliary_sites_retained": {
+  "acceptor": 15862,
+  "donor": 15845,
+  "start": 9966,
+  "stop": 9831
+ },
+ "auxiliary_sites_unknown": {
+  "acceptor": 0,
+  "donor": 0,
+  "start": 7,
+  "stop": 1
+ },
+ "benchmark_filtered": {
+  "sequence: organelle (genome=mitochondrion)": 28
+ },
+ "cds_transcripts_all": 10812,
+ "fasta": "GCF_000182925.2_NC12_genomic.fna.gz",
+ "fasta_checked": true,
+ "fasta_md5": "dbd205b23f3e95461207f46c7cec6314",
+ "fasta_sequences_missing": 0,
+ "gff": "GCF_000182925.2_NC12_genomic.gff.gz",
+ "gff_md5": "511c0c3c3875ca39bc9ba298e05d97eb",
+ "loci": 9729,
+ "m": 20,
+ "manifest": "Neurospora_crassa.manifest.tsv.gz",
+ "manifest_md5": "0c4cd9b0c77aa45868f742d3578d46d7",
+ "masked_oriented_bases": 12218,
+ "masked_union": 7,
+ "metadata_masked": 7,
+ "nonrepresentative_omitted": 1055,
+ "peak_rss_mb": 152.7,
+ "reasons": {
+  "partial_3": 1,
+  "partial_5": 6,
+  "partial_away_from_edge": 7
+ },
+ "representatives": 9729,
+ "sequence_masked": 0,
+ "species": "Neurospora_crassa",
+ "table": 1,
+ "topology_components": 0,
+ "topology_masked": 0,
+ "wall_seconds": 3.3
+}

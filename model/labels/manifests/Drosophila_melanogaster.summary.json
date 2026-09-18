@@ -1,0 +1,64 @@
+{
+ "accepted_transcripts": 30746,
+ "admitted": 12974,
+ "auxiliary_sites_annotated": {
+  "acceptor": 44500,
+  "donor": 44113,
+  "start": 16320,
+  "stop": 16114
+ },
+ "auxiliary_sites_retained": {
+  "acceptor": 44500,
+  "donor": 44113,
+  "start": 16267,
+  "stop": 16058
+ },
+ "auxiliary_sites_unknown": {
+  "acceptor": 0,
+  "donor": 0,
+  "start": 53,
+  "stop": 56
+ },
+ "benchmark_filtered": {
+  "biotype=segment": 50,
+  "sequence: organelle (genome=mitochondrion)": 13,
+  "sequence: shorter than 10000 bp": 2
+ },
+ "cds_transcripts_all": 30811,
+ "fasta": "GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna.gz",
+ "fasta_checked": true,
+ "fasta_md5": "869cf40e4f5c7ca27d04ca9ae7baee4f",
+ "fasta_sequences_missing": 0,
+ "gff": "GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.gff.gz",
+ "gff_md5": "1de22f17786c44ae98d7922116967b4e",
+ "loci": 13965,
+ "m": 20,
+ "manifest": "Drosophila_melanogaster.manifest.tsv.gz",
+ "manifest_md5": "21457612546f7202deedefa8e76bb515",
+ "masked_oriented_bases": 12249013,
+ "masked_union": 991,
+ "metadata_masked": 489,
+ "nonrepresentative_omitted": 16781,
+ "peak_rss_mb": 658.8,
+ "reasons": {
+  "exception": 121,
+  "frame_length": 51,
+  "internal_stop": 413,
+  "no_initiator": 32,
+  "no_stop": 51,
+  "partial_3": 3,
+  "partial_away_from_edge": 3,
+  "phase_inconsistent": 9,
+  "seq_frame_length": 51,
+  "short_gap": 1,
+  "topology": 530,
+  "transl_except": 368
+ },
+ "representatives": 13965,
+ "sequence_masked": 443,
+ "species": "Drosophila_melanogaster",
+ "table": 1,
+ "topology_components": 234,
+ "topology_masked": 530,
+ "wall_seconds": 15.6
+}

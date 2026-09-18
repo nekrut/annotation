@@ -1,0 +1,70 @@
+{
+ "accepted_transcripts": 97324,
+ "admitted": 21694,
+ "auxiliary_sites_annotated": {
+  "acceptor": 189666,
+  "donor": 187365,
+  "start": 35932,
+  "stop": 30188
+ },
+ "auxiliary_sites_retained": {
+  "acceptor": 189662,
+  "donor": 187361,
+  "start": 35860,
+  "stop": 30168
+ },
+ "auxiliary_sites_unknown": {
+  "acceptor": 4,
+  "donor": 4,
+  "start": 72,
+  "stop": 20
+ },
+ "benchmark_filtered": {
+  "biotype=C_region": 20,
+  "biotype=D_segment": 14,
+  "biotype=J_segment": 82,
+  "biotype=V_segment": 374,
+  "pseudogene": 176,
+  "sequence: organelle (genome=mitochondrion)": 13,
+  "sequence: shorter than 10000 bp": 2
+ },
+ "cds_transcripts_all": 98005,
+ "fasta": "GCF_000001635.27_GRCm39_genomic.fna.gz",
+ "fasta_checked": true,
+ "fasta_md5": "c0b0c4c3f54d2b480efe68a18bf7e42b",
+ "fasta_sequences_missing": 0,
+ "gff": "GCF_000001635.27_GRCm39_genomic.gff.gz",
+ "gff_md5": "f0bc4339da97f2301929d2028bbb35ce",
+ "loci": 22183,
+ "m": 20,
+ "manifest": "Mus_musculus.manifest.tsv.gz",
+ "manifest_md5": "5358264dc6f509ec3de8996ecc3f7330",
+ "masked_oriented_bases": 27311554,
+ "masked_union": 489,
+ "metadata_masked": 108,
+ "nonrepresentative_omitted": 75141,
+ "peak_rss_mb": 3554.6,
+ "reasons": {
+  "exception": 20,
+  "frame_length": 1,
+  "internal_stop": 43,
+  "no_initiator": 27,
+  "no_stop": 1,
+  "overlapping_rows": 1,
+  "partial_3": 18,
+  "partial_5": 36,
+  "partial_away_from_edge": 49,
+  "partial_unlocated": 2,
+  "seq_frame_length": 1,
+  "short_gap": 11,
+  "topology": 370,
+  "transl_except": 50
+ },
+ "representatives": 22183,
+ "sequence_masked": 70,
+ "species": "Mus_musculus",
+ "table": 1,
+ "topology_components": 137,
+ "topology_masked": 370,
+ "wall_seconds": 88.1
+}

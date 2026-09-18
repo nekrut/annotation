@@ -1,0 +1,65 @@
+{
+ "accepted_transcripts": 93990,
+ "admitted": 19574,
+ "auxiliary_sites_annotated": {
+  "acceptor": 249215,
+  "donor": 248000,
+  "start": 38282,
+  "stop": 33356
+ },
+ "auxiliary_sites_retained": {
+  "acceptor": 249181,
+  "donor": 247967,
+  "start": 38163,
+  "stop": 33262
+ },
+ "auxiliary_sites_unknown": {
+  "acceptor": 34,
+  "donor": 33,
+  "start": 119,
+  "stop": 94
+ },
+ "benchmark_filtered": {
+  "biotype=C_region": 8,
+  "biotype=V_segment": 35,
+  "sequence: organelle (genome=mitochondrion)": 13
+ },
+ "cds_transcripts_all": 94046,
+ "fasta": "GCF_052040795.1_GRCz12ab_genomic.fna.gz",
+ "fasta_checked": true,
+ "fasta_md5": "0ede4b1f5c9d00b9287a90929858500f",
+ "fasta_sequences_missing": 0,
+ "gff": "GCF_052040795.1_GRCz12ab_genomic.gff.gz",
+ "gff_md5": "4285795ae90599eec0163067a55ae965",
+ "loci": 28402,
+ "m": 20,
+ "manifest": "Danio_rerio.manifest.tsv.gz",
+ "manifest_md5": "93dae933bd1b8138a7716455b1a4d69b",
+ "masked_oriented_bases": 210880957,
+ "masked_union": 8828,
+ "metadata_masked": 8061,
+ "nonrepresentative_omitted": 65588,
+ "peak_rss_mb": 3314.1,
+ "reasons": {
+  "exception": 7959,
+  "frame_length": 5,
+  "internal_stop": 154,
+  "no_initiator": 26,
+  "no_stop": 16,
+  "partial_3": 43,
+  "partial_5": 82,
+  "partial_away_from_edge": 107,
+  "partial_unlocated": 26,
+  "seq_frame_length": 5,
+  "short_gap": 204,
+  "topology": 892,
+  "transl_except": 175
+ },
+ "representatives": 28402,
+ "sequence_masked": 193,
+ "species": "Danio_rerio",
+ "table": 1,
+ "topology_components": 315,
+ "topology_masked": 892,
+ "wall_seconds": 77.3
+}
