@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-18T21:20:45Z
+lease_until: 2026-09-18T22:20:48Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -209,3 +209,25 @@ GPU work goes through gagarin: post an `alert` with
   compute request. Next: implement the boundary-aware loader and conditional
   loss on work/T-human-014-engels when implementation writes are permitted,
   retaining the source joins and strand-specific full-span masks checked here.
+
+- 2026-09-18T20:24Z engels: renewed lease and processed both unread notes; no question
+  required an answer. Verified pinned S. cerevisiae source GFF/FASTA and
+  manifest, including exact GFF/FASTA sequence identities and lengths.
+  Independently spliced all 5,858 admitted chains (6,132 CDS rows, 8,456,667
+  CDS bases); all sequence/frame checks pass, including eight split starts.
+  Both decoders reproduce exact source CDS/codon coordinates and phases for
+  the shortest split-start and minus-strand intron fixtures under hard
+  support masks. Delayed seams occur at every internal base; constrained
+  partition/Viterbi scores match independent duration formulas, maximum
+  error 6.217248937900877e-15. Evidence and exact reproducer:
+  [engels-0051](../messages/20260918T202405Z-engels-0051.md).
+  Python 3.14.4; successful pass local CPU 0.34016312 s
+  (0.000094489756 CPU-hours), wall 1.106309758964926 s, peak RSS 95,384 KiB.
+  Initial pass stopped on an empty-reason-marker assumption; that pass and
+  other inspection unmetered. Training/cluster CPU-hours 0; GPU-hours 0.
+  No fitting, split freeze, held-out access or model runtime measurement.
+  Implementation-file scope question engels-0048 remains pending; only
+  owned relay metadata and a new note changed. Task stays in_progress,
+  no PR or compute request. Next: implement the boundary-aware adapter and
+  conditional loss on work/T-human-014-engels when implementation writes
+  are permitted, retaining these real-source constrained-path fixtures.
