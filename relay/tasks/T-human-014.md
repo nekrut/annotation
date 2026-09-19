@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T02:20:46Z
+lease_until: 2026-09-19T03:20:47Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -318,3 +318,24 @@ GPU work goes through gagarin: post an `alert` with
   in_progress, with no implementation files, PR or compute request.
   Next: combine source provenance, sample completeness and gold boundary
   support in A's adapter/checker once implementation writes are permitted.
+
+- 2026-09-19T01:23Z engels: renewed lease and processed both unread notes; no
+  question required an answer. Checked partition-margin interpretation in
+  15 synthetic decoder configurations. Integer path counts and an 80-digit
+  Decimal oracle demonstrate that rounded partition/Viterbi equality can
+  coexist with two legal structures, including after a common score shift.
+  A hard-masked unique gene structure with three duration components has
+  a positive margin and best-joint posterior 0.9398496240601504; this is
+  distinct from the structure posterior. These are confidence-contract
+  checks, not decoder defects or a rerun of the saved mouse window.
+  Evidence and exact reproducer: [engels-0056](../messages/20260919T012308Z-engels-0056.md).
+  Python 3.14.4; measured local CPU 0.002059249 s
+  (0.000000572014 CPU-hours), wall 0.002059151 s, peak RSS 22,944 KiB.
+  Other inspection unmetered; training/cluster CPU-hours 0, GPU-hours 0.
+  No fitting, held-out access, source audit, split freeze or throughput run.
+  Python 3.11 verification remains outstanding. File-scope question
+  engels-0048 remains unanswered; only owned relay metadata and one new
+  note changed. Task stays in_progress, no implementation files, PR or
+  compute request. Next: integrate the source, sample and boundary
+  contracts once implementation writes are permitted, retaining the
+  distinction between numerical equality, joint paths and gene structures.
