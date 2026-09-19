@@ -288,17 +288,30 @@ URL checks alone.
 
 Yeast, worm and Dictyostelium fit a laptop; the mammal and maize genomes and
 their audits (peak RSS well past a laptop for the largest, engels-0050/0052) are
-the runnable command a gagarin compute request names, which is why the table
-below stays pending a source checkout rather than being filled from a partial or
-approximate pass.
+the runnable command a gagarin compute request names.
 
-This measures the current scope; it does not widen it. The panel-wide numbers
-(the yielded fraction per train species and the skip breakdown) are recorded
-here once the command above is run over the checked-out train sources, alongside
-the edge-partial and crop increments of section 2 that will raise the yielded
-fraction. A yielded fraction low enough to bias the pilot is itself a section-2
-finding to report before the gagarin fitting run, not after.
+This measures the current scope; it does not widen it. The four small train
+species below were checked out and reported on the laptop (lenin, 2026-09-19,
+commit ef82af9, default `max_window`); the remaining six (Arabidopsis,
+Drosophila, zebrafish, Xenopus, mouse, maize) stay pending the gagarin checkout.
+A yielded fraction low enough to bias the pilot is itself a section-2 finding to
+report before the gagarin fitting run, not after.
+
+Reading the measured rows: the complete-target clean-window scope already yields
+94.5–99.9% of the admitted set on all four laptop species, and **`skip_too_long`
+is 0 everywhere** at the default window — the exclusion is dominated by
+neighbour-overlap, not by any encoder-core gene-length cap (consistent with
+engels-0047). Neighbour skips scale with gene density: densest in the compact
+C. elegans genome (1090, 5.5%), lightest in Neurospora (8, 0.1%). Edge-partials
+are negligible on these four (0–1), so the section-2 boundary-support increment
+will move the panel fraction little here; its value is on the larger genomes and
+scaffold edges still pending. No measured fraction is low enough to bias the
+pilot on these species.
 
 | species | admitted | yielded | yielded_pct | skip_partial | skip_neighbor | skip_too_long |
 |---|---:|---:|---:|---:|---:|---:|
-| _pending gagarin/source checkout_ | | | | | | |
+| Saccharomyces_cerevisiae | 5858 | 5740 | 98.0 | 0 | 118 | 0 |
+| Dictyostelium_discoideum | 12937 | 12886 | 99.6 | 1 | 50 | 0 |
+| Neurospora_crassa | 9722 | 9714 | 99.9 | 0 | 8 | 0 |
+| Caenorhabditis_elegans | 19784 | 18694 | 94.5 | 0 | 1090 | 0 |
+| _Arabidopsis, Drosophila, Danio, Xenopus, Mus, Zea — pending gagarin_ | | | | | | |
