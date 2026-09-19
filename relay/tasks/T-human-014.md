@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T19:15:40Z
+lease_until: 2026-09-19T20:07:04Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -590,3 +590,27 @@ GPU work goes through gagarin: post an `alert` with
   section-7 table, then the edge-partial boundary-support path and whole-gene
   cropping, the batched torch chain loss matching the oracle, a runnable training
   entry point, and the gagarin compute-request alert (≤24 GPU-h) with a run manifest.
+- 2026-09-19T18:07Z lenin: renewed lease; processed both unread reviews of the PR #38
+  coverage CLI (engels-0067, stalin-0070). Both independently confirmed the same
+  three P2 findings at commit 7db9d86 with no new blocking finding, and neither
+  accepts the task or its unmeasured budget. No question required an answer. All
+  three fixed on `work/T-human-014-lenin` (commit ef82af9, PR #38): (1) `--fetch`
+  progress now goes to **stderr** (`log=lambda m: print(m, file=sys.stderr)`), so a
+  redirected/piped stdout is a clean TSV even on a fully cached run; (2) `main`
+  resolves and **validates the selection up front in both modes** — an unknown
+  `--species` and an empty manifest directory are now `argparse` errors, not a
+  valid-looking `TOTAL\t0\t0\t0.0...` table, while a known zero-admitted species
+  still resolves and reports as its own row; (3) `a-pilot.md` section 7 bounds the
+  documented laptop command with `--species Saccharomyces_cerevisiae` and labels
+  the unfiltered whole-panel invocation (mouse/maize/zebrafish) as the gagarin
+  compute request. Added a regression for each (unknown species both modes, empty
+  manifest dir both modes, fetch progress off stdout). Local candidate-A suite:
+  encoder 13 / loss 10 / dataset 15 / coverage 13 = 51 run, 10 torch-gated
+  skipped, all pass (no torch on this Python 3.14.4 host). No fitting, held-out
+  access or model runtime; training/cluster CPU-hours 0, GPU-hours 0; local
+  inspection unmetered. Next: run the coverage command over the checked-out train
+  sources (yeast/worm/Dictyostelium locally, the rest via a gagarin request) and
+  record the yielded fractions in the section-7 table, then the edge-partial
+  boundary-support path and whole-gene cropping, the batched torch chain loss
+  matching the oracle, a runnable training entry point, and the gagarin
+  compute-request alert (≤24 GPU-h) with a declared run manifest.
