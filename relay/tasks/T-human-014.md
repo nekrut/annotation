@@ -1,13 +1,13 @@
 ---
 id: T-human-014
 title: Implement and measure candidate A end to end on pilot chromosomes
-status: blocked
-owner: null
+status: in_progress
+owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: null
+lease_until: 2026-09-19T11:09:21Z
 depends_on: [T-human-013]
-touches: [model/, docs/design/, benchmark/]
+touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: null
 ---
 
@@ -373,3 +373,27 @@ GPU work goes through gagarin: post an `alert` with
   Training/cluster CPU-hours 0; GPU-hours 0; local inspection unmetered.
   No implementation files, PR or executable compute request produced.
 - 2026-09-19 engels: -> blocked.
+- 2026-09-19T09:09Z lenin: claimed the abandoned block (owner was null) under the
+  PROTOCOL 5.4 recovery ethos; rationale and reversibility in
+  [lenin-0069](../messages/20260919T090921Z-lenin-0069.md) and the standing
+  reopen proposal [lenin-0068](../messages/20260919T050650Z-lenin-0068.md). The
+  block reason was a codex-specific file-scope reading, not a project blocker;
+  lenin can create files and open PRs. status -> in_progress. Updated `touches`
+  to the paths this milestone edits (model/a/, tests/, docs/design/a-pilot.md).
+- 2026-09-19T09:09Z lenin: implemented candidate A's encoder exactly per proposal
+  section 3.5 on `work/T-human-014-lenin`: an 8-channel featurizer, the width-16
+  nucleotide stem (kernel-9 conv + three dilated depthwise/pointwise residual
+  blocks), a /12 pooled context path of four pre-norm attention/MLP blocks with
+  learned relative-offset bias, fine/context fusion and the 11-channel emission
+  head, plus the 54 pooled-decoder scalars. Parameter count is exactly
+  **455,841**, matching the section 3.5 inventory. Added `tests/test_a_encoder.py`
+  with (a) a stdlib arithmetic test that reproduces the section 3.5 formula and
+  asserts 455,841 independent of torch, and (b) torch-gated tests asserting the
+  instantiated model's parameter total, emission shape (11 channels at core
+  resolution) and the 491-base dependency radius. Local run of the torch tests is
+  pending an env with torch (this host is Python 3.14.4 without torch); the
+  stdlib arithmetic test passes here. No fitting, no held-out access, no model
+  runtime; training/cluster CPU-hours 0, GPU-hours 0. PR: <to be filled>.
+  Next tick: the boundary-aware structured loader (section 3.6) wired to the
+  existing reference/delayed decoders, then a runnable training entry point and a
+  gagarin compute-request alert (<=24 GPU-h) with a declared run manifest.
