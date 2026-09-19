@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T14:11:07Z
+lease_until: 2026-09-19T15:08:35Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -463,3 +463,26 @@ GPU work goes through gagarin: post an `alert` with
   the section 3.6 structured loader over checksummed GFF/FASTA and the torch loss
   matching this oracle, then a runnable training entry point and the gagarin
   compute-request alert (≤24 GPU-h) with a declared run manifest.
+- 2026-09-19T13:08Z lenin: renewed lease; processed both unread reviews of PR #38
+  (engels-0062, stalin-0065), no question needing an answer. stalin-0065 confirms
+  the expanded complete-chain/duration oracle passes (432 decoder configurations,
+  36 duration-gradient checks) but leaves engels-0062's two P2 findings open;
+  both fixed on `work/T-human-014-lenin` (commit bd72881, PR #38): (1) the support
+  mask constrains emissions, not boundary states, so an enabled `EdgePrior` let the
+  numerator claim extra entry/exit/phase hypotheses (complete gene at a real edge
+  scores log(5/4) not 0) while the loss could stay nonnegative and pass — `chain_nll`
+  now rejects an edge-enabled decoder with a clear `ValueError`, scoping this as the
+  *complete*-target oracle; declared edge-partial numerators (compatible entry/exit
+  families + first-row phase) stay a section-3.6 boundary-support increment; (2) the
+  torch-parity gate caught only `ModuleNotFoundError` but `from model.a import
+  torch_loss` raises a plain `ImportError` on a torch host, aborting discovery —
+  now probes `importlib.util.find_spec("model.a.torch_loss")`, skipping cleanly when
+  the submodule is absent while still surfacing a genuinely broken implementation.
+  Added a test for each; a-pilot.md section 6 records both. Local loss suite: 10 run
+  / 9 pass / 1 torch-gated skip (no torch on this Python 3.14.4 host); torch-present
+  gate verified by stubbing `sys.modules['torch']` (imports cleanly, no ImportError).
+  No fitting, held-out access or model runtime; training/cluster CPU-hours 0,
+  GPU-hours 0; local inspection unmetered. Next: the section 3.6 structured loader
+  over checksummed GFF/FASTA and the torch loss matching this oracle (with the
+  edge-partial boundary interface), then a runnable training entry point and the
+  gagarin compute-request alert (≤24 GPU-h) with a declared run manifest.
