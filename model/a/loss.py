@@ -109,15 +109,30 @@ def numerator_scores(base: Optional[Scores], n: int, cds_ranges: Sequence[Range]
 
 def chain_nll(decoder: ReferenceDecoder, x: str, base: Optional[Scores],
               cds_ranges: Sequence[Range], intron_ranges: Sequence[Range]):
-    """Return ``(loss, log_Z, log_Z_num)`` for one admitted gold chain.
+    """Return ``(loss, log_Z, log_Z_num)`` for one *complete* admitted gold chain.
 
     ``loss = log_Z - log_Z_num`` is the per-representative chain NLL. ``decoder``
-    supplies the grammar, genetic code and duration mixture; pass a decoder with
-    ``edges`` enabled only for an edge-partial admitted target (section 3.6). A
-    non-finite ``log_Z_num`` means the support admits no legal path -- the
-    adapter must record the transcript id and drop the crop (section 3.6),
-    never clamp an infinite loss.
+    supplies the grammar, genetic code and duration mixture. A non-finite
+    ``log_Z_num`` means the support admits no legal path -- the adapter must
+    record the transcript id and drop the crop (section 3.6), never clamp an
+    infinite loss.
+
+    This increment covers only complete targets: the gold path enters and leaves
+    in intergenic ``U``, so ``decoder`` must have its edge grammar disabled
+    (``edges is None``). The support mask restricts the *emission* channels but
+    not the initial/terminal *states*, so an enabled ``EdgePrior`` would let the
+    numerator claim extra boundary/phase hypotheses (for example ``log Z_num`` of
+    a complete gene at a real edge becomes ``log(5/4)`` instead of ``0``), quietly
+    supervising the wrong path set. Declared edge-partial targets need the
+    section-3.6 boundary-support interface -- compatible entry/exit families and a
+    first-row phase carried alongside ``cds_ranges`` -- which does not exist yet,
+    so an edge-enabled decoder is rejected rather than silently mis-scored.
     """
+    if getattr(decoder, "edges", None) is not None:
+        raise ValueError(
+            "chain_nll is the complete-target oracle and requires the decoder's "
+            "edge grammar disabled (edges is None); edge-partial numerators are a "
+            "later section-3.6 increment")
     num = numerator_scores(base, len(x), cds_ranges, intron_ranges)
     log_z = decoder.partition(x, base if base is not None else Scores.zeros(len(x)))
     log_z_num = decoder.partition(x, num)

@@ -138,3 +138,24 @@ First-round encoder review findings and their resolution on
   differentiate under symmetric updates (hazard gradients can be nonzero but move
   the components together; stalin-0063, engels-0060). Uniform mixture weights are
   kept. A test asserts the three components start distinct.
+
+Chain-loss oracle review findings and their resolution:
+
+- **The numerator constrained emissions but not boundary states** (engels-0062
+  P2). The support mask masks emission channels, not the initial/terminal states,
+  so an enabled `EdgePrior` let the numerator claim extra entry/exit and phase
+  hypotheses — for a complete gene at a real edge `log Z_num` becomes `log(5/4)`
+  instead of `0` — while the loss could stay nonnegative and pass the tests,
+  supervising the wrong path set. This increment is the *complete*-target oracle:
+  the gold path enters and leaves in intergenic `U`, so `chain_nll` now rejects a
+  decoder whose edge grammar is enabled (`ValueError`), rather than silently
+  mis-scoring it. Declared edge-partial numerators (compatible entry/exit families
+  and a first-row phase carried alongside the CDS intervals) are the section-3.6
+  boundary-support interface, still to be built. A test pins the rejection.
+- **The torch-parity gate aborted discovery on a torch host** (engels-0062 P2).
+  `tests/test_a_loss.py` caught only `ModuleNotFoundError`, but with torch present
+  `from model.a import torch_loss` raises a plain `ImportError` because the
+  submodule does not exist yet, aborting test collection instead of skipping. The
+  gate now probes `importlib.util.find_spec("model.a.torch_loss")`, skipping
+  cleanly when the submodule is absent while still surfacing errors from a
+  genuinely broken implementation once it is written.

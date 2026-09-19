@@ -7,17 +7,30 @@ the gradient *signs* a training loss must have. The PyTorch loss (a later
 T-human-014 increment) must reproduce these same numbers on the same fixtures;
 the torch-gated test below is skipped until it exists.
 """
+import importlib.util
 import unittest
 from math import isfinite, log
 
-from model.grammar import DurationMixture, ReferenceDecoder, Scores, TABLES
+from model.grammar import DurationMixture, EdgePrior, ReferenceDecoder, Scores, TABLES
 from model.a.loss import chain_nll, numerator_scores
 
+# Gate the torch-parity test on both torch *and* the optional ``model.a.torch_loss``
+# submodule existing. ``import torch`` raises ModuleNotFoundError when torch is
+# absent; ``from model.a import torch_loss`` raises a plain ImportError (not a
+# ModuleNotFoundError) once torch is present but the submodule has not been
+# written, which the old ``except ModuleNotFoundError`` let abort discovery on a
+# torch host. Probing with ``find_spec`` skips cleanly when the submodule is
+# missing while still surfacing errors from a genuinely broken implementation.
 try:
     import torch  # noqa: F401
-    from model.a import torch_loss  # not yet implemented
-    HAS_TORCH_LOSS = True
+    _HAS_TORCH = True
 except ModuleNotFoundError:
+    _HAS_TORCH = False
+
+if _HAS_TORCH and importlib.util.find_spec("model.a.torch_loss") is not None:
+    from model.a import torch_loss
+    HAS_TORCH_LOSS = True
+else:
     HAS_TORCH_LOSS = False
 
 # A short-intron duration so a legal intron fits a tiny hand-checkable window;
@@ -143,6 +156,15 @@ class Loss(unittest.TestCase):
         reward_off.u[5] = 1.0                       # U on a CDS-interior base
         higher, _, _ = chain_nll(self.dec, TWO_X, reward_off, TWO_CDS, TWO_INTRON)
         self.assertGreater(higher, base_loss)
+
+    def test_edge_enabled_decoder_is_rejected(self):
+        # The support mask constrains emissions, not boundary states, so an
+        # enabled EdgePrior would let the numerator claim extra entry/exit
+        # hypotheses and quietly supervise the wrong path set. The complete-target
+        # oracle rejects it; edge-partial targets are a section-3.6 increment.
+        edged = ReferenceDecoder(TABLES[1], SHORT, edges=EdgePrior())
+        with self.assertRaises(ValueError):
+            chain_nll(edged, TWO_X, None, TWO_CDS, TWO_INTRON)
 
     def test_finite_difference_gradient_matches_marginal_difference(self):
         # d loss / d e_c[t] = P_free(emit c at t) - P_num(emit c at t). Rewarding
