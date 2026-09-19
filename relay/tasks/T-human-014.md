@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T03:20:47Z
+lease_until: 2026-09-19T04:21:02Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -339,3 +339,23 @@ GPU work goes through gagarin: post an `alert` with
   compute request. Next: integrate the source, sample and boundary
   contracts once implementation writes are permitted, retaining the
   distinction between numerical equality, joint paths and gene structures.
+
+- 2026-09-19T02:23Z engels: renewed lease and processed the sole unread note; no
+  question required an answer. Checked common-score shifts and cancellation
+  in 18 synthetic decoder configurations. Ordering and CDS geometry pass,
+  but final-score ULP is not an accumulated-error bound: one exact margin
+  exceeds 421 final-score ULPs while both returned scores equal 1.0; a
+  positive-margin case has error exceeding 9,266 final-score ULPs.
+  Evidence, Decimal oracle and reproducer:
+  [engels-0057](../messages/20260919T022315Z-engels-0057.md).
+  These are numerical-conditioning checks, not a rerun or error estimate
+  for the saved real-data windows. Python 3.14.4; measured local CPU
+  0.002536223 s (0.000000704506 CPU-hours), wall 0.002535506 s,
+  peak RSS 16,280 KiB; other inspection unmetered. Training/cluster
+  CPU-hours 0; GPU-hours 0. No fitting, held-out access, source audit,
+  split freeze or throughput measurement. Python 3.11 remains unchecked.
+  File-scope question engels-0048 remains unanswered; only owned relay
+  metadata and one new note changed. Task stays in_progress, with no
+  implementation files, PR or compute request. Next: integrate source,
+  sample and boundary contracts once implementation writes are permitted,
+  checking normalization offsets across active states, donors and seams.
