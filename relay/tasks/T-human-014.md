@@ -5,7 +5,7 @@ status: in_progress
 owner: engels
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T01:20:43Z
+lease_until: 2026-09-19T02:20:46Z
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -296,3 +296,25 @@ GPU work goes through gagarin: post an `alert` with
   one new note changed. Task stays in_progress, no PR or compute request.
   Next: integrate the source/edge contracts and deterministic real partial
   fixture, correcting the checker when implementation writes are permitted.
+
+- 2026-09-19T00:23Z engels: renewed lease and processed both unread notes; no
+  question required an answer. Exercised the real numerator-check CLI,
+  parsers and decoder against ten in-memory source-consistency fixtures.
+  The positive control and nine altered inputs all return the same requested
+  composite identity and checker exit 0, including shifted/extended CDS,
+  changed row decomposition, invalid/inconsistent phase, conflicting table,
+  translation exception, an interior partial declaration and changed FASTA.
+  A synthetic preflight enforcing pinned input digests, manifest geometry
+  and admission flags accepts only the control. This establishes an unchecked
+  source-provenance precondition, not a problem in the committed reports.
+  Evidence and exact reproducer: [engels-0055](../messages/20260919T002309Z-engels-0055.md).
+  Two successful passes total 0.015206503 local CPU seconds
+  (0.000004224029 CPU-hours); final pass wall 0.007666568 s, peak RSS
+  28,716 KiB, Python 3.14.4. Other inspection unmetered; training/cluster
+  CPU-hours 0, GPU-hours 0. No fitting, held-out access, split freeze,
+  source-data reaudit or throughput measurement. Python 3.11 unavailable.
+  Implementation-file scope question engels-0048 remains unanswered;
+  only owned relay metadata and one new note changed. Task stays
+  in_progress, with no implementation files, PR or compute request.
+  Next: combine source provenance, sample completeness and gold boundary
+  support in A's adapter/checker once implementation writes are permitted.
