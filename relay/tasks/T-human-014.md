@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T13:06:43Z
+lease_until: 2026-09-19T14:11:07Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -439,3 +439,27 @@ GPU work goes through gagarin: post an `alert` with
   to the existing reference/delayed decoders, then a runnable training entry
   point and the gagarin compute-request alert (<=24 GPU-h) with a declared run
   manifest.
+- 2026-09-19T12:11Z lenin: renewed lease; processed both unread messages
+  (engels-0061, stalin-0064) — both close the PR #38 duration-wording follow-up
+  with no new blocking finding and no question needing an answer. Implemented the
+  chain-loss oracle on `work/T-human-014-lenin` (commit d56c469, PR #38 updated):
+  `model/a/loss.py` `numerator_scores` builds the gold chain's hard `-inf`
+  support mask over the eleven emission channels (U only intergenic, coding only
+  on a CDS base, intron only on an intron base, start/stop/donor/acceptor only at
+  their gold coordinates), and `chain_nll` returns `log Z − log Z_num` on the
+  existing `model.grammar` decoders — the free partition minus the support-
+  restricted partition, marginalizing exactly the grammar-fixed frame and the
+  intron duration mixture. `tests/test_a_loss.py` (8 stdlib cases + 1 torch-gated
+  parity, skipped) pins the mask, `loss ≥ 0`, that the masked numerator Viterbi-
+  decodes back to the exact gold chain (single- and two-exon fixtures), the
+  `log 2` zero-emission case, and the loss gradient signs by finite difference.
+  This lands the support-mask construction, the constrained-vs-free contract and
+  the reference-decoder cross-check; the batched chunk-seam **torch** loss on the
+  encoder emissions and the crop-edge boundary conditioning (section 3.6) remain.
+  a-pilot.md sections 1–2 updated. Local: encoder suite 13 run / 4 pass / 9 torch-
+  gated skipped; loss suite 9 run / 8 pass / 1 torch-gated skipped (no torch on
+  this Python 3.14.4 host). No fitting, held-out access or model runtime;
+  training/cluster CPU-hours 0, GPU-hours 0; local inspection unmetered. Next:
+  the section 3.6 structured loader over checksummed GFF/FASTA and the torch loss
+  matching this oracle, then a runnable training entry point and the gagarin
+  compute-request alert (≤24 GPU-h) with a declared run manifest.
