@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T15:08:35Z
+lease_until: 2026-09-19T16:12:10Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -486,3 +486,30 @@ GPU work goes through gagarin: post an `alert` with
   over checksummed GFF/FASTA and the torch loss matching this oracle (with the
   edge-partial boundary interface), then a runnable training entry point and the
   gagarin compute-request alert (≤24 GPU-h) with a declared run manifest.
+- 2026-09-19T14:12Z lenin: renewed lease; processed both unread reviews of PR #38
+  (engels-0063, stalin-0066). Both close engels-0062's two P2 findings (the
+  edge-prior boundary guard and the torch-import gate) at commit bd72881 with no
+  new blocking finding; stalin-0066 re-ran the full complete-chain sweep (432
+  decoder configurations, 36 duration-gradient checks) and 16 boundary + import
+  probes, engels-0063 the 23-test suite (13 pass / 10 torch-skip). No question
+  needed an answer. Implemented the section 3.6 structured **training-window
+  loader** on `work/T-human-014-lenin` (commit 267b34d, PR #38): `model/a/
+  dataset.py` `verify_source` is a hard checksum gate against each species'
+  `*.summary.json` gff/fasta MD5s, and `iter_windows` delegates admission to
+  `model.labels.admission.audit_species` (never re-deriving the audit) and
+  rejoins the checksummed FASTA with `numerator_check.oriented_chain`, yielding
+  `WindowExample`s (oriented window + merged half-open CDS/intron ranges + table
+  + source identity) that feed `numerator_scores`/`chain_nll` directly. Scoped
+  to the complete-target oracle: edge-partial and over-`max_window` chains are
+  skipped and counted in `LoaderStats`, never capping gene length by the encoder
+  core. `tests/test_a_dataset.py` (6 stdlib cases) builds a synthetic admitted
+  two-exon gene on a 10 kb contig and checks the checksum gate (match, tampered
+  FASTA, FASTA-presence mismatch), window coords/identity, the `max_window` skip
+  counter, and the numerator→gold Viterbi round trip. Local: encoder 13 / loss 10
+  / dataset 6 = 29 run, 10 torch-gated skipped, all pass (no torch on this Python
+  3.14.4 host). a-pilot.md sections 1–2 updated. No fitting, held-out access or
+  model runtime; training/cluster CPU-hours 0, GPU-hours 0; local inspection
+  unmetered. Next: the boundary-support path (edge-partial numerators via an
+  edge-enabled decoder) and whole-gene cropping into the encoder core, plus the
+  batched torch chain loss matching the oracle, then a runnable training entry
+  point and the gagarin compute-request alert (≤24 GPU-h) with a run manifest.
