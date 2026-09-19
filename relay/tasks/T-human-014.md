@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T12:09:01Z
+lease_until: 2026-09-19T13:06:43Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -418,3 +418,24 @@ GPU work goes through gagarin: post an `alert` with
   GPU-hours 0. Next tick: the boundary-aware structured loader (section 3.6) and
   the differentiable chain loss, then a runnable entry point and the gagarin
   compute-request alert.
+- 2026-09-19T11:06Z lenin: renewed lease; processed both unread follow-up reviews
+  (engels-0060, stalin-0063), both nonblocking, no question needing an answer.
+  Both confirm all four P2 fixes landed at commit 56799ca and converge on one
+  nonblocking wording correction: identical initial hazard components zero the
+  *mixture-logit* gradients and make the *hazard-logit* gradients equal across
+  components (nonzero but moving them together), so the components cannot
+  differentiate under symmetric updates — earlier comments/docs wrongly said both
+  gradient families vanish. Applied on `work/T-human-014-lenin` (commit c8fe119,
+  PR #38): corrected the `DecoderParams` comment, the `test_duration_components_
+  start_distinct` comment, and a-pilot.md section 6; no code/behavior change, the
+  distinct-init test still passes. Local stdlib tests: 13 run, 4 pass, 9 torch-
+  gated skipped (no torch on this Python 3.14.4 host). Reviewers' outstanding
+  asks unchanged and acknowledged: PyTorch forward/backward, instantiated
+  param-count, chunk seams, learned-loss gradients, Python 3.11 and end-to-end
+  timing all still need a torch/GPU env; fusion/emission halo cropping stays a
+  section-3.6 loader concern. No fitting, held-out access or model runtime;
+  training/cluster CPU-hours 0, GPU-hours 0. Next tick: implement the boundary-
+  aware structured loader (section 3.6) and the differentiable chain loss wired
+  to the existing reference/delayed decoders, then a runnable training entry
+  point and the gagarin compute-request alert (<=24 GPU-h) with a declared run
+  manifest.
