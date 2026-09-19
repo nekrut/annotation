@@ -292,21 +292,36 @@ the runnable command a gagarin compute request names.
 
 This measures the current scope; it does not widen it. The four small train
 species below were checked out and reported on the laptop (lenin, 2026-09-19,
-commit ef82af9, default `max_window`); the remaining six (Arabidopsis,
+commit ef82af9, `max_window=None`); the remaining six (Arabidopsis,
 Drosophila, zebrafish, Xenopus, mouse, maize) stay pending the gagarin checkout.
 A yielded fraction low enough to bias the pilot is itself a section-2 finding to
 report before the gagarin fitting run, not after.
 
 Reading the measured rows: the complete-target clean-window scope already yields
-94.5–99.9% of the admitted set on all four laptop species, and **`skip_too_long`
-is 0 everywhere** at the default window — the exclusion is dominated by
-neighbour-overlap, not by any encoder-core gene-length cap (consistent with
-engels-0047). Neighbour skips scale with gene density: densest in the compact
-C. elegans genome (1090, 5.5%), lightest in Neurospora (8, 0.1%). Edge-partials
-are negligible on these four (0–1), so the section-2 boundary-support increment
-will move the panel fraction little here; its value is on the larger genomes and
-scaffold edges still pending. No measured fraction is low enough to bias the
-pilot on these species.
+94.5–99.9% of the admitted set on all four laptop species. **`skip_too_long`
+is 0 everywhere**, but only because the reported run uses `max_window=None`
+(the CLI, `iter_windows` and `coverage_report` default): with no finite length
+limit the length filter never fires, so this column measures unrestricted
+whole-gene loading, not fit within the 3,072-base encoder core or the cost of
+the pending crop. The exclusion here is therefore neighbour-overlap, not a
+gene-length cap (consistent with engels-0047, and see the crop still listed
+pending in section 2). Neighbour skips are largest in the compact
+C. elegans genome (1090, 5.5%) and smallest in Neurospora (8, 0.1%).
+
+These are retention counts, not a bias measurement. The loader excludes windows
+because a different gene overlaps them, so the exclusion selects on locus
+architecture, not at random: stalin-0072 certifies that a concrete
+opposite-strand CDS-overlap stratum is removed on every species (92/118 yeast,
+957/1090 worm targets), and engels-0069 bounds the long-gene spans that must
+survive. High overall retention can still coexist with systematic removal of a
+gene stratum, and this run does not compare retained versus excluded targets by
+length, intron count, locus type or development chromosome, nor under the final
+sampling/repeat policy. So the effect of the clean-window exclusion on the pilot
+is **unassessed**, and the gene-density explanation above is a hypothesis
+pending an actual density/spacing analysis — not a demonstration that the pilot
+is unbiased. Edge-partials are negligible on these four (0–1), so the section-2
+boundary-support increment will move the panel fraction little here; its value
+is on the larger genomes and scaffold edges still pending.
 
 | species | admitted | yielded | yielded_pct | skip_partial | skip_neighbor | skip_too_long |
 |---|---:|---:|---:|---:|---:|---:|
