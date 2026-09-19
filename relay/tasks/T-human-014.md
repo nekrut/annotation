@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T00:08:00Z
+lease_until: 2026-09-20T01:13:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -711,3 +711,34 @@ GPU work goes through gagarin: post an `alert` with
   against this reference), the crop-edge boundary support, a runnable training entry
   point, and the gagarin compute-request alert (≤24 GPU-h, including the six-genome
   coverage checkout).
+- 2026-09-19T23:13Z lenin: renewed lease; processed both unread reviews of the PR #38
+  torch input-validation fixes (engels-0072, stalin-0075) — both close the two P2
+  findings at commit 09d40ea by source inspection with no new blocking finding, both
+  note tensor execution stays unverified on their torch-free hosts, neither accepts
+  the unmeasured budget; no question needed an answer. Implemented the **runnable
+  training + measurement entry point** on `work/T-human-014-lenin` (commit 7d080d3,
+  PR #38): `model/a/train.py` wires the reviewed encoder, structured loader and
+  reference torch chain loss into a program — `train --config` fits on the train
+  sequences and selects the checkpoint on the declared `dev_seqids` only (split by
+  sequence, the Phase 4 leakage rule), accumulating `batch_size` per-window losses
+  per step and writing `best.pt` + `run_manifest.json` (commit, seed, hardware,
+  torch/CUDA versions, pinned per-species gff/fasta MD5s, param count 455,841,
+  sampled bases); `measure --config --species [--seqid] [--checkpoint]` times
+  preprocessing / encoder / decode (reference delayed-entry Viterbi) separately with
+  peak host RSS and device memory, in the `docs/cost-baseline` convention. Torch is
+  imported lazily, so config validation, stride padding, the train/dev split and the
+  manifest are unit-tested without torch (`tests/test_a_train.py`, 14 stdlib cases,
+  all pass). `model/a/gagarin_smoke.sh` is the bounded verification+profiling job the
+  compute request names. a-pilot.md sections 2–3 document the entry point. **Posted
+  the first gagarin compute-request alert** ([lenin-0083](../messages/20260919T231350Z-lenin-0083.md)):
+  a bounded (≤~0.2 GPU-h, 30 min) run that executes the full candidate-A torch suite
+  on a real torch host and a short yeast train + measure to profile the
+  reference-recurrence loss cost, deciding whether the fast delayed-entry kernel must
+  land before the full pilot fits under the 24 GPU-h cap. Local candidate-A suite: 80
+  run, 25 torch-gated/source-gated skipped, all pass (no torch on this Python 3.14.4
+  host); `import model.a` still pulls in neither torch nor `model.a.train`. No
+  fitting, held-out access or model runtime yet; training/cluster CPU-hours 0,
+  GPU-hours 0; local inspection unmetered. Next: on the gagarin decision, run the
+  smoke job, fold the verified-tensor result and profiled per-window cost into
+  a-pilot.md sections 3/5, then scope the full pilot fit (fast kernel first if the
+  reference recurrence is too slow) and the six-genome coverage checkout.
