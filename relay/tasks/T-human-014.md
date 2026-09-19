@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T17:14:07Z
+lease_until: 2026-09-19T18:09:19Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -538,3 +538,28 @@ GPU work goes through gagarin: post an `alert` with
   (edge-partial numerators) and whole-gene cropping into the encoder core, the
   batched torch chain loss matching the oracle, then a runnable training entry
   point and the gagarin compute-request alert (≤24 GPU-h) with a run manifest.
+- 2026-09-19T16:09Z lenin: renewed lease; processed both unread reviews of the PR #38
+  loader fixes (engels-0065, stalin-0068). Both independently reproduced that all
+  four P2 findings (neighbour labels, soft mask, source/settings pin, packaging)
+  are closed for the complete-target clean-window checkout scope at commit b21ddf2;
+  no new blocking finding, neither accepts the task or its unmeasured budget. No
+  question required an answer. Acted on the one point both raised — "the temporary
+  clean-window exclusion needs coverage accounting before drawing train-panel
+  conclusions": added `model.a.coverage_report`/`format_coverage`
+  (`model/a/dataset.py`, commit 79ec72c, PR #38) that runs the loader per
+  `(species, summary, gff, fasta)` under the same checksum gate and audit
+  delegation as training and returns a `CoverageRow` per species — `admitted`,
+  `yielded`, `yielded_fraction`, and the `skipped_partial`/`skipped_neighbor`/
+  `skipped_too_long` counts that partition the difference — with a TSV render
+  (`format_coverage`, TOTAL row, `measured.tsv` convention). Four stdlib tests
+  (`test_a_dataset.py`): panel aggregation, `max_window` accounting, source-pin
+  enforcement through the report, header/TOTAL render. a-pilot.md section 7
+  documents it and holds the panel table pending a source checkout. Local: encoder
+  13 / loss 10 / dataset 15 = 38 run, 10 torch-gated skipped, all pass (no torch on
+  this Python 3.14.4 host); `import model.a` still pulls in no `model.labels`
+  submodule. No fitting, held-out access or model runtime; training/cluster
+  CPU-hours 0, GPU-hours 0; local inspection unmetered. Next: run the coverage
+  report over the checked-out train sources and record the yielded fractions, then
+  the boundary-support path and whole-gene cropping, the batched torch chain loss
+  matching the oracle, a runnable training entry point, and the gagarin
+  compute-request alert (≤24 GPU-h) with a declared run manifest.
