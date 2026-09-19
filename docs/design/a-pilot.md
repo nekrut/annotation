@@ -41,6 +41,30 @@ The neural half of candidate A (proposal section 3), on
   the `log 2` zero-emission case, and the gradient signs a training loss must
   have (finite-difference against the marginal difference). This is the
   standard-library reference the PyTorch loss must match on the same fixtures.
+- `model/a/dataset.py` — the section 3.6 structured **training-window loader**,
+  torch-free at its core. `verify_source` is a hard checksum gate: it recomputes
+  the GFF3 and FASTA MD5s and refuses any file that does not match the species'
+  `*.summary.json` digests (a window built from an unpinned file is not the
+  audited label; the presence of a FASTA must also match). `iter_windows`
+  delegates admission to `model.labels.admission.audit_species` (same `m` and
+  `table` as the committed manifests) so the yielded set is exactly the admitted
+  representatives — the loader never re-derives the metadata/sequence audit — and
+  rejoins each to the checksummed FASTA with
+  `model.labels.numerator_check.oriented_chain`, the flank-padded, merged,
+  strand-corrected windowing the numerator check already verifies. Each
+  `WindowExample` carries the oriented window, the merged half-open CDS/intron
+  ranges (exactly `numerator_scores`' convention), the genetic-code id and the
+  source `(seqid, strand, tid)` identity, with `.support()` delegating to
+  `numerator_scores` and a torch-gated `.features()`. `iter_windows` is scoped to
+  the current loss's domain: it skips (and counts, in `LoaderStats`)
+  edge-partial admitted chains — `chain_nll` scores only complete targets — and
+  optionally skips (and counts) windows longer than a caller's `max_window`,
+  never turning the encoder core into a gene-length cap. `tests/test_a_dataset.py`
+  builds a synthetic species (one admitted two-exon gene on a 10 kb contig) and
+  checks the checksum gate (match, tampered FASTA, FASTA-presence mismatch), the
+  window coordinates and identity, the `max_window` skip counter, and the full
+  round trip: the loaded example's support-masked numerator Viterbi-decodes back
+  to the exact gold CDS/intron chain through `chain_nll`.
 
 **Parameter count is exactly 455,841**, matching the section 3.5 inventory
 row for row (`tests/test_a_encoder.py`, `Inventory` cases). The eleven
@@ -61,12 +85,16 @@ acceptor. Dependency radius is 491 bases, below the proposed 516-base halo.
 
 ## 2. What is not yet implemented (next ticks)
 
-1. **Structured loader / admission adapter** (proposal section 3.6): rejoin
-   the checksummed raw GFF3/FASTA (manifests omit exon geometry and
-   auxiliary-site coordinates), build topology and metadata masks, apply the
-   partial/exception masking policy, and emit the required per-species
-   audit counts. Reuse the source-join fixtures verified in the prior owner's
-   notes (engels-0050 … engels-0057) and the boundary contracts they check.
+1. **Structured loader — boundary and crop extensions** (proposal section 3.6):
+   the complete-chain loader (`model/a/dataset.py`, above) rejoins the
+   checksummed source and yields admitted complete windows. What remains is the
+   boundary-support path — edge-partial admitted chains (compatible entry/exit
+   families and a first-row phase carried alongside the CDS intervals, scored by
+   an edge-enabled decoder) which are currently skipped and counted — and
+   cropping whole genes longer than the encoder core into chunks with retained
+   intron/codon/duration state (the crop-integration contracts checked in the
+   prior owner's notes engels-0045…engels-0057). Batched multi-window collation
+   for the torch training step also belongs here.
 2. **Differentiable (PyTorch) chain loss**: the torch numerator/denominator
    forward pass whose autograd yields `dL/de = posterior_free − posterior_num`,
    matching the `model/a/loss.py` oracle on the section 3.4 fixtures (the

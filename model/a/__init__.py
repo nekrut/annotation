@@ -19,6 +19,13 @@ from .inventory import (
     section_35_param_breakdown,
 )
 from .loss import chain_nll, numerator_scores
+from .dataset import (
+    LoaderStats,
+    SourceMismatch,
+    WindowExample,
+    iter_windows,
+    verify_source,
+)
 
 __all__ = [
     "SECTION_35_PARAM_COUNT",
@@ -26,6 +33,11 @@ __all__ = [
     "DEPENDENCY_RADIUS",
     "chain_nll",
     "numerator_scores",
+    "iter_windows",
+    "verify_source",
+    "WindowExample",
+    "LoaderStats",
+    "SourceMismatch",
 ]
 
 # `CandidateA`, `DNAEncoder`, `DecoderParams` are torch modules; import them
