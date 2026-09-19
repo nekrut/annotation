@@ -40,7 +40,27 @@ The neural half of candidate A (proposal section 3), on
   Viterbi-decodes back to the exact gold chain (single- and two-exon fixtures),
   the `log 2` zero-emission case, and the gradient signs a training loss must
   have (finite-difference against the marginal difference). This is the
-  standard-library reference the PyTorch loss must match on the same fixtures.
+  standard-library reference the PyTorch loss matches on the same fixtures.
+- `model/a/torch_loss.py` — the **differentiable (PyTorch) chain loss**,
+  torch-gated. `chain_nll(x, emissions, cds_ranges, intron_ranges)` returns
+  `log Z − log Z_num` on a `(11, n)` emission tensor (`CHANNEL_ORDER`, the same
+  eleven channels the encoder head emits), computed with `torch.logsumexp` so
+  autograd yields `dL/de = P_free(e) − P_num(e)`, the CRF marginal difference a
+  training step applies to the emission head. It is **parity-by-construction**:
+  the forward reuses the reviewed grammar state machine unchanged
+  (`ReferenceDecoder.initial`/`transitions`/`terminal`) over a `TorchScores`
+  view of the emission tensor, so the only substitution against the oracle is
+  Python-float `+`/`logsumexp` for torch `+`/`torch.logsumexp`; `support_mask`
+  builds the additive `-inf`/`0` mask that reproduces `numerator_scores`.
+  `tests/test_a_torch_loss.py` (torch-gated) pins mask/oracle agreement, loss
+  value parity on the section-3.4 fixtures (zero and non-zero emissions), the
+  `log 2` case, `loss ≥ 0`, and that autograd's gradient at the gold start base
+  equals the oracle's central difference. This has the *reference* recurrence's
+  cost (explicit mandatory-intron states, a Python dict per boundary), so it is
+  the differentiable **reference** the fast vectorized delayed-entry kernel is
+  checked against — the same relationship `DelayedEntryDecoder` has to
+  `ReferenceDecoder` — not yet the training-window kernel. Complete targets
+  only: an edge-enabled decoder is rejected, as in the oracle.
 - `model/a/dataset.py` — the section 3.6 structured **training-window loader**,
   torch-free at its core. The species `*.summary.json` **is** the loading
   interface: `iter_windows(summary, gff, fasta)` calls `verify_source` (a hard
@@ -104,14 +124,17 @@ acceptor. Dependency radius is 491 bases, below the proposed 516-base halo.
    intron/codon/duration state (the crop-integration contracts checked in the
    prior owner's notes engels-0045…engels-0057). Batched multi-window collation
    for the torch training step also belongs here.
-2. **Differentiable (PyTorch) chain loss**: the torch numerator/denominator
-   forward pass whose autograd yields `dL/de = posterior_free − posterior_num`,
-   matching the `model/a/loss.py` oracle on the section 3.4 fixtures (the
-   torch-gated `TorchParity` test in `tests/test_a_loss.py` is skipped until it
-   lands). The support-mask construction, the constrained-vs-free contract and
-   the specification-oracle cross-check against the reference decoder are done;
-   what remains is the batched, chunk-seam torch implementation on the encoder
-   emissions and the boundary conditioning at training-crop edges (section 3.6).
+2. **Differentiable (PyTorch) chain loss** — the reference forward is done
+   (`model/a/torch_loss.py`, above): its autograd yields
+   `dL/de = posterior_free − posterior_num` and it matches the `model/a/loss.py`
+   oracle on the section-3.4 fixtures. What remains is the **fast vectorized
+   kernel** — a delayed-entry forward on the encoder emissions with batched
+   multi-window collation and chunk-seam handling, checked against this
+   differentiable reference — and the **boundary conditioning at training-crop
+   edges** (section 3.6, edge-partial numerators). The current forward has the
+   reference recurrence's cost and is unsuitable for a full training window at
+   the default `m=20`; it establishes the differentiable contract, not the
+   training throughput.
 3. **Training and inference entry points** with a config and a run manifest
    (data, seed, commit, hardware), then a gagarin compute-request `alert`.
 
