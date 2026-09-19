@@ -18,11 +18,14 @@ from .inventory import (
     SECTION_35_PARAM_COUNT,
     section_35_param_breakdown,
 )
+from .loss import chain_nll, numerator_scores
 
 __all__ = [
     "SECTION_35_PARAM_COUNT",
     "section_35_param_breakdown",
     "DEPENDENCY_RADIUS",
+    "chain_nll",
+    "numerator_scores",
 ]
 
 # `CandidateA`, `DNAEncoder`, `DecoderParams` are torch modules; import them

@@ -28,6 +28,19 @@ The neural half of candidate A (proposal section 3), on
   Plus the 54 pooled-decoder scalars (`DecoderParams`) that feed the existing
   `model.grammar` reference and delayed decoders.
 - `model/a/inventory.py` — the section 3.5 parameter arithmetic, torch-free.
+- `model/a/loss.py` — the chain-loss **oracle** (sections 3.1–3.2), torch-free:
+  `numerator_scores` builds the gold chain's hard `-inf` support mask over the
+  eleven emission channels (U only intergenic, a coding channel only on a CDS
+  base, an intron channel only on an intron base, `start`/`stop`/`donor`/
+  `acceptor` only at their gold coordinates), and `chain_nll` returns
+  `log Z − log Z_num` on the existing `model.grammar` decoders — the free
+  partition minus the partition restricted to that support, which marginalizes
+  exactly the latent frame (grammar-fixed) and the intron duration mixture.
+  `tests/test_a_loss.py` pins the mask, `loss ≥ 0`, that the masked numerator
+  Viterbi-decodes back to the exact gold chain (single- and two-exon fixtures),
+  the `log 2` zero-emission case, and the gradient signs a training loss must
+  have (finite-difference against the marginal difference). This is the
+  standard-library reference the PyTorch loss must match on the same fixtures.
 
 **Parameter count is exactly 455,841**, matching the section 3.5 inventory
 row for row (`tests/test_a_encoder.py`, `Inventory` cases). The eleven
@@ -54,10 +67,14 @@ acceptor. Dependency radius is 491 bases, below the proposed 516-base halo.
    partial/exception masking policy, and emit the required per-species
    audit counts. Reuse the source-join fixtures verified in the prior owner's
    notes (engels-0050 … engels-0057) and the boundary contracts they check.
-2. **Differentiable chain loss**: the CRF numerator (constrained to admitted
-   chains, summing latent duration components) and denominator over the same
-   grammar as `model.grammar`, checked against the expanded reference decoder
-   as the specification oracle (section 3.2).
+2. **Differentiable (PyTorch) chain loss**: the torch numerator/denominator
+   forward pass whose autograd yields `dL/de = posterior_free − posterior_num`,
+   matching the `model/a/loss.py` oracle on the section 3.4 fixtures (the
+   torch-gated `TorchParity` test in `tests/test_a_loss.py` is skipped until it
+   lands). The support-mask construction, the constrained-vs-free contract and
+   the specification-oracle cross-check against the reference decoder are done;
+   what remains is the batched, chunk-seam torch implementation on the encoder
+   emissions and the boundary conditioning at training-crop edges (section 3.6).
 3. **Training and inference entry points** with a config and a run manifest
    (data, seed, commit, hardware), then a gagarin compute-request `alert`.
 
