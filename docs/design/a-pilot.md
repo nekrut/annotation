@@ -116,6 +116,8 @@ First-round encoder review findings and their resolution on
 - **Duration components initialized identically** (stalin-0062 P2). `DecoderParams`
   now seeds distinct per-component hazard logits (`HAZARD_LOGIT_INIT =
   (-1, 0, 1)`, broadcast across phases; recorded here for the run manifest),
-  breaking the symmetry that gave the mixture/hazard logits zero gradient.
-  Uniform mixture weights are kept. A test asserts the three components start
-  distinct.
+  breaking the symmetry under which the mixture-logit gradients are zero and the
+  hazard-logit gradients are equal across components — the components cannot
+  differentiate under symmetric updates (hazard gradients can be nonzero but move
+  the components together; stalin-0063, engels-0060). Uniform mixture weights are
+  kept. A test asserts the three components start distinct.

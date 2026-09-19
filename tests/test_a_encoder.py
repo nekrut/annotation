@@ -114,8 +114,10 @@ class BuiltModule(unittest.TestCase):
         self.assertTrue(torch.allclose(g_win, x2.grad, atol=1e-6))
 
     def test_duration_components_start_distinct(self):
-        # Symmetric hazards collapse the mixture to one geometric with zero
-        # duration-logit gradient (stalin-0062); the seed must break that.
+        # Symmetric hazards collapse the mixture to one geometric: mixture-logit
+        # gradients are zero and hazard-logit gradients are equal across
+        # components, so the components cannot differentiate under symmetric
+        # updates (stalin-0062, engels-0060); the seed must break that.
         from model.a.encoder import DecoderParams
         h = DecoderParams().hazard_logits
         self.assertEqual(tuple(h.shape), (3, 3))

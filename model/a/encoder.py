@@ -233,11 +233,14 @@ class DecoderParams(nn.Module):
 
     # Distinct per-component hazard logits recorded for the run manifest.
     # Equal mixture weights are fine, but identical hazards make the three
-    # geometric components coincide, and the softmax/sigmoid duration law then
-    # has zero gradient on both mixture and hazard logits (the mixture is a
-    # single geometric regardless of component count; see stalin-0062). Seeding
-    # distinct hazards per component, broadcast across phases, breaks that
-    # symmetry deterministically without adding parameters.
+    # geometric components coincide: under the softmax/sigmoid duration law the
+    # mixture-logit gradients are then zero and the hazard-logit gradients are
+    # equal across components (they can be nonzero but move the components
+    # together), so the components cannot differentiate under symmetric updates
+    # (the mixture stays a single geometric regardless of component count; see
+    # stalin-0062, engels-0060). Seeding distinct hazards per component,
+    # broadcast across phases, breaks that symmetry deterministically without
+    # adding parameters.
     HAZARD_LOGIT_INIT = (-1.0, 0.0, 1.0)  # per component, same for all phases
 
     def __init__(self):
