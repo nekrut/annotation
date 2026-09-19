@@ -256,6 +256,32 @@ stalin-0067):
   imported when a loader symbol is accessed. Verified that `import model.a`
   imports no `model.labels` submodule.
 
+Differentiable (torch) chain-loss review findings and their resolution
+(engels-0071, stalin-0074):
+
+- **The torch entry points bypassed the scalar oracle's emission contract** (P2).
+  `ReferenceDecoder._check_input` requires every emission channel to be finite or
+  `-inf` (a hard mask); the torch `_partition` instead treats `torch.isinf` as
+  "drop this path", so a stray `+inf` silently discards a legal transition and a
+  `NaN` poisons `logsumexp` — e.g. `ATGTAA` with zero scores and `start[0]=+inf`
+  returned `log Z = 0` after the gene path vanished, and `CCCCCC` with an unused
+  `donor[0]=NaN` returned `0`, where the oracle raises `ValueError`. Added
+  `_check_input(x, emissions)`, called from both public entry points (`partition`
+  and `chain_nll`), which rejects any `NaN` or `+inf` on any channel (used or
+  unused) while preserving legitimate `-inf` support.
+- **`partition` did not check the sequence length** (P2). `partition` passed the
+  tensor straight to a recurrence bounded by the emission width, so `ATGTAA` with
+  three emission columns silently scored the prefix and seven columns raised
+  `IndexError`; the oracle raises `ValueError` for either mismatch. The same
+  `_check_input` enforces `emissions.shape == (11, len(x))` on both entry points
+  (`chain_nll` already checked this dimension; it now shares the one contract).
+- Regressions in `tests/test_a_torch_loss.py` (`InputValidation`, torch-gated):
+  `+inf`, `NaN` on a used channel and `NaN` on an unused channel are each rejected
+  through both entry points; `-inf` support is accepted; short (three-column) and
+  long (seven-column) emissions are rejected through both entry points. These are
+  autograd/tensor checks and require a torch host (skipped on the Python 3.14.4
+  torch-less host here), as the reviewers noted.
+
 ## 7. Training-set coverage accounting
 
 The complete-target, clean-window scope of section 3.6 is temporary: it drops

@@ -145,5 +145,64 @@ class Scope(unittest.TestCase):
             torch_loss.TorchScores(torch.zeros((10, 5)))
 
 
+@unittest.skipUnless(HAS_TORCH_LOSS, "torch chain loss not available")
+class InputValidation(unittest.TestCase):
+    """Both public entry points must restore the scalar oracle's
+    finite-or-``-inf`` contract: ``_partition`` drops an ``isinf`` path, so a
+    ``+inf`` would silently discard a legal transition and a ``NaN`` poison
+    ``logsumexp``. The scalar oracle raises ``ValueError`` on each witness below;
+    the torch loss must too, while still admitting legitimate ``-inf`` support."""
+
+    ATG = "ATGTAA"        # single-exon complete chain, one CDS interval
+    ATG_CDS = [(0, 6)]
+    ATG_INTRON: list = []
+
+    def _zeros(self):
+        return torch.zeros((11, len(self.ATG)), dtype=torch.float64)
+
+    def test_positive_infinity_rejected(self):
+        # start channel (row 7) at base 0; the scalar oracle rejects +inf.
+        for entry in (self._partition_entry, self._chain_entry):
+            e = self._zeros(); e[7, 0] = float("inf")
+            with self.assertRaises(ValueError):
+                entry(e)
+
+    def test_nan_on_used_channel_rejected(self):
+        for entry in (self._partition_entry, self._chain_entry):
+            e = self._zeros(); e[1, 0] = float("nan")   # cds[0] at base 0
+            with self.assertRaises(ValueError):
+                entry(e)
+
+    def test_nan_on_unused_channel_rejected(self):
+        # donor is never consumed by this single-exon chain, yet a NaN there must
+        # still be rejected (the CCCCCC/donor[0]=NaN witness).
+        for entry in (self._partition_entry, self._chain_entry):
+            e = self._zeros(); e[9, 0] = float("nan")   # donor at base 0
+            with self.assertRaises(ValueError):
+                entry(e)
+
+    def test_negative_infinity_preserved(self):
+        # A hard mask (-inf) is legitimate support and must not be rejected.
+        e = self._zeros(); e[0, 0] = float("-inf")      # forbid U at base 0
+        torch_loss.partition(self.ATG, e)               # does not raise
+        torch_loss.chain_nll(self.ATG, e, self.ATG_CDS, self.ATG_INTRON)
+
+    def test_short_emissions_rejected(self):
+        for entry in (self._partition_entry, self._chain_entry):
+            with self.assertRaises(ValueError):
+                entry(torch.zeros((11, 3), dtype=torch.float64))
+
+    def test_long_emissions_rejected(self):
+        for entry in (self._partition_entry, self._chain_entry):
+            with self.assertRaises(ValueError):
+                entry(torch.zeros((11, 7), dtype=torch.float64))
+
+    def _partition_entry(self, e):
+        return torch_loss.partition(self.ATG, e)
+
+    def _chain_entry(self, e):
+        return torch_loss.chain_nll(self.ATG, e, self.ATG_CDS, self.ATG_INTRON)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -130,6 +130,27 @@ def support_mask(n: int, cds_ranges: Sequence[Range], intron_ranges: Sequence[Ra
     return mask
 
 
+def _check_input(x: str, emissions: torch.Tensor) -> None:
+    """Enforce the scalar oracle's finite-or-``-inf`` emission contract.
+
+    The torch forward reuses the grammar recurrence, which -- like
+    :meth:`ReferenceDecoder._check_input` -- assumes every emission channel is
+    finite or ``-inf`` (a hard-masked transition). ``_partition`` treats
+    ``isinf`` as "drop this path", so a stray ``+inf`` would silently discard a
+    legal transition and a ``NaN`` would poison ``logsumexp``; neither public
+    entry point may accept them. Legitimate ``-inf`` support is preserved. The
+    emission width must also equal ``len(x)``, since the recurrence iterates over
+    the emission columns and would otherwise truncate or over-run the sequence.
+    """
+    if emissions.dim() != 2 or emissions.shape != (EMISSION_CHANNELS, len(x)):
+        raise ValueError(
+            f"emissions must be ({EMISSION_CHANNELS}, {len(x)}); "
+            f"got {tuple(emissions.shape)}")
+    if torch.isnan(emissions).any() or (emissions == float("inf")).any():
+        raise ValueError(
+            "emission channels must be finite or -inf; got NaN or +inf")
+
+
 def _partition(decoder: ReferenceDecoder, x: str, sc: TorchScores,
                ref: torch.Tensor) -> torch.Tensor:
     """log Z over every legal path 0->n of the reference grammar, on torch
@@ -166,6 +187,7 @@ def _partition(decoder: ReferenceDecoder, x: str, sc: TorchScores,
 def partition(x: str, emissions: torch.Tensor, *, code: GeneticCode = TABLES[1],
               duration: DurationMixture = DurationMixture()) -> torch.Tensor:
     """Differentiable log Z of the free grammar over ``emissions`` ``(11, n)``."""
+    _check_input(x, emissions)
     decoder = ReferenceDecoder(code, duration)
     return _partition(decoder, x, TorchScores(emissions), emissions)
 
@@ -194,8 +216,8 @@ def chain_nll(x: str, emissions: Optional[torch.Tensor],
     n = len(x)
     if emissions is None:
         emissions = torch.zeros((EMISSION_CHANNELS, n), device=device, dtype=dtype)
-    elif emissions.shape != (EMISSION_CHANNELS, n):
-        raise ValueError(f"emissions must be ({EMISSION_CHANNELS}, {n}); got {tuple(emissions.shape)}")
+    else:
+        _check_input(x, emissions)
 
     log_z = _partition(decoder, x, TorchScores(emissions), emissions)
     mask = support_mask(n, cds_ranges, intron_ranges,
