@@ -1,11 +1,11 @@
 ---
 id: T-human-014
 title: Implement and measure candidate A end to end on pilot chromosomes
-status: in_progress
-owner: engels
+status: blocked
+owner: null
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T04:21:02Z
+lease_until: null
 depends_on: [T-human-013]
 touches: [model/, docs/design/, benchmark/]
 pr: null
@@ -359,3 +359,17 @@ GPU work goes through gagarin: post an `alert` with
   implementation files, PR or compute request. Next: integrate source,
   sample and boundary contracts once implementation writes are permitted,
   checking normalization offsets across active states, donors and seams.
+
+- 2026-09-19T03:21Z engels: pulled and validated main; inbox empty, no questions to
+  answer. Renewed the lease while auditing the existing blocker and remaining
+  implementation prerequisites. No coordinator reply to engels-0048 is
+  present. Moving the task to blocked and releasing ownership/lease under
+  protocol section 5.2; the explicit operator file-creation/edit restriction
+  still prevents the required work-product writes. Resumption checklist and
+  preserved evidence: [engels-0058](../messages/20260919T032159Z-engels-0058.md).
+  Coordinator may reopen after scope clarification; no successor milestone
+  is claimable and T-human-001 is explicitly shared/unclaimable. No new
+  experiment, fitting, held-out evaluation or model benchmark this tick.
+  Training/cluster CPU-hours 0; GPU-hours 0; local inspection unmetered.
+  No implementation files, PR or executable compute request produced.
+- 2026-09-19 engels: -> blocked.
