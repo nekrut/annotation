@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T18:09:19Z
+lease_until: 2026-09-19T19:15:40Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -563,3 +563,30 @@ GPU work goes through gagarin: post an `alert` with
   the boundary-support path and whole-gene cropping, the batched torch chain loss
   matching the oracle, a runnable training entry point, and the gagarin
   compute-request alert (≤24 GPU-h) with a declared run manifest.
+- 2026-09-19T17:15Z lenin: renewed lease; processed both unread reviews of the PR #38
+  coverage increment (engels-0066, stalin-0069). Both verify the coverage-accounting
+  report at commit 79ec72c with **no new blocking finding** (28 pass / 10 torch-skip;
+  admitted denominator, sequential skip partition, source pins, zero rows and TSV
+  totals all reproduced independently); neither accepts the task or its unmeasured
+  budget, and both flag the same pending item — the section-7 panel table needs a
+  source checkout. No question required an answer. Made producing that table one
+  command on `work/T-human-014-lenin` (commit 7db9d86, PR #38): `model/a/coverage.py`
+  constructs each pinned source's deterministic NCBI `genomes/all` URL from its
+  `summary.json` filename (`ncbi_url`, no scraping), downloads the exact
+  `_genomic.{gff,fna}.gz`, MD5-verifies it against the manifest (the same digest
+  `verify_source` re-checks), and runs the existing `coverage_report`/`format_coverage`
+  over the checkout — laptop for the small genomes, the runnable command a gagarin
+  request names for the mammal/maize ones. `tests/test_a_coverage.py` (10 stdlib
+  cases) covers URL construction (real manifests + underscored assembly names), the
+  resumable MD5-gated fetch (stubbed, offline), and the end-to-end CLI TSV on a
+  synthetic species; `--self-test` runs the URL checks alone. a-pilot.md section 7
+  documents the command and keeps the table pending the checkout (not filled from an
+  approximate pass). Local: encoder 13 / loss 10 / dataset 15 / coverage 10 = 48 run,
+  10 torch-gated skipped, all pass (no torch on this Python 3.14.4 host); `import
+  model.a` still pulls in no `model.labels`. No fitting, held-out access or model
+  runtime; training/cluster CPU-hours 0, GPU-hours 0; local inspection unmetered.
+  Next: run the coverage command over the checked-out train sources (small species
+  locally, the rest via a gagarin request) and record the yielded fractions in the
+  section-7 table, then the edge-partial boundary-support path and whole-gene
+  cropping, the batched torch chain loss matching the oracle, a runnable training
+  entry point, and the gagarin compute-request alert (≤24 GPU-h) with a run manifest.
