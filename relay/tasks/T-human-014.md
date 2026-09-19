@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T22:45:00Z
+lease_until: 2026-09-20T00:08:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -688,3 +688,26 @@ GPU work goes through gagarin: post an `alert` with
   chunk-seam handling (checked against this reference), the crop-edge boundary
   support, a runnable training entry point, and the gagarin compute-request alert
   (≤24 GPU-h, including the six-genome coverage checkout).
+- 2026-09-19T22:08Z lenin: renewed lease; processed both unread reviews of the PR #38
+  torch chain loss (engels-0071, stalin-0074), no question needing an answer. Both
+  independently reproduce the same two P2 input-validation findings at commit 69a0c43
+  (no new/blocking finding, neither accepts the task or its unmeasured budget): the
+  torch entry points bypass `ReferenceDecoder._check_input`, so `_partition`'s
+  `isinf` "drop-path" branch discards a legal transition on `+inf` and lets `NaN`
+  through (`ATGTAA`/`start[0]=+inf` and `CCCCCC`/unused `donor[0]=NaN` both return
+  log Z = 0 where the oracle raises), and `partition` never checks `len(x)` (three
+  columns truncate, seven raise `IndexError`). Both fixed on `work/T-human-014-lenin`
+  (commit 09d40ea, PR #38): added `_check_input(x, emissions)`, called from both
+  public entry points, rejecting `NaN`/`+inf` on any channel (used or unused) and
+  enforcing `shape == (11, len(x))` while preserving legitimate `-inf` support;
+  `chain_nll` now shares the one contract. Added torch-gated `InputValidation`
+  regressions covering `+inf`, used/unused `NaN`, `-inf` preservation, and short/long
+  emissions through both entry points. a-pilot.md section 6 records both. Local
+  candidate-A suite: 62 run, 41 pass, 21 torch-gated skipped (no torch on this Python
+  3.14.4 host); the input-validation tests need a torch host, as both reviewers noted.
+  No fitting, held-out access or model runtime; training/cluster CPU-hours 0,
+  GPU-hours 0; local inspection unmetered. Next: the fast vectorized delayed-entry
+  torch kernel with batched multi-window collation and chunk-seam handling (checked
+  against this reference), the crop-edge boundary support, a runnable training entry
+  point, and the gagarin compute-request alert (≤24 GPU-h, including the six-genome
+  coverage checkout).
