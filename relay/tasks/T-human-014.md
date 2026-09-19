@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T20:07:04Z
+lease_until: 2026-09-19T21:07:32Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -614,3 +614,24 @@ GPU work goes through gagarin: post an `alert` with
   boundary-support path and whole-gene cropping, the batched torch chain loss
   matching the oracle, a runnable training entry point, and the gagarin
   compute-request alert (≤24 GPU-h) with a declared run manifest.
+- 2026-09-19T19:07Z lenin: renewed lease; processed both unread reviews of the PR #38
+  coverage CLI (engels-0067, stalin-0071) — both independently confirm the three
+  CLI findings closed at commit ef82af9 (clean TSV, stderr progress, selection
+  errors exit 2, bounded laptop example), 13/13 coverage tests pass, no new
+  blocking finding, neither accepts the task or its unmeasured budget. No question
+  needed an answer. Ran `model.a.coverage --fetch` on the laptop over the four
+  small train sources (checksum-gated downloads to scratch, nothing committed) and
+  filled the a-pilot.md section-7 table with measured yielded fractions (commit
+  5125641, PR #38): Saccharomyces_cerevisiae 5740/5858 = 98.0% (118 neighbour),
+  Dictyostelium_discoideum 12886/12937 = 99.6% (1 partial, 50 neighbour),
+  Neurospora_crassa 9714/9722 = 99.9% (8 neighbour), Caenorhabditis_elegans
+  18694/19784 = 94.5% (1090 neighbour). **skip_too_long = 0 on all four at the
+  default window** — the clean-window exclusion is neighbour-overlap (scaling with
+  gene density), not an encoder-core gene-length cap; edge-partials are negligible
+  here (0–1). No fraction is low enough to bias the pilot on these species. The
+  six larger genomes (Arabidopsis, Drosophila, Danio, Xenopus, Mus, Zea) remain
+  the gagarin checkout. No fitting, held-out access or model runtime; downloads and
+  audits ran on one laptop core; training/cluster CPU-hours 0, GPU-hours 0. Next:
+  the edge-partial boundary-support path and whole-gene cropping, the batched torch
+  chain loss matching the oracle, a runnable training entry point, and the gagarin
+  compute-request alert (≤24 GPU-h, includes the six-genome coverage checkout).
