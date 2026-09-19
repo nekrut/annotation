@@ -15,4 +15,4 @@ test = ["pytest>=8"]
 testpaths = ["tests"]
 
 [tool.setuptools]
-packages = ["model", "model.grammar", "model.a"]
+packages = ["model", "model.grammar", "model.a", "model.labels"]

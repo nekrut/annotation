@@ -42,26 +42,35 @@ The neural half of candidate A (proposal section 3), on
   have (finite-difference against the marginal difference). This is the
   standard-library reference the PyTorch loss must match on the same fixtures.
 - `model/a/dataset.py` — the section 3.6 structured **training-window loader**,
-  torch-free at its core. `verify_source` is a hard checksum gate: it recomputes
-  the GFF3 and FASTA MD5s and refuses any file that does not match the species'
-  `*.summary.json` digests (a window built from an unpinned file is not the
-  audited label; the presence of a FASTA must also match). `iter_windows`
-  delegates admission to `model.labels.admission.audit_species` (same `m` and
-  `table` as the committed manifests) so the yielded set is exactly the admitted
-  representatives — the loader never re-derives the metadata/sequence audit — and
-  rejoins each to the checksummed FASTA with
-  `model.labels.numerator_check.oriented_chain`, the flank-padded, merged,
-  strand-corrected windowing the numerator check already verifies. Each
-  `WindowExample` carries the oriented window, the merged half-open CDS/intron
-  ranges (exactly `numerator_scores`' convention), the genetic-code id and the
-  source `(seqid, strand, tid)` identity, with `.support()` delegating to
-  `numerator_scores` and a torch-gated `.features()`. `iter_windows` is scoped to
-  the current loss's domain: it skips (and counts, in `LoaderStats`)
-  edge-partial admitted chains — `chain_nll` scores only complete targets — and
-  optionally skips (and counts) windows longer than a caller's `max_window`,
-  never turning the encoder core into a gene-length cap. `tests/test_a_dataset.py`
-  builds a synthetic species (one admitted two-exon gene on a 10 kb contig) and
-  checks the checksum gate (match, tampered FASTA, FASTA-presence mismatch), the
+  torch-free at its core. The species `*.summary.json` **is** the loading
+  interface: `iter_windows(summary, gff, fasta)` calls `verify_source` (a hard
+  checksum gate recomputing the GFF3/FASTA MD5s and refusing any file that does
+  not match the summary's digests, FASTA presence included) before yielding, and
+  reads the audit `m`/`table` from that same summary, so it can never audit
+  unpinned inputs or use settings that disagree with the committed manifest.
+  Admission is delegated to `model.labels.admission.audit_species`, so the
+  yielded set is exactly the admitted representatives — the loader never
+  re-derives the metadata/sequence audit. `oriented_chain` supplies each chain's
+  merged, strand-corrected, flank-padded CDS/intron coordinates; the window
+  itself is rebuilt case-preserving from the raw FASTA slice (`_oriented_window`)
+  so the featurizer's soft-mask channel survives orientation, with a guard that
+  the two agree up to case. Each `WindowExample` carries the oriented window, the
+  merged half-open CDS/intron ranges (exactly `numerator_scores`' convention),
+  the genetic-code id and the source `(seqid, strand, tid)` identity, with
+  `.support()` delegating to `numerator_scores` and a torch-gated `.features()`.
+  `iter_windows` is scoped to the current loss's domain: it yields only **clean**
+  windows (no transcript of a different gene overlaps the window; the rest are
+  counted in `LoaderStats.skipped_neighbor`, since `numerator_scores` would
+  otherwise force a neighbour's coding/masked bases to intergenic `U`), skips
+  (and counts) edge-partial admitted chains — `chain_nll` scores only complete
+  targets — and optionally skips (and counts) windows longer than a caller's
+  `max_window`, never turning the encoder core into a gene-length cap. Because the
+  audit loads `benchmark/score.py` by path, the loader is a checkout-time tool;
+  `model.a.__init__` imports it lazily so `import model.a` needs neither
+  `model.labels` nor `benchmark/`. `tests/test_a_dataset.py` builds synthetic
+  species and checks the checksum gate (match, tampered FASTA, FASTA-presence
+  mismatch, and the gate enforced through `iter_windows`), `m`/`table` binding,
+  soft-mask preservation on both strands, the clean-window neighbour skip, the
   window coordinates and identity, the `max_window` skip counter, and the full
   round trip: the loaded example's support-masked numerator Viterbi-decodes back
   to the exact gold CDS/intron chain through `chain_nll`.
@@ -187,3 +196,39 @@ Chain-loss oracle review findings and their resolution:
   gate now probes `importlib.util.find_spec("model.a.torch_loss")`, skipping
   cleanly when the submodule is absent while still surfacing errors from a
   genuinely broken implementation once it is written.
+
+Training-window loader review findings and their resolution (engels-0064,
+stalin-0067):
+
+- **Flanks forced false intergenic labels on neighbouring genes** (P2). A
+  window's flank could contain another gene's CDS, which `numerator_scores`
+  then forced to intergenic `U`; a masked neighbour must likewise stay
+  unconstrained (section 3.6). `iter_windows` now yields only *clean* windows:
+  a window is skipped (and counted in `LoaderStats.skipped_neighbor`) when any
+  transcript of a **different gene** (`gid`) overlaps it. Isoforms of the same
+  gene do not make a window dirty. Adjacent-gene support built from the full
+  window's annotations is the later section-3.6 increment. Regression:
+  `test_neighbouring_gene_skips_window` (two genes at 11..19 and 21..29 both
+  skipped).
+- **Orientation destroyed the soft-mask channel** (P2). The reused
+  `oriented_chain` upper-cases its window, so the featurizer's channel 5 saw no
+  soft masking. The window is now rebuilt case-preserving from the raw FASTA
+  slice (`_oriented_window`; `revcomp` preserves case), with `oriented_chain`
+  kept as the authority for the CDS/intron coordinates and a guard that the two
+  agree up to case. Regressions: `test_soft_mask_channel_preserved_plus` (an
+  all-lower-case contig yields an all-lower-case window) and
+  `test_oriented_window_preserves_case_both_strands`.
+- **The hard source gate was optional and settings were unbound** (P2).
+  `iter_windows` now takes the species `*.summary.json` as its first argument,
+  calls `verify_source` before yielding anything, and reads the audit `m`/`table`
+  from that summary rather than from loader defaults, so it cannot audit unpinned
+  inputs or use settings that disagree with the committed manifest. Regressions:
+  `test_iter_windows_enforces_source_pin`, `test_table_is_bound_from_summary`.
+- **`import model.a` dragged in `model.labels`/`benchmark`** (P2). Added
+  `model.labels` to `[tool.setuptools] packages`, and made `model.a.__init__`
+  import the loader lazily (PEP 562 `__getattr__`), so `import model.a` — and the
+  torch-free parameter-count guard, the encoder and the loss — no longer require
+  `model.labels` or `benchmark/score.py`. The loader is a checkout-time tool (the
+  admission audit loads `benchmark/score.py` by path); its dependencies are only
+  imported when a loader symbol is accessed. Verified that `import model.a`
+  imports no `model.labels` submodule.

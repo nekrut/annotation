@@ -19,13 +19,21 @@ from .inventory import (
     section_35_param_breakdown,
 )
 from .loss import chain_nll, numerator_scores
-from .dataset import (
-    LoaderStats,
-    SourceMismatch,
-    WindowExample,
-    iter_windows,
-    verify_source,
-)
+
+# The data loader (`model.a.dataset`) pulls in `model.labels`, whose audit loads
+# `benchmark/score.py` by path: it is a checkout-time tool, not part of an
+# installed wheel's import graph. Import it lazily (PEP 562) so `import model.a`
+# -- and the torch-free parameter-count guard, the encoder, and the loss -- do
+# not require `model.labels` or `benchmark/` to be present.
+_LAZY = {"LoaderStats", "SourceMismatch", "WindowExample", "iter_windows", "verify_source"}
+
+
+def __getattr__(name):
+    if name in _LAZY:
+        from . import dataset
+        return getattr(dataset, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "SECTION_35_PARAM_COUNT",
