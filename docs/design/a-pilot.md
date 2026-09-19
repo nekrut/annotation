@@ -258,9 +258,21 @@ large to commit (charter: no files over 5 MB), so running the report needs a
 source checkout. `model.a.coverage` makes that turnkey:
 
 ```
-python3 -m model.a.coverage --sources <scratch-dir> --fetch          # small species on a laptop
-python3 -m model.a.coverage --sources <scratch-dir> --out coverage.tsv
+# One small species on a laptop (yeast, worm or Dictyostelium):
+python3 -m model.a.coverage --sources <scratch-dir> \
+    --fetch --species Saccharomyces_cerevisiae
+
+# The whole train panel — the mammal/maize genomes and their audits need
+# gagarin's memory, so run this as the named compute request, not on a laptop:
+python3 -m model.a.coverage --sources <scratch-dir> --fetch --out coverage.tsv
 ```
+
+Passing no `--species` selects all ten committed train species (including
+mouse, maize and zebrafish), so the unfiltered command is the gagarin
+invocation, not a laptop one. An unknown `--species`, or an empty manifest
+directory, is now a clean argument error in both modes rather than a
+zero-row table, and `--fetch` progress goes to stderr so a redirected stdout
+is a clean TSV.
 
 `--fetch` constructs each pinned source's deterministic NCBI `genomes/all` URL
 from the filename in its `*.summary.json` (`ncbi_url`, no scraping or guessing),

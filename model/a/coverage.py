@@ -195,14 +195,28 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("coverage self-test ok")
         return 0
 
+    # Resolve and validate the selection up front, in both modes, so an empty
+    # manifest directory or an unknown --species is a clean argument error
+    # rather than a valid-looking zero-row table. A known species with zero
+    # admitted labels still resolves here and reports as its own row.
+    sources = species_sources(args.manifests, args.sources)
+    if not sources:
+        ap.error(f"no *.summary.json manifests found in {args.manifests}")
+    if args.species is not None:
+        selected = [s for s in sources if s[0] == args.species]
+        if not selected:
+            ap.error(f"unknown species {args.species!r}; manifests offer: "
+                     + ", ".join(s[0] for s in sources))
+        sources = selected
+
     if args.fetch:
-        sources = fetch(args.manifests, args.sources, species=args.species)
+        # Route fetch progress to stderr so a redirected/piped stdout is a clean
+        # TSV even on a fully cached run.
+        sources = fetch(args.manifests, args.sources, species=args.species,
+                        log=lambda m: print(m, file=sys.stderr))
     else:
-        sources = species_sources(args.manifests, args.sources)
-        if args.species is not None:
-            sources = [s for s in sources if s[0] == args.species]
-        missing = [g for _, _, g, f in sources
-                   for g in (g, f) if not os.path.exists(g)]
+        missing = [p for _, _, g, f in sources
+                   for p in (g, f) if not os.path.exists(p)]
         if missing:
             ap.error("missing source files (run with --fetch):\n  "
                      + "\n  ".join(missing))

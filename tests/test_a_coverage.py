@@ -13,7 +13,7 @@ import json
 import os
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 
 from model.a import coverage as cov
 
@@ -183,6 +183,41 @@ class SourcesAndReportTest(unittest.TestCase):
     def test_main_errors_when_sources_missing(self):
         with self.assertRaises(SystemExit):
             cov.main(["--manifests", self.manifests, "--sources", self.sources])
+
+    def test_unknown_species_rejected_both_modes(self):
+        # A --species that no manifest names is an argument error, not a
+        # zero-row table, in both the fetch and no-fetch paths.
+        self._write_sources()
+        for extra in ([], ["--fetch"]):
+            err = io.StringIO()
+            with self.assertRaises(SystemExit), redirect_stderr(err):
+                cov.main(["--manifests", self.manifests, "--sources",
+                          self.sources, "--species", "TYPO"] + extra)
+            self.assertIn("unknown species", err.getvalue())
+
+    def test_empty_manifest_dir_rejected_both_modes(self):
+        empty = os.path.join(self.root, "empty-manifests")
+        os.makedirs(empty)
+        for extra in ([], ["--fetch"]):
+            err = io.StringIO()
+            with self.assertRaises(SystemExit), redirect_stderr(err):
+                cov.main(["--manifests", empty, "--sources",
+                          self.sources] + extra)
+            self.assertIn("no *.summary.json", err.getvalue())
+
+    def test_fetch_progress_stays_off_stdout(self):
+        # A cached --fetch run must leave stdout a clean TSV; the "present,
+        # md5 ok" progress belongs on stderr.
+        self._write_sources()
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = cov.main(["--manifests", self.manifests, "--sources",
+                           self.sources, "--fetch"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.getvalue().splitlines()[0].split("\t")[0],
+                         "species")
+        self.assertNotIn("md5 ok", out.getvalue())
+        self.assertIn("md5 ok", err.getvalue())
 
 
 if __name__ == "__main__":
