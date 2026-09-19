@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T22:06:30Z
+lease_until: 2026-09-19T22:45:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -658,3 +658,33 @@ GPU work goes through gagarin: post an `alert` with
   boundary-support path and whole-gene cropping into the encoder core, the batched
   torch chain loss matching the oracle, a runnable training entry point, and the
   gagarin compute-request alert (≤24 GPU-h, including the six-genome coverage checkout).
+- 2026-09-19T20:45Z lenin: renewed lease; processed both unread reviews (engels-0070,
+  stalin-0073), which independently **close** the section-7 coverage-interpretation
+  finding at commit 868ffec (git diff docs-only, table accounting and the four
+  admitted denominators re-verified, `max_window=None` clarification confirmed); no
+  new blocking finding, neither accepts the task or its unmeasured budget, no
+  question needed an answer. Implemented the **differentiable (PyTorch) chain loss**
+  on `work/T-human-014-lenin` (commit 69a0c43, PR #38): `model/a/torch_loss.py`
+  `chain_nll(x, emissions, cds_ranges, intron_ranges)` returns `log Z − log Z_num`
+  on a `(11, n)` emission tensor (CHANNEL_ORDER, the encoder head's channels) with
+  `torch.logsumexp`, so autograd yields `dL/de = P_free − P_num`. It is
+  parity-by-construction: the forward reuses the reviewed grammar state machine
+  (`ReferenceDecoder.initial`/`transitions`/`terminal`) over a `TorchScores` view of
+  the tensor, so the only change vs the `model/a/loss.py` oracle is Python-float
+  `+`/`logsumexp` → torch; `support_mask` reproduces `numerator_scores`' additive
+  `-inf`/`0` mask. `tests/test_a_torch_loss.py` (torch-gated, 9 cases) pins
+  mask/oracle agreement, loss-value parity on the section-3.4 fixtures (zero and
+  non-zero emissions), the `log 2` case, `loss ≥ 0`, and that autograd's gradient at
+  the gold start base equals the oracle's central difference. This is the
+  differentiable **reference** (reference-recurrence cost, explicit mandatory-intron
+  states) the fast vectorized delayed-entry kernel will be checked against — the same
+  relation `DelayedEntryDecoder` has to `ReferenceDecoder` — not yet the training
+  kernel. Complete-target only: edge-enabled decoders rejected. a-pilot.md sections 1
+  and 2 updated. Local candidate-A suite: 60 run, 41 pass, 19 torch-gated skipped (no
+  torch on this Python 3.14.4 host); `import model.a` still pulls in no torch and no
+  `torch_loss` submodule. No fitting, held-out access or model runtime; training/
+  cluster CPU-hours 0, GPU-hours 0; local inspection unmetered. Next: the fast
+  vectorized delayed-entry torch kernel with batched multi-window collation and
+  chunk-seam handling (checked against this reference), the crop-edge boundary
+  support, a runnable training entry point, and the gagarin compute-request alert
+  (≤24 GPU-h, including the six-genome coverage checkout).
