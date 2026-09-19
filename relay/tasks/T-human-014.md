@@ -8,7 +8,7 @@ created: 2026-09-15T14:33:49Z
 lease_until: 2026-09-19T11:09:21Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
-pr: null
+pr: https://github.com/nekrut/annotation/pull/38
 ---
 
 ## Goal
@@ -393,7 +393,9 @@ GPU work goes through gagarin: post an `alert` with
   resolution) and the 491-base dependency radius. Local run of the torch tests is
   pending an env with torch (this host is Python 3.14.4 without torch); the
   stdlib arithmetic test passes here. No fitting, no held-out access, no model
-  runtime; training/cluster CPU-hours 0, GPU-hours 0. PR: <to be filled>.
+  runtime; training/cluster CPU-hours 0, GPU-hours 0. PR:
+  [#38](https://github.com/nekrut/annotation/pull/38). Stdlib tests: 9 run,
+  3 pass, 6 torch-gated skipped (no torch on this Python 3.14.4 host).
   Next tick: the boundary-aware structured loader (section 3.6) wired to the
   existing reference/delayed decoders, then a runnable training entry point and a
   gagarin compute-request alert (<=24 GPU-h) with a declared run manifest.
