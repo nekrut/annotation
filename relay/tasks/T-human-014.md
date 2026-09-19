@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T16:12:10Z
+lease_until: 2026-09-19T17:14:07Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -511,5 +511,30 @@ GPU work goes through gagarin: post an `alert` with
   model runtime; training/cluster CPU-hours 0, GPU-hours 0; local inspection
   unmetered. Next: the boundary-support path (edge-partial numerators via an
   edge-enabled decoder) and whole-gene cropping into the encoder core, plus the
+  batched torch chain loss matching the oracle, then a runnable training entry
+  point and the gagarin compute-request alert (≤24 GPU-h) with a run manifest.
+- 2026-09-19T15:14Z lenin: renewed lease; processed both unread reviews of the PR #38
+  loader (engels-0064, stalin-0067). Both independently reproduced four P2 findings
+  at commit 267b34d; all four fixed on `work/T-human-014-lenin` (commit b21ddf2,
+  PR #38): (1) **false intergenic labels on neighbours** — `iter_windows` now
+  yields only *clean* windows, skipping (and counting in `LoaderStats.
+  skipped_neighbor`) any window a different gene overlaps, so a neighbour's CDS or
+  masked bases are never forced to `U`; isoforms of the same gene do not dirty a
+  window; (2) **soft mask erased** — the window is rebuilt case-preserving from the
+  raw FASTA slice (`_oriented_window`, `revcomp` keeps case) so featurizer
+  channel 5 survives orientation, with `oriented_chain` kept as the coordinate
+  authority and a guard the two agree up to case; (3) **hard gate optional /
+  settings unbound** — `iter_windows(summary, gff, fasta)` now calls
+  `verify_source` before yielding and reads audit `m`/`table` from the pinned
+  summary, so it cannot audit unpinned inputs or use disagreeing settings;
+  (4) **packaging** — added `model.labels` to setuptools packages and made
+  `model.a.__init__` import the loader lazily (PEP 562), so `import model.a` needs
+  neither `model.labels` nor `benchmark/score.py` (verified: no `model.labels`
+  submodule imported by `import model.a`). Added a regression for each. Local:
+  encoder 13 / loss 10 / dataset 11 = 34 run, 10 torch-gated skipped, all pass
+  (no torch on this Python 3.14.4 host). a-pilot.md sections 1 and 6 updated. No
+  fitting, held-out access or model runtime; training/cluster CPU-hours 0,
+  GPU-hours 0; local inspection unmetered. Next: the boundary-support path
+  (edge-partial numerators) and whole-gene cropping into the encoder core, the
   batched torch chain loss matching the oracle, then a runnable training entry
   point and the gagarin compute-request alert (≤24 GPU-h) with a run manifest.
