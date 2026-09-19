@@ -232,3 +232,34 @@ stalin-0067):
   admission audit loads `benchmark/score.py` by path); its dependencies are only
   imported when a loader symbol is accessed. Verified that `import model.a`
   imports no `model.labels` submodule.
+
+## 7. Training-set coverage accounting
+
+The complete-target, clean-window scope of section 3.6 is temporary: it drops
+edge-partial admitted chains, chains a neighbouring gene overlaps, and (when a
+`max_window` is set) chains longer than the chosen chunk. Both incremental
+reviews (engels-0065, stalin-0068) asked that this exclusion be quantified
+**before any train-panel conclusion is drawn from A**, because the fraction of
+the admitted set the loss actually sees bounds what the pilot's accuracy means.
+
+`model.a.coverage_report(sources, *, complete_only, max_window)` runs the loader
+over each `(species, summary, gff, fasta)` and returns a `CoverageRow` per
+species — `admitted`, `yielded`, `yielded_fraction`, and the three skip counts
+(`skipped_partial`, `skipped_neighbor`, `skipped_too_long`) that partition the
+difference — under the same checksum gate and audit delegation as training, so
+the numbers are exactly what a fitting run would train on. `format_coverage`
+renders the rows as a TSV with a `TOTAL` row, following the
+`docs/cost-baseline/measured.tsv` convention. `tests/test_a_dataset.py` checks
+the aggregation, the `max_window` accounting, the source-pin enforcement, and
+the rendered header/TOTAL on synthetic species.
+
+This measures the current scope; it does not widen it. The panel-wide numbers
+(the yielded fraction per train species and the skip breakdown) are recorded
+here once the report is run over the checked-out train sources, alongside the
+edge-partial and crop increments of section 2 that will raise the yielded
+fraction. A yielded fraction low enough to bias the pilot is itself a section-2
+finding to report before the gagarin fitting run, not after.
+
+| species | admitted | yielded | yielded_pct | skip_partial | skip_neighbor | skip_too_long |
+|---|---:|---:|---:|---:|---:|---:|
+| _pending gagarin/source checkout_ | | | | | | |

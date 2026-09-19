@@ -60,7 +60,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, Iterator, List, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 
 from model.labels.admission import (
     audit_species,
@@ -163,6 +163,97 @@ class LoaderStats:
     skipped_too_long: int = 0
     skipped_neighbor: int = 0
     windows_by_seqid: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+
+
+@dataclass
+class CoverageRow:
+    """One species' admission/training coverage under the current loader scope.
+
+    ``admitted`` is what the audit accepted; ``yielded`` is what this loader
+    actually trains on given the complete-target, clean-window scope; the three
+    ``skipped_*`` counts partition the difference. Reviewers asked for this
+    accounting before any train-panel conclusion is drawn from A, because the
+    clean-window and complete-only restrictions are temporary section-3.6
+    scope, not the final training set (engels-0065, stalin-0068).
+    """
+
+    species: str
+    admitted: int
+    yielded: int
+    skipped_partial: int
+    skipped_too_long: int
+    skipped_neighbor: int
+
+    @property
+    def yielded_fraction(self) -> float:
+        return self.yielded / self.admitted if self.admitted else 0.0
+
+
+def coverage_report(
+    sources: Sequence[Tuple[str, str, str, str]],
+    *,
+    complete_only: bool = True,
+    max_window: Optional[int] = None,
+) -> List[CoverageRow]:
+    """Run the loader over each species and return its training coverage.
+
+    ``sources`` is a sequence of ``(species, summary, gff, fasta)``. Each entry
+    is consumed exactly as :func:`iter_windows` would in training (same checksum
+    gate, admission delegation, and ``complete_only``/``max_window`` scope), and
+    only the counts are kept -- the windows themselves are discarded, so this is
+    a cheap pass that quantifies how much of each species' admitted set the
+    current scope actually reaches. It never re-derives the audit.
+    """
+    rows: List[CoverageRow] = []
+    for species, summary, gff, fasta in sources:
+        stats = LoaderStats()
+        for _ in iter_windows(
+            summary, gff, fasta,
+            complete_only=complete_only, max_window=max_window, stats=stats,
+        ):
+            pass
+        rows.append(CoverageRow(
+            species=species,
+            admitted=stats.admitted,
+            yielded=stats.yielded,
+            skipped_partial=stats.skipped_partial,
+            skipped_too_long=stats.skipped_too_long,
+            skipped_neighbor=stats.skipped_neighbor,
+        ))
+    return rows
+
+
+def format_coverage(rows: Sequence[CoverageRow]) -> str:
+    """Render :func:`coverage_report` rows as a TSV table with a TOTAL row.
+
+    Columns: species, admitted, yielded, yielded_pct, skip_partial,
+    skip_neighbor, skip_too_long. The same convention as
+    ``docs/cost-baseline/measured.tsv``: tab-separated, one header line, a
+    trailing ``TOTAL`` aggregating every species.
+    """
+    header = ("species", "admitted", "yielded", "yielded_pct",
+              "skip_partial", "skip_neighbor", "skip_too_long")
+    lines = ["\t".join(header)]
+    tot = CoverageRow("TOTAL", 0, 0, 0, 0, 0)
+    for r in rows:
+        lines.append("\t".join((
+            r.species, str(r.admitted), str(r.yielded),
+            "%.1f" % (100.0 * r.yielded_fraction),
+            str(r.skipped_partial), str(r.skipped_neighbor),
+            str(r.skipped_too_long),
+        )))
+        tot.admitted += r.admitted
+        tot.yielded += r.yielded
+        tot.skipped_partial += r.skipped_partial
+        tot.skipped_neighbor += r.skipped_neighbor
+        tot.skipped_too_long += r.skipped_too_long
+    lines.append("\t".join((
+        tot.species, str(tot.admitted), str(tot.yielded),
+        "%.1f" % (100.0 * tot.yielded_fraction),
+        str(tot.skipped_partial), str(tot.skipped_neighbor),
+        str(tot.skipped_too_long),
+    )))
+    return "\n".join(lines) + "\n"
 
 
 def _oriented_window(t, seq: str) -> str:

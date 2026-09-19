@@ -13,9 +13,12 @@ import tempfile
 import unittest
 
 from model.a.dataset import (
+    CoverageRow,
     LoaderStats,
     SourceMismatch,
     WindowExample,
+    coverage_report,
+    format_coverage,
     iter_windows,
     verify_source,
 )
@@ -205,6 +208,74 @@ class DatasetTest(unittest.TestCase):
         self.assertEqual(windows, [])
         self.assertEqual(stats.admitted, 2)
         self.assertEqual(stats.skipped_neighbor, 2)
+
+
+    # -- coverage accounting across a panel (engels-0065, stalin-0068) --------
+    def _write_species(self, name, gff, fasta):
+        d = tempfile.mkdtemp()
+        g = os.path.join(d, "%s.gff3" % name)
+        f = os.path.join(d, "%s.fna" % name)
+        s = os.path.join(d, "%s.summary.json" % name)
+        with open(g, "w") as fh:
+            fh.write(gff)
+        with open(f, "w") as fh:
+            fh.write(fasta)
+        with open(s, "w") as fh:
+            json.dump({"gff_md5": _md5(gff), "fasta_md5": _md5(fasta)}, fh)
+        return (name, s, g, f)
+
+    def _neighbour_species(self):
+        # Two nonoverlapping complete genes each in the other's flank: admitted
+        # 2, yielded 0, skipped_neighbor 2 (mirrors test_neighbouring_gene).
+        seq = "C" * 10 + "ATGAAATAA" + "C" + "ATGCCCTAA" + "A" * (CONTIG_LEN - 29)
+        rows = ["##gff-version 3", "##sequence-region chr1 1 %d" % CONTIG_LEN]
+        for i, (a, b) in enumerate(((11, 19), (21, 29)), 1):
+            rows += [
+                "chr1\tt\tgene\t%d\t%d\t.\t+\t.\tID=g%d;gene_biotype=protein_coding" % (a, b, i),
+                "chr1\tt\tmRNA\t%d\t%d\t.\t+\t.\tID=t%d;Parent=g%d" % (a, b, i, i),
+                "chr1\tt\tCDS\t%d\t%d\t.\t+\t0\tID=c%d;Parent=t%d" % (a, b, i, i)]
+        return self._write_species("neigh", "\n".join(rows) + "\n", ">chr1\n" + seq + "\n")
+
+    def test_coverage_report_aggregates_panel(self):
+        clean = self._write_species("clean", GFF, _fasta())     # admitted 1, yielded 1
+        neigh = self._neighbour_species()                        # admitted 2, yielded 0
+        rows = coverage_report([clean, neigh])
+        self.assertEqual([r.species for r in rows], ["clean", "neigh"])
+        by = {r.species: r for r in rows}
+        self.assertEqual((by["clean"].admitted, by["clean"].yielded), (1, 1))
+        self.assertEqual(by["clean"].yielded_fraction, 1.0)
+        self.assertEqual((by["neigh"].admitted, by["neigh"].yielded), (2, 0))
+        self.assertEqual(by["neigh"].skipped_neighbor, 2)
+        self.assertEqual(by["neigh"].yielded_fraction, 0.0)
+
+    def test_coverage_report_honours_max_window(self):
+        clean = self._write_species("clean", GFF, _fasta())
+        rows = coverage_report([clean], max_window=50)
+        self.assertEqual(rows[0].yielded, 0)
+        self.assertEqual(rows[0].skipped_too_long, 1)
+
+    def test_format_coverage_has_header_and_total(self):
+        rows = coverage_report([
+            self._write_species("clean", GFF, _fasta()),
+            self._neighbour_species(),
+        ])
+        table = format_coverage(rows)
+        lines = table.rstrip("\n").split("\n")
+        self.assertEqual(lines[0].split("\t")[0], "species")
+        self.assertEqual(len(lines), 1 + len(rows) + 1)   # header + rows + TOTAL
+        total = lines[-1].split("\t")
+        self.assertEqual(total[0], "TOTAL")
+        self.assertEqual(total[1], "3")                   # 1 + 2 admitted
+        self.assertEqual(total[2], "1")                   # 1 + 0 yielded
+        self.assertEqual(total[3], "33.3")                # 1/3 yielded
+        self.assertEqual(total[5], "2")                   # skip_neighbor column
+
+    def test_coverage_report_enforces_source_pin(self):
+        name, s, g, f = self._write_species("clean", GFF, _fasta())
+        with open(f, "a") as fh:
+            fh.write("A\n")               # tamper after pinning
+        with self.assertRaises(SourceMismatch):
+            coverage_report([(name, s, g, f)])
 
 
 if __name__ == "__main__":

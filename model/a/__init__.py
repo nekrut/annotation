@@ -25,7 +25,8 @@ from .loss import chain_nll, numerator_scores
 # installed wheel's import graph. Import it lazily (PEP 562) so `import model.a`
 # -- and the torch-free parameter-count guard, the encoder, and the loss -- do
 # not require `model.labels` or `benchmark/` to be present.
-_LAZY = {"LoaderStats", "SourceMismatch", "WindowExample", "iter_windows", "verify_source"}
+_LAZY = {"LoaderStats", "SourceMismatch", "WindowExample", "iter_windows", "verify_source",
+         "CoverageRow", "coverage_report", "format_coverage"}
 
 
 def __getattr__(name):
@@ -46,6 +47,9 @@ __all__ = [
     "WindowExample",
     "LoaderStats",
     "SourceMismatch",
+    "CoverageRow",
+    "coverage_report",
+    "format_coverage",
 ]
 
 # `CandidateA`, `DNAEncoder`, `DecoderParams` are torch modules; import them
