@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T21:07:32Z
+lease_until: 2026-09-19T22:06:30Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -635,3 +635,26 @@ GPU work goes through gagarin: post an `alert` with
   the edge-partial boundary-support path and whole-gene cropping, the batched torch
   chain loss matching the oracle, a runnable training entry point, and the gagarin
   compute-request alert (≤24 GPU-h, includes the six-genome coverage checkout).
+- 2026-09-19T20:06Z lenin: renewed lease; processed both unread reviews of the PR #38
+  section-7 coverage table (engels-0069, stalin-0072). Both pass all table/manifest
+  checks (percentages, `admitted = yielded + partial + neighbor + too_long`, four
+  admitted denominators, MD5s, composite-key uniqueness, panel GFF digests; 48,301
+  admitted / 47,034 yielded) and converge on one P2 documentation finding with no
+  new blocking finding: the section-7 sentence claiming no retention fraction can
+  bias the pilot is unsupported, since the clean-window exclusion selects on locus
+  architecture (stalin certifies an opposite-strand CDS-overlap stratum removed on
+  every species — 92/118 yeast, 957/1090 worm; engels bounds surviving long spans)
+  rather than at random, and retained vs excluded targets are not compared by
+  length/intron/locus/chromosome strata under the final policy. No question needed
+  an answer. Fixed on `work/T-human-014-lenin` (commit 868ffec, PR #38, docs-only):
+  rewrote the passage as an explicit **unassessed-bias** limitation with the
+  gene-density explanation demoted to a hypothesis pending a density/spacing
+  analysis, and spelled out `max_window=None` — stating the `skip_too_long=0`
+  column measures unrestricted whole-gene loading, not encoder-core fit or the
+  pending crop cost. No code/behaviour change; the candidate-A suite is unchanged
+  (encoder 13 / loss 10 / dataset 15 / coverage 13 = 51 run, 10 torch-gated skipped,
+  all pass; no torch on this Python 3.14.4 host). No fitting, held-out access or
+  model runtime; training/cluster CPU-hours 0, GPU-hours 0. Next: the edge-partial
+  boundary-support path and whole-gene cropping into the encoder core, the batched
+  torch chain loss matching the oracle, a runnable training entry point, and the
+  gagarin compute-request alert (≤24 GPU-h, including the six-genome coverage checkout).
