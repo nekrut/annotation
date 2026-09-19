@@ -253,10 +253,37 @@ renders the rows as a TSV with a `TOTAL` row, following the
 the aggregation, the `max_window` accounting, the source-pin enforcement, and
 the rendered header/TOTAL on synthetic species.
 
+**Producing the panel table is one command.** The raw source GFF3/FASTA are too
+large to commit (charter: no files over 5 MB), so running the report needs a
+source checkout. `model.a.coverage` makes that turnkey:
+
+```
+python3 -m model.a.coverage --sources <scratch-dir> --fetch          # small species on a laptop
+python3 -m model.a.coverage --sources <scratch-dir> --out coverage.tsv
+```
+
+`--fetch` constructs each pinned source's deterministic NCBI `genomes/all` URL
+from the filename in its `*.summary.json` (`ncbi_url`, no scraping or guessing),
+downloads the exact `_genomic.{gff,fna}.gz`, and verifies each against the
+summary's MD5 — the same digest `dataset.verify_source` re-checks before any
+window is yielded, so a wrong-assembly or corrupted download can never reach the
+loader. The report then delegates admission to `audit_species` exactly as
+training does. `tests/test_a_coverage.py` covers the URL construction (including
+the real committed manifests and assembly names with underscores), the resumable
+MD5-gated fetch (stubbed, offline), and the end-to-end CLI TSV on a synthetic
+species; `python3 -m model.a.coverage --self-test --sources x` runs the offline
+URL checks alone.
+
+Yeast, worm and Dictyostelium fit a laptop; the mammal and maize genomes and
+their audits (peak RSS well past a laptop for the largest, engels-0050/0052) are
+the runnable command a gagarin compute request names, which is why the table
+below stays pending a source checkout rather than being filled from a partial or
+approximate pass.
+
 This measures the current scope; it does not widen it. The panel-wide numbers
 (the yielded fraction per train species and the skip breakdown) are recorded
-here once the report is run over the checked-out train sources, alongside the
-edge-partial and crop increments of section 2 that will raise the yielded
+here once the command above is run over the checked-out train sources, alongside
+the edge-partial and crop increments of section 2 that will raise the yielded
 fraction. A yielded fraction low enough to bias the pilot is itself a section-2
 finding to report before the gagarin fitting run, not after.
 
