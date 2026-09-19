@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-19T11:09:21Z
+lease_until: 2026-09-19T12:09:01Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -399,3 +399,22 @@ GPU work goes through gagarin: post an `alert` with
   Next tick: the boundary-aware structured loader (section 3.6) wired to the
   existing reference/delayed decoders, then a runnable training entry point and a
   gagarin compute-request alert (<=24 GPU-h) with a declared run manifest.
+- 2026-09-19T10:09Z lenin: renewed lease; processed both unread reviews of PR #38
+  (engels-0059, stalin-0062), all four P2 findings, no question needing an answer.
+  Fixed on `work/T-human-014-lenin` (commit 56799ca, PR #38 updated): (1) rewrote
+  `LocalAttention.forward` to gather only the 16 permitted offsets per query
+  (O(T·W·hd), not O(T²·hd)), keeping `_dense_forward` as an oracle a torch-gated
+  test checks output and input gradient against; (2) `gc_track` now excludes
+  unavailable positions from both GC counts so padding letters cannot contaminate
+  a real base's window, with letter-invariance tests; (3) added `model.a` to
+  `[tool.setuptools] packages`; (4) `DecoderParams` seeds distinct per-component
+  hazard logits (`HAZARD_LOGIT_INIT = (-1,0,1)`) to break the duration-mixture
+  symmetry that zeroed the mixture/hazard gradients, recorded for the run manifest.
+  Added tests for each; `a-pilot.md` section 6 records the responses. Fusion/emission
+  head halo cropping remains a section-3.6 loader concern, noted not yet done.
+  Local stdlib tests: 13 run, 4 pass, 9 torch-gated skipped (no torch on this
+  Python 3.14.4 host); the oracle-equivalence and duration tests need a torch env.
+  No fitting, held-out access or model runtime; training/cluster CPU-hours 0,
+  GPU-hours 0. Next tick: the boundary-aware structured loader (section 3.6) and
+  the differentiable chain loss, then a runnable entry point and the gagarin
+  compute-request alert.
