@@ -135,10 +135,72 @@ acceptor. Dependency radius is 491 bases, below the proposed 516-base halo.
    reference recurrence's cost and is unsuitable for a full training window at
    the default `m=20`; it establishes the differentiable contract, not the
    training throughput.
-3. **Training and inference entry points** with a config and a run manifest
-   (data, seed, commit, hardware), then a gagarin compute-request `alert`.
+3. **Boundary conditioning at training-crop edges** (edge-partial numerators via
+   an edge-enabled decoder) and the batched multi-window collation the fast
+   kernel needs. The training entry point (item below) already runs, one window
+   per accumulated gradient step, over the complete-target windows.
 
-## 3. Measurement plan (pending gagarin)
+The **training and measurement entry point** is now implemented:
+`model/a/train.py` wires the reviewed encoder, loader and reference torch loss
+into a runnable program with a declared config and a run manifest. It stays
+torch-free on import (torch is imported lazily inside the fitting/measurement
+functions), so its config validation, stride padding, by-sequence train/dev
+split and manifest construction are unit-tested here without torch
+(`tests/test_a_train.py`, 14 stdlib cases). The tensor path — encoder forward,
+`chain_nll` autograd, checkpoint selection, and the decode/traceback timing —
+runs on gagarin; no local host has torch. See section 3.
+
+## 3. Measurement plan and the entry point
+
+`model/a/train.py` has two subcommands:
+
+- `train --config CONFIG.json` fits candidate A on the *train* sequences of the
+  configured train species and selects the checkpoint on the declared
+  `dev_seqids` only (the split is by sequence, so a dev chromosome never
+  contributes a gradient step — the Phase 4 leakage rule). It accumulates
+  `batch_size` per-window losses per step (windows vary in length; the fast
+  kernel will tensor-collate), clips the gradient, and writes `best.pt` plus
+  `run_manifest.json` (commit, seed, hardware, torch/CUDA versions, per-species
+  pinned gff/fasta MD5s, param count = 455,841, sampled bases) to `out_dir`.
+- `measure --config CONFIG.json --species S [--seqid ID] [--checkpoint best.pt]`
+  times **preprocessing** (featurizer), **encoder** forward, and
+  **decode/traceback** (the reference delayed-entry Viterbi over the emissions)
+  separately with `time.process_time`, over the windows of one sequence, and
+  reports oriented bases, CPU-s/Mb, peak host RSS and peak device memory in the
+  `docs/cost-baseline` convention.
+
+The config is a JSON `TrainConfig`: a `sources` list of
+`{name, summary, gff, fasta, dev_seqids}` (the pinned paths the loader
+checksum-verifies), plus `seed`, `steps`, `batch_size`, `lr`, `weight_decay`,
+`grad_clip`, `max_window`, `eval_every`, `out_dir`, `device`.
+
+Per the task's definition of done and proposal section 6, the gagarin runs will:
+
+- Fit on train-species development chromosomes only; select checkpoints on
+  train development chromosomes; run `benchmark/leakage_check.py` before any
+  held-out evaluation. S. pombe stays held out and is used only for the
+  section 6.1 runtime-normalization evaluation after freezing.
+- Measure preprocessing, encoder, decoder, traceback, scratch I/O and output
+  separately with `/usr/bin/time -v`, peak host and device memory, and the
+  hardware, following the `docs/cost-baseline/measured.tsv` conventions. CPU
+  regime on one core; GPU regime with the section 6.1 multi-worker decoder
+  accounting (worker count and aggregate memory included).
+- Compare against the accepted budgets (15 CPU-s/Mb, 0.5 GPU-s/Mb, 8 GB) and
+  against AUGUSTUS on the same machine using the S. pombe normalization; score
+  with `benchmark/score.py` on the development chromosomes.
+- Add rows to `docs/cost-baseline/measured.tsv` for A on at least S. pombe and
+  one metazoan development chromosome, both regimes, and fill the section 6.1
+  sensitivity table here with measured numbers.
+
+The first gagarin request (alert lenin-0083) is a bounded **verification and
+profiling** run, not the full pilot: it runs the full candidate-A torch test
+suite on a real torch host (the input-validation, parity and autograd tests that
+skip locally) and a short profiling run of `train`/`measure` on the smallest
+train species, to confirm the tensor path and measure the reference-recurrence
+per-window cost before the full fit is scoped. The reference forward has the
+reference recurrence's cost and is not the training kernel; the profiling
+determines whether the fast delayed-entry kernel must land before the full pilot
+fits within the 24 GPU-hour cap.
 
 Per the task's definition of done and proposal section 6:
 
