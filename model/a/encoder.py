@@ -94,8 +94,12 @@ class LocalAttention(nn.Module):
     """Multi-head attention restricted to relative offsets -8..+7.
 
     A single qkv projection and an output projection (4*d^2 + 4*d), plus a
-    per-head learned bias over the 16 permitted offsets. Positions outside the
-    window are masked, so this is genuinely local, not full attention.
+    per-head learned bias over the 16 permitted offsets. The forward pass only
+    forms scores and value products over the ``W = len(offsets)`` permitted
+    offsets per query (via a gathered local window), so its attention work is
+    O(T*W*hd) rather than the O(T^2*hd) of a masked dense product (engels-0059
+    P2). ``_dense_forward`` keeps the equivalent dense implementation as an
+    oracle the tests check against; both share the same weights and biases.
     """
 
     def __init__(self, dim: int, n_heads: int, offsets):
@@ -106,31 +110,56 @@ class LocalAttention(nn.Module):
         self.head_dim = dim // n_heads
         self.offsets = tuple(offsets)
         self.lo, self.hi = self.offsets[0], self.offsets[-1]
+        # Contiguous offsets let the window index equal (offset - lo), so a
+        # single unfold gathers the per-query neighbourhood without a scatter.
+        assert self.offsets == tuple(range(self.lo, self.hi + 1))
         self.qkv = nn.Linear(dim, 3 * dim)
         self.out = nn.Linear(dim, dim)
         # rel_bias[h, k] is the bias for offset offsets[k], per head.
         self.rel_bias = nn.Parameter(torch.zeros(n_heads, len(self.offsets)))
 
-    def _bias_and_mask(self, T, device):
-        # offset o = j - i (key minus query). Build [T, T] index into offsets.
+    def _window_mask(self, T, device):
+        # valid[i, w] is True when key i + offsets[w] is a real position.
         i = torch.arange(T, device=device)[:, None]
-        j = torch.arange(T, device=device)[None, :]
-        off = j - i
-        in_window = (off >= self.lo) & (off <= self.hi)
-        idx = (off - self.lo).clamp(0, len(self.offsets) - 1)
-        return in_window, idx
+        w = torch.arange(len(self.offsets), device=device)[None, :]
+        key = i + w + self.lo
+        return (key >= 0) & (key < T)  # [T, W]
 
     def forward(self, x):  # x: [B, T, C]
         B, T, C = x.shape
+        W = len(self.offsets)
         qkv = self.qkv(x).reshape(B, T, 3, self.n_heads, self.head_dim)
         q, k, v = qkv.permute(2, 0, 3, 1, 4)  # each [B, H, T, hd]
+        left, right = max(0, -self.lo), max(0, self.hi)
+        # Gather, for every query, only the W keys/values at permitted offsets.
+        # Pad along T so window w of query i reads padded index i+w == i+offset.
+        kpad = F.pad(k, (0, 0, left, right))  # [B, H, T+W-1, hd]
+        vpad = F.pad(v, (0, 0, left, right))
+        kw = kpad.unfold(2, W, 1).permute(0, 1, 2, 4, 3)  # [B, H, T, W, hd]
+        vw = vpad.unfold(2, W, 1).permute(0, 1, 2, 4, 3)
+        scores = (q.unsqueeze(3) * kw).sum(-1) / (self.head_dim ** 0.5)  # [B,H,T,W]
+        scores = scores + self.rel_bias[None, :, None, :]
+        valid = self._window_mask(T, x.device)          # [T, W]
+        scores = scores.masked_fill(~valid[None, None], float("-inf"))
+        attn = torch.softmax(scores, dim=-1)             # [B, H, T, W]
+        ctx = (attn.unsqueeze(-1) * vw).sum(3)           # [B, H, T, hd]
+        ctx = ctx.transpose(1, 2).reshape(B, T, C)
+        return self.out(ctx)
+
+    def _dense_forward(self, x):  # oracle: identical output, O(T^2) work
+        B, T, C = x.shape
+        qkv = self.qkv(x).reshape(B, T, 3, self.n_heads, self.head_dim)
+        q, k, v = qkv.permute(2, 0, 3, 1, 4)
         scores = torch.matmul(q, k.transpose(-1, -2)) / (self.head_dim ** 0.5)
-        in_window, idx = self._bias_and_mask(T, x.device)
-        bias = self.rel_bias[:, idx]              # [H, T, T]
-        scores = scores + bias[None]
+        i = torch.arange(T, device=x.device)[:, None]
+        j = torch.arange(T, device=x.device)[None, :]
+        off = j - i
+        in_window = (off >= self.lo) & (off <= self.hi)
+        idx = (off - self.lo).clamp(0, len(self.offsets) - 1)
+        scores = scores + self.rel_bias[:, idx][None]
         scores = scores.masked_fill(~in_window[None, None], float("-inf"))
         attn = torch.softmax(scores, dim=-1)
-        ctx = torch.matmul(attn, v)               # [B, H, T, hd]
+        ctx = torch.matmul(attn, v)
         ctx = ctx.transpose(1, 2).reshape(B, T, C)
         return self.out(ctx)
 
@@ -202,10 +231,22 @@ class DecoderParams(nn.Module):
     lives there.
     """
 
+    # Distinct per-component hazard logits recorded for the run manifest.
+    # Equal mixture weights are fine, but identical hazards make the three
+    # geometric components coincide, and the softmax/sigmoid duration law then
+    # has zero gradient on both mixture and hazard logits (the mixture is a
+    # single geometric regardless of component count; see stalin-0062). Seeding
+    # distinct hazards per component, broadcast across phases, breaks that
+    # symmetry deterministically without adding parameters.
+    HAZARD_LOGIT_INIT = (-1.0, 0.0, 1.0)  # per component, same for all phases
+
     def __init__(self):
         super().__init__()
         self.mixture_logits = nn.Parameter(torch.zeros(3, 3))  # phase x component
-        self.hazard_logits = nn.Parameter(torch.zeros(3, 3))   # phase x component
+        hazard_init = torch.tensor(self.HAZARD_LOGIT_INIT, dtype=torch.float32)
+        self.hazard_logits = nn.Parameter(
+            hazard_init.unsqueeze(0).repeat(3, 1)  # [phase, component], distinct
+        )
         self.donor_dinuc = nn.Parameter(torch.zeros(16))
         self.acceptor_dinuc = nn.Parameter(torch.zeros(16))
         self.partial_families = nn.Parameter(torch.zeros(4))   # coding/intron x entry/exit

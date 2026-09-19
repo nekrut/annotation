@@ -37,22 +37,33 @@ def _classify(seq: str):
     return out
 
 
-def gc_track(seq: str, window: int = GC_WINDOW) -> list:
+def gc_track(
+    seq: str,
+    window: int = GC_WINDOW,
+    available: Optional[Sequence[bool]] = None,
+) -> list:
     """Local GC fraction over a centred window, ignoring ambiguous bases.
 
     A position whose window contains no unambiguous base gets 0.0, per the
     section 3.5 "fixed zero value if none exist" rule. O(len(seq)) via a
     rolling count so it is cheap enough to run on whole chromosomes.
+
+    `available[i] == False` marks a padded position that invented no base; it
+    is excluded from both GC counts so a padded neighbour never contaminates a
+    real position's window. When `available` is None every position counts.
     """
     n = len(seq)
+    if available is None:
+        available = [True] * n
     half = window // 2
     # Prefix sums of (gc, unambiguous) so any window is an O(1) difference.
     gc_ps = [0] * (n + 1)
     un_ps = [0] * (n + 1)
     for i, ch in enumerate(seq):
         up = ch.upper()
-        unamb = up in _BASE_INDEX
-        gc_ps[i + 1] = gc_ps[i] + (1 if up in ("G", "C") else 0)
+        unamb = available[i] and up in _BASE_INDEX
+        is_gc = available[i] and up in ("G", "C")
+        gc_ps[i + 1] = gc_ps[i] + (1 if is_gc else 0)
         un_ps[i + 1] = un_ps[i] + (1 if unamb else 0)
     track = [0.0] * n
     for i in range(n):
@@ -84,7 +95,7 @@ def encode_sequence(seq: str, available: Optional[Sequence[bool]] = None):
 
     feats = torch.zeros(8, n, dtype=torch.float32)
     classes = _classify(seq)
-    gc = gc_track(seq)
+    gc = gc_track(seq, available=available)
     for i, (bi, is_amb, is_soft, is_real) in enumerate(classes):
         if not available[i]:
             continue  # padded: all channels stay 0, availability stays 0

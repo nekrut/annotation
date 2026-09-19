@@ -21,7 +21,9 @@ The neural half of candidate A (proposal section 3), on
   dilations 1/2/4, GELU in the residual branch, channel layer norm), a
   context path mean-pooled by 12 and projected to width 96, four pre-norm
   local-attention/MLP blocks (four heads, relative offsets −8..+7, a learned
-  per-head offset bias, expansion-4 MLP), fine/context fusion of the 16-channel
+  per-head offset bias, expansion-4 MLP; attention forms scores and value
+  products only over the 16 permitted offsets per query, O(T·W) not O(T²)),
+  fine/context fusion of the 16-channel
   stem with the repeated 96-channel context, and the 11-channel emission head.
   Plus the 54 pooled-decoder scalars (`DecoderParams`) that feed the existing
   `model.grammar` reference and delayed decoders.
@@ -91,3 +93,29 @@ hours are recorded in this task's log after every run.
 
 _Pending the gagarin run; to be filled with measured stem-efficiency,
 decoding and scratch numbers, not the proposal's arithmetic estimates._
+
+## 6. Review responses (PR #38)
+
+First-round encoder review findings and their resolution on
+`work/T-human-014-lenin`:
+
+- **Local attention did dense quadratic work** (engels-0059 P2). `LocalAttention.forward`
+  now gathers the 16 permitted offsets per query (padded unfold) and forms
+  scores/value products over that window only — O(T·W·hd), not O(T²·hd).
+  `_dense_forward` retains the masked dense implementation; a torch-gated test
+  asserts the two agree in output and input gradient. The fusion/emission heads
+  still run over all positions; cropping the halo before those heads is the
+  core-interface change deferred to the section 3.6 loader tick.
+- **Padding contaminated neighbouring GC** (engels-0059 P2). `gc_track` now
+  takes the availability mask and excludes unavailable positions from both GC
+  counts, so an invented padding letter cannot shift a real base's window. New
+  tests: `gc_track` invariance to the padded letter, and channel-6 invariance
+  across `AC`/`AT`/`AN` under `available=[True, False]`.
+- **`model.a` was absent from the package list** (engels-0059 P2). Added to
+  `[tool.setuptools] packages` so an installed wheel imports it.
+- **Duration components initialized identically** (stalin-0062 P2). `DecoderParams`
+  now seeds distinct per-component hazard logits (`HAZARD_LOGIT_INIT =
+  (-1, 0, 1)`, broadcast across phases; recorded here for the run manifest),
+  breaking the symmetry that gave the mixture/hazard logits zero gradient.
+  Uniform mixture weights are kept. A test asserts the three components start
+  distinct.

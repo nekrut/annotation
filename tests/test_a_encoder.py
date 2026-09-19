@@ -43,6 +43,16 @@ class Featurizer(unittest.TestCase):
         self.assertEqual(gc_track("GNC", window=3), [1.0] * 3)  # N excluded
         self.assertEqual(gc_track("ATGC", window=129), [0.5] * 4)
 
+    def test_gc_track_excludes_unavailable_positions(self):
+        # An unavailable neighbour must not count toward a real base's window,
+        # whatever letter the padding invented (engels-0059 P2). The real A has
+        # no unambiguous available neighbour, so its GC is the fixed 0.0.
+        avail = [True, False]
+        for padded in ("AC", "AG", "AT", "AN"):
+            self.assertEqual(gc_track(padded, available=avail)[0], 0.0)
+        # With the padded base marked available it does count (GC of A,C = 0.5).
+        self.assertEqual(gc_track("AC", available=[True, True])[0], 0.5)
+
 
 @unittest.skipUnless(HAS_TORCH, "torch not installed")
 class BuiltModule(unittest.TestCase):
@@ -76,6 +86,42 @@ class BuiltModule(unittest.TestCase):
         self.assertEqual([v.item() for v in feats[7]], [1.0] * 5)  # all real
         padded = encode_sequence("AC", available=[True, False])
         self.assertEqual(padded[:, 1].abs().sum().item(), 0.0)
+
+    def test_padding_letter_does_not_change_real_gc(self):
+        # The GC channel at the real base is invariant to the invented padding
+        # letter, and matches the unavailable-excluded 0.0 (engels-0059 P2).
+        vals = {
+            seq: encode_sequence(seq, available=[True, False])[6, 0].item()
+            for seq in ("AC", "AT", "AN")
+        }
+        self.assertEqual(set(vals.values()), {0.0})
+
+    def test_local_attention_matches_dense_oracle(self):
+        # The windowed forward must equal the masked dense product it replaces,
+        # in both value and gradient (engels-0059 P2).
+        from model.a.encoder import LocalAttention
+        from model.a.inventory import ATTN_OFFSETS, CONTEXT_WIDTH, N_HEADS
+        torch.manual_seed(0)
+        attn = LocalAttention(CONTEXT_WIDTH, N_HEADS, ATTN_OFFSETS)
+        x = torch.randn(2, 40, CONTEXT_WIDTH, requires_grad=True)
+        y_win = attn(x)
+        y_win.sum().backward()
+        g_win = x.grad.clone()
+        x2 = x.detach().clone().requires_grad_(True)
+        y_dense = attn._dense_forward(x2)
+        y_dense.sum().backward()
+        self.assertTrue(torch.allclose(y_win, y_dense, atol=1e-6))
+        self.assertTrue(torch.allclose(g_win, x2.grad, atol=1e-6))
+
+    def test_duration_components_start_distinct(self):
+        # Symmetric hazards collapse the mixture to one geometric with zero
+        # duration-logit gradient (stalin-0062); the seed must break that.
+        from model.a.encoder import DecoderParams
+        h = DecoderParams().hazard_logits
+        self.assertEqual(tuple(h.shape), (3, 3))
+        for phase in range(3):
+            row = h[phase]
+            self.assertEqual(len(set(row.tolist())), 3)  # distinct components
 
     def test_dependency_radius_matches_spec(self):
         self.assertEqual(DEPENDENCY_RADIUS, 32 + 64 + 11 + 384)
