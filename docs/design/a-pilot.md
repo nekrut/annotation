@@ -451,28 +451,35 @@ their audits (peak RSS well past a laptop for the largest, engels-0050/0052) are
 the runnable command a gagarin compute request names.
 
 This measures the current scope; it does not widen it. The four small train
-species below were checked out and reported on the laptop (lenin, 2026-09-19,
+species were checked out and reported on the laptop (lenin, 2026-09-19,
 commit ef82af9, `max_window=None`); Arabidopsis and Drosophila — the two
 smallest of the remaining six — were added on the laptop the same way (lenin,
 2026-09-20; MD5-verified fetches, ~60 MB and ~53 MB compressed, 27 s and 13 s
-audits, nothing committed). The four large genomes (zebrafish, Xenopus, mouse,
-maize) stay pending the gagarin checkout. A yielded fraction low enough to bias
-the pilot is itself a section-2 finding to report before the gagarin fitting
-run, not after.
+audits, nothing committed). The four large genomes (Danio 1.45 Gb, Xenopus
+1.45 Gb, Mus 2.7 Gb, Zea 2.18 Gb) were also completed on the laptop (lenin,
+2026-09-20): each source `_genomic.{gff,fna}.gz` was fetched to scratch and
+MD5-verified against its committed manifest (`fetch` re-checks the same digest
+`verify_source` enforces before any window is yielded), audited within the
+per-species peak RSS recorded in the manifests (1.9–3.6 GB) on one core, and
+its FASTA discarded; nothing committed. The panel table below is therefore the
+full ten-species train set. A yielded fraction low enough to bias the pilot is
+itself a section-2 finding to report before the gagarin fitting run, not after.
 
-Reading the measured rows: the complete-target clean-window scope already yields
-91.8–99.9% of the admitted set across the six laptop species (four small plus
-Arabidopsis 97.8% and Drosophila 91.8%). **`skip_too_long`
+Reading the measured rows: the complete-target clean-window scope yields
+**173,216 of 179,227 admitted representatives, 96.6% panel-wide**, and
+91.8–99.9% per species across all ten train species. **`skip_too_long`
 is 0 everywhere**, but only because the reported run uses `max_window=None`
 (the CLI, `iter_windows` and `coverage_report` default): with no finite length
 limit the length filter never fires, so this column measures unrestricted
 whole-gene loading, not fit within the 3,072-base encoder core or the cost of
-the pending crop. The exclusion here is therefore neighbour-overlap, not a
-gene-length cap (consistent with engels-0047, and see the crop still listed
-pending in section 2). Neighbour skips are largest in the compact
-C. elegans (1090, 5.5%) and Drosophila (1069, 8.2%) genomes and smallest in
-Neurospora (8, 0.1%) — the same gene-density pattern extends to the two added
-genomes, with `skip_too_long` still 0.
+the pending crop. The exclusion here is therefore neighbour-overlap
+(6,010 windows) plus a single edge-partial, not a gene-length cap (consistent
+with engels-0047, and see the crop still listed pending in section 2).
+Neighbour skips are largest by count in the vertebrate Danio (1551, 7.9%) and
+by fraction in the compact Drosophila (1069, 8.2%) and C. elegans (1090, 5.5%)
+genomes, and smallest in Neurospora (8, 0.1%) — the same gene-density pattern
+holds across the four large genomes (Xenopus 2.4%, Mus 3.4%, Zea 1.2%), with
+`skip_too_long` still 0.
 
 These are retention counts, not a bias measurement. The loader excludes windows
 because a different gene overlaps them, so the exclusion selects on locus
@@ -485,10 +492,10 @@ length, intron count, locus type or development chromosome, nor under the final
 sampling/repeat policy. So the effect of the clean-window exclusion on the pilot
 is **unassessed**, and the gene-density explanation above is a hypothesis
 pending an actual density/spacing analysis — not a demonstration that the pilot
-is unbiased. Edge-partials are negligible on these four (0–1), so the section-2
-boundary-support increment will move the panel fraction little here; its value
-is on the larger genomes and scaffold edges still pending. Arabidopsis and
-Drosophila likewise show 0 edge-partials at the default window.
+is unbiased. Edge-partials are negligible across the whole panel (1 window
+total, in Dictyostelium), so the section-2 boundary-support increment will move
+the panel yield fraction little; its value is on scaffold-edge structure, not
+this retention count.
 
 | species | admitted | yielded | yielded_pct | skip_partial | skip_neighbor | skip_too_long |
 |---|---:|---:|---:|---:|---:|---:|
@@ -498,4 +505,8 @@ Drosophila likewise show 0 edge-partials at the default window.
 | Caenorhabditis_elegans | 19784 | 18694 | 94.5 | 0 | 1090 | 0 |
 | Arabidopsis_thaliana | 27220 | 26630 | 97.8 | 0 | 590 | 0 |
 | Drosophila_melanogaster | 12974 | 11905 | 91.8 | 0 | 1069 | 0 |
-| _Danio, Xenopus, Mus, Zea — pending gagarin_ | | | | | | |
+| Danio_rerio | 19574 | 18023 | 92.1 | 0 | 1551 | 0 |
+| Xenopus_tropicalis | 17660 | 17230 | 97.6 | 0 | 430 | 0 |
+| Mus_musculus | 21694 | 20956 | 96.6 | 0 | 738 | 0 |
+| Zea_mays | 31804 | 31438 | 98.8 | 0 | 366 | 0 |
+| **TOTAL** | **179227** | **173216** | **96.6** | **1** | **6010** | **0** |
