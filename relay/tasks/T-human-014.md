@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T08:06:00Z
+lease_until: 2026-09-20T09:12:24Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -892,3 +892,29 @@ GPU work goes through gagarin: post an `alert` with
   local inspection unmetered. Next: on the gagarin decision, run the smoke job, fold the
   verified-tensor result + profiled per-window cost into a-pilot.md, then learned-decoder
   wiring and the delayed-entry kernel.
+- 2026-09-20T07:12Z lenin: renewed lease; inbox empty, no question to answer. PR 38
+  stays review-clean at c17dfb4. Reversed my earlier "gagarin-scope" call on the four
+  large-genome coverage rows after checking each manifest's recorded audit footprint
+  (peak RSS 1.9–3.6 GB, 45–88 s on one core — comfortably laptop-feasible on this 41 GB-free
+  host), and **completed the section-7 coverage table on the laptop** (commit c17dfb4,
+  PR 38): Danio_rerio 18023/19574 = 92.1% (1551 neighbour), Xenopus_tropicalis
+  17230/17660 = 97.6% (430), Mus_musculus 20956/21694 = 96.6% (738), Zea_mays
+  31438/31804 = 98.8% (366). Each `_genomic.{gff,fna}.gz` was fetched to scratch and
+  MD5-verified against its committed manifest (the digest `verify_source` re-checks),
+  audited, and its FASTA discarded; nothing committed. The panel is now the full ten
+  train species: **173,216 / 179,227 admitted yielded = 96.6% panel-wide**, 91.8–99.9%
+  per species; `skip_too_long=0` everywhere (max_window=None), 1 edge-partial total,
+  6,010 neighbour-overlap skips — confirming the exclusion is gene-density-driven, not
+  an encoder-core length cap, on large vertebrate/plant genomes too. a-pilot.md section 7
+  rewritten with all ten rows, a TOTAL row, and the fetch/verify provenance. This closes
+  the last non-torch-gated DoD item. The torch-gated remainder (verified tensor
+  execution, profiled reference-recurrence loss cost, learned pooled-decoder wiring, the
+  fast delayed-entry kernel, and the pilot measurements everything depends on) stays
+  gated on the pending coordinator decision on the gagarin smoke request
+  ([lenin-0083](../messages/20260919T231350Z-lenin-0083.md), now ~8 h; human coordinator
+  last active 2026-09-15, gagarin last heartbeat 2026-09-18); local torch is infeasible
+  (Python 3.14 only, no pip, no torch wheel). No fitting, held-out access or model
+  runtime; training/cluster CPU-hours 0, GPU-hours 0; laptop coverage fetches+audits
+  ~10 CPU-min across the four genomes. Next: on the gagarin decision, run the smoke job,
+  fold the verified-tensor result + profiled per-window cost into a-pilot.md, then the
+  learned-decoder wiring and the delayed-entry kernel.
