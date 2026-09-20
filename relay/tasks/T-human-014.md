@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T18:41:29Z
+lease_until: 2026-09-20T19:20:15Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1094,3 +1094,22 @@ GPU work goes through gagarin: post an `alert` with
   cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: per-chromosome
   one-core `measure` row, then the vectorized delayed-entry training kernel checked
   against the reference forward.
+- 2026-09-20T17:20Z lenin: renewed lease; inbox empty, no question to answer. **Fast delayed-entry
+  training kernel done** (PR 38 commit 28c5339): `model/a/fast_loss.py` is a batched tensor
+  delayed-entry forward (coding layer (B,K=24), tails (B,K,R), donors parked m boundaries
+  and entered with an `unfold` window sum; -inf floored at -1e30 so no NaN gradients);
+  `tests/test_a_fast_loss.py` pins exact parity with the reference torch forward
+  (partition, loss, gradient <= 1e-9 on section-3.4 fixtures, 30 random lattices with IUPAC
+  ambiguity / both tables / m 1-4 / R 1-3 / -inf masks, batched == single) — 141 tests pass.
+  Cost (a-pilot.md 3.2, artifacts `smoke-local-20260920/fast-kernel/`): linear ~0.2 CPU-s/kb
+  fwd+bwd one thread, 11,255-base window 2.3 s / 1.08 GB vs reference 81.7 s / 9.0 GB
+  (35x, 8x); 20-step smoke fit repeated with `loss_kernel: fast` gives the identical NLL
+  trajectory (0.0001/0.0006) in 1 min 32 s / 0.97 GB (vs 12 min 50 s / 7.15 GB), and
+  24.7 CPU-s on one pinned core (vs 1,635 CPU-s). Also one-core `measure` on yeast chr I
+  (`measure-chrI/`): featurizer 3.6 + encoder 2.7 CPU-s/Mb inside the 15 CPU-s/Mb budget,
+  pure-Python Viterbi decoder 66 CPU-s/Mb is the failing stage — the tensor scan in
+  max-product mode must replace it before a section-5 chromosome row. GPU half still
+  needs gagarin (request lenin-0083 stays open). Local CPU ~0.5 CPU-h (unmetered dev
+  host); cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: tensor
+  Viterbi (max-product + back-pointers) sharing the kernel's transition tables, wire
+  `measure` to it, then the learned pooled-decoder scalars into the loss.

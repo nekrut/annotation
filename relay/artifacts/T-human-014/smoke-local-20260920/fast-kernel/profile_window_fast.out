@@ -1,0 +1,5 @@
+load: 5738 windows in 1.0s; rss_MiB=285
+n=   422 enc_fwd=0.007s loss_fwd(enc+chain)=0.044s bwd=0.047s total=0.091s per_kb=0.217s rss_MiB=342
+n=  1223 enc_fwd=0.009s loss_fwd(enc+chain)=0.117s bwd=0.114s total=0.231s per_kb=0.188s rss_MiB=409
+n=  2804 enc_fwd=0.021s loss_fwd(enc+chain)=0.265s bwd=0.275s total=0.540s per_kb=0.193s rss_MiB=542
+n= 11255 enc_fwd=0.111s loss_fwd(enc+chain)=1.122s bwd=1.217s total=2.339s per_kb=0.208s rss_MiB=1101

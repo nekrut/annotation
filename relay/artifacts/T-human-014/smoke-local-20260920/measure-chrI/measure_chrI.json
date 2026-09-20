@@ -1,0 +1,20 @@
+{
+  "cpu_s_per_mb": 72.45659035314269,
+  "decode_cpu_s": 9.513655073000002,
+  "decode_wall_s": 9.51596304262057,
+  "device": "cpu",
+  "encoder_cpu_s": 0.38153240200000615,
+  "encoder_wall_s": 0.38163663167506456,
+  "gpu_s_per_mb": null,
+  "oriented_bases": 143653,
+  "outputs_discarded": true,
+  "peak_device_mem_gb": null,
+  "peak_host_rss_gb": 0.3105964660644531,
+  "preprocess_cpu_s": 0.5134190989999985,
+  "preprocess_wall_s": 0.5134972399100661,
+  "profile": "annotation-selected-windows",
+  "seqid": "NC_001133.9",
+  "species": "Saccharomyces_cerevisiae",
+  "wall_s_per_mb": 72.47392615682026,
+  "windows": 94
+}
