@@ -1,0 +1,79 @@
+}== 2c. short train (20 steps) — profiles the reference-recurrence loss cost ==
+<repo>/model/a/train.py:447: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  batch_loss += float(loss)
+loaded 5738 windows: 5738 train, 0 dev
+step 10: train_nll/window=0.0001 dev_nll=None
+step 20: train_nll/window=0.0006 dev_nll=None
+	Command being timed: "python3 -m model.a.train train --config <scratch>/run/smoke_config.json"
+	User time (seconds): 1631.08
+	System time (seconds): 3.69
+	Percent of CPU this job got: 212%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 12:50.43
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 7149860
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 9
+	Minor (reclaiming a frame) page faults: 2137403
+	Voluntary context switches: 12952
+	Involuntary context switches: 100314
+	Swaps: 0
+	File system inputs: 2032
+	File system outputs: 648
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+== run manifest (declared plan + actual work; carries the split/schedule) ==
+{
+  "actual": {
+    "accepted_windows": 80,
+    "attempted_draws": 80,
+    "best_dev_nll": null,
+    "dev_windows": 0,
+    "sampled_bases": 122528,
+    "train_windows": 5738
+  },
+  "commit": "dfa9df9540037d5c80deffb62f0afb5bceb078e6",
+  "cuda": null,
+  "device": "cpu",
+  "hardware": "Linux-7.0.0-30-generic-x86_64-with-glibc2.43",
+  "hyperparams": {
+    "batch_size": 4,
+    "eval_every": 10,
+    "grad_clip": 1.0,
+    "lr": 0.0003,
+    "max_window": 12288,
+    "seed": 0,
+    "steps": 20,
+    "weight_decay": 0.0
+  },
+  "param_count": 455841,
+  "python": "3.11.14",
+  "sampling_plan": {
+    "batch_size": 4,
+    "draw": "uniform-with-replacement over train windows",
+    "max_window": 12288,
+    "planned_draws": 80,
+    "seed": 0,
+    "steps": 20
+  },
+  "scope": "encoder-only-fixed-grammar",
+  "sources": [
+    {
+      "dev_seqids": [],
+      "fasta_md5": "88c38b957b721dfc50e6c4df03b6242e",
+      "gff_md5": "1fddbd976c4ce61e8a36a3908d46c25d",
+      "m": 20,
+      "name": "Saccharomyces_cerevisiae",
+      "summary": "<repo>/model/labels/manifests/Saccharomyces_cerevisiae.summary.json",
+      "table": 1
+    }
+  ],
+  "task": "T-human-014",
+  "torch": "2.14.0+cpu"
+}== 2d. measure preprocessing / encoder / decode on yeast ==

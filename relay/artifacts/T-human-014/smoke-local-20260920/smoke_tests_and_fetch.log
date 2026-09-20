@@ -1,0 +1,23 @@
+== commit ==
+dfa9df9540037d5c80deffb62f0afb5bceb078e6
+== torch env ==
+torch 2.14.0+cpu cuda None False
+Linux-7.0.0-30-generic-x86_64-with-glibc2.43
+== 1. full candidate-A torch test suite ==
+test_pad_window_exact_multiple_unchanged (tests.test_a_train.TestWindowing.test_pad_window_exact_multiple_unchanged) ... ok
+test_pad_window_marks_padding_unavailable (tests.test_a_train.TestWindowing.test_pad_window_marks_padding_unavailable) ... ok
+
+----------------------------------------------------------------------
+Ran 75 tests in 0.260s
+
+OK
+== 2a. fetch + checksum-verify the smallest train species (yeast) ==
+Saccharomyces_cerevisiae: fetching https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/146/045/GCF_000146045.2_R64/GCF_000146045.2_R64_genomic.gff.gz
+Saccharomyces_cerevisiae: GCF_000146045.2_R64_genomic.gff.gz md5 ok
+Saccharomyces_cerevisiae: fetching https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/146/045/GCF_000146045.2_R64/GCF_000146045.2_R64_genomic.fna.gz
+Saccharomyces_cerevisiae: GCF_000146045.2_R64_genomic.fna.gz md5 ok
+species	admitted	yielded	yielded_pct	skip_partial	skip_neighbor	skip_too_long
+Saccharomyces_cerevisiae	5858	5740	98.0	0	118	0
+TOTAL	5858	5740	98.0	0	118	0
+== 2b. write the smoke TrainConfig ==
+wrote <scratch>/run/smoke_config.json device cpu

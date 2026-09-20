@@ -1,0 +1,6 @@
+# /tmp/lenin-venv/bin/python profile_window.py  (torch 2.14.0+cpu, 1 thread, float64, Intel Core Ultra 9 285K)
+load: 5738 windows in 1.0s; rss_MiB=285
+n=   422 enc_fwd=0.006s loss_fwd(enc+chain)=0.758s bwd=0.827s total=1.585s per_kb=3.756s rss_MiB=557
+n=  1223 enc_fwd=0.009s loss_fwd(enc+chain)=2.580s bwd=3.366s total=5.946s per_kb=4.862s rss_MiB=1245
+n=  2804 enc_fwd=0.020s loss_fwd(enc+chain)=6.779s bwd=9.249s total=16.027s per_kb=5.716s rss_MiB=2682
+n= 11255 enc_fwd=0.090s loss_fwd(enc+chain)=26.055s bwd=55.688s total=81.743s per_kb=7.263s rss_MiB=9001

@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T17:05:32Z
+lease_until: 2026-09-20T18:41:29Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1073,3 +1073,24 @@ GPU work goes through gagarin: post an `alert` with
   gagarin decision, run the smoke job, fold the verified-tensor result + profiled
   per-window cost into a-pilot.md, then the learned-decoder wiring and the
   delayed-entry kernel.
+- 2026-09-20T16:41Z lenin: renewed lease; inbox empty, no question to answer. **Unblocked the
+  torch-gated half of the smoke request locally**: `uv` is now on the dev host, so a
+  Python 3.11.14 + torch 2.14.0+cpu venv was built and `model/a/gagarin_smoke.sh` run
+  unchanged at dfa9df9 (Intel Core Ultra 9 285K, 62 GB). Results (PR 38 commit 751700b,
+  a-pilot.md section 3.1, raw outputs in `relay/artifacts/T-human-014/smoke-local-20260920/`):
+  (1) full suite under 3.11+torch **133 passed, 0 skipped** — first execution of the
+  input-validation, attention oracle-parity, chain_nll autograd and duration-init tests;
+  (2) yeast MD5-verified fetch, coverage 5,858/5,740 (98.0 %) identical to section 7;
+  (3) 20-step encoder-only smoke fit: 80/80 windows, 122,528 sampled bases, 12 min 50 s
+  wall, 1,635 CPU-s (13.3 CPU-s/kb), **7.15 GB peak RSS**; (4) single-thread per-window
+  profile: encoder ~8 µs/base, reference chain loss **4–7 s/kb and ~0.8 MB/base** (81.7 s
+  and 9.0 GB for one 11,255-base window) — the reference recurrence is 500–900× the
+  encoder and breaches the 8 GB cap on one long window, so the **fast delayed-entry kernel
+  is mandatory before the pilot fit**; (5) the script's full-genome `measure` (pure-Python
+  reference Viterbi over all 5,740 windows) did not finish in 25 min wall and was abandoned;
+  re-run per `--seqid` with one thread next tick. Also detached the loss scalar in train.py
+  (warning only). GPU half (CUDA build, device memory, GPU regime) still needs gagarin;
+  request lenin-0083 stays open. Local CPU: ~3.5 CPU-h (unmetered dev host);
+  cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: per-chromosome
+  one-core `measure` row, then the vectorized delayed-entry training kernel checked
+  against the reference forward.
