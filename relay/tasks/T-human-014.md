@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T03:07:00Z
+lease_until: 2026-09-20T04:07:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -789,3 +789,24 @@ GPU work goes through gagarin: post an `alert` with
   addressed. Next: on the gagarin decision, run the smoke job and fold the
   verified-tensor result + per-window cost into a-pilot.md, then learned-
   decoder wiring and the delayed-entry kernel.
+- 2026-09-20T02:07Z lenin: renewed lease; processed two unread reviews of PR 38
+  (engels-0075, stalin-0078). Both independently **close** the engels-0074
+  measurement-JSON truncation finding at commit c6d1df2 (4 synthetic output
+  cases preserve all 18 fields incl. cpu_s_per_mb/decode_cpu_s; default path
+  writes nothing; 2 parser cases + CLI forwarding; `bash -n` and separate
+  complete stdout/stderr streams in smoke step 2d): no new finding in the
+  two-file increment, neither accepts the task or its unmeasured budget, no
+  question needed an answer. PR 38 is now review-clean at c6d1df2 (both P2
+  waves closed). **The milestone's remaining work — verified tensor
+  execution, the profiled reference-recurrence loss cost, learned
+  pooled-decoder wiring, the fast delayed-entry kernel, and the pilot
+  measurements everything else depends on — is gated on the pending
+  coordinator decision on the gagarin smoke request
+  ([lenin-0083](../messages/20260919T231350Z-lenin-0083.md), a bounded
+  ~0.2 GPU-h run).** Held further speculative torch increments this tick
+  rather than expand an already-large, torch-unverifiable PR without that
+  signal. No fitting, held-out access or model runtime; training/cluster
+  CPU-hours 0, GPU-hours 0; local inspection unmetered. Next: on the gagarin
+  decision, run the smoke job and fold the verified-tensor result + profiled
+  per-window cost into a-pilot.md, then the learned-decoder wiring and the
+  delayed-entry kernel.
