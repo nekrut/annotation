@@ -201,10 +201,12 @@ split and manifest construction are unit-tested here without torch
 runs on gagarin; no local host has torch. See section 3.
 4. **Bring the chromosome row inside the CPU budget.** The first
    chromosome-level `measure` row exists (3.2 item 6: both strands,
-   overlapping windows, GFF3 output, I/O) and misses the 15 CPU-s per
-   genome Mb target at 22.6–33.8; the revision it proposes (vectorised
-   featurizer, tensor-side bias and batch assembly, smaller overlap once
-   boundary support lands) comes before any B allowance. The learned pooled
+   overlapping windows, GFF3 output, I/O). With the vectorised featurizer
+   (revision step 1) it is 21.1 CPU-s per genome Mb at the default overlap
+   and **13.5 at overlap 0 / batch 64 — the first row inside the 15
+   budget**; the default-overlap row still misses, so the remaining
+   revision steps (tensor-side batch assembly in decode, smaller overlap
+   once boundary support lands) come before any B allowance. The learned pooled
    decoder is in the loss and the decoder (`model/a/pooled.py`, 3.2 item 5);
    what remains of the decoder is the partial-family scalars, which belong
    to the boundary-support increment above.
@@ -630,7 +632,49 @@ below stands on either set. The RSS of a 230 kb chromosome cannot show
 the chromosome-independence of memory; that is what the buffering test
 asserts, and a metazoan chromosome row will show it in `/usr/bin/time`.
 
-**The CPU regime misses the budget.** Per oriented megabase the pipeline
+*Revision step 1, the vectorised featurizer (commit `48f8a2b`,
+`source_dirty: false`, source SHA-256 `e81253eb…`; `chromosome-vec/`).*
+`encode_sequence` is now torch ops over the byte codes of the window
+(`base_codes`: a 256-entry lookup for the base index and an ASCII
+lower-case test for soft masking; prefix sums for the GC window; the GC
+fraction formed in float64 and rounded to float32 once, as before), and
+the availability mask is read through the buffer protocol instead of
+`torch.tensor(list)`. The per-base Python implementation is kept as
+`encode_sequence_reference`; a test asserts bit-identical tensors over
+44 random windows drawn from both cases of ACGT, N, IUPAC codes and
+non-letters, with and without availability masks. The pooled decoder's
+per-window dinucleotide lookup (`_dinuc_index_tensors`) was vectorised the
+same way against its list reference. **The GFF3 written by the default and
+the overlap-0 / batch-64 runs is byte-identical to the `92ddafd` output**
+(`cmp` on the two pairs), so the featurizer change is a cost change only.
+Same core, thread, checkpoint and `/usr/bin/time -v` protocol as above:
+
+| run | windows | oriented bases | io | preprocess | encoder | decode | output | **CPU-s per genome Mb** | CPU-s per oriented Mb | peak RSS |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| overlap 4,096, batch 16 (defaults) | 56 | 681,620 | 0.01 | 0.03 | 1.23 | 3.57 | 0.01 | **21.1** | 7.1 | 0.73 GiB |
+| overlap 4,096, batch 64 | 56 | 681,620 | 0.01 | 0.04 | 1.27 | 2.88 | 0.01 | 18.2 | 6.2 | 1.07 GiB |
+| overlap 2,048, batch 16 | 46 | 550,548 | 0.01 | 0.03 | 0.99 | 3.15 | 0.01 | 18.2 | 7.6 | 0.74 GiB |
+| overlap 2,048, batch 64 | 46 | 550,548 | 0.01 | 0.03 | 1.01 | 2.50 | 0.01 | 15.5 | 6.5 | 0.93 GiB |
+| overlap 0, batch 16 | 38 | 460,436 | 0.01 | 0.02 | 0.82 | 2.92 | 0.01 | 16.4 | 8.2 | 0.73 GiB |
+| overlap 0, batch 64 (one batch per code) | 38 | 460,436 | 0.01 | 0.02 | 0.84 | 2.23 | 0.01 | **13.5** | 6.8 | 0.81 GiB |
+
+The featurizer went from 2.55 to 0.03 CPU seconds on the default run
+(11.1 to 0.1 CPU-s per genome Mb; 0.37 ms per 12,288-base window on one
+thread, 140× the reference), the other stages are unchanged within noise,
+and the whole-process `/usr/bin/time` user + system is 23.6 (default) and
+16.2 (overlap 0 / batch 64) CPU-s per genome Mb, the 0.6 s of interpreter,
+torch import and checkpoint load being 2.6 CPU-s per Mb on a 230 kb
+chromosome and negligible on a metazoan one. **The overlap-0 / batch-64
+row is the first chromosome row inside the 15 CPU-s per genome Mb
+budget**; the default row (21.1) and the overlap-2,048 rows (15.5–18.2)
+still miss, so the CPU regime is met only at the cost floor of this code
+(no seam guarantee), not at the configuration the completeness guarantee
+needs. What remains is the decode stage (2.2–3.6 s: the tensor scan plus
+the Python-side batch assembly and bias add; revision step 2) and the
+overlap factor (step 3, after boundary support). The paragraph below is
+the pre-revision reading and is kept as the record of the miss.
+
+**The CPU regime missed the budget before revision step 1.** Per oriented megabase the pipeline
 costs what items 4–5 measured (11.3–12.8 CPU-s), but a genome megabase is
 two oriented megabases before overlap, so the end-to-end row is
 **33.8 CPU-s/Mb with the default overlap and 22.6 at best (no overlap, one
@@ -669,7 +713,11 @@ With (1) and (2) the best row would sit near 13–15 CPU-s/Mb at overlap 0 and
 16–18 at overlap 2,048; the budget is reachable on the encoder/decoder as
 specified but not with margin, and **no positive CPU allowance for B
 should be assumed until a chromosome row is measured inside 15** with the
-revised featurizer and decode path. The GPU regime is still unmeasured
+revised featurizer and decode path. *Status:* step (1) is done and measured
+above (13.5 at overlap 0 / batch 64, 15.5 at overlap 2,048 / batch 64,
+21.1 at the defaults); steps (2) and (3) are open, and the B allowance
+question stays open until the configuration that carries the completeness
+guarantee lands inside 15. The GPU regime is still unmeasured
 (gagarin, lenin-0083); the section 6.1 multi-worker decoder accounting is
 the other half of the same row.
 
@@ -678,7 +726,9 @@ smoke fits, ~0.02 CPU-h for the profile, 0.003 CPU-h for the chromosome I
 `measure`, 0.005 CPU-h for the tensor-decoder `measure` runs and profiles,
 ~0.01 CPU-h for the pooled-decoder fit and its two `measure` runs, ~0.02
 CPU-h for the ten chromosome-profile runs (five committed at `c6e5fc7`, five
-at a dirty tree before it, superseded); cluster CPU-hours 0, GPU-hours 0.
+at a dirty tree before it, superseded), ~0.01 CPU-h for the two `92ddafd`
+re-measurements and the six `48f8a2b` runs; cluster CPU-hours 0,
+GPU-hours 0.
 No held-out species touched.
 
 ## 4. Budget and caps
@@ -693,19 +743,22 @@ hours are recorded in this task's log after every run.
 
 _Partially filled. CPU regime, one core, yeast chromosome I end to end
 (3.2 item 6; both strands, 12,288-base windows, GFF3 written, per genome
-Mb): **33.8 CPU-s/Mb at overlap 4,096 / batch 16, 22.6 at overlap 0 /
-batch 64, against the 15 CPU-s/Mb budget — the CPU regime fails**, by
-1.5–2.25×; peak RSS ≤ 0.90 GiB inside 8 GB; I/O + output 0.1 CPU-s/Mb. Per
-oriented megabase the stages are the ones of items 4–5 (featurizer 3.7–4.0,
-encoder 2.0–2.3, R = 3 tensor Viterbi 5.1–6.8), so the miss is the
-both-strand factor the per-genome-Mb budget carries, not a regression. The
-pure-Python reference decoder at 66 CPU-s per oriented Mb (item 3) is kept
-only for parity runs. Revision proposed in item 6 (vectorised featurizer
-first, then tensor-side bias/batch assembly, then overlap after boundary
-support); no B allowance until a row lands inside 15. Still missing: a
-checkpoint fit for more than 20 steps (the accuracy column), an S. pombe
-row (held-out species: only after freezing), a metazoan chromosome, and
-the GPU regime with the 6.1 multi-worker decoder accounting (gagarin)._
+Mb), after revision step 1 (vectorised featurizer, `48f8a2b`): **21.1
+CPU-s/Mb at overlap 4,096 / batch 16, 15.5 at overlap 2,048 / batch 64,
+13.5 at overlap 0 / batch 64, against the 15 CPU-s/Mb budget — the budget
+is met at the no-overlap cost floor and missed by 1.4× at the default
+overlap**; peak RSS ≤ 1.07 GiB inside 8 GB; I/O + output 0.1 CPU-s/Mb.
+Per oriented megabase the stages are now featurizer 0.05, encoder
+1.8, R = 3 tensor Viterbi 4.8–6.3; what separates the default row from
+the budget is the both-strand factor times 1.5× oversampling on the decode
+stage. The pure-Python reference decoder at 66 CPU-s per oriented Mb
+(item 3) is kept only for parity runs. Revision steps 2 (tensor-side batch
+assembly in decode) and 3 (overlap after boundary support) remain; no B
+allowance until the overlapping configuration lands inside 15. Still
+missing: a checkpoint fit for more than 20 steps (the accuracy column), an
+S. pombe row (held-out species: only after freezing), a metazoan
+chromosome, and the GPU regime with the 6.1 multi-worker decoder
+accounting (gagarin)._
 
 ## 6. Review responses (PR #38)
 
