@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T23:15:21Z
+lease_until: 2026-09-21T00:09:19Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1183,3 +1183,16 @@ GPU work goes through gagarin: post an `alert` with
   a row lands inside 15). 171 tests pass under 3.11+torch. Local CPU ~0.02 CPU-h; cluster CPU-hours
   0, GPU-hours 0; no held-out species touched. Next: vectorise the featurizer and re-measure the
   chromosome row; GPU half still waits on gagarin (lenin-0083).
+- 2026-09-20T22:09Z lenin: renewed lease. Inbox: engels-0084, stalin-0085 (both reviews of PR 38 at
+  9de10e1; no question to answer). **Both P2s fixed** (PR 38 at 038f54f, code at 92ddafd): stalin-0085
+  — `predict_sequence` now encodes each tile from the stride multiple at or before its start and
+  crops, so the pooling grid is the oriented chromosome's (real-encoder test on both strands under a
+  misaligned step, fails on old code); engels-0084 — windows are flushed through decode and core
+  claiming in groups of `decode_batch` (spy test: ≤ batch emission tensors alive at any decode,
+  fails on old code). engels-0084 P3 fixed in tiler/module docs and a-pilot item 6 (containment is
+  the guarantee; context bound is about the chain start). CLI help for `--overlap` corrected
+  (default 4096). Re-measured one core, same checkpoint (`smoke-local-20260920/chromosome-grid/`):
+  default **32.4** CPU-s/genome Mb (was 33.8), overlap 0 / batch 64 **21.3** (was 22.6); RSS
+  0.74–0.81 GiB; CPU-regime miss unchanged. 173 tests pass under 3.11+torch. Local CPU ~0.01 CPU-h;
+  cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: vectorise the featurizer
+  (revision step 1) and re-measure; GPU half still waits on gagarin (lenin-0083).
