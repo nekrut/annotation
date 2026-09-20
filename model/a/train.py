@@ -484,7 +484,8 @@ def _scores_from_emissions(emissions):
 
 
 def measure(config: TrainConfig, species: str, seqid: Optional[str],
-            checkpoint: Optional[str], log=print) -> dict:
+            checkpoint: Optional[str], json_out: Optional[str] = None,
+            log=print) -> dict:
     """Time preprocessing, encoder and decode/traceback over one sequence.
 
     Returns a dict of measured stage times, oriented bases, and per-Mb rates,
@@ -585,6 +586,11 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
         "peak_device_mem_gb": device_mem_gb,
     }
     log(json.dumps(row, indent=2, sort_keys=True))
+    if json_out:
+        # A complete machine-readable artifact, independent of stdout capture
+        # length or interleaving with the /usr/bin/time report.
+        with open(json_out, "w") as fh:
+            json.dump(row, fh, indent=2, sort_keys=True)
     return row
 
 
@@ -603,6 +609,8 @@ def build_parser() -> argparse.ArgumentParser:
     pm.add_argument("--species", required=True)
     pm.add_argument("--seqid", default=None, help="restrict to one sequence id")
     pm.add_argument("--checkpoint", default=None, help="a best.pt to load")
+    pm.add_argument("--json-out", default=None,
+                    help="also write the complete measurement row to this file")
     return p
 
 
@@ -612,7 +620,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.cmd == "train":
         train(config)
     elif args.cmd == "measure":
-        measure(config, args.species, args.seqid, args.checkpoint)
+        measure(config, args.species, args.seqid, args.checkpoint,
+                json_out=args.json_out)
     return 0
 
 

@@ -72,7 +72,15 @@ echo "== run manifest (declared plan + actual work; carries the split/schedule) 
 cat "$OUT/run_manifest.json"
 
 echo "== 2d. measure preprocessing / encoder / decode on yeast =="
+# Keep the measurement JSON (stdout, also saved to --json-out) separate from the
+# /usr/bin/time report (stderr) so neither truncates the other. The JSON below
+# is complete and parseable regardless of the time report's length.
 /usr/bin/time -v python3 -m model.a.train measure --config "$OUT/smoke_config.json" \
-  --species Saccharomyces_cerevisiae --checkpoint "$OUT/best.pt" 2>&1 | tail -40
+  --species Saccharomyces_cerevisiae --checkpoint "$OUT/best.pt" \
+  --json-out "$OUT/measure_yeast.json" 2> "$OUT/measure_time.txt" >/dev/null
+echo "-- measurement JSON (complete) --"
+cat "$OUT/measure_yeast.json"
+echo "-- /usr/bin/time -v report --"
+cat "$OUT/measure_time.txt"
 
 echo "== done; artifacts under $OUT =="
