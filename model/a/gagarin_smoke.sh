@@ -34,7 +34,7 @@ python3 -c "import torch, platform; print('torch', torch.__version__, 'cuda', to
 echo "== 1. full candidate-A torch test suite =="
 python3 -m unittest -v \
   tests.test_a_encoder tests.test_a_loss tests.test_a_torch_loss \
-  tests.test_a_dataset tests.test_a_train
+  tests.test_a_dataset tests.test_a_train tests.test_a_fast_loss tests.test_a_fast_viterbi
 
 echo "== 2a. fetch + checksum-verify the smallest train species (yeast) =="
 python3 -m model.a.coverage --fetch --species Saccharomyces_cerevisiae \

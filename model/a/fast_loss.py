@@ -118,6 +118,19 @@ class Grammar:
         for si, bases in enumerate(SYMBOL_SETS):
             prior[si] = torch.where(counts[si] > 0, prior[si] - log(len(bases)), prior[si])
         self.prior = prior
+        # Max-product prior (:mod:`model.a.fast_viterbi`): an ambiguous symbol
+        # whose ``k`` permitted bases reach the same successor contributes
+        # ``-log k`` once (the reference decoder's per-base uniform prior), not
+        # ``log(count) - log k``; ``U -> U`` does not branch over bases and
+        # carries no prior. Row ``len(SYMBOL_SETS)`` is the identity, used
+        # past a window's end.
+        prior_max = torch.full((len(SYMBOL_SETS) + 1, K, K), FLOOR, dtype=dtype, device=device)
+        for si, bases in enumerate(SYMBOL_SETS):
+            prior_max[si] = torch.where(counts[si] > 0, torch.full_like(counts[si], -log(len(bases))),
+                                        prior_max[si])
+        prior_max[:, 0, 0] = 0.0
+        prior_max[len(SYMBOL_SETS)].fill_diagonal_(0.0)
+        self.prior_max = prior_max
         # Channel coefficients depend on (i, j) only.
         for i, s in enumerate(states):
             for j, s2 in enumerate(states):

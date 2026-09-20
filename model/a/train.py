@@ -547,7 +547,7 @@ def _scores_from_emissions(emissions):
 
 def measure(config: TrainConfig, species: str, seqid: Optional[str],
             checkpoint: Optional[str], json_out: Optional[str] = None,
-            log=print) -> dict:
+            decoder: str = "tensor", decode_batch: int = 16, log=print) -> dict:
     """Time preprocessing, encoder and decode/traceback over one sequence.
 
     Returns a dict of measured stage times, oriented bases, and per-Mb rates,
@@ -563,15 +563,25 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
     (``outputs_discarded``). It profiles the encoder/decoder cost per admitted
     base; it does not include full-sequence, both-strand, I/O, output-writing or
     multi-worker accounting, so it cannot fill a chromosome sensitivity/budget
-    row on its own. The decoder is the fixed-grammar reference delayed-entry
-    Viterbi, consistent with the encoder-only training scope; the learned pooled
-    decoder is not yet wired.
+    row on its own. The decoder is the fixed-grammar delayed-entry Viterbi,
+    consistent with the encoder-only training scope; the learned pooled
+    decoder is not yet wired. ``decoder`` selects the tensor max-product scan
+    (``"tensor"``, :mod:`model.a.fast_viterbi`, what ships) or the
+    pure-Python semantics check (``"python"``, the 66 CPU-s/Mb stage of
+    a-pilot.md section 3.2, kept for parity runs). The tensor scan decodes
+    the windows in length-sorted batches of ``decode_batch`` (per-window
+    encoder timing is unchanged; the decode stage is timed as a whole), which
+    is how a chromosome's windows would be decoded in either regime.
     """
     import torch
 
     from .encoder import CandidateA
+    from .fast_viterbi import viterbi_windows
     from model.grammar.codes import TABLES
     from model.grammar.delayed import DelayedEntryDecoder
+
+    if decoder not in ("tensor", "python"):
+        raise ValueError("decoder must be 'tensor' or 'python'")
 
     src = next((s for s in config.sources if s.name == species), None)
     if src is None:
@@ -604,6 +614,7 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
     pre_cpu = enc_cpu = dec_cpu = 0.0
     pre_wall = enc_wall = dec_wall = 0.0
     bases = 0
+    pending_windows, pending_emissions, pending_codes = [], [], []
     with torch.no_grad():
         for ex in examples:
             padded, available = pad_window(ex.window)
@@ -619,13 +630,24 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
             enc_cpu += time.process_time() - c0
             enc_wall += time.perf_counter() - w0
 
+            if decoder == "tensor":
+                pending_windows.append(ex.window)
+                pending_emissions.append(emissions)
+                pending_codes.append(TABLES[ex.table])
+            else:
+                c0, w0 = time.process_time(), time.perf_counter()
+                sc = _scores_from_emissions(emissions)
+                DelayedEntryDecoder(TABLES[ex.table]).viterbi(ex.window, sc)
+                dec_cpu += time.process_time() - c0
+                dec_wall += time.perf_counter() - w0
+            bases += ex.n
+        if decoder == "tensor":
             c0, w0 = time.process_time(), time.perf_counter()
-            decoder = DelayedEntryDecoder(TABLES[ex.table])
-            sc = _scores_from_emissions(emissions)
-            decoder.viterbi(ex.window, sc)
+            viterbi_windows(pending_windows, pending_emissions, codes=pending_codes,
+                            batch_size=decode_batch)
+            _sync()
             dec_cpu += time.process_time() - c0
             dec_wall += time.perf_counter() - w0
-            bases += ex.n
 
     mb = bases / 1e6
     device_mem_gib = (torch.cuda.max_memory_allocated(device) / 2**30
@@ -638,6 +660,8 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
         "species": species, "seqid": seqid, "windows": len(examples),
         "oriented_bases": bases, "device": config.device,
         "profile": "annotation-selected-windows", "outputs_discarded": True,
+        "decoder": decoder, "decode_batch": decode_batch if decoder == "tensor" else 1,
+        "commit": _git_commit(), "source": _source_provenance(),
         "preprocess_cpu_s": pre_cpu, "encoder_cpu_s": enc_cpu, "decode_cpu_s": dec_cpu,
         "preprocess_wall_s": pre_wall, "encoder_wall_s": enc_wall,
         "decode_wall_s": dec_wall,
@@ -675,6 +699,10 @@ def build_parser() -> argparse.ArgumentParser:
     pm.add_argument("--checkpoint", default=None, help="a best.pt to load")
     pm.add_argument("--json-out", default=None,
                     help="also write the complete measurement row to this file")
+    pm.add_argument("--decoder", default="tensor", choices=("tensor", "python"),
+                    help="Viterbi implementation to time (default: tensor scan)")
+    pm.add_argument("--decode-batch", type=int, default=16,
+                    help="windows per length-sorted decoding batch (tensor decoder)")
     return p
 
 
@@ -685,7 +713,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         train(config)
     elif args.cmd == "measure":
         measure(config, args.species, args.seqid, args.checkpoint,
-                json_out=args.json_out)
+                json_out=args.json_out, decoder=args.decoder,
+                decode_batch=args.decode_batch)
     return 0
 
 
