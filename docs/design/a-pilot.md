@@ -422,20 +422,21 @@ source checkout. `model.a.coverage` makes that turnkey:
 python3 -m model.a.coverage --sources <scratch-dir> \
     --fetch --species Saccharomyces_cerevisiae
 
-# The whole train panel. The per-species audit peak RSS stays 1.9–3.6 GB
-# (below), so the binding cost of the unfiltered run is scratch disk to hold
-# the fetched compressed genomes, not simultaneous memory:
+# The whole train panel. Species run sequentially (one genome resident at a
+# time), and the fetched compressed genomes are the added scratch cost (below):
 python3 -m model.a.coverage --sources <scratch-dir> --fetch --out coverage.tsv
 ```
 
 Passing no `--species` selects all ten committed train species (including
 mouse, maize and zebrafish). `coverage_report` processes species sequentially
-and retains only counts, so the audit's peak memory is one species' 1.9–3.6 GB,
-not the sum; `--fetch` retains the downloaded source files, so the whole-panel
-cost that a laptop must budget for is scratch capacity for all ten compressed
-genomes at once. An unknown `--species`, or an empty manifest directory, is now
-a clean argument error in both modes rather than a zero-row table, and `--fetch`
-progress goes to stderr so a redirected stdout is a clean TSV.
+and retains only counts, so only one genome is resident at a time, not the sum;
+`--fetch` retains the downloaded source files, so the whole-panel disk cost is
+scratch capacity for all ten compressed genomes at once. Whether disk or memory
+is the binding laptop constraint depends on the host and is not settled by the
+manifests alone (see the memory note below). An unknown `--species`, or an empty
+manifest directory, is now a clean argument error in both modes rather than a
+zero-row table, and `--fetch` progress goes to stderr so a redirected stdout is
+a clean TSV.
 
 `--fetch` constructs each pinned source's deterministic NCBI `genomes/all` URL
 from the filename in its `*.summary.json` (`ncbi_url`, no scraping or guessing),
@@ -449,11 +450,21 @@ MD5-gated fetch (stubbed, offline), and the end-to-end CLI TSV on a synthetic
 species; `python3 -m model.a.coverage --self-test --sources x` runs the offline
 URL checks alone.
 
-All ten train species audit within a per-species peak RSS of 1.9–3.6 GB on one
-core (recorded in the manifests), so each fits a laptop with that much free RAM;
-the four large genomes were in fact run on the laptop this way (below). The
-whole-panel `--fetch` still needs enough scratch disk for the ten compressed
-genomes together, since `fetch` retains each download.
+**Memory note.** The manifests record a per-species `peak_rss_mb` for the
+*standalone* `audit_species` call, sampled right after the audit; it ranges
+**0.08–3.6 GB across all ten species (79.6–3554.6 MiB; the field is MiB on the
+Linux producer despite its `mb` name)** and **1.9–3.6 GB for the four large
+species alone (Xenopus, Zea, Danio, Mus)**. That is the audit high-water mark,
+not the coverage loader's: `iter_windows` keeps the audit result live while it
+re-parses the GFF, builds transcript indexes and oriented windows, so the full
+coverage-process peak is higher by an unmeasured margin and is not reported here.
+Because species run sequentially, only one genome is resident at a time, so the
+resident set is bounded by the largest single species, not the panel sum — this
+is what let the four large genomes run on the laptop (below), not a claim that
+the audit figures bound the loader. The whole-panel `--fetch` additionally needs
+enough scratch disk for the ten compressed genomes together, since `fetch`
+retains each download; the manifests alone do not establish which of memory or
+disk is the binding constraint on a given laptop.
 
 This measures the current scope; it does not widen it. The four small train
 species were checked out and reported on the laptop (lenin, 2026-09-19,
@@ -464,9 +475,9 @@ audits, nothing committed). The four large genomes (Danio 1.45 Gb, Xenopus
 1.45 Gb, Mus 2.7 Gb, Zea 2.18 Gb) were also completed on the laptop (lenin,
 2026-09-20): each source `_genomic.{gff,fna}.gz` was fetched to scratch and
 MD5-verified against its committed manifest (`fetch` re-checks the same digest
-`verify_source` enforces before any window is yielded), audited within the
-per-species peak RSS recorded in the manifests (1.9–3.6 GB) on one core, and
-its FASTA discarded; nothing committed. The panel table below is therefore the
+`verify_source` enforces before any window is yielded), audited on one core
+(these four carry the largest standalone-audit peaks, 1.9–3.6 GB; see the memory
+note above), and its FASTA discarded; nothing committed. The panel table below is therefore the
 full ten-species train set. A yielded fraction low enough to bias the pilot is
 itself a section-2 finding to report before the gagarin fitting run, not after.
 

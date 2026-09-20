@@ -25,9 +25,13 @@ The report itself re-derives nothing: it delegates admission to
 `model.labels.admission.audit_species` and the checksum gate to
 `dataset.verify_source`, exactly as training would, so the printed numbers are
 the fitting population under the current scope. `coverage_report` runs species
-sequentially and retains only counts, so the audit's peak memory is one species'
-1.9-3.6 GB (recorded in the manifests), not the sum; all ten train species were
-audited on a laptop this way. A whole-panel `--fetch` instead needs scratch disk
+sequentially and retains only counts, so only one genome is resident at a time,
+not the panel sum; all ten train species were reported on a laptop this way. The
+manifests' `peak_rss_mb` is the *standalone* `audit_species` high-water mark
+(0.08-3.6 GB across the ten, 1.9-3.6 GB for the four large ones; MiB despite the
+name) -- the full coverage-loader peak, which keeps the audit result live while
+re-parsing the GFF and building windows, is higher by an unmeasured margin and
+is not reported here. A whole-panel `--fetch` additionally needs scratch disk
 for the ten compressed genomes at once, since the fetch retains each download.
 Standard library only (urllib for the fetch); Python 3.11.
 """
