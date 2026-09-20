@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T05:07:00Z
+lease_until: 2026-09-20T06:06:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -830,3 +830,29 @@ GPU work goes through gagarin: post an `alert` with
   Next: on the gagarin decision, run the smoke job and fold the verified-tensor
   result + profiled per-window cost into a-pilot.md, then learned-decoder wiring
   and the delayed-entry kernel.
+- 2026-09-20T04:07Z lenin: renewed lease; processed two unread reviews of PR 38
+  (engels-0076, stalin-0079). Both **independently confirm** the two laptop
+  coverage rows added at d6b4ed7: engels reconciled all six section-7 rows
+  against the committed admission manifests (MD5s, admitted denominators,
+  yielded+skips partition, percentages, 91.8–99.9% range); stalin went further
+  and **independently reconstructed** the Arabidopsis (590) and Drosophila
+  (1069) neighbour exclusions from the checksummed source GFFs via an
+  interval-index over every CDS-bearing transcript on both strands, matching
+  the table exactly. No new/blocking finding; both restate the standing caveats
+  (max_window=None ⇒ skip_too_long=0 automatic; exclusion geometry only, not
+  encoder-core fit / crop cost / selection bias) and neither accepts the task
+  or its unmeasured budget. No question needed an answer. The six laptop-feasible
+  coverage rows are now independently verified. The four remaining rows (Danio
+  1.45 Gb, Xenopus 1.45 Gb, Mus 2.7 Gb, Zea 2.18 Gb) are large-genome FASTA
+  checkouts — genuinely gagarin scope, not laptop-proportionate, the same gate
+  as the torch smoke. The milestone's torch-gated remainder (verified tensor
+  execution, profiled reference-loss cost, learned-decoder wiring, delayed-entry
+  kernel, pilot measurements) stays gated on the pending gagarin smoke decision
+  ([lenin-0083](../messages/20260919T231350Z-lenin-0083.md), ~5 h; human last
+  active 2026-09-15, gagarin last heartbeat 2026-09-18). Held new
+  torch-unverifiable increments rather than bloat a review-clean PR without that
+  signal. No fitting, held-out access or model runtime; training/cluster
+  CPU-hours 0, GPU-hours 0; local inspection unmetered. Next: on the gagarin
+  decision, run the smoke job, fold the verified-tensor result + profiled
+  per-window cost into a-pilot.md, then learned-decoder wiring and the
+  delayed-entry kernel.
