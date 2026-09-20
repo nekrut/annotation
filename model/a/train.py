@@ -568,8 +568,22 @@ def _scores_from_emissions(emissions):
 
 def measure(config: TrainConfig, species: str, seqid: Optional[str],
             checkpoint: Optional[str], json_out: Optional[str] = None,
-            decoder: str = "tensor", decode_batch: int = 16, log=print) -> dict:
+            decoder: str = "tensor", decode_batch: int = 16, log=print,
+            profile: str = "windows", window: Optional[int] = None,
+            overlap: Optional[int] = None, gff_out: Optional[str] = None) -> dict:
     """Time preprocessing, encoder and decode/traceback over one sequence.
+
+    ``profile="chromosome"`` is the end-to-end row (:mod:`model.a.chromosome`):
+    the whole sequence ``seqid`` on both strands in overlapping ``window``-base
+    windows (default ``config.max_window``, overlap default
+    :data:`model.a.chromosome.DEFAULT_OVERLAP`), with FASTA/reverse-complement
+    ``io``, GFF3 ``output`` (written to ``gff_out`` when given) and the
+    ``preprocess``/``encoder``/``decode`` stages timed separately; its
+    ``cpu_s_per_mb`` is per *genome* megabase (``genome_mb = len(seq) / 1e6``,
+    the ``docs/cost-baseline/measured.tsv`` convention, both strands inside the
+    numerator) and ``cpu_s_per_oriented_mb`` per decoded oriented base. The
+    default ``profile="windows"`` is the annotation-selected window profile
+    described next, whose rates are per oriented base of admitted windows.
 
     Returns a dict of measured stage times, oriented bases, and per-Mb rates,
     plus peak host RSS and device memory. Each stage records **both** process
@@ -619,6 +633,13 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
     tables = pooled.duration_tables(model.decoder, dtype=dtype).to(device=device)
     tables = pooled.DurationTables(*(t.detach() for t in tables))
     mixture = pooled.as_mixture(model.decoder, config.min_intron)
+
+    if profile == "chromosome":
+        return _measure_chromosome(config, src, seqid, model, structure, tables, device,
+                                   dtype, decode_batch=decode_batch, json_out=json_out,
+                                   window=window, overlap=overlap, gff_out=gff_out, log=log)
+    if profile != "windows":
+        raise ValueError("profile must be 'windows' or 'chromosome'")
 
     examples, _ = _load_all_windows(
         TrainConfig(sources=[src], out_dir=config.out_dir,
@@ -712,6 +733,84 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
     return row
 
 
+def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional[str],
+                        model, structure, tables, device, dtype, *, decode_batch: int,
+                        json_out: Optional[str], window: Optional[int],
+                        overlap: Optional[int], gff_out: Optional[str], log=print) -> dict:
+    """The ``profile="chromosome"`` half of :func:`measure`."""
+    import torch
+
+    from model.grammar.codes import TABLES
+
+    from . import chromosome as C
+    from .dataset import verify_source
+
+    if seqid is None:
+        raise ValueError("profile 'chromosome' needs --seqid")
+    if window is None:
+        window = config.max_window
+    if window is None:
+        raise ValueError("profile 'chromosome' needs --window or config.max_window")
+    if overlap is None:
+        overlap = min(C.DEFAULT_OVERLAP, window - 1)
+
+    def _sync():
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)
+
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
+    clock = C.StageClock(sync=_sync)
+    with clock("io"):
+        # The FASTA digest is the manifest's (SourceMismatch otherwise); the
+        # genetic code comes from the same summary the training loader reads.
+        verify_source(src.summary, src.gff, src.fasta)
+        with open(src.summary, "r", encoding="utf-8") as fh:
+            table = int(json.load(fh).get("table", 1))
+        seq = C.read_sequence(src.fasta, seqid)
+    rows, counts = C.predict_sequence(model, seqid, seq, code=TABLES[table],
+                                      structure=structure, tables=tables,
+                                      window=window, overlap=overlap,
+                                      decode_batch=decode_batch, device=device,
+                                      dtype=dtype, clock=clock)
+    gff_bytes = None
+    with clock("output"):
+        if gff_out:
+            gff_bytes = C.write_gff3(gff_out, rows)
+    stages = ("io", "preprocess", "encoder", "decode", "output")
+    genome_mb = len(seq) / 1e6
+    oriented_mb = counts["oriented_bases"] / 1e6
+    cpu_total, wall_total = clock.total_cpu(), clock.total_wall()
+    row = {
+        "species": src.name, "seqid": seqid, "profile": "chromosome",
+        "strands": "+-", "windows": counts["windows"], "window": window, "overlap": overlap,
+        "sequence_bases": len(seq), "genome_mb": genome_mb,
+        "oriented_bases": counts["oriented_bases"],
+        "chains": counts["chains"], "chains_decoded": counts["chains_decoded"],
+        "gff_out": gff_out, "gff_bytes": gff_bytes, "gff_rows": len(rows),
+        "outputs_discarded": gff_out is None,
+        "device": config.device, "decoder": "tensor", "decode_batch": decode_batch,
+        "min_intron": config.min_intron, "pooled_decoder": "learned",
+        "commit": _git_commit(), "source": _source_provenance(),
+        **{f"{st}_cpu_s": clock.cpu.get(st, 0.0) for st in stages},
+        **{f"{st}_wall_s": clock.wall.get(st, 0.0) for st in stages},
+        "cpu_s": cpu_total, "wall_s": wall_total,
+        "cpu_s_per_mb": cpu_total / genome_mb if genome_mb else None,
+        "wall_s_per_mb": wall_total / genome_mb if genome_mb else None,
+        "cpu_s_per_oriented_mb": cpu_total / oriented_mb if oriented_mb else None,
+        "gpu_s_per_mb": (wall_total / genome_mb
+                         if (device.type == "cuda" and genome_mb) else None),
+        "peak_host_rss_gib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2**20,
+        "peak_device_mem_gib": (torch.cuda.max_memory_allocated(device) / 2**30
+                                if device.type == "cuda" else None),
+    }
+    log(json.dumps(row, indent=2, sort_keys=True))
+    if json_out:
+        with open(json_out, "w") as fh:
+            json.dump(row, fh, indent=2, sort_keys=True)
+    return row
+
+
 # --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
@@ -733,6 +832,15 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Viterbi implementation to time (default: tensor scan)")
     pm.add_argument("--decode-batch", type=int, default=16,
                     help="windows per length-sorted decoding batch (tensor decoder)")
+    pm.add_argument("--profile", default="windows", choices=("windows", "chromosome"),
+                    help="annotation-selected admitted windows (default) or the whole "
+                         "--seqid on both strands in overlapping windows with GFF3 output")
+    pm.add_argument("--window", type=int, default=None,
+                    help="chromosome profile: window length (default config.max_window)")
+    pm.add_argument("--overlap", type=int, default=None,
+                    help="chromosome profile: overlap between windows (default 2048)")
+    pm.add_argument("--gff-out", default=None,
+                    help="chromosome profile: write the predicted GFF3 here")
     return p
 
 
@@ -744,7 +852,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif args.cmd == "measure":
         measure(config, args.species, args.seqid, args.checkpoint,
                 json_out=args.json_out, decoder=args.decoder,
-                decode_batch=args.decode_batch)
+                decode_batch=args.decode_batch, profile=args.profile,
+                window=args.window, overlap=args.overlap, gff_out=args.gff_out)
     return 0
 
 

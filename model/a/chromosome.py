@@ -1,0 +1,220 @@
+"""End-to-end chromosome inference for candidate A: both strands, overlapping
+full-sequence windows, and GFF3 output (the section-5 row of
+``docs/design/a-pilot.md``, as opposed to the annotation-selected window
+profile of ``measure --profile windows``).
+
+Every base of the sequence is processed on both strands. Each oriented strand
+(the plus strand as read, the minus strand as its reverse complement) is cut
+into windows of ``window`` bases that overlap by ``overlap`` bases
+(:func:`tiles`); each window is featurized, run through the encoder, given
+the pooled decoder's dinucleotide bias, and decoded with the batched tensor
+Viterbi (:mod:`model.a.fast_viterbi`). The free grammar has no edge prior, so
+a window only yields *complete* chains; a gene no longer than half
+``overlap`` is therefore complete in the window that owns it, and a longer
+one may be lost or truncated at this stage (the section-3.6 boundary-support increment is where
+partial chains and seam-crossing genes belong). Chains that two overlapping
+windows both decode are reported once: a chain belongs to the window whose
+*core* (:func:`tiles`: the window minus half the overlap on each interior
+side) contains its oriented 5' start.
+
+Chains are mapped to genomic coordinates with :func:`model.grammar.gff3_rows`
+over the whole oriented chromosome (shift by the window's oriented offset,
+then ``n`` = chromosome length), so the plus/minus map is the reviewed one.
+
+Timing is the caller's business (:func:`model.a.train.measure` wraps each
+stage with a :class:`StageClock`): this module only makes the stages
+explicit -- ``io`` (FASTA read and the minus-strand reverse complement),
+``preprocess`` (featurizer), ``encoder``, ``decode`` (bias, scan, traceback)
+and ``output`` (genomic map and GFF3 serialisation).
+"""
+from __future__ import annotations
+
+import time
+from dataclasses import dataclass, field
+from typing import Dict, Iterator, List, NamedTuple, Optional, Sequence, Tuple
+
+from model.grammar import Chain, Segment, gff3_rows, reverse_complement
+
+# Overlap between consecutive windows (oriented bases): a complete chain up
+# to half this long is inside the window that owns it (see :func:`tiles`),
+# and every owned chain has at least half this much context on each side.
+# With the 12,288-base training windows the step is 8,192, so each strand is
+# decoded 1.5 times over.
+DEFAULT_OVERLAP = 4096
+
+
+class Tile(NamedTuple):
+    """One window of an oriented sequence: ``[start, end)`` is what is decoded,
+    ``[core_start, core_end)`` is the part whose chains this window reports."""
+    start: int
+    end: int
+    core_start: int
+    core_end: int
+
+
+def tiles(n: int, window: int, overlap: int) -> List[Tile]:
+    """Cut ``[0, n)`` into windows of ``window`` bases stepping by
+    ``window - overlap``; the last window is shortened to end at ``n``. Cores
+    partition ``[0, n)`` exactly: the first core starts at 0, the last ends at
+    ``n``, interior core boundaries sit ``overlap // 2`` bases into the next
+    window. A complete chain of at most ``overlap - overlap // 2`` bases lies
+    inside the window whose core holds its start, with at least
+    ``overlap // 2`` bases of left context (and ``overlap - overlap // 2`` of
+    right context in the interior)."""
+    if window < 1:
+        raise ValueError("window must be positive")
+    if not 0 <= overlap < window:
+        raise ValueError("overlap must be in [0, window)")
+    if n <= 0:
+        return []
+    step = window - overlap
+    out: List[Tile] = []
+    start = 0
+    while True:
+        end = min(start + window, n)
+        out.append(Tile(start, end, 0, 0))  # cores filled below
+        if end >= n:
+            break
+        start += step
+    # Interior core boundaries sit ``half`` bases into the next window, so a
+    # chain owned by a window has at least ``half`` bases of context on its
+    # left and, if no longer than ``overlap - half``, ends inside the window.
+    half = overlap // 2
+    result = []
+    for i, t in enumerate(out):
+        cs = 0 if i == 0 else t.start + half
+        ce = n if i == len(out) - 1 else out[i + 1].start + half
+        result.append(Tile(t.start, t.end, cs, ce))
+    return result
+
+
+@dataclass
+class StageClock:
+    """Accumulates process CPU and wall seconds per named stage. ``sync`` is
+    called before reading the clocks (CUDA synchronize on a device)."""
+    cpu: Dict[str, float] = field(default_factory=dict)
+    wall: Dict[str, float] = field(default_factory=dict)
+    sync: Optional[callable] = None
+
+    def __call__(self, stage: str) -> "_Timer":
+        return _Timer(self, stage)
+
+    def total_cpu(self) -> float:
+        return sum(self.cpu.values())
+
+    def total_wall(self) -> float:
+        return sum(self.wall.values())
+
+
+class _Timer:
+    def __init__(self, clock: StageClock, stage: str):
+        self.clock, self.stage = clock, stage
+
+    def __enter__(self):
+        self.c0, self.w0 = time.process_time(), time.perf_counter()
+        return self
+
+    def __exit__(self, *exc):
+        if self.clock.sync is not None:
+            self.clock.sync()
+        self.clock.cpu[self.stage] = self.clock.cpu.get(self.stage, 0.0) + time.process_time() - self.c0
+        self.clock.wall[self.stage] = self.clock.wall.get(self.stage, 0.0) + time.perf_counter() - self.w0
+        return False
+
+
+def shifted(chain: Chain, offset: int) -> Chain:
+    """``chain`` with every segment moved by ``offset`` oriented bases."""
+    return Chain(segments=[Segment(s.kind, s.start + offset, s.end + offset, s.prefix_len, s.component)
+                           for s in chain.segments],
+                 partial_5=chain.partial_5, partial_3=chain.partial_3, uncertain=chain.uncertain)
+
+
+def claimed(chains: Sequence[Chain], tile: Tile) -> List[Chain]:
+    """The chains of ``tile`` (oriented to the window) whose 5' start lies in
+    the tile's core, shifted to oriented-chromosome coordinates."""
+    out = []
+    for c in chains:
+        if not c.segments:
+            continue
+        start = c.segments[0].start + tile.start
+        if tile.core_start <= start < tile.core_end:
+            out.append(shifted(c, tile.start))
+    return out
+
+
+def read_sequence(fasta: str, seqid: str) -> str:
+    """The sequence of ``seqid`` from a (gzipped) FASTA, case preserved."""
+    from model.labels.admission import _iter_fasta
+
+    for name, seq in _iter_fasta(fasta):
+        if name == seqid:
+            return seq
+    raise ValueError(f"{seqid!r} not in {fasta}")
+
+
+def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
+                     window: int, overlap: int = DEFAULT_OVERLAP,
+                     decode_batch: int = 16, device=None, dtype=None,
+                     clock: Optional[StageClock] = None,
+                     strands: Sequence[str] = ("+", "-")) -> Tuple[List[str], dict]:
+    """Decode ``seq`` on ``strands`` and return ``(gff3 rows, counts)``.
+
+    ``counts``: ``oriented_bases`` (sum of decoded window lengths, overlap
+    included), ``strand_bases`` (``len(seq)`` per strand), ``windows``,
+    ``chains`` (reported), ``chains_decoded`` (before core de-duplication).
+    """
+    import torch
+
+    from . import pooled
+    from .fast_viterbi import viterbi_windows
+    from .features import encode_sequence
+    from .train import pad_window
+
+    clock = clock or StageClock()
+    n = len(seq)
+    rows: List[str] = []
+    counts = dict(oriented_bases=0, strand_bases=n * len(strands), windows=0,
+                  chains=0, chains_decoded=0)
+    gene = 0
+    with torch.no_grad():
+        for strand in strands:
+            with clock("io"):
+                oriented = seq if strand == "+" else reverse_complement(seq)
+            layout = tiles(n, window, overlap)
+            pending_windows, pending_emissions, pending_tiles = [], [], []
+            for tile in layout:
+                x = oriented[tile.start:tile.end]
+                with clock("preprocess"):
+                    padded, available = pad_window(x)
+                    feats = encode_sequence(padded, available=available).unsqueeze(0).to(device)
+                with clock("encoder"):
+                    emissions = model.encoder(feats)[0][:, :len(x)].to(dtype)
+                with clock("decode"):
+                    emissions = emissions + pooled.motif_bias(x, model.decoder, dtype=dtype, device=device)
+                pending_windows.append(x)
+                pending_emissions.append(emissions)
+                pending_tiles.append(tile)
+                counts["oriented_bases"] += len(x)
+                counts["windows"] += 1
+            with clock("decode"):
+                decoded = viterbi_windows(pending_windows, pending_emissions,
+                                          codes=[code] * len(pending_windows),
+                                          duration=structure, tables=tables,
+                                          batch_size=decode_batch)
+            with clock("output"):
+                for tile, (_score, chains) in zip(pending_tiles, decoded):
+                    counts["chains_decoded"] += len(chains)
+                    for chain in claimed(chains, tile):
+                        gene += 1
+                        parent = f"{seqid}.g{gene}"
+                        rows.extend(gff3_rows(chain, seqid, n, strand, parent))
+                        counts["chains"] += 1
+    return rows, counts
+
+
+def write_gff3(path: str, rows: Sequence[str]) -> int:
+    """Write ``rows`` with a GFF3 header; returns bytes written."""
+    text = "##gff-version 3\n" + "".join(r + "\n" for r in rows)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(text)
+    return len(text.encode("utf-8"))
