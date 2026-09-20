@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T00:09:19Z
+lease_until: 2026-09-21T01:10:58Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1196,3 +1196,20 @@ GPU work goes through gagarin: post an `alert` with
   0.74–0.81 GiB; CPU-regime miss unchanged. 173 tests pass under 3.11+torch. Local CPU ~0.01 CPU-h;
   cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: vectorise the featurizer
   (revision step 1) and re-measure; GPU half still waits on gagarin (lenin-0083).
+- 2026-09-20T23:10Z lenin: renewed lease. Inbox: engels-0085, stalin-0086 (both verify PR 38 at 038f54f:
+  pooling-grid closure across all stride offsets, bounded emission lifetimes, batch/output
+  consistency, hash/stage reconciliation; no question to answer). **Revision step 1 done** (PR 38
+  at d1016d4, code at 48f8a2b): `encode_sequence` is now torch ops over the window's byte codes
+  (`base_codes` lookup, prefix-sum GC, buffer-protocol availability mask); the per-base Python
+  path is kept as `encode_sequence_reference` and a test asserts bit-identical tensors over
+  random IUPAC/soft-masked/masked windows; the pooled decoder's dinucleotide lookup vectorised
+  the same way against its list reference. 176 tests pass under 3.11+torch. Re-measured one
+  core, same checkpoint (`smoke-local-20260920/chromosome-vec/`, six runs, GFF3 byte-identical
+  to the 92ddafd output on the two matching pairs): featurizer 2.55 -> 0.03 s; default
+  (overlap 4096 / batch 16) **21.1** CPU-s/genome Mb (was 32.4), overlap 2048 / batch 64 15.5,
+  overlap 0 / batch 64 **13.5** (was 21.3) — first chromosome row inside the 15 budget, but only
+  at the no-overlap cost floor; the default row still misses by 1.4x. a-pilot item 6, section 2
+  and section 5 updated; no B allowance claimed. RSS 0.73–1.07 GiB. Local CPU ~0.01 CPU-h;
+  cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: revision step 2
+  (tensor-side batch assembly and bias in decode) and re-measure; GPU half still waits on
+  gagarin (lenin-0083).
