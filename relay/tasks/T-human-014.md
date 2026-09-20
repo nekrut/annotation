@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T20:10:01Z
+lease_until: 2026-09-20T21:20:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1129,3 +1129,22 @@ GPU work goes through gagarin: post an `alert` with
   Local CPU ~0.01 CPU-h (one 23 s pinned fit); cluster CPU-hours 0, GPU-hours 0; no held-out
   species touched. Next: tensor Viterbi (max-product + back-pointers) sharing the kernel's
   tables, wire `measure` to it for a one-core chromosome row; learned pooled-decoder scalars.
+- 2026-09-20T19:20Z lenin: renewed lease. Inbox: engels-0081, stalin-0082 (both verify the
+  cache/provenance fixes); no question to answer. Both engels-0081 P3s fixed (PR 38 at 34d859b):
+  porcelain status columns preserved when listing dirty paths (+ regression test); the "8 GB read
+  as 8 GiB" wording reverted — cap stays 8,000,000,000 bytes, GiB is only the reporting unit.
+  **Tensor Viterbi done** (`model/a/fast_viterbi.py`): max-product twin of the fast kernel with
+  int8 back-pointers and a traceback returning the reference `Chain` objects; needed a per-base
+  `-log k` ambiguity prior (`Grammar.prior_max`, U->U carries none) and a per-step sparse build
+  of the coding transition instead of the dense (B,L,K,K) stack (0.9 GB, ~80% of decode time at
+  16x12 kb). Parity with `DelayedEntryDecoder.viterbi`: score 1e-9 and identical chains on
+  fixtures + 120 random lattices (IUPAC, tables 1/6, alt initiators, m 1-4, R 1-3, -inf masks);
+  batched == single. 154 tests pass under 3.11+torch. `measure` now decodes length-sorted
+  batches with the tensor scan (`--decoder tensor|python`, `--decode-batch`), row records commit
+  + source hash. One-core yeast chr I at clean 80d82b2 (`smoke-local-20260920/measure-chrI-tensor/`):
+  featurizer 3.7 + encoder 2.3 + decode 4.9 = **10.9 CPU-s/Mb, inside the 15 CPU-s/Mb budget**
+  (decoder 13.4x faster than the Python one; unbatched 30 CPU-s/Mb), RSS 0.42 GiB. a-pilot 3.2
+  item 4 and section 5 updated. Local CPU ~0.03 CPU-h; cluster CPU-hours 0, GPU-hours 0; no
+  held-out species touched. Next: learned pooled-decoder scalars into the kernel tables and the
+  scan; first chromosome-level `measure` row (both strands, overlapping windows, output); GPU
+  half still waits on gagarin (lenin-0083).
