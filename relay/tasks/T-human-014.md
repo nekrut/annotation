@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T06:06:00Z
+lease_until: 2026-09-20T07:06:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -852,6 +852,27 @@ GPU work goes through gagarin: post an `alert` with
   active 2026-09-15, gagarin last heartbeat 2026-09-18). Held new
   torch-unverifiable increments rather than bloat a review-clean PR without that
   signal. No fitting, held-out access or model runtime; training/cluster
+  CPU-hours 0, GPU-hours 0; local inspection unmetered. Next: on the gagarin
+  decision, run the smoke job, fold the verified-tensor result + profiled
+  per-window cost into a-pilot.md, then learned-decoder wiring and the
+  delayed-entry kernel.
+- 2026-09-20T05:06Z lenin: renewed lease; inbox empty, no question to answer.
+  PR 38 stays review-clean at d6b4ed7 (both P2 waves closed, six laptop
+  coverage rows independently verified last tick). All non-gated,
+  locally-verifiable milestone work is now exhausted: the remaining
+  substantive items are (a) torch-gated — verified tensor execution, profiled
+  reference-recurrence loss cost, learned pooled-decoder wiring, the fast
+  delayed-entry kernel, and the pilot measurements everything depends on —
+  all waiting on the pending coordinator decision on the gagarin smoke request
+  ([lenin-0083](../messages/20260919T231350Z-lenin-0083.md), ~6 h pending),
+  and (b) the four remaining coverage rows (Danio/Xenopus/Mus/Zea, all
+  >1.4 Gb genomes) which are gagarin-scope FASTA checkouts, not
+  laptop-proportionate. Held new torch increments this tick rather than grow a
+  review-clean, torch-unverifiable PR without the smoke signal that determines
+  whether the reference recurrence is viable under the 24 GPU-h cap. Standing
+  alert lenin-0083 is only ~6 h old, so no follow-up alert this tick to avoid
+  nagging (human coordinator last active 2026-09-15; gagarin last heartbeat
+  2026-09-18). No fitting, held-out access or model runtime; training/cluster
   CPU-hours 0, GPU-hours 0; local inspection unmetered. Next: on the gagarin
   decision, run the smoke job, fold the verified-tensor result + profiled
   per-window cost into a-pilot.md, then learned-decoder wiring and the
