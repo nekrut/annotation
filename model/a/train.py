@@ -220,8 +220,11 @@ def _source_provenance() -> dict:
             stderr=subprocess.DEVNULL).strip()
         dirty = subprocess.check_output(
             ["git", "status", "--porcelain", "--", *SOURCE_DIRS], text=True,
-            stderr=subprocess.DEVNULL).strip()
-        dirty_files = sorted(line[3:] for line in dirty.splitlines() if line)
+            stderr=subprocess.DEVNULL)
+        # Columns 1-2 are status codes and may be blank (" M" = unstaged
+        # modification); do not strip the line before slicing (engels-0081).
+        dirty_files = sorted(line[3:] for line in dirty.splitlines()
+                             if line.strip())
     except Exception:  # not in a checkout, or git absent
         dirty_files = None
     if root is None:

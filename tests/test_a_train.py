@@ -162,6 +162,24 @@ class TestManifest(unittest.TestCase):
         self.assertGreater(src["source_files"], 0)
         self.assertIn(src["source_dirty"], (True, False, None))
 
+    def test_dirty_paths_keep_porcelain_status_columns(self):
+        # engels-0081 P3: " M" (unstaged) has a blank first column; stripping
+        # the line before slicing dropped the path's first character.
+        from unittest.mock import patch
+        for status, want in [
+            (" M model/a/train.py\n", ["model/a/train.py"]),
+            ("M  model/a/train.py\n", ["model/a/train.py"]),
+            ("?? model/a/new.py\n", ["model/a/new.py"]),
+            (" M model/a/train.py\nA  model/grammar/x.py\n",
+             ["model/a/train.py", "model/grammar/x.py"]),
+            ("", []),
+        ]:
+            with patch.object(T.subprocess, "check_output",
+                              side_effect=[os.getcwd() + "\n", status]):
+                got = T._source_provenance()
+            self.assertEqual(got["source_dirty_files"], want, status)
+            self.assertEqual(got["source_dirty"], bool(want), status)
+
     def test_source_digest_tracks_content(self):
         a = T._source_provenance()
         b = T._source_provenance()

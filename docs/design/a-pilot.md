@@ -263,8 +263,9 @@ which still need gagarin.
 Memory convention for 3.1 and 3.2 (engels-0080 P3): every figure is the process
 high-water RSS (`ru_maxrss`, KiB on Linux; the profile scripts print MiB), stated
 in **GiB** (2^30 bytes) with decimal GB in parentheses where a number is near the
-cap. The cap of "8 GB" is read as 8 GiB (the looser reading); a breach is noted
-under both. The profile-script RSS is cumulative across successive windows in
+cap. The charter's "8 GB" threshold is kept as written, 8,000,000,000 bytes
+(7.451 GiB); GiB is only the reporting unit, not a looser cap (engels-0081 P3).
+Every figure here is on the same side of both readings. The profile-script RSS is cumulative across successive windows in
 one process (model, loader, runtime and allocator included), so a per-base
 figure derived from it is a process-peak increment, not bytes of autograd state.
 
