@@ -406,8 +406,11 @@ def _window_loss(model, ex, device, dtype, kernel: str = "fast", m: int = 20):
     training kernel) or the expanded reference recurrence (``"reference"``).
     The pooled decoder enters through :mod:`model.a.pooled`: the dinucleotide
     bias is added to the emissions, and the duration law is the learned
-    mixture/hazard tables (the fast kernel takes them as tensors so they get a
-    gradient; the reference kernel reads them as a concrete mixture)."""
+    mixture/hazard tables (the fast kernel takes them as ``(3, R)`` tensors,
+    the reference kernel as a :class:`~model.a.pooled.TorchDuration`); both
+    carry the gradient to all 50 consumed decoder scalars (engels-0083 P2:
+    the reference path used to read a detached mixture, fitting with the 18
+    duration scalars frozen while the manifest claimed the full scope)."""
     import torch
 
     from model.grammar.codes import TABLES
@@ -425,7 +428,7 @@ def _window_loss(model, ex, device, dtype, kernel: str = "fast", m: int = 20):
     elif kernel == "reference":
         from .torch_loss import chain_nll
         loss = chain_nll(ex.window, emissions, ex.cds_ranges, ex.intron_ranges, code=code,
-                         duration=pooled.as_mixture(model.decoder, m))
+                         duration=pooled.as_torch_duration(model.decoder, m, dtype=dtype))
     else:
         raise ValueError(f"unknown loss kernel {kernel!r}")
     if not torch.isfinite(loss):
@@ -438,11 +441,12 @@ def train(config: TrainConfig, log=print) -> dict:
 
     The loss reads ``model.encoder`` emissions plus the pooled decoder's
     dinucleotide bias and scores them under the learned duration law
-    (:mod:`model.a.pooled`), so all 455,841 parameters -- encoder and the 54
-    ``model.decoder`` scalars -- receive a gradient and are in the optimizer.
-    (Until this increment the fit was encoder-only against the fixed grammar,
-    engels-0073.) The four partial-family scalars are carried but unused until
-    the section-3.6 boundary-support increment.
+    (:mod:`model.a.pooled`), so all 455,841 parameters are in the optimizer and
+    455,837 of them -- the encoder and 50 of the 54 ``model.decoder`` scalars --
+    receive a gradient under either ``loss_kernel``. (Until this increment the
+    fit was encoder-only against the fixed grammar, engels-0073.) The four
+    partial-family scalars are carried but have no gradient until the
+    section-3.6 boundary-support increment consumes them.
 
     One gradient step accumulates ``batch_size`` per-window losses (windows vary
     in length, so they are summed rather than tensor-batched; the fast kernel

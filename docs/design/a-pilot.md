@@ -513,11 +513,21 @@ row; but the failing stage of item 3 is no longer failing.
 **5. Learned pooled decoder in the loss and the decoder; chromosome I
 re-measured with R = 3** (`model/a/pooled.py`, commit `9fb3aec`, source
 SHA-256 `6ab52a79…e8b4`, `source_dirty: false`; `pooled-decoder/`). `train`
-now fits all 455,841 parameters: the loss adds `motif_bias` to the emissions
-and passes `duration_tables(model.decoder)` to the fast kernel (the reference
-kernel, `loss_kernel: "reference"`, reads the same law through `as_mixture`),
-so the mixture logits, hazard logits and both dinucleotide tables get a
-gradient (`tests/test_a_pooled.py` checks it against central differences);
+now carries all 455,841 parameters in the optimizer: the loss adds
+`motif_bias` to the emissions and passes `duration_tables(model.decoder)` to
+the fast kernel, so the mixture logits, hazard logits and both dinucleotide
+tables get a gradient (`tests/test_a_pooled.py` checks it against central
+differences); the four partial-family scalars are carried without a gradient
+until section 3.6 consumes them, so 455,837 parameters move. The selectable
+reference kernel (`loss_kernel: "reference"`) at `9c6cd59` read the same law
+through the detached `as_mixture`, so it fitted with the 18 duration scalars
+silently frozen under the same manifest scope (engels-0083 P2, confirmed by
+stalin-0084); it now reads a `TorchDuration` (0-d tensor entries of the same
+tables, added by the reference recurrence exactly like its float priors), and
+`TrainingKernelSelection` in `tests/test_a_pooled.py` asserts both kernels
+give the same loss, emission gradient and decoder-scalar gradients through
+the public `_window_loss` path. The fast default fit and the recorded
+`pooled-decoder/` run are unaffected;
 the optimizer and gradient clip cover `model.parameters()`, and the manifest
 records `scope: encoder-and-pooled-decoder` and `min_intron` (`m`, default
 20; the previous manifests' `encoder-only-fixed-grammar` remain as they

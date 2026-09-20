@@ -24,7 +24,14 @@ gradient path:
   and the reference decoders unchanged.
 * :func:`as_mixture` gives the same duration law as a concrete
   :class:`DurationMixture` for the Python reference decoders (parity runs,
-  ``measure --decoder python``).
+  ``measure --decoder python``). It detaches: values only, no gradient.
+* :func:`as_torch_duration` gives the same law as a :class:`TorchDuration`,
+  a duck-typed :class:`DurationMixture` whose ``log_pi``/``log_q``/``log_1mq``
+  return 0-d tensors from :func:`duration_tables`. The reference recurrence
+  (:mod:`model.a.torch_loss`) only ever *adds* those to emission tensors, so
+  under it the reference chain loss carries the duration gradient too
+  (engels-0083 P2: ``loss_kernel: reference`` used to fit with the 18
+  duration scalars silently frozen).
 """
 from __future__ import annotations
 
@@ -78,6 +85,47 @@ def as_mixture(decoder, m: int = DEFAULT_M) -> DurationMixture:
     q = t.log_q.exp().detach().cpu().tolist()
     pi = tuple(tuple(v / sum(row) for v in row) for row in pi)  # exact normalisation
     return DurationMixture(m=m, pi=pi, q=tuple(tuple(row) for row in q))
+
+
+class TorchDuration:
+    """Differentiable stand-in for :class:`DurationMixture` (same ``m``, ``R``,
+    ``log_pi``, ``log_q``, ``log_1mq``, ``log_prob`` surface) whose entries are
+    0-d tensors sharing the graph of :func:`duration_tables`. For the Python
+    reference decoders only; the fast kernels take the tables directly."""
+
+    def __init__(self, tables: DurationTables, m: int = DEFAULT_M):
+        if m < 1:
+            raise ValueError("m must be at least 1")
+        if tables.log_pi.shape != tables.log_q.shape or tables.log_pi.shape[0] != 3:
+            raise ValueError("tables must be (3, R) with one row per phase")
+        self.m = int(m)
+        self.tables = tables
+
+    @property
+    def R(self) -> int:
+        return int(self.tables.log_pi.shape[1])
+
+    def log_pi(self, p, r):
+        return self.tables.log_pi[p, r]
+
+    def log_q(self, p, r):
+        return self.tables.log_q[p, r]
+
+    def log_1mq(self, p, r):
+        return self.tables.log_1mq[p, r]
+
+    def log_prob(self, p, length):
+        if length < self.m:
+            return torch.full((), float("-inf"), dtype=self.tables.log_pi.dtype,
+                              device=self.tables.log_pi.device)
+        t = self.tables
+        return torch.logsumexp(t.log_pi[p] + t.log_1mq[p] + (length - self.m) * t.log_q[p], dim=0)
+
+
+def as_torch_duration(decoder, m: int = DEFAULT_M, *, dtype=torch.float64) -> TorchDuration:
+    """The decoder's duration law with its gradient path, for the reference
+    (torch) chain loss."""
+    return TorchDuration(duration_tables(decoder, dtype=dtype), m)
 
 
 def _dinuc_indices(x: str, n: int) -> "tuple[list, list]":

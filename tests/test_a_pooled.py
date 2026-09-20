@@ -204,5 +204,61 @@ class ViterbiParity(unittest.TestCase):
             fast_viterbi.viterbi(TWO_X, e, tables=pooled.duration_tables(dec))  # R = 1 grammar
 
 
+@unittest.skipUnless(HAS_POOLED, "needs torch and model.a.pooled")
+class TrainingKernelSelection(unittest.TestCase):
+    """The public ``loss_kernel`` switch of ``model.a.train``: both kernels must
+    give the same loss *and* the same gradient on every consumed decoder
+    scalar (engels-0083 P2: the reference path once fitted with the 18
+    duration scalars frozen, undetected because the parity tests above compare
+    values against a detached reference)."""
+
+    def _window_grads(self, kernel):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from model.a import train as T
+
+        dec = _random_decoder(83)
+        model = SimpleNamespace(decoder=dec)
+        ex = SimpleNamespace(window=TWO_X, table=1, n=len(TWO_X),
+                             cds_ranges=TWO_CDS, intron_ranges=TWO_INTRON)
+        torch.manual_seed(83)
+        e = torch.randn(11, len(TWO_X), dtype=torch.float64, requires_grad=True)
+        with patch.object(T, "_emissions_for", return_value=e):
+            loss = T._window_loss(model, ex, torch.device("cpu"), torch.float64, kernel, 2)
+        loss.backward()
+        return float(loss), {name: p.grad for name, p in dec.named_parameters()}, e.grad
+
+    def test_reference_kernel_carries_duration_gradients(self):
+        fast_loss_value, fast_grads, fast_e = self._window_grads("fast")
+        ref_loss_value, ref_grads, ref_e = self._window_grads("reference")
+        self.assertAlmostEqual(fast_loss_value, ref_loss_value, places=10)
+        self.assertLess(float((fast_e - ref_e).abs().max()), 1e-9)
+        for name in ("mixture_logits", "hazard_logits", "donor_dinuc", "acceptor_dinuc"):
+            self.assertIsNotNone(ref_grads[name], name)
+            self.assertGreater(float(ref_grads[name].abs().sum()), 0.0, name)
+            self.assertLess(float((fast_grads[name] - ref_grads[name]).abs().max()), 1e-9, name)
+        self.assertIsNone(fast_grads["partial_families"])
+        self.assertIsNone(ref_grads["partial_families"])
+
+    def test_torch_duration_matches_mixture(self):
+        dec = _random_decoder(5)
+        td = pooled.as_torch_duration(dec, m=3)
+        mix = pooled.as_mixture(dec, m=3)
+        self.assertEqual((td.m, td.R), (mix.m, mix.R))
+        for p in range(3):
+            for r in range(mix.R):
+                self.assertAlmostEqual(float(td.log_pi(p, r)), mix.log_pi(p, r), places=12)
+                self.assertAlmostEqual(float(td.log_q(p, r)), mix.log_q(p, r), places=12)
+                self.assertAlmostEqual(float(td.log_1mq(p, r)), mix.log_1mq(p, r), places=12)
+            for length in (1, 3, 4, 40):
+                a, b = float(td.log_prob(p, length)), mix.log_prob(p, length)
+                if isinf(b):
+                    self.assertTrue(isinf(a))
+                else:
+                    self.assertAlmostEqual(a, b, places=12)
+        self.assertTrue(td.log_prob(0, 7).requires_grad)
+
+
 if __name__ == "__main__":
     unittest.main()
