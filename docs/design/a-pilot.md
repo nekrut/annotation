@@ -452,13 +452,17 @@ the runnable command a gagarin compute request names.
 
 This measures the current scope; it does not widen it. The four small train
 species below were checked out and reported on the laptop (lenin, 2026-09-19,
-commit ef82af9, `max_window=None`); the remaining six (Arabidopsis,
-Drosophila, zebrafish, Xenopus, mouse, maize) stay pending the gagarin checkout.
-A yielded fraction low enough to bias the pilot is itself a section-2 finding to
-report before the gagarin fitting run, not after.
+commit ef82af9, `max_window=None`); Arabidopsis and Drosophila — the two
+smallest of the remaining six — were added on the laptop the same way (lenin,
+2026-09-20; MD5-verified fetches, ~60 MB and ~53 MB compressed, 27 s and 13 s
+audits, nothing committed). The four large genomes (zebrafish, Xenopus, mouse,
+maize) stay pending the gagarin checkout. A yielded fraction low enough to bias
+the pilot is itself a section-2 finding to report before the gagarin fitting
+run, not after.
 
 Reading the measured rows: the complete-target clean-window scope already yields
-94.5–99.9% of the admitted set on all four laptop species. **`skip_too_long`
+91.8–99.9% of the admitted set across the six laptop species (four small plus
+Arabidopsis 97.8% and Drosophila 91.8%). **`skip_too_long`
 is 0 everywhere**, but only because the reported run uses `max_window=None`
 (the CLI, `iter_windows` and `coverage_report` default): with no finite length
 limit the length filter never fires, so this column measures unrestricted
@@ -466,7 +470,9 @@ whole-gene loading, not fit within the 3,072-base encoder core or the cost of
 the pending crop. The exclusion here is therefore neighbour-overlap, not a
 gene-length cap (consistent with engels-0047, and see the crop still listed
 pending in section 2). Neighbour skips are largest in the compact
-C. elegans genome (1090, 5.5%) and smallest in Neurospora (8, 0.1%).
+C. elegans (1090, 5.5%) and Drosophila (1069, 8.2%) genomes and smallest in
+Neurospora (8, 0.1%) — the same gene-density pattern extends to the two added
+genomes, with `skip_too_long` still 0.
 
 These are retention counts, not a bias measurement. The loader excludes windows
 because a different gene overlaps them, so the exclusion selects on locus
@@ -481,7 +487,8 @@ is **unassessed**, and the gene-density explanation above is a hypothesis
 pending an actual density/spacing analysis — not a demonstration that the pilot
 is unbiased. Edge-partials are negligible on these four (0–1), so the section-2
 boundary-support increment will move the panel fraction little here; its value
-is on the larger genomes and scaffold edges still pending.
+is on the larger genomes and scaffold edges still pending. Arabidopsis and
+Drosophila likewise show 0 edge-partials at the default window.
 
 | species | admitted | yielded | yielded_pct | skip_partial | skip_neighbor | skip_too_long |
 |---|---:|---:|---:|---:|---:|---:|
@@ -489,4 +496,6 @@ is on the larger genomes and scaffold edges still pending.
 | Dictyostelium_discoideum | 12937 | 12886 | 99.6 | 1 | 50 | 0 |
 | Neurospora_crassa | 9722 | 9714 | 99.9 | 0 | 8 | 0 |
 | Caenorhabditis_elegans | 19784 | 18694 | 94.5 | 0 | 1090 | 0 |
-| _Arabidopsis, Drosophila, Danio, Xenopus, Mus, Zea — pending gagarin_ | | | | | | |
+| Arabidopsis_thaliana | 27220 | 26630 | 97.8 | 0 | 590 | 0 |
+| Drosophila_melanogaster | 12974 | 11905 | 91.8 | 0 | 1069 | 0 |
+| _Danio, Xenopus, Mus, Zea — pending gagarin_ | | | | | | |
