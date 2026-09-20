@@ -2,9 +2,10 @@
 
 Status: **in progress** (owner `lenin`). This document is the T-human-014
 deliverable and is revised in place each tick. The tensor path is now
-verified and the reference-loss cost profiled locally on CPU (section 3.1);
+verified, the reference-loss cost profiled and the fast delayed-entry training
+kernel implemented, checked and timed locally on CPU (sections 3.1–3.2);
 measurements against the budget on pilot chromosomes and the GPU regime are
-still pending a gagarin run and the fast training kernel.
+still pending a gagarin run and the tensor Viterbi decoder.
 
 ## 1. What is implemented
 
@@ -61,6 +62,34 @@ The neural half of candidate A (proposal section 3), on
   checked against — the same relationship `DelayedEntryDecoder` has to
   `ReferenceDecoder` — not yet the training-window kernel. Complete targets
   only: an edge-enabled decoder is rejected, as in the oracle.
+- `model/a/fast_loss.py` — the **vectorized delayed-entry training kernel**
+  (sections 3.2–3.3). The same `log Z − log Z_num` as `torch_loss.py`, computed
+  with the delayed-entry recurrence of `DelayedEntryDecoder` on dense tensors:
+  the coding layer is one `(B, K)` vector over the K = 24 coding states (U,
+  the initiator prefixes S(q), the 21 ordinary prefixes E(q)); the intron
+  tails one `(B, K, R)` matrix; a donor parked at boundary s is `alpha[s] +
+  donor[s]` and enters every tail exactly m boundaries later with the rolling
+  m-window sum of the phase's intron emissions (`unfold`) and `log pi[p, r]`,
+  so the m−1 mandatory positions are never visited. The per-base coding
+  transition `(n, K, K)` is one `einsum` of a fixed 0/1 channel-coefficient
+  tensor with the emissions plus a symbol-indexed prior table (uniform over the
+  permitted bases of an IUPAC code, summed over bases reaching the same
+  successor). The scan is a Python loop of n steps over those small tensors,
+  batched over windows (padded positions get the identity transition and
+  floored intron/donor/acceptor emissions). `-inf` never enters the scan:
+  emissions are clamped at a finite `FLOOR = −1e30`, so forbidden paths carry
+  weight exactly 0 and zero posterior, and a window whose support admits no
+  path is reported as `−inf`/`+inf` loss rather than NaN gradients.
+  Complete targets only, like the reference. Entry points: `partition`,
+  `chain_nll` (one window; the drop-in for `torch_loss.chain_nll`) and
+  `batch_chain_nll` (padded `(B, 11, L)` batch). `tests/test_a_fast_loss.py`
+  (torch-gated, 8 cases) pins **exact parity with the reference torch forward**
+  — partition, loss and emission gradient to ≤ 1e-9 on the section-3.4
+  fixtures, on 30 random short lattices with IUPAC ambiguity, both genetic-code
+  tables, m ∈ {1..4}, R ∈ {1..3} and sparse `-inf` masks (infeasible lattices
+  `-inf` in both), batched-vs-single equality with zero gradient on padding —
+  plus `+inf` (not clamped) for an infeasible numerator and input rejection.
+  Cost: section 3.2.
 - `model/a/dataset.py` — the section 3.6 structured **training-window loader**,
   torch-free at its core. The species `*.summary.json` **is** the loading
   interface: `iter_windows(summary, gff, fasta)` calls `verify_source` (a hard
@@ -124,17 +153,17 @@ acceptor. Dependency radius is 491 bases, below the proposed 516-base halo.
    intron/codon/duration state (the crop-integration contracts checked in the
    prior owner's notes engels-0045…engels-0057). Batched multi-window collation
    for the torch training step also belongs here.
-2. **Differentiable (PyTorch) chain loss** — the reference forward is done
-   (`model/a/torch_loss.py`, above): its autograd yields
-   `dL/de = posterior_free − posterior_num` and it matches the `model/a/loss.py`
-   oracle on the section-3.4 fixtures. What remains is the **fast vectorized
-   kernel** — a delayed-entry forward on the encoder emissions with batched
-   multi-window collation and chunk-seam handling, checked against this
-   differentiable reference — and the **boundary conditioning at training-crop
-   edges** (section 3.6, edge-partial numerators). The current forward has the
-   reference recurrence's cost and is unsuitable for a full training window at
-   the default `m=20`; it establishes the differentiable contract, not the
-   training throughput.
+2. **Differentiable (PyTorch) chain loss** — the reference forward
+   (`model/a/torch_loss.py`) and the **fast vectorized delayed-entry kernel**
+   (`model/a/fast_loss.py`, checked against it to 1e-9; section 3.2) are done,
+   and `train.py` fits with the fast kernel by default (`loss_kernel: "fast"`
+   in the config and manifest; `"reference"` keeps the expanded forward for
+   parity runs). What remains is chunk-seam handling for crops longer than
+   the encoder core (the `Checkpoint` semantics of `DelayedEntryDecoder`, on
+   tensors), the **boundary conditioning at training-crop edges** (section
+   3.6, edge-partial numerators), and collating the batched entry point
+   `batch_chain_nll` into the training step (the loop still accumulates one
+   window at a time).
 3. **Boundary conditioning at training-crop edges** (edge-partial numerators via
    an edge-enabled decoder) and the batched multi-window collation the fast
    kernel needs. The training entry point (item below) already runs, one window
@@ -293,6 +322,91 @@ chromosome row.
 CPU-h for the per-window profile, ~3 CPU-h for the abandoned full-genome
 `measure`; cluster CPU-hours 0, GPU-hours 0. No held-out species touched.
 
+### 3.2 Fast delayed-entry kernel and one-core `measure` row, 2026-09-20 (CPU only)
+
+Same host, venv and yeast data as 3.1; raw outputs in
+`relay/artifacts/T-human-014/smoke-local-20260920/{fast-kernel,measure-chrI}/`.
+
+**1. Kernel cost, like for like.** `profile_window_fast.py` is 3.1's
+`profile_window.py` with `loss_kernel="fast"` (single thread, float64, the same
+four windows):
+
+| window bases | encoder fwd | loss fwd (enc + chain) | backward | total | s per kb | peak RSS | vs. reference (3.1) |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 422 | 0.007 s | 0.044 s | 0.047 s | 0.09 s | 0.22 | 0.33 GB | 17× faster |
+| 1,223 | 0.009 s | 0.117 s | 0.114 s | 0.23 s | 0.19 | 0.40 GB | 26× |
+| 2,804 | 0.021 s | 0.265 s | 0.275 s | 0.54 s | 0.19 | 0.53 GB | 30× |
+| 11,255 | 0.111 s | 1.122 s | 1.217 s | 2.34 s | 0.21 | **1.08 GB** | **35× faster, 8× less memory** |
+
+The cost is now **linear** in window length at ~0.2 CPU-s/kb (forward +
+backward, one thread) and ~70 KB/base of autograd state, against the
+reference's superlinear 4–7 s/kb and 0.8 MB/base; the longest yeast window
+fits in 1.1 GB instead of breaching the 8 GB cap. Batched over four 12,288-base
+windows the per-base cost falls further to 0.095 ms/base (float64) and
+0.075 ms/base (float32; loss agrees with float64 to 2e-6 relative, gradient to
+3e-3 absolute on unit-scale gradients — the fit keeps float64 for now). The
+loss is ~25× the encoder's own ~8 µs/base, so the per-step cost of the pilot
+fit is set by the scan's Python loop of n small tensor steps, not by the
+network; a fused/parallel-scan implementation is the next lever if the pilot
+step count needs it, not a blocker.
+
+One implementation note worth recording: the first version of the scan
+indexed the precomputed `(B, L, K, K)` transition stack as `trans[:, t]`
+inside the loop, whose backward scatters into a full-size zero gradient at
+every step and made the backward pass quadratic in L (4.9 s at 2 kb, minutes
+at 12 kb). Slicing all per-step inputs once with `unbind` (backward = one
+`stack`) restored linear cost; `tests/test_a_fast_loss.py` does not time
+this, so the note is here.
+
+**2. Smoke fit repeated with the fast kernel** (identical config, seed, data
+and commit apart from `loss_kernel`; `fast-kernel/run_manifest.json`):
+
+| quantity | reference kernel (3.1) | fast kernel |
+|---|---|---|
+| windows drawn / accepted | 80 / 80 | 80 / 80 |
+| sampled bases | 122,528 | 122,528 |
+| train NLL/window at step 10 / 20 | 0.0001 / 0.0006 | **0.0001 / 0.0006** (identical) |
+| wall clock, torch default threads | 12 min 50 s | **1 min 32 s** |
+| CPU time (user+sys), default threads | 1,634.8 s (212 %) | 1,492.6 s (1,627 %) |
+| peak host RSS | 7.15 GB | **0.97 GB** |
+| wall / CPU time, one thread pinned to one core (`taskset`) | — | **24.8 s / 24.7 CPU-s** (0.20 CPU-s per sampled kb, 66× less CPU than the reference run; 0.91 GB) |
+
+The per-step NLL trajectory is identical to four decimals, i.e. the kernel
+reproduces the reference loss and gradient on real windows, not only on the
+test lattices. The default-thread CPU time barely moved because torch spreads
+each of the scan's tiny per-step ops over all 24 logical CPUs and the
+synchronisation dominates; the one-core run is the number that matters for
+the CPU regime and the GPU run is what the batched scan is for.
+
+**3. One-core `measure` on yeast chromosome I** (`--seqid NC_001133.9`,
+`torch` pinned to one thread and one core with `taskset`, `best.pt` from the
+smoke fit; `measure-chrI/measure_chrI.json` and the `/usr/bin/time -v`
+report): 94 admitted windows, 143,653 oriented bases.
+
+| stage | CPU s | CPU-s per Mb |
+|---|---:|---:|
+| preprocessing (featurizer) | 0.51 | 3.6 |
+| encoder forward | 0.38 | **2.7** |
+| decode + traceback (pure-Python `DelayedEntryDecoder.viterbi`) | 9.51 | **66.2** |
+| total | 10.41 | **72.5** |
+| peak host RSS | | 0.31 GB |
+
+Against the 15 CPU-s/Mb budget: the encoder plus featurizer cost 6.3 CPU-s/Mb
+on one core, inside the budget with room to spare; the **pure-Python Viterbi
+decoder is the failing stage** at 66 CPU-s/Mb, 4.4× the whole budget on its
+own. This is the same conclusion as 3.1 item 4 from the decoding side: the
+decoder that ships in the CPU regime must be the tensor delayed-entry scan
+(this kernel in max-product mode with back-pointers), not the standard-library
+semantics check, whose job was always parity, not throughput. The
+`measure` caveats of 3.1 item 5 still apply (annotation-selected windows,
+outputs discarded, no both-strand/I/O/output accounting, encoder untrained
+beyond 20 steps), so this is not yet a section-5 chromosome row; it is the
+per-stage cost that the row will be built from.
+
+**Compute recorded:** local CPU only — ~0.4 CPU-h for the two fast-kernel
+smoke fits, ~0.02 CPU-h for the profile, 0.003 CPU-h for the chromosome I
+`measure`; cluster CPU-hours 0, GPU-hours 0. No held-out species touched.
+
 ## 4. Budget and caps
 
 Model ≤ 5 M parameters (455,841 ✓) and ≤ 8 GB. Fitting uses train species
@@ -305,9 +419,11 @@ hours are recorded in this task's log after every run.
 
 _Pending: to be filled with measured stem-efficiency, decoding and scratch
 numbers, not the proposal's arithmetic estimates. What is measured so far
-(section 3.1, CPU only): encoder forward ~8 µs/base on one core (≈8 CPU-s/Mb),
-inside the 15 CPU-s/Mb budget before decoding; the per-sequence decoder timing
-and the GPU regime are still open._
+(sections 3.1–3.2, CPU only, one core): featurizer 3.6 + encoder 2.7 CPU-s/Mb
+on yeast chromosome I, inside the 15 CPU-s/Mb budget before decoding; the
+pure-Python reference decoder at 66 CPU-s/Mb fails the budget and is to be
+replaced by the tensor delayed-entry scan in Viterbi mode before a chromosome
+row is filled; the GPU regime is still open (gagarin)._
 
 ## 6. Review responses (PR #38)
 

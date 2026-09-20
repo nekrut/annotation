@@ -120,6 +120,10 @@ class TrainConfig:
     max_window: Optional[int] = None
     eval_every: int = 100
     device: str = "cpu"
+    # "fast": the vectorized delayed-entry kernel (model.a.fast_loss);
+    # "reference": the expanded-grammar torch forward (model.a.torch_loss),
+    # 40-80x slower and ~10x the memory, kept for parity checks only.
+    loss_kernel: str = "fast"
 
     @classmethod
     def from_dict(cls, d: dict) -> "TrainConfig":
@@ -136,6 +140,8 @@ class TrainConfig:
         if unknown:
             raise ValueError(f"unknown config keys: {sorted(unknown)}")
         kwargs = {k: d[k] for k in d if k in known and k != "sources"}
+        if kwargs.get("loss_kernel", "fast") not in ("fast", "reference"):
+            raise ValueError("loss_kernel must be 'fast' or 'reference'")
         return cls(sources=sources, **kwargs)
 
     @classmethod
@@ -267,6 +273,7 @@ def build_manifest(config: TrainConfig, *, torch_version: str,
             "grad_clip": config.grad_clip,
             "eval_every": config.eval_every,
             "max_window": config.max_window,
+            "loss_kernel": config.loss_kernel,
         },
         "sampling_plan": {
             "draw": "uniform-with-replacement over train windows",
@@ -338,13 +345,21 @@ def _emissions_for(model, ex, device, dtype):
     return emissions[:, : ex.n].to(dtype)
 
 
-def _window_loss(model, ex, device, dtype):
+def _window_loss(model, ex, device, dtype, kernel: str = "fast"):
     """Differentiable chain NLL for one window, or ``None`` if the numerator
-    support admits no legal path (an unusable crop; section 3.6 says drop it)."""
+    support admits no legal path (an unusable crop; section 3.6 says drop it).
+    ``kernel`` selects the vectorized delayed-entry forward (``"fast"``, the
+    training kernel) or the expanded reference recurrence (``"reference"``)."""
     import torch
 
-    from .torch_loss import chain_nll
     from model.grammar.codes import TABLES
+
+    if kernel == "fast":
+        from .fast_loss import chain_nll
+    elif kernel == "reference":
+        from .torch_loss import chain_nll
+    else:
+        raise ValueError(f"unknown loss kernel {kernel!r}")
 
     emissions = _emissions_for(model, ex, device, dtype)
     code = TABLES[ex.table]
@@ -425,7 +440,7 @@ def train(config: TrainConfig, log=print) -> dict:
         total, count = 0.0, 0
         with torch.no_grad():
             for ex in dev_ex:
-                loss = _window_loss(model, ex, device, dtype)
+                loss = _window_loss(model, ex, device, dtype, config.loss_kernel)
                 if loss is not None:
                     total += float(loss)
                     count += 1
@@ -440,7 +455,7 @@ def train(config: TrainConfig, log=print) -> dict:
         for j in idx.tolist():
             ex = train_ex[j]
             attempted_draws += 1
-            loss = _window_loss(model, ex, device, dtype)
+            loss = _window_loss(model, ex, device, dtype, config.loss_kernel)
             if loss is None:
                 continue
             (loss / config.batch_size).backward()
