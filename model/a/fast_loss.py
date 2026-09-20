@@ -205,20 +205,35 @@ def _floor(x: torch.Tensor) -> torch.Tensor:
     return x.clamp(min=FLOOR)
 
 
+def duration_by_state(grammar: Grammar, tables=None):
+    """Per-state ``(K, R)`` ``log pi``, ``log q``, ``log (1 - q)``: the
+    grammar's fixed :class:`DurationMixture` values, or the learned ``(3, R)``
+    :class:`model.a.pooled.DurationTables` indexed by each state's phase (the
+    gradient path to the pooled duration scalars)."""
+    g = grammar
+    if tables is None:
+        return g.log_pi, g.log_q, g.log_1mq
+    if tuple(tables.log_pi.shape) != (3, g.R):
+        raise ValueError(f"duration tables must be (3, {g.R}), got {tuple(tables.log_pi.shape)}")
+    return tuple(t.to(dtype=g.log_pi.dtype, device=g.log_pi.device)[g.phase] for t in tables)
+
+
 def log_partition_batch(emissions: torch.Tensor, symbols: torch.Tensor,
-                        lengths: torch.Tensor, grammar: Grammar) -> torch.Tensor:
+                        lengths: torch.Tensor, grammar: Grammar, tables=None) -> torch.Tensor:
     """``log Z`` of the free grammar for a batch of windows.
 
     ``emissions`` is ``(B, 11, L)`` (finite or ``-inf``; ``-inf`` is floored),
     ``symbols`` ``(B, L)`` long indices into :data:`SYMBOL_SETS`, ``lengths``
     ``(B,)`` the real window lengths. Returns ``(B,)`` with ``-inf`` where the
-    grammar admits no path.
+    grammar admits no path. ``tables`` optionally replaces the grammar's fixed
+    duration law with learned :class:`model.a.pooled.DurationTables`.
     """
     B, C, L = emissions.shape
     if C != EMISSION_CHANNELS:
         raise ValueError(f"emissions must be (B, {EMISSION_CHANNELS}, L)")
     g = grammar
     K, R, m = g.K, g.R, g.dur.m
+    log_pi, log_q, log_1mq = duration_by_state(g, tables)
     dtype, device = emissions.dtype, emissions.device
     e = _floor(emissions)
     valid = (torch.arange(L, device=device)[None, :] < lengths[:, None])      # (B, L)
@@ -258,13 +273,13 @@ def log_partition_batch(emissions: torch.Tensor, symbols: torch.Tensor,
         parked = torch.where(coding_mask, alpha + donor_t[t][:, None], torch.full_like(alpha, FLOOR))
         pending.append(parked)
         # 2. merge tail exits into the coding layer, then the coding transition
-        exits = torch.logsumexp(tau + g.log_1mq[None], dim=-1) + acceptor_t[t][:, None]  # (B, K)
+        exits = torch.logsumexp(tau + log_1mq[None], dim=-1) + acceptor_t[t][:, None]  # (B, K)
         merged = torch.logsumexp(torch.stack((alpha, exits), dim=-1), dim=-1)
         alpha = _floor(torch.logsumexp(merged[:, :, None] + trans_t[t], dim=1))
         # 3. tails continue; the donor parked m boundaries ago enters
-        tau = tau + intron_t[t][:, :, None] + g.log_q[None]
+        tau = tau + intron_t[t][:, :, None] + log_q[None]
         if len(pending) == m:
-            entry = pending.pop(0)[:, :, None] + window_t[t - m + 1][:, :, None] + g.log_pi[None]
+            entry = pending.pop(0)[:, :, None] + window_t[t - m + 1][:, :, None] + log_pi[None]
             tau = torch.logsumexp(torch.stack((tau, entry), dim=-1), dim=-1)
         tau = _floor(tau)
     z = alpha[:, g.u_index]
@@ -272,24 +287,27 @@ def log_partition_batch(emissions: torch.Tensor, symbols: torch.Tensor,
 
 
 def partition(x: str, emissions: torch.Tensor, *, code: GeneticCode = TABLES[1],
-              duration: DurationMixture = DurationMixture()) -> torch.Tensor:
+              duration: DurationMixture = DurationMixture(), tables=None) -> torch.Tensor:
     """Differentiable ``log Z`` of one window; the fast twin of
-    :func:`model.a.torch_loss.partition`."""
+    :func:`model.a.torch_loss.partition`. ``tables`` (learned
+    :class:`model.a.pooled.DurationTables`) overrides ``duration``'s values;
+    ``duration`` then only fixes ``m`` and ``R``."""
     _check_input(x, emissions)
     g = Grammar.get(code, duration, dtype=emissions.dtype, device=emissions.device)
     # ``dtype=torch.long`` so a zero-length window (``log Z = 0``, as in the
     # reference) does not infer a float index tensor.
     sym = torch.tensor([symbol_indices(x)], dtype=torch.long, device=emissions.device)
     lengths = torch.tensor([len(x)], device=emissions.device)
-    return log_partition_batch(emissions[None], sym, lengths, g)[0]
+    return log_partition_batch(emissions[None], sym, lengths, g, tables)[0]
 
 
 def chain_nll(x: str, emissions: Optional[torch.Tensor],
               cds_ranges: Sequence[Range], intron_ranges: Sequence[Range], *,
               code: GeneticCode = TABLES[1], duration: DurationMixture = DurationMixture(),
-              device=None, dtype=torch.float64) -> torch.Tensor:
+              device=None, dtype=torch.float64, tables=None) -> torch.Tensor:
     """``log Z - log Z_num`` for one complete admitted chain; same contract as
-    :func:`model.a.torch_loss.chain_nll`, delayed-entry recurrence."""
+    :func:`model.a.torch_loss.chain_nll`, delayed-entry recurrence. ``tables``
+    as in :func:`partition`."""
     n = len(x)
     if emissions is None:
         emissions = torch.zeros((EMISSION_CHANNELS, n), device=device, dtype=dtype)
@@ -300,15 +318,16 @@ def chain_nll(x: str, emissions: Optional[torch.Tensor],
     both = torch.stack((emissions, emissions + mask))                       # (2, 11, n)
     sym = torch.tensor([symbol_indices(x)] * 2, dtype=torch.long, device=emissions.device)
     lengths = torch.tensor([n, n], device=emissions.device)
-    z = log_partition_batch(both, sym, lengths, g)
+    z = log_partition_batch(both, sym, lengths, g, tables)
     return z[0] - z[1]
 
 
 def batch_chain_nll(windows: Sequence[str], emissions: torch.Tensor,
                     chains: Sequence[Tuple[Sequence[Range], Sequence[Range]]], *,
                     code: GeneticCode = TABLES[1],
-                    duration: DurationMixture = DurationMixture()) -> torch.Tensor:
-    """Per-window ``log Z - log Z_num`` for a padded batch.
+                    duration: DurationMixture = DurationMixture(), tables=None) -> torch.Tensor:
+    """Per-window ``log Z - log Z_num`` for a padded batch. ``tables`` as in
+    :func:`partition`.
 
     ``emissions`` is ``(B, 11, L)`` with ``L >= max(len(w))``; columns past a
     window's length are ignored. ``chains[b]`` is ``(cds_ranges, intron_ranges)``
@@ -331,5 +350,6 @@ def batch_chain_nll(windows: Sequence[str], emissions: torch.Tensor,
         sym[b, :n] = torch.tensor(symbol_indices(w), device=device)
         masks[b, :, :n] = support_mask(n, cds, itr, device=device, dtype=dtype)
     both = torch.cat((emissions, emissions + masks))                        # (2B, 11, L)
-    z = log_partition_batch(both, torch.cat((sym, sym)), torch.cat((lengths, lengths)), g)
+    z = log_partition_batch(both, torch.cat((sym, sym)), torch.cat((lengths, lengths)), g,
+                            tables)
     return z[:B] - z[B:]

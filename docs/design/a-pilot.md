@@ -477,10 +477,11 @@ batches of 16 — how a chromosome's windows would be decoded in either regime:
 | peak host RSS | | 0.42 GiB (440,840 KiB) | +0.11 GiB |
 
 Against the 15 CPU-s/Mb budget: **all three stages together are inside it on
-one core**, at 73 % of the budget, with the decoder now the cheapest of the
-three per base once batched. Unbatched (`--decode-batch 1`,
-`measure_chrI_tensor_b1.json`) the same scan is 30.0 CPU-s/Mb: the per-step
-cost is torch dispatch, not arithmetic, so batching windows is what pays. On
+one core**, at 73 % of the budget. The decoder is still the most expensive of
+the three per base (4.9 > 3.7 > 2.3), but no longer dominant. Unbatched
+(`--decode-batch 1`, `measure_chrI_tensor_b1.json`) the decode + traceback
+stage alone is 30.0 CPU-s/Mb (three-stage total 35.9): the per-step cost is
+torch dispatch, not arithmetic, so batching windows is what pays. On
 synthetic 12 kb windows the decoder alone is 39 CPU-s/Mb at batch 1, 5.5 at 8,
 3.8 at 16 and 2.9 at 32 (traceback ≤ 0.1 CPU-s/Mb of that). The caveats of
 item 3 still apply — annotation-selected windows, outputs discarded, no

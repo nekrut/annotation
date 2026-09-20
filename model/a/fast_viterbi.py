@@ -41,12 +41,12 @@ import torch
 from model.grammar import DurationMixture, GeneticCode, TABLES
 from model.grammar.reference import Chain, ReferenceDecoder
 
-from .fast_loss import _CH, FLOOR, SYMBOL_SETS, Grammar, symbol_indices
+from .fast_loss import _CH, FLOOR, SYMBOL_SETS, Grammar, duration_by_state, symbol_indices
 from .torch_loss import EMISSION_CHANNELS, _check_input
 
 
 def _operands(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
-              g: Grammar):
+              g: Grammar, tables=None):
     """Per-step operands of the max-product scan, without materializing the
     dense ``(B, L, K, K)`` transition stack of the training kernel (at 16
     windows of 12 kb that stack is 0.9 GB and ~80% of the decode time).
@@ -60,6 +60,7 @@ def _operands(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Ten
     max since only ``U`` reaches a length-1 initiator prefix)."""
     B, C, L = emissions.shape
     K, m = g.K, g.dur.m
+    log_pi, log_q, _ = duration_by_state(g, tables)
     dtype, device = emissions.dtype, emissions.device
     e = emissions.clamp(min=FLOOR)
     valid = (torch.arange(L, device=device)[None, :] < lengths[:, None])      # (B, L)
@@ -86,21 +87,23 @@ def _operands(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Ten
         window_sum = intron.unfold(2, m, 1).sum(-1)                           # (B, 3, L-m+1)
     else:
         window_sum = intron.new_full((B, 3, 0), FLOOR)
-    intron_q = intron[:, g.phase, :, None] + g.log_q[None, :, None, :]        # (B, K, L, R)
-    window_pi = window_sum[:, g.phase, :, None] + g.log_pi[None, :, None, :]  # (B, K, L-m+1, R)
+    intron_q = intron[:, g.phase, :, None] + log_q[None, :, None, :]          # (B, K, L, R)
+    window_pi = window_sum[:, g.phase, :, None] + log_pi[None, :, None, :]    # (B, K, L-m+1, R)
     return (sym_pad.unbind(1), base.unbind(2), ucol.unbind(2), post.unbind(2),
             donor.unbind(2), acceptor.unbind(1), intron_q.unbind(2), window_pi.unbind(2))
 
 
 def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
-                  lengths: torch.Tensor, grammar: Grammar):
+                  lengths: torch.Tensor, grammar: Grammar, tables=None):
     """Max-product scan. Returns ``(score, prev, exit_r, entered)``: ``score``
     is ``(B,)`` with ``-inf`` where no complete path exists; the back-pointer
     tensors are ``(B, L + 1, K)`` int8, ``(B, L + 1, K)`` int8 and
     ``(B, L + 1, K, R)`` bool (row 0 unused). ``exit_r[t, i]`` is indexed by
     the *predecessor* ``i`` at boundary ``t``: the component of the tail
     ``T(i, r)`` whose exit gave ``i`` its merged score at ``t``, or ``-1`` if
-    the coding layer did."""
+    the coding layer did. ``tables`` (learned
+    :class:`model.a.pooled.DurationTables`) replaces the grammar's fixed
+    duration values."""
     B, C, L = emissions.shape
     if C != EMISSION_CHANNELS:
         raise ValueError(f"emissions must be (B, {EMISSION_CHANNELS}, L)")
@@ -108,9 +111,9 @@ def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
     K, R, m, u = g.K, g.R, g.dur.m, g.u_index
     dtype, device = emissions.dtype, emissions.device
     sym_t, base_t, ucol_t, post_t, donor_t, acceptor_t, intron_q, window_pi = _operands(
-        emissions, symbols, lengths, g)
+        emissions, symbols, lengths, g, tables)
     prior = g.prior_max
-    log_1mq = g.log_1mq[None]
+    log_1mq = duration_by_state(g, tables)[2][None]
     neg_one = torch.full((B, K), -1, dtype=torch.int8, device=device)
 
     prev = torch.zeros((B, L + 1, K), dtype=torch.int8, device=device)
@@ -178,15 +181,17 @@ def traceback(n: int, grammar: Grammar, prev: torch.Tensor, exit_r: torch.Tensor
 
 
 def viterbi(x: str, emissions: torch.Tensor, *, code: GeneticCode = TABLES[1],
-            duration: DurationMixture = DurationMixture()) -> Tuple[float, List[Chain]]:
+            duration: DurationMixture = DurationMixture(),
+            tables=None) -> Tuple[float, List[Chain]]:
     """Best complete-path score and its chains for one window; the tensor twin
     of ``DelayedEntryDecoder(code, duration).viterbi(x, scores)`` without edge
-    priors. Returns ``(-inf, [])`` when the grammar admits no path."""
+    priors. Returns ``(-inf, [])`` when the grammar admits no path. ``tables``
+    overrides ``duration``'s values (``duration`` then fixes ``m`` and ``R``)."""
     _check_input(x, emissions)
     g = Grammar.get(code, duration, dtype=emissions.dtype, device=emissions.device)
     sym = torch.tensor([symbol_indices(x)], dtype=torch.long, device=emissions.device)
     lengths = torch.tensor([len(x)], device=emissions.device)
-    score, prev, exit_r, entered = viterbi_batch(emissions[None], sym, lengths, g)
+    score, prev, exit_r, entered = viterbi_batch(emissions[None], sym, lengths, g, tables)
     best = float(score[0])
     if best == float("-inf"):
         return best, []
@@ -196,7 +201,7 @@ def viterbi(x: str, emissions: torch.Tensor, *, code: GeneticCode = TABLES[1],
 
 def viterbi_windows(windows: Sequence[str], emissions: Sequence[torch.Tensor], *,
                     codes: Optional[Sequence[GeneticCode]] = None,
-                    duration: DurationMixture = DurationMixture(),
+                    duration: DurationMixture = DurationMixture(), tables=None,
                     batch_size: int = 16) -> List[Tuple[float, List[Chain]]]:
     """:func:`viterbi` over many windows, batched to amortize the per-step
     launch cost of the scan (on one CPU core the scan over a ``(B, K)`` layer
@@ -234,7 +239,7 @@ def viterbi_windows(windows: Sequence[str], emissions: Sequence[torch.Tensor], *
                 if lengths[b]:
                     sym[b, :lengths[b]] = torch.tensor(symbol_indices(windows[i]), device=device)
             score, prev, exit_r, entered = viterbi_batch(
-                e, sym, torch.tensor(lengths, device=device), g)
+                e, sym, torch.tensor(lengths, device=device), g, tables)
             for b, i in enumerate(ids):
                 best = float(score[b])
                 if best == float("-inf"):

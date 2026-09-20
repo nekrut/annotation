@@ -12,14 +12,14 @@ This wires the three reviewed pieces of candidate A into one runnable program:
 
 Two subcommands:
 
-  ``train``    fit the encoder against the fixed-grammar reference chain loss
+  ``train``    fit candidate A -- the encoder and the 54 pooled-decoder
+               scalars (duration mixture, hazards, donor/acceptor
+               dinucleotides; :mod:`model.a.pooled`) -- against the chain loss
                on the *train* sequences of the configured train species,
                selecting the checkpoint on the declared development sequences
                only, and write a run manifest (declared draw plan, data
                digests, seed, commit, hardware, actual sampled bases) next to
-               the checkpoint. This is an encoder-only profiling fit: the
-               pooled-decoder scalars have no gradient under the fixed grammar
-               and are wired in a later increment (engels-0073).
+               the checkpoint.
 
   ``measure``  time preprocessing, encoder and decoder/traceback separately
                over one sequence, with peak host and (if present) device
@@ -125,6 +125,9 @@ class TrainConfig:
     # "reference": the expanded-grammar torch forward (model.a.torch_loss),
     # 40-80x slower and ~10x the memory, kept for parity checks only.
     loss_kernel: str = "fast"
+    # Minimum intron length ``m`` of the duration law (proposal 3.2); the
+    # mixture weights and hazards themselves are learned (model.decoder).
+    min_intron: int = 20
 
     @classmethod
     def from_dict(cls, d: dict) -> "TrainConfig":
@@ -143,6 +146,8 @@ class TrainConfig:
         kwargs = {k: d[k] for k in d if k in known and k != "sources"}
         if kwargs.get("loss_kernel", "fast") not in ("fast", "reference"):
             raise ValueError("loss_kernel must be 'fast' or 'reference'")
+        if int(kwargs.get("min_intron", 20)) < 1:
+            raise ValueError("min_intron must be at least 1")
         return cls(sources=sources, **kwargs)
 
     @classmethod
@@ -321,6 +326,7 @@ def build_manifest(config: TrainConfig, *, torch_version: str,
             "eval_every": config.eval_every,
             "max_window": config.max_window,
             "loss_kernel": config.loss_kernel,
+            "min_intron": config.min_intron,
         },
         "sampling_plan": {
             "draw": "uniform-with-replacement over train windows",
@@ -392,41 +398,50 @@ def _emissions_for(model, ex, device, dtype):
     return emissions[:, : ex.n].to(dtype)
 
 
-def _window_loss(model, ex, device, dtype, kernel: str = "fast"):
+def _window_loss(model, ex, device, dtype, kernel: str = "fast", m: int = 20):
     """Differentiable chain NLL for one window, or ``None`` if the numerator
     support admits no legal path (an unusable crop; section 3.6 says drop it).
     ``kernel`` selects the vectorized delayed-entry forward (``"fast"``, the
-    training kernel) or the expanded reference recurrence (``"reference"``)."""
+    training kernel) or the expanded reference recurrence (``"reference"``).
+    The pooled decoder enters through :mod:`model.a.pooled`: the dinucleotide
+    bias is added to the emissions, and the duration law is the learned
+    mixture/hazard tables (the fast kernel takes them as tensors so they get a
+    gradient; the reference kernel reads them as a concrete mixture)."""
     import torch
 
     from model.grammar.codes import TABLES
 
-    if kernel == "fast":
-        from .fast_loss import chain_nll
-    elif kernel == "reference":
-        from .torch_loss import chain_nll
-    else:
-        raise ValueError(f"unknown loss kernel {kernel!r}")
+    from . import pooled
 
     emissions = _emissions_for(model, ex, device, dtype)
+    emissions = emissions + pooled.motif_bias(ex.window, model.decoder, dtype=dtype, device=device)
     code = TABLES[ex.table]
-    loss = chain_nll(ex.window, emissions, ex.cds_ranges, ex.intron_ranges, code=code)
+    if kernel == "fast":
+        from .fast_loss import chain_nll
+        loss = chain_nll(ex.window, emissions, ex.cds_ranges, ex.intron_ranges, code=code,
+                         duration=pooled.structure(model.decoder, m),
+                         tables=pooled.duration_tables(model.decoder, dtype=dtype))
+    elif kernel == "reference":
+        from .torch_loss import chain_nll
+        loss = chain_nll(ex.window, emissions, ex.cds_ranges, ex.intron_ranges, code=code,
+                         duration=pooled.as_mixture(model.decoder, m))
+    else:
+        raise ValueError(f"unknown loss kernel {kernel!r}")
     if not torch.isfinite(loss):
         return None
     return loss
 
 
 def train(config: TrainConfig, log=print) -> dict:
-    """Fit candidate A's encoder and return the run manifest.
+    """Fit candidate A and return the run manifest.
 
-    This is an **encoder-only profiling fit against the fixed-grammar reference
-    chain loss**: the loss reads ``model.encoder`` emissions and scores them
-    through ``model.grammar``'s default duration/motif model, so the pooled
-    decoder scalars (``model.decoder``) have no gradient path and are
-    deliberately excluded from the optimizer (engels-0073). Wiring the learned
-    pooled duration/motif model into the loss and decoder is the next increment;
-    until then this profiles the encoder path and its per-window cost, not the
-    full candidate-A objective.
+    The loss reads ``model.encoder`` emissions plus the pooled decoder's
+    dinucleotide bias and scores them under the learned duration law
+    (:mod:`model.a.pooled`), so all 455,841 parameters -- encoder and the 54
+    ``model.decoder`` scalars -- receive a gradient and are in the optimizer.
+    (Until this increment the fit was encoder-only against the fixed grammar,
+    engels-0073.) The four partial-family scalars are carried but unused until
+    the section-3.6 boundary-support increment.
 
     One gradient step accumulates ``batch_size`` per-window losses (windows vary
     in length, so they are summed rather than tensor-batched; the fast kernel
@@ -460,8 +475,7 @@ def train(config: TrainConfig, log=print) -> dict:
 
     model = CandidateA().to(device)
     assert model.num_parameters() == SECTION_35_PARAM_COUNT, model.num_parameters()
-    # Encoder-only: the fixed-grammar loss gives model.decoder no gradient.
-    opt = torch.optim.Adam(model.encoder.parameters(), lr=config.lr,
+    opt = torch.optim.Adam(model.parameters(), lr=config.lr,
                            weight_decay=config.weight_decay)
     gen = torch.Generator().manual_seed(config.seed)
 
@@ -487,7 +501,8 @@ def train(config: TrainConfig, log=print) -> dict:
         total, count = 0.0, 0
         with torch.no_grad():
             for ex in dev_ex:
-                loss = _window_loss(model, ex, device, dtype, config.loss_kernel)
+                loss = _window_loss(model, ex, device, dtype, config.loss_kernel,
+                                    config.min_intron)
                 if loss is not None:
                     total += float(loss)
                     count += 1
@@ -502,7 +517,8 @@ def train(config: TrainConfig, log=print) -> dict:
         for j in idx.tolist():
             ex = train_ex[j]
             attempted_draws += 1
-            loss = _window_loss(model, ex, device, dtype, config.loss_kernel)
+            loss = _window_loss(model, ex, device, dtype, config.loss_kernel,
+                                config.min_intron)
             if loss is None:
                 continue
             (loss / config.batch_size).backward()
@@ -511,7 +527,7 @@ def train(config: TrainConfig, log=print) -> dict:
             accepted_windows += 1
             used += 1
         if used:
-            torch.nn.utils.clip_grad_norm_(model.encoder.parameters(), config.grad_clip)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
             opt.step()
         if (step + 1) % config.eval_every == 0 or step + 1 == config.steps:
             dev_nll = evaluate()
@@ -563,9 +579,9 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
     (``outputs_discarded``). It profiles the encoder/decoder cost per admitted
     base; it does not include full-sequence, both-strand, I/O, output-writing or
     multi-worker accounting, so it cannot fill a chromosome sensitivity/budget
-    row on its own. The decoder is the fixed-grammar delayed-entry Viterbi,
-    consistent with the encoder-only training scope; the learned pooled
-    decoder is not yet wired. ``decoder`` selects the tensor max-product scan
+    row on its own. The decoder runs the checkpoint's learned pooled decoder
+    (duration tables and dinucleotide bias, :mod:`model.a.pooled`); the bias
+    lookup is timed in the decode stage. ``decoder`` selects the tensor max-product scan
     (``"tensor"``, :mod:`model.a.fast_viterbi`, what ships) or the
     pure-Python semantics check (``"python"``, the 66 CPU-s/Mb stage of
     a-pilot.md section 3.2, kept for parity runs). The tensor scan decodes
@@ -575,6 +591,7 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
     """
     import torch
 
+    from . import pooled
     from .encoder import CandidateA
     from .fast_viterbi import viterbi_windows
     from model.grammar.codes import TABLES
@@ -593,6 +610,10 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
     if checkpoint:
         model.load_state_dict(torch.load(checkpoint, map_location=device))
     model.eval()
+    structure = pooled.structure(model.decoder, config.min_intron)
+    tables = pooled.duration_tables(model.decoder, dtype=dtype).to(device=device)
+    tables = pooled.DurationTables(*(t.detach() for t in tables))
+    mixture = pooled.as_mixture(model.decoder, config.min_intron)
 
     examples, _ = _load_all_windows(
         TrainConfig(sources=[src], out_dir=config.out_dir,
@@ -630,21 +651,24 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
             enc_cpu += time.process_time() - c0
             enc_wall += time.perf_counter() - w0
 
+            c0, w0 = time.process_time(), time.perf_counter()
+            emissions = emissions + pooled.motif_bias(ex.window, model.decoder,
+                                                      dtype=dtype, device=device)
             if decoder == "tensor":
                 pending_windows.append(ex.window)
                 pending_emissions.append(emissions)
                 pending_codes.append(TABLES[ex.table])
             else:
-                c0, w0 = time.process_time(), time.perf_counter()
                 sc = _scores_from_emissions(emissions)
-                DelayedEntryDecoder(TABLES[ex.table]).viterbi(ex.window, sc)
-                dec_cpu += time.process_time() - c0
-                dec_wall += time.perf_counter() - w0
+                DelayedEntryDecoder(TABLES[ex.table], mixture).viterbi(ex.window, sc)
+            _sync()
+            dec_cpu += time.process_time() - c0
+            dec_wall += time.perf_counter() - w0
             bases += ex.n
         if decoder == "tensor":
             c0, w0 = time.process_time(), time.perf_counter()
             viterbi_windows(pending_windows, pending_emissions, codes=pending_codes,
-                            batch_size=decode_batch)
+                            duration=structure, tables=tables, batch_size=decode_batch)
             _sync()
             dec_cpu += time.process_time() - c0
             dec_wall += time.perf_counter() - w0
@@ -661,6 +685,7 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
         "oriented_bases": bases, "device": config.device,
         "profile": "annotation-selected-windows", "outputs_discarded": True,
         "decoder": decoder, "decode_batch": decode_batch if decoder == "tensor" else 1,
+        "min_intron": config.min_intron, "pooled_decoder": "learned",
         "commit": _git_commit(), "source": _source_provenance(),
         "preprocess_cpu_s": pre_cpu, "encoder_cpu_s": enc_cpu, "decode_cpu_s": dec_cpu,
         "preprocess_wall_s": pre_wall, "encoder_wall_s": enc_wall,
