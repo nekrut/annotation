@@ -24,10 +24,12 @@ This module is that command. It
 The report itself re-derives nothing: it delegates admission to
 `model.labels.admission.audit_species` and the checksum gate to
 `dataset.verify_source`, exactly as training would, so the printed numbers are
-the fitting population under the current scope. Small genomes (yeast, worm,
-Dictyostelium) fit a laptop; the mammal/maize genomes and their audits want
-gagarin's memory, so this is the runnable command a compute request names rather
-than a laptop step. Standard library only (urllib for the fetch); Python 3.11.
+the fitting population under the current scope. `coverage_report` runs species
+sequentially and retains only counts, so the audit's peak memory is one species'
+1.9-3.6 GB (recorded in the manifests), not the sum; all ten train species were
+audited on a laptop this way. A whole-panel `--fetch` instead needs scratch disk
+for the ten compressed genomes at once, since the fetch retains each download.
+Standard library only (urllib for the fetch); Python 3.11.
 """
 from __future__ import annotations
 

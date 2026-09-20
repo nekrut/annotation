@@ -422,17 +422,20 @@ source checkout. `model.a.coverage` makes that turnkey:
 python3 -m model.a.coverage --sources <scratch-dir> \
     --fetch --species Saccharomyces_cerevisiae
 
-# The whole train panel — the mammal/maize genomes and their audits need
-# gagarin's memory, so run this as the named compute request, not on a laptop:
+# The whole train panel. The per-species audit peak RSS stays 1.9–3.6 GB
+# (below), so the binding cost of the unfiltered run is scratch disk to hold
+# the fetched compressed genomes, not simultaneous memory:
 python3 -m model.a.coverage --sources <scratch-dir> --fetch --out coverage.tsv
 ```
 
 Passing no `--species` selects all ten committed train species (including
-mouse, maize and zebrafish), so the unfiltered command is the gagarin
-invocation, not a laptop one. An unknown `--species`, or an empty manifest
-directory, is now a clean argument error in both modes rather than a
-zero-row table, and `--fetch` progress goes to stderr so a redirected stdout
-is a clean TSV.
+mouse, maize and zebrafish). `coverage_report` processes species sequentially
+and retains only counts, so the audit's peak memory is one species' 1.9–3.6 GB,
+not the sum; `--fetch` retains the downloaded source files, so the whole-panel
+cost that a laptop must budget for is scratch capacity for all ten compressed
+genomes at once. An unknown `--species`, or an empty manifest directory, is now
+a clean argument error in both modes rather than a zero-row table, and `--fetch`
+progress goes to stderr so a redirected stdout is a clean TSV.
 
 `--fetch` constructs each pinned source's deterministic NCBI `genomes/all` URL
 from the filename in its `*.summary.json` (`ncbi_url`, no scraping or guessing),
@@ -446,9 +449,11 @@ MD5-gated fetch (stubbed, offline), and the end-to-end CLI TSV on a synthetic
 species; `python3 -m model.a.coverage --self-test --sources x` runs the offline
 URL checks alone.
 
-Yeast, worm and Dictyostelium fit a laptop; the mammal and maize genomes and
-their audits (peak RSS well past a laptop for the largest, engels-0050/0052) are
-the runnable command a gagarin compute request names.
+All ten train species audit within a per-species peak RSS of 1.9–3.6 GB on one
+core (recorded in the manifests), so each fits a laptop with that much free RAM;
+the four large genomes were in fact run on the laptop this way (below). The
+whole-panel `--fetch` still needs enough scratch disk for the ten compressed
+genomes together, since `fetch` retains each download.
 
 This measures the current scope; it does not widen it. The four small train
 species were checked out and reported on the laptop (lenin, 2026-09-19,
