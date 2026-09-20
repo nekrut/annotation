@@ -575,7 +575,10 @@ whole 230,218-base sequence, not annotation-selected windows. Each strand
 (plus as read, minus as its reverse complement) is cut into 12,288-base
 windows overlapping by 4,096 (step 8,192, so 1.5× oversampling; a complete
 chain up to 2,048 bases is inside the window that owns it, with ≥ 2,048
-bases of context on each side); every window is featurized, encoded, given
+bases of sequence before its start and ≥ 2,048 after its start — so a
+chain of the maximal length can end on the window's last base; the
+guarantee is containment, not a two-sided halo around the whole chain);
+every window is featurized, encoded, given
 the dinucleotide bias and decoded by the batched tensor Viterbi; a chain is
 reported by the one window whose core holds its 5′ start (`tiles`,
 `claimed`), mapped to genomic coordinates by the reviewed `gff3_rows`, and
@@ -596,8 +599,36 @@ item 5 checkpoint (`/usr/bin/time -v` reports in `chrI_*_time.txt`):
 | overlap 0, batch 64 (one batch per code) | 38 | 460,436 | 0.01 | 1.79 | 1.03 | 2.36 | 0.01 | **22.6** | 11.3 | 0.82 GiB |
 | overlap 0, batch 64, window 24,576 | 20 | 460,436 | 0.01 | 1.71 | 1.04 | 3.13 | 0.01 | 25.6 | 12.8 | 0.90 GiB |
 
-(stage columns in CPU seconds; `/usr/bin/time` user + system is 0.5–0.6 s
-above the stage sum, the interpreter, torch import and checkpoint load.)
+(stage columns in CPU seconds; `/usr/bin/time` user + system is 0.62–0.75 s
+above the stage sum, the interpreter, torch import and checkpoint load;
+engels-0084 reconciled both denominators, whole-process 36.5 / 25.4 CPU-s
+per genome Mb for the first and fourth rows.)
+
+*Corrections after review (commit `92ddafd`, `source_dirty: false`;
+`chromosome-grid/`).* stalin-0085 showed that the `c6e5fc7` path started
+the encoder at each window's local zero, so with step 8,192 (≡ 8 mod the
+pooling stride 12) an interior base was pooled with different neighbours
+in the two windows that saw it (emission differences up to 0.06 on an
+untrained encoder), violating the fixed-grid condition of proposal
+section 3.5. `predict_sequence` now encodes each tile from the stride
+multiple at or before its start and crops the emissions back to the tile,
+so the grid is the oriented chromosome's whatever the window and overlap
+are; a real-encoder test compares shared interior positions on both
+strands under a misaligned step and fails on the old code. engels-0084
+showed the same path buffered every window's emissions of a strand before
+its first decode (88 bytes per oriented base at float64, i.e. 13.2 GB per
+strand of a 100 Mb chromosome, over the 8 GB cap before anything else);
+windows are now flushed through the scan and core claiming in groups of
+`decode_batch`, and a spy test asserts no more than that many emission
+tensors are alive at any decode. Re-measured on the same core with the
+same checkpoint: the default row is **32.4** CPU-s per genome Mb
+(preprocess 2.55, encoder 1.25, decode 3.65; 1,832 chains, 6,544 rows;
+RSS 0.74 GiB) and the overlap-0 / batch-64 row **21.3** (1.69 / 0.88 /
+2.32; RSS 0.81 GiB) — inside the run-to-run noise of the table above (the
+encoder input grows by at most 11 bases per window), so the conclusion
+below stands on either set. The RSS of a 230 kb chromosome cannot show
+the chromosome-independence of memory; that is what the buffering test
+asserts, and a metazoan chromosome row will show it in `/usr/bin/time`.
 
 **The CPU regime misses the budget.** Per oriented megabase the pipeline
 costs what items 4–5 measured (11.3–12.8 CPU-s), but a genome megabase is
