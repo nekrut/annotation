@@ -178,6 +178,12 @@ split and manifest construction are unit-tested here without torch
 (`tests/test_a_train.py`, 14 stdlib cases). The tensor path — encoder forward,
 `chain_nll` autograd, checkpoint selection, and the decode/traceback timing —
 runs on gagarin; no local host has torch. See section 3.
+4. **Learned pooled-decoder scalars in the loss and decoder.** The decoder
+   that ships is now the tensor Viterbi (`model/a/fast_viterbi.py`, 3.2 item
+   4); it still runs the fixed grammar. Wiring `model.decoder`'s duration and
+   motif scalars into the fast kernel's tables (so they get a gradient) and
+   into the scan is the next increment, together with the first
+   chromosome-level `measure` row (both strands, overlapping windows, output).
 
 ## 3. Measurement plan and the entry point
 
@@ -436,9 +442,56 @@ outputs discarded, no both-strand/I/O/output accounting, encoder untrained
 beyond 20 steps), so this is not yet a section-5 chromosome row; it is the
 per-stage cost that the row will be built from.
 
+**4. Tensor Viterbi replaces the Python decoder; one-core chromosome I
+re-measured** (`model/a/fast_viterbi.py`, commit `80d82b2`, source SHA-256
+`fc1a9e3a…51c96`, `source_dirty: false`; `measure-chrI-tensor/`). The decoder
+is the max-product twin of the training kernel — same `n`-step loop over the
+`(B, K)` coding layer and `(B, K, R)` tails, `max`/`argmax` for `logsumexp`,
+int8 back-pointers into the coding layer, a bool `entered` map for the tails,
+and a numpy traceback that re-expands the `m-1` mandatory intronic positions
+so it returns the reference decoder's `Chain` objects. Two things had to differ
+from the sum-product kernel: (a) the ambiguity prior — in Viterbi an IUPAC
+symbol whose `k` permitted bases reach the same successor costs `-log k` once
+(the reference's per-base uniform prior), not `log(count) - log k`, and `U→U`
+carries no prior (`Grammar.prior_max`); (b) the dense `(B, L, K, K)` transition
+stack is not materialized — at 16 windows of 12 kb it is 0.9 GB and was ~80 %
+of the decode time — the transition is built per step from `cds[p(i)]`,
+`prior_max[x[t]]`, the `U`-column extras (`u`, `stop`) and the `U→S(b)` post-add
+(`start + cds[0]`). Parity with `DelayedEntryDecoder.viterbi` (score to 1e-9
+and identical chains) is pinned by `tests/test_a_fast_viterbi.py` on the
+section-3.4 fixtures and 120 random lattices (IUPAC, tables 1/6, alternative
+initiators, `m` 1–4, `R` 1–3, `-inf` masks); length-bucketed batched decoding
+(`viterbi_windows`) equals per-window decoding.
+
+Same `measure` run as item 3 (chromosome I, 94 windows, 143,653 oriented
+bases, `best.pt` from the smoke fit, one thread, `taskset` one core), now with
+`--decoder tensor` (the default) and the windows decoded in length-sorted
+batches of 16 — how a chromosome's windows would be decoded in either regime:
+
+| stage | CPU s | CPU-s per Mb | vs item 3 |
+|---|---:|---:|---:|
+| preprocessing (featurizer) | 0.53 | 3.7 | — |
+| encoder forward | 0.33 | 2.3 | — |
+| decode + traceback (tensor scan, batch 16) | 0.71 | **4.9** | **13.4× faster** |
+| total | 1.57 | **10.9** | 6.6× |
+| peak host RSS | | 0.42 GiB (440,840 KiB) | +0.11 GiB |
+
+Against the 15 CPU-s/Mb budget: **all three stages together are inside it on
+one core**, at 73 % of the budget, with the decoder now the cheapest of the
+three per base once batched. Unbatched (`--decode-batch 1`,
+`measure_chrI_tensor_b1.json`) the same scan is 30.0 CPU-s/Mb: the per-step
+cost is torch dispatch, not arithmetic, so batching windows is what pays. On
+synthetic 12 kb windows the decoder alone is 39 CPU-s/Mb at batch 1, 5.5 at 8,
+3.8 at 16 and 2.9 at 32 (traceback ≤ 0.1 CPU-s/Mb of that). The caveats of
+item 3 still apply — annotation-selected windows, outputs discarded, no
+both-strand/I/O/output-writing accounting, encoder fit for 20 steps — so this
+is still the per-stage cost a section-5 chromosome row is built from, not the
+row; but the failing stage of item 3 is no longer failing.
+
 **Compute recorded:** local CPU only — ~0.4 CPU-h for the two fast-kernel
 smoke fits, ~0.02 CPU-h for the profile, 0.003 CPU-h for the chromosome I
-`measure`; cluster CPU-hours 0, GPU-hours 0. No held-out species touched.
+`measure`, 0.005 CPU-h for the tensor-decoder `measure` runs and profiles;
+cluster CPU-hours 0, GPU-hours 0. No held-out species touched.
 
 ## 4. Budget and caps
 
@@ -452,11 +505,13 @@ hours are recorded in this task's log after every run.
 
 _Pending: to be filled with measured stem-efficiency, decoding and scratch
 numbers, not the proposal's arithmetic estimates. What is measured so far
-(sections 3.1–3.2, CPU only, one core): featurizer 3.6 + encoder 2.7 CPU-s/Mb
-on yeast chromosome I, inside the 15 CPU-s/Mb budget before decoding; the
-pure-Python reference decoder at 66 CPU-s/Mb fails the budget and is to be
-replaced by the tensor delayed-entry scan in Viterbi mode before a chromosome
-row is filled; the GPU regime is still open (gagarin)._
+(sections 3.1–3.2, CPU only, one core, yeast chromosome I admitted windows):
+featurizer 3.7 + encoder 2.3 + tensor Viterbi 4.9 = 10.9 CPU-s/Mb, inside the
+15 CPU-s/Mb budget (3.2 item 4); the pure-Python reference decoder at 66
+CPU-s/Mb (3.2 item 3) is kept only for parity runs. Still missing for a
+chromosome row: both strands, full-sequence windowing with overlap, output
+writing and I/O, and a checkpoint fit for more than 20 steps; the GPU regime
+is still open (gagarin)._
 
 ## 6. Review responses (PR #38)
 
@@ -645,6 +700,15 @@ Fast-kernel review findings (engels-0080, stalin-0081) and their resolution:
 - **Empty window raised `IndexError` in the fast twin** (P3, engels-0080).
   Symbol tensors are built with `dtype=torch.long`; `partition("", zeros(11, 0))`
   returns `0` like the reference. Regression `test_empty_window_matches_reference`.
+- **`git status --porcelain` lines were stripped before slicing the path**
+  (P3, engels-0081): an unstaged tracked modification (`" M path"`) lost the
+  first character of its path in `source_dirty_files`. The slice now consumes
+  the raw line; regression `test_dirty_paths_keep_porcelain_status_columns`
+  covers unstaged, staged, untracked and mixed output. The dirty flag and
+  source digest were unaffected; no recorded run had dirty paths.
+- **"8 GB read as 8 GiB"** (P3, engels-0081): reverted — the charter's
+  threshold stays 8,000,000,000 bytes (7.451 GiB); GiB is the reporting unit
+  only (3.1 memory convention). No measured conclusion changes.
 - stalin-0081's 216-case phase/split sweep (introns inside initiator and stop
   codons, three tables, `m` 1/2/4) is noted as independent parity evidence at
   ≤ 7.1e-15; not added to the suite here, since the fixture and random-lattice
