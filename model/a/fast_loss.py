@@ -176,7 +176,11 @@ class Grammar:
 
     @classmethod
     def get(cls, code: GeneticCode, duration: DurationMixture, *, dtype, device) -> "Grammar":
-        key = (code.table, duration, dtype, torch.device(device) if device is not None else None)
+        # Keyed by the frozen ``GeneticCode`` *value*, not its table number:
+        # ``TABLES[1]`` and ``TABLES[1].with_alternative_initiators()`` share a
+        # table but differ in initiators, and must not share a grammar
+        # (engels-0080, stalin-0081).
+        key = (code, duration, dtype, torch.device(device) if device is not None else None)
         g = cls._cache.get(key)
         if g is None:
             g = cls(code, duration, dtype=dtype, device=device)
@@ -260,7 +264,9 @@ def partition(x: str, emissions: torch.Tensor, *, code: GeneticCode = TABLES[1],
     :func:`model.a.torch_loss.partition`."""
     _check_input(x, emissions)
     g = Grammar.get(code, duration, dtype=emissions.dtype, device=emissions.device)
-    sym = torch.tensor([symbol_indices(x)], device=emissions.device)
+    # ``dtype=torch.long`` so a zero-length window (``log Z = 0``, as in the
+    # reference) does not infer a float index tensor.
+    sym = torch.tensor([symbol_indices(x)], dtype=torch.long, device=emissions.device)
     lengths = torch.tensor([len(x)], device=emissions.device)
     return log_partition_batch(emissions[None], sym, lengths, g)[0]
 
@@ -279,7 +285,7 @@ def chain_nll(x: str, emissions: Optional[torch.Tensor],
     g = Grammar.get(code, duration, dtype=emissions.dtype, device=emissions.device)
     mask = support_mask(n, cds_ranges, intron_ranges, device=emissions.device, dtype=emissions.dtype)
     both = torch.stack((emissions, emissions + mask))                       # (2, 11, n)
-    sym = torch.tensor([symbol_indices(x)] * 2, device=emissions.device)
+    sym = torch.tensor([symbol_indices(x)] * 2, dtype=torch.long, device=emissions.device)
     lengths = torch.tensor([n, n], device=emissions.device)
     z = log_partition_batch(both, sym, lengths, g)
     return z[0] - z[1]

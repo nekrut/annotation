@@ -142,6 +142,33 @@ class Batching(unittest.TestCase):
         v = fast_loss.chain_nll("TTATGAAATAATT", None, [(2, 10)], [])
         self.assertTrue(torch.isinf(v) and v > 0)
 
+    def test_grammar_cache_keyed_by_genetic_code_value(self):
+        # Standard table 1 and its alternative-initiator variant share a table
+        # number; whichever is used first must not decide the other's grammar
+        # (engels-0080 / stalin-0081, both call orders).
+        x = "TTGAAATAA"
+        e = torch.zeros(11, len(x), dtype=torch.float64)
+        std, alt = TABLES[1], TABLES[1].with_alternative_initiators()
+        for order in ((std, alt), (alt, std)):
+            fast_loss.Grammar._cache.clear()
+            for code in order:
+                ref_z = float(torch_loss.partition(x, e, code=code))
+                self.assertAlmostEqual(float(fast_loss.partition(x, e, code=code)), ref_z, places=12)
+                ref_nll = float(torch_loss.chain_nll(x, e, [(0, 9)], [], code=code))
+                got = float(fast_loss.chain_nll(x, e, [(0, 9)], [], code=code))
+                if ref_nll == float("inf"):
+                    self.assertEqual(got, float("inf"))
+                else:
+                    self.assertAlmostEqual(got, ref_nll, places=12)
+            # the alternative code admits TTG..TAA (log Z = log 2), the standard does not
+            self.assertAlmostEqual(float(fast_loss.partition(x, e, code=alt)), log(2), places=12)
+            self.assertEqual(float(fast_loss.partition(x, e, code=std)), 0.0)
+
+    def test_empty_window_matches_reference(self):
+        e = torch.zeros(11, 0, dtype=torch.float64)
+        self.assertEqual(float(fast_loss.partition("", e)), float(torch_loss.partition("", e)))
+        self.assertEqual(float(fast_loss.partition("", e)), 0.0)
+
     def test_bad_inputs_rejected(self):
         with self.assertRaises(ValueError):
             fast_loss.chain_nll("ATG", torch.zeros(11, 5, dtype=torch.float64), [(0, 3)], [])

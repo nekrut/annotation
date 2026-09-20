@@ -156,6 +156,17 @@ class TestManifest(unittest.TestCase):
         self.assertEqual(man["sources"][0]["gff_md5"], "aa")
         self.assertEqual(man["sources"][0]["table"], 6)
         self.assertNotIn("actual", man)
+        # The executed source is pinned independently of HEAD (engels-0080 P2).
+        src = man["source"]
+        self.assertEqual(len(src["source_sha256"]), 64)
+        self.assertGreater(src["source_files"], 0)
+        self.assertIn(src["source_dirty"], (True, False, None))
+
+    def test_source_digest_tracks_content(self):
+        a = T._source_provenance()
+        b = T._source_provenance()
+        self.assertEqual(a["source_sha256"], b["source_sha256"])
+        self.assertEqual(a["source_dirs"], ["model/a", "model/grammar"])
 
     def test_dev_seqids_and_eval_every_break_collision(self):
         # engels-0073: differing reserved chromosomes / eval schedule must yield

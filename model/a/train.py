@@ -44,6 +44,7 @@ import argparse
 import hashlib
 import json
 import platform
+from pathlib import Path
 import resource
 import subprocess
 import sys
@@ -199,6 +200,48 @@ def _git_commit() -> str:
         return "unknown"
 
 
+SOURCE_DIRS = ("model/a", "model/grammar")
+
+
+def _source_provenance() -> dict:
+    """Identify the *executed* source, not only ``HEAD``.
+
+    ``commit`` alone cannot reproduce a run made from a dirty tree (the fast-
+    kernel smoke run of 2026-09-20 was profiled before its source was committed;
+    engels-0080). So the manifest also records whether ``git status`` reports
+    changes under :data:`SOURCE_DIRS`, and a SHA-256 over the sorted contents
+    of every ``*.py`` under them, which pins the code that ran whatever the
+    tree's git state was.
+    """
+    root = None
+    try:
+        root = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"], text=True,
+            stderr=subprocess.DEVNULL).strip()
+        dirty = subprocess.check_output(
+            ["git", "status", "--porcelain", "--", *SOURCE_DIRS], text=True,
+            stderr=subprocess.DEVNULL).strip()
+        dirty_files = sorted(line[3:] for line in dirty.splitlines() if line)
+    except Exception:  # not in a checkout, or git absent
+        dirty_files = None
+    if root is None:
+        root = str(Path(__file__).resolve().parents[2])
+    digest = hashlib.sha256()
+    files = []
+    for d in SOURCE_DIRS:
+        for f in sorted(Path(root, d).glob("*.py")):
+            files.append(str(f.relative_to(root)))
+            digest.update(files[-1].encode() + b"\0")
+            digest.update(f.read_bytes() + b"\0")
+    return {
+        "source_dirs": list(SOURCE_DIRS),
+        "source_files": len(files),
+        "source_sha256": digest.hexdigest(),
+        "source_dirty": None if dirty_files is None else bool(dirty_files),
+        "source_dirty_files": dirty_files,
+    }
+
+
 def _source_digests(source: SpeciesSource) -> dict:
     """The pinned gff/fasta MD5s the loader verifies, read from the summary so
     the manifest records exactly what was fitted on."""
@@ -254,6 +297,7 @@ def build_manifest(config: TrainConfig, *, torch_version: str,
     return {
         "task": "T-human-014",
         "commit": _git_commit(),
+        "source": _source_provenance(),
         "param_count": SECTION_35_PARAM_COUNT,
         "hardware": platform.platform(),
         "python": platform.python_version(),
@@ -581,7 +625,7 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
             bases += ex.n
 
     mb = bases / 1e6
-    device_mem_gb = (torch.cuda.max_memory_allocated(device) / 2**30
+    device_mem_gib = (torch.cuda.max_memory_allocated(device) / 2**30
                      if device.type == "cuda" else None)
     cpu_total = pre_cpu + enc_cpu + dec_cpu
     wall_total = pre_wall + enc_wall + dec_wall
@@ -597,8 +641,10 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
         "cpu_s_per_mb": cpu_total / mb if mb else None,
         "wall_s_per_mb": wall_total / mb if mb else None,
         "gpu_s_per_mb": gpu_s_per_mb,
-        "peak_host_rss_gb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2**20,
-        "peak_device_mem_gb": device_mem_gb,
+        # ``ru_maxrss`` is KiB on Linux; both peaks are reported in GiB (2^30
+        # bytes) and named so (engels-0080 P3), the convention a-pilot.md uses.
+        "peak_host_rss_gib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2**20,
+        "peak_device_mem_gib": device_mem_gib,
     }
     log(json.dumps(row, indent=2, sort_keys=True))
     if json_out:
