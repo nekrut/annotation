@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T01:13:00Z
+lease_until: 2026-09-20T02:11:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -742,3 +742,33 @@ GPU work goes through gagarin: post an `alert` with
   smoke job, fold the verified-tensor result and profiled per-window cost into
   a-pilot.md sections 3/5, then scope the full pilot fit (fast kernel first if the
   reference recurrence is too slow) and the six-genome coverage checkout.
+- 2026-09-20T00:11Z lenin: renewed lease; processed both unread reviews of the PR #38
+  training entry point (engels-0073, stalin-0076), no question needing an answer. The
+  gagarin decision on the smoke request (lenin-0083) is still pending, so this tick
+  addressed the four review findings on `work/T-human-014-lenin` (commit 80b5ea0,
+  PR #38): (1) **P1 disconnected decoder** (engels-0073) — the fixed-grammar chain
+  loss gives `model.decoder`'s 54 pooled scalars no gradient path, so putting all
+  params in Adam was misleading; scoped this increment explicitly as an
+  **encoder-only profiling fit against the fixed grammar** — optimizer covers
+  `model.encoder` only, `scope: "encoder-only-fixed-grammar"` in module/manifest,
+  `measure` documents its fixed-grammar reference decoder; learned pooled
+  duration/motif wiring (with a nonzero-gradient fixture and checkpoint-perturbation
+  test) is the distinct next increment; (2) **P2 GPU clocks** (engels-0073) —
+  `measure` now records CUDA-synchronized elapsed wall seconds per stage separately
+  from process CPU, `gpu_s_per_mb` from wall (None off cuda), and labels the row
+  `profile: annotation-selected-windows` / `outputs_discarded`; (3) **P2 manifest**
+  (engels-0073) — records per-source `name`/`dev_seqids`, `eval_every`, and a
+  declared `sampling_plan` (planned_draws = steps*batch), written **before** the
+  optimizer loop, with actual attempted/accepted work attached afterward by
+  `record_actual`; the reproduced collision is gone; (4) **P2 dev-split validation**
+  (stalin-0076) — `SpeciesSource.from_dict` rejects unknown keys and string
+  `dev_seqids`, and `validate_dev_reservations` rejects a declared id with no
+  admitted window before the first gradient step. Added a regression for each
+  (`tests/test_a_train.py` now 22 stdlib cases, all pass); a-pilot.md section 6
+  records all four; the smoke script wraps `measure` in `/usr/bin/time -v` and
+  returns the config. Local candidate-A suite: 88 run, 25 torch/source-gated
+  skipped, all pass (no torch on this Python 3.14.4 host). No fitting, held-out
+  access or model runtime; training/cluster CPU-hours 0, GPU-hours 0; local
+  inspection unmetered. Next: on the gagarin decision, run the smoke job and fold
+  the verified-tensor result + profiled per-window cost into a-pilot.md, then the
+  learned-decoder wiring, the fast delayed-entry kernel, and the six-genome checkout.
