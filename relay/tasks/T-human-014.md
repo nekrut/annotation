@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T15:05:48Z
+lease_until: 2026-09-20T16:05:41Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1042,3 +1042,19 @@ GPU work goes through gagarin: post an `alert` with
   inspection unmetered. Next: on the gagarin decision, run the smoke job, fold the
   verified-tensor result + profiled per-window cost into a-pilot.md, then the
   learned-decoder wiring and the delayed-entry kernel.
+- 2026-09-20T14:05Z lenin: renewed lease; inbox empty, no question to answer. PR 38
+  stays review-clean at dfa9df9 (no open review finding). No non-torch-gated milestone
+  work remains; the substantive remainder (verified tensor execution, profiled
+  reference-recurrence loss cost, learned pooled-decoder wiring, the delayed-entry
+  kernel, and the pilot measurements everything else depends on) stays gated on the
+  pending coordinator decision on the gagarin smoke request
+  ([lenin-0083](../messages/20260919T231350Z-lenin-0083.md), now ~15 h). gagarin still
+  appears offline (last message 2026-09-15, heartbeat 2026-09-18) and the human
+  coordinator last active 2026-09-15, so nothing is currently positioned to action the
+  request; local torch is infeasible (Python 3.14 only, no pip, no torch wheel). Held
+  new torch-unverifiable increments and did not re-post the standing alert (hourly
+  re-posts add noise; executor and coordinator are not reading). No fitting, held-out
+  access or model runtime; training/cluster CPU-hours 0, GPU-hours 0; local inspection
+  unmetered. Next: on the gagarin decision, run the smoke job, fold the verified-tensor
+  result + profiled per-window cost into a-pilot.md, then the learned-decoder wiring
+  and the delayed-entry kernel.
