@@ -10,12 +10,32 @@ into windows of ``window`` bases that overlap by ``overlap`` bases
 the pooled decoder's dinucleotide bias, and decoded with the batched tensor
 Viterbi (:mod:`model.a.fast_viterbi`). The free grammar has no edge prior, so
 a window only yields *complete* chains; a gene no longer than half
-``overlap`` is therefore complete in the window that owns it, and a longer
-one may be lost or truncated at this stage (the section-3.6 boundary-support increment is where
-partial chains and seam-crossing genes belong). Chains that two overlapping
-windows both decode are reported once: a chain belongs to the window whose
-*core* (:func:`tiles`: the window minus half the overlap on each interior
-side) contains its oriented 5' start.
+``overlap`` is therefore contained in the window that owns it, and a longer
+one may be lost or truncated at this stage (the section-3.6 boundary-support
+increment is where partial chains and seam-crossing genes belong). Chains
+that two overlapping windows both decode are reported once: a chain belongs
+to the window whose *core* (:func:`tiles`: the window minus half the overlap
+on each interior side) contains its oriented 5' start. Containment is the
+guarantee; the *context* around an owned chain is at least half the overlap
+before its start and, in the interior, ``overlap - overlap // 2`` after its
+start -- so a chain of the maximal length reaches the window edge (see
+:func:`tiles`), and a chain near a true sequence end has only the sequence
+that exists.
+
+The encoder's pooling grid is anchored to the oriented chromosome origin
+(proposal section 3.5), not to each window: a window's encoder input starts
+at the stride multiple at or before ``tile.start`` and its emissions are
+cropped back to the tile, so an interior base is pooled with the same
+neighbours whichever window encodes it and ``window``/``overlap`` need not
+be stride multiples. The encoder input is right-padded with unavailable
+bases to a stride multiple, as in training.
+
+Windows are encoded and decoded in groups of ``decode_batch``: each group is
+flushed through the scan and core claiming before the next group is
+featurized, so the number of live emission tensors never exceeds
+``decode_batch`` and host memory is bounded by the window size, not the
+chromosome length. Only the GFF3 rows (proportional to the genes found, not
+the bases) are retained.
 
 Chains are mapped to genomic coordinates with :func:`model.grammar.gff3_rows`
 over the whole oriented chromosome (shift by the window's oriented offset,
@@ -37,9 +57,9 @@ from model.grammar import Chain, Segment, gff3_rows, reverse_complement
 
 # Overlap between consecutive windows (oriented bases): a complete chain up
 # to half this long is inside the window that owns it (see :func:`tiles`),
-# and every owned chain has at least half this much context on each side.
-# With the 12,288-base training windows the step is 8,192, so each strand is
-# decoded 1.5 times over.
+# and its start has at least half this much context on each side (the
+# chain's *end* may sit at the window edge). With the 12,288-base training
+# windows the step is 8,192, so each strand is decoded 1.5 times over.
 DEFAULT_OVERLAP = 4096
 
 
@@ -58,9 +78,12 @@ def tiles(n: int, window: int, overlap: int) -> List[Tile]:
     partition ``[0, n)`` exactly: the first core starts at 0, the last ends at
     ``n``, interior core boundaries sit ``overlap // 2`` bases into the next
     window. A complete chain of at most ``overlap - overlap // 2`` bases lies
-    inside the window whose core holds its start, with at least
-    ``overlap // 2`` bases of left context (and ``overlap - overlap // 2`` of
-    right context in the interior)."""
+    inside the window whose core holds its start. The context guarantee is
+    about the chain's *start*: at least ``overlap // 2`` bases before it (in
+    the interior; the first core begins at 0) and ``overlap - overlap // 2``
+    after it, which a chain of the maximal length uses up entirely, so it
+    can end on the window's last base with no right context. True sequence
+    edges have only the sequence that exists."""
     if window < 1:
         raise ValueError("window must be positive")
     if not 0 <= overlap < window:
@@ -76,9 +99,10 @@ def tiles(n: int, window: int, overlap: int) -> List[Tile]:
         if end >= n:
             break
         start += step
-    # Interior core boundaries sit ``half`` bases into the next window, so a
-    # chain owned by a window has at least ``half`` bases of context on its
-    # left and, if no longer than ``overlap - half``, ends inside the window.
+    # Interior core boundaries sit ``half`` bases into the next window, so an
+    # owned chain's start has at least ``half`` bases of sequence before it
+    # and ``overlap - half`` after it; a chain no longer than ``overlap -
+    # half`` therefore ends inside the window (possibly on its last base).
     half = overlap // 2
     result = []
     for i, t in enumerate(out):
@@ -156,59 +180,81 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                      window: int, overlap: int = DEFAULT_OVERLAP,
                      decode_batch: int = 16, device=None, dtype=None,
                      clock: Optional[StageClock] = None,
-                     strands: Sequence[str] = ("+", "-")) -> Tuple[List[str], dict]:
+                     strands: Sequence[str] = ("+", "-"),
+                     stride: Optional[int] = None) -> Tuple[List[str], dict]:
     """Decode ``seq`` on ``strands`` and return ``(gff3 rows, counts)``.
 
     ``counts``: ``oriented_bases`` (sum of decoded window lengths, overlap
     included), ``strand_bases`` (``len(seq)`` per strand), ``windows``,
     ``chains`` (reported), ``chains_decoded`` (before core de-duplication).
+
+    ``stride`` is the encoder's pooling stride (default ``POOL_STRIDE``); each
+    window's encoder input starts at the stride multiple at or before the tile
+    so the pooling grid is the oriented chromosome's, and windows are flushed
+    through the decoder in groups of ``decode_batch`` (at most that many
+    emission tensors are alive at once).
     """
     import torch
 
     from . import pooled
+    from .encoder import POOL_STRIDE
     from .fast_viterbi import viterbi_windows
     from .features import encode_sequence
     from .train import pad_window
 
+    if decode_batch < 1:
+        raise ValueError("decode_batch must be positive")
+    stride = POOL_STRIDE if stride is None else stride
     clock = clock or StageClock()
     n = len(seq)
     rows: List[str] = []
     counts = dict(oriented_bases=0, strand_bases=n * len(strands), windows=0,
                   chains=0, chains_decoded=0)
     gene = 0
+
+    def flush(strand, oriented, group):
+        nonlocal gene
+        if not group:
+            return
+        tiles_, xs, ems = zip(*group)
+        with clock("decode"):
+            decoded = viterbi_windows(list(xs), list(ems), codes=[code] * len(xs),
+                                      duration=structure, tables=tables,
+                                      batch_size=decode_batch)
+        with clock("output"):
+            for tile, (_score, chains) in zip(tiles_, decoded):
+                counts["chains_decoded"] += len(chains)
+                for chain in claimed(chains, tile):
+                    gene += 1
+                    parent = f"{seqid}.g{gene}"
+                    rows.extend(gff3_rows(chain, seqid, n, strand, parent))
+                    counts["chains"] += 1
+
     with torch.no_grad():
         for strand in strands:
             with clock("io"):
                 oriented = seq if strand == "+" else reverse_complement(seq)
-            layout = tiles(n, window, overlap)
-            pending_windows, pending_emissions, pending_tiles = [], [], []
-            for tile in layout:
+            group: List[Tuple[Tile, str, "torch.Tensor"]] = []
+            for tile in tiles(n, window, overlap):
+                # Anchor the pooling grid to the oriented origin: encode from
+                # the stride multiple at or before the tile, crop afterwards.
+                enc_start = tile.start - tile.start % stride
                 x = oriented[tile.start:tile.end]
                 with clock("preprocess"):
-                    padded, available = pad_window(x)
+                    padded, available = pad_window(oriented[enc_start:tile.end], stride)
                     feats = encode_sequence(padded, available=available).unsqueeze(0).to(device)
                 with clock("encoder"):
-                    emissions = model.encoder(feats)[0][:, :len(x)].to(dtype)
+                    emissions = model.encoder(feats)[0][:, tile.start - enc_start:tile.end - enc_start].to(dtype)
                 with clock("decode"):
                     emissions = emissions + pooled.motif_bias(x, model.decoder, dtype=dtype, device=device)
-                pending_windows.append(x)
-                pending_emissions.append(emissions)
-                pending_tiles.append(tile)
+                group.append((tile, x, emissions))
                 counts["oriented_bases"] += len(x)
                 counts["windows"] += 1
-            with clock("decode"):
-                decoded = viterbi_windows(pending_windows, pending_emissions,
-                                          codes=[code] * len(pending_windows),
-                                          duration=structure, tables=tables,
-                                          batch_size=decode_batch)
-            with clock("output"):
-                for tile, (_score, chains) in zip(pending_tiles, decoded):
-                    counts["chains_decoded"] += len(chains)
-                    for chain in claimed(chains, tile):
-                        gene += 1
-                        parent = f"{seqid}.g{gene}"
-                        rows.extend(gff3_rows(chain, seqid, n, strand, parent))
-                        counts["chains"] += 1
+                if len(group) == decode_batch:
+                    flush(strand, oriented, group)
+                    group = []
+            flush(strand, oriented, group)
+            del group
     return rows, counts
 
 

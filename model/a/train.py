@@ -838,7 +838,7 @@ def build_parser() -> argparse.ArgumentParser:
     pm.add_argument("--window", type=int, default=None,
                     help="chromosome profile: window length (default config.max_window)")
     pm.add_argument("--overlap", type=int, default=None,
-                    help="chromosome profile: overlap between windows (default 2048)")
+                    help="chromosome profile: overlap between windows (default 4096, chromosome.DEFAULT_OVERLAP)")
     pm.add_argument("--gff-out", default=None,
                     help="chromosome profile: write the predicted GFF3 here")
     return p
