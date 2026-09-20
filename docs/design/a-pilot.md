@@ -260,6 +260,14 @@ in `relay/artifacts/T-human-014/smoke-local-20260920/`. This covers everything
 in alert lenin-0083 except the CUDA build, device memory and the GPU regime,
 which still need gagarin.
 
+Memory convention for 3.1 and 3.2 (engels-0080 P3): every figure is the process
+high-water RSS (`ru_maxrss`, KiB on Linux; the profile scripts print MiB), stated
+in **GiB** (2^30 bytes) with decimal GB in parentheses where a number is near the
+cap. The cap of "8 GB" is read as 8 GiB (the looser reading); a breach is noted
+under both. The profile-script RSS is cumulative across successive windows in
+one process (model, loader, runtime and allocator included), so a per-base
+figure derived from it is a process-peak increment, not bytes of autograd state.
+
 **1. Tensor path verified.** Full suite under Python 3.11 + torch:
 `pytest tests` → **133 passed, 0 skipped** (6.4 s wall, 599 MiB peak RSS); the
 five candidate-A modules via the script's `unittest` line → 75 tests OK. This is
@@ -282,30 +290,35 @@ section-7 row.
 | wall clock | 12 min 50 s |
 | CPU time (user+sys) | 1,634.8 s at 212 % CPU (torch default threads) |
 | CPU-s per sampled kb | **13.3** |
-| peak host RSS | **7.15 GB** |
+| peak host RSS | **6.82 GiB** (7,149,860 KiB; 7.32 GB) |
 | train NLL/window at step 10 / 20 | 0.0001 / 0.0006 (no dev split declared, so `best.pt` is the final state) |
 
 **4. Per-window cost of the reference-recurrence chain loss** (single thread,
 `torch.set_num_threads(1)`, float64, fresh `CandidateA`, one window each;
 `profile_window.py` in the artifact directory):
 
-| window bases | encoder fwd | loss fwd (enc + chain) | backward | total | s per kb | peak RSS |
+| window bases | encoder fwd | loss fwd (enc + chain) | backward | total | s per kb | process peak RSS (cumulative) |
 |---:|---:|---:|---:|---:|---:|---:|
-| 422 | 0.006 s | 0.76 s | 0.83 s | 1.6 s | 3.8 | 0.56 GB |
-| 1,223 | 0.009 s | 2.58 s | 3.37 s | 5.9 s | 4.9 | 1.25 GB |
-| 2,804 | 0.020 s | 6.78 s | 9.25 s | 16.0 s | 5.7 | 2.68 GB |
-| 11,255 | 0.090 s | 26.1 s | 55.7 s | 81.7 s | 7.3 | **9.0 GB** |
+| 422 | 0.006 s | 0.76 s | 0.83 s | 1.6 s | 3.8 | 0.54 GiB (557 MiB) |
+| 1,223 | 0.009 s | 2.58 s | 3.37 s | 5.9 s | 4.9 | 1.22 GiB (1,245 MiB) |
+| 2,804 | 0.020 s | 6.78 s | 9.25 s | 16.0 s | 5.7 | 2.62 GiB (2,682 MiB) |
+| 11,255 | 0.090 s | 26.1 s | 55.7 s | 81.7 s | 7.3 | **8.79 GiB** (9,001 MiB; 9.44 GB) |
 
 Reading: the encoder itself costs ~8 µs/base on one core (0.008 CPU-s/kb, i.e.
 ~8 CPU-s/Mb before decoding — inside the 15 CPU-s/Mb budget with room for the
 decoder). The **reference chain loss is 500–900× the encoder**: 4–7 CPU-s/kb,
-superlinear in window length, and its autograd graph holds ~0.8 MB per base, so
-a single ~11 kb window already exceeds the 8 GB cap. Extrapolated to the pilot
-(train development chromosomes, tens of Mb per epoch) it is 10⁴–10⁵ CPU-s per
-Mb per pass, orders of magnitude outside the 24 GPU-hour cap even with perfect
-GPU speed-up. **Conclusion: the fast vectorized delayed-entry kernel (section 2,
-item 2) is mandatory before the pilot fit, not optional.** The reference forward
-keeps its role as the differentiable oracle the kernel is checked against.
+superlinear in window length, and the process peak grows by ~0.77 MiB per base
+of the longest window (8.79 GiB less the 285 MiB post-load baseline, over 11,255
+bases; a process-RSS increment, not an autograd byte count), so a single ~11 kb
+window already exceeds the 8 GB cap (8.79 GiB = 9.44 GB, over it under either
+unit). At 4–7 CPU-s/kb the reference loss is 4,000–7,000 CPU-s per Mb per pass on
+one core. What the GPU regime would cost is not derivable from these CPU
+measurements and stays pending with the gagarin request; the measured memory
+breach and the CPU cost on their own are the reason to replace the reference
+recurrence in training. **Conclusion: the fast vectorized delayed-entry kernel
+(section 2, item 2) is mandatory before the pilot fit, not optional.** The
+reference forward keeps its role as the differentiable oracle the kernel is
+checked against.
 
 **5. `measure` on yeast** (all 5,740 admitted windows, ~8.6 Mb oriented,
 `best.pt` from the smoke fit, CPU) was started as the script's step 2d but had
@@ -331,17 +344,18 @@ Same host, venv and yeast data as 3.1; raw outputs in
 `profile_window.py` with `loss_kernel="fast"` (single thread, float64, the same
 four windows):
 
-| window bases | encoder fwd | loss fwd (enc + chain) | backward | total | s per kb | peak RSS | vs. reference (3.1) |
+| window bases | encoder fwd | loss fwd (enc + chain) | backward | total | s per kb | process peak RSS (cumulative) | vs. reference (3.1) |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 422 | 0.007 s | 0.044 s | 0.047 s | 0.09 s | 0.22 | 0.33 GB | 17× faster |
-| 1,223 | 0.009 s | 0.117 s | 0.114 s | 0.23 s | 0.19 | 0.40 GB | 26× |
-| 2,804 | 0.021 s | 0.265 s | 0.275 s | 0.54 s | 0.19 | 0.53 GB | 30× |
-| 11,255 | 0.111 s | 1.122 s | 1.217 s | 2.34 s | 0.21 | **1.08 GB** | **35× faster, 8× less memory** |
+| 422 | 0.007 s | 0.044 s | 0.047 s | 0.09 s | 0.22 | 0.33 GiB (342 MiB) | 17× faster |
+| 1,223 | 0.009 s | 0.117 s | 0.114 s | 0.23 s | 0.19 | 0.40 GiB (409 MiB) | 26× |
+| 2,804 | 0.021 s | 0.265 s | 0.275 s | 0.54 s | 0.19 | 0.53 GiB (542 MiB) | 30× |
+| 11,255 | 0.111 s | 1.122 s | 1.217 s | 2.34 s | 0.21 | **1.08 GiB** (1,101 MiB; 1.15 GB) | **35× faster, 8.2× lower process peak** |
 
 The cost is now **linear** in window length at ~0.2 CPU-s/kb (forward +
-backward, one thread) and ~70 KB/base of autograd state, against the
-reference's superlinear 4–7 s/kb and 0.8 MB/base; the longest yeast window
-fits in 1.1 GB instead of breaching the 8 GB cap. Batched over four 12,288-base
+backward, one thread) and the process peak grows by ~74 KiB per base of the
+longest window (same baseline-subtracted convention as 3.1), against the
+reference's superlinear 4–7 s/kb and ~0.77 MiB/base; the longest yeast window
+peaks at 1.08 GiB instead of breaching the 8 GB cap. Batched over four 12,288-base
 windows the per-base cost falls further to 0.095 ms/base (float64) and
 0.075 ms/base (float32; loss agrees with float64 to 2e-6 relative, gradient to
 3e-3 absolute on unit-scale gradients — the fit keeps float64 for now). The
@@ -368,8 +382,26 @@ and commit apart from `loss_kernel`; `fast-kernel/run_manifest.json`):
 | train NLL/window at step 10 / 20 | 0.0001 / 0.0006 | **0.0001 / 0.0006** (identical) |
 | wall clock, torch default threads | 12 min 50 s | **1 min 32 s** |
 | CPU time (user+sys), default threads | 1,634.8 s (212 %) | 1,492.6 s (1,627 %) |
-| peak host RSS | 7.15 GB | **0.97 GB** |
-| wall / CPU time, one thread pinned to one core (`taskset`) | — | **24.8 s / 24.7 CPU-s** (0.20 CPU-s per sampled kb, 66× less CPU than the reference run; 0.91 GB) |
+| peak host RSS | 6.82 GiB | **0.92 GiB** (968,836 KiB) |
+| wall / CPU time, one thread pinned to one core (`taskset`) | — | **24.8 s / 24.7 CPU-s** (0.20 CPU-s per sampled kb, 66× less CPU than the reference run; 0.87 GiB) |
+| same, re-run at the committed source `129dcbe` (`fast-kernel/pinned-129dcbe/`) | — | **23.3 s / 23.3 CPU-s**, 0.87 GiB (914,560 KiB), NLL 0.0001 / 0.0006 |
+
+**Provenance of the fast-kernel run** (engels-0080 P2). The two fast-kernel fits
+and the fast profile in `fast-kernel/` were executed from the working tree
+*before* the kernel was committed: their manifests record `commit: 751700b`
+(the parent) although that commit has neither `model/a/fast_loss.py` nor the
+`loss_kernel` field, so checking out the recorded SHA cannot reproduce them.
+The raw manifests are kept unchanged and
+`fast-kernel/PROVENANCE.md` reconciles them: parent `751700b`, dirty tree, the
+source later committed as `28c5339` in the same session with no intervening
+edit recorded but not verifiable by hash — so those three records lack an exact
+source pin. The one-core fit was therefore repeated at the committed, clean
+source (`129dcbe`, which also carries the cache-key fix below; manifest
+`source_dirty: false`, `source_sha256` recorded) and reproduces the trajectory
+and cost; that row is the pinned number. `train.py` manifests now always record
+a SHA-256 over `model/a/*.py` + `model/grammar/*.py`, the dirty flag and the
+dirty file list next to `commit`, so a future run from an uncommitted tree is
+identifiable rather than mis-attributed.
 
 The per-step NLL trajectory is identical to four decimals, i.e. the kernel
 reproduces the reference loss and gradient on real windows, not only on the
@@ -389,7 +421,7 @@ report): 94 admitted windows, 143,653 oriented bases.
 | encoder forward | 0.38 | **2.7** |
 | decode + traceback (pure-Python `DelayedEntryDecoder.viterbi`) | 9.51 | **66.2** |
 | total | 10.41 | **72.5** |
-| peak host RSS | | 0.31 GB |
+| peak host RSS | | 0.31 GiB (325,684 KiB) |
 
 Against the 15 CPU-s/Mb budget: the encoder plus featurizer cost 6.3 CPU-s/Mb
 on one core, inside the budget with room to spare; the **pure-Python Viterbi
@@ -584,6 +616,38 @@ Training/measurement entry-point review findings and their resolution
   `test_source_rejects_unknown_key`, `test_source_rejects_string_dev_seqids`,
   and `TestReservations`. The yeast smoke config's intentionally empty dev list
   stays a valid profiling mode, distinct from a development-selected fit.
+
+Fast-kernel review findings (engels-0080, stalin-0081) and their resolution:
+
+- **Grammar cache keyed by table number, not by the genetic code** (P2, both
+  reviewers; the collision reproduced by both). `Grammar.get` keyed on
+  `code.table`, so `TABLES[1]` and `TABLES[1].with_alternative_initiators()`
+  shared one cached grammar and whichever ran first decided the other's
+  initiator set (a legal `TTG` start dropped, or a forbidden one admitted,
+  depending on call order). Now keyed by the frozen `GeneticCode` value.
+  Regression `test_grammar_cache_keyed_by_genetic_code_value` runs both call
+  orders against the reference and asserts `log Z = log 2` / `0` for the two
+  variants after either warm-up. The ATG-only training default was not affected.
+- **Fast-run manifests could not be reproduced from their recorded commit**
+  (P2, engels-0080). Reconciled above (3.2, "Provenance") and in
+  `fast-kernel/PROVENANCE.md`; the manifest now pins the executed source by hash
+  and dirty state; the one-core fit is repeated at a clean committed source.
+- **Memory units and RSS semantics** (P3, engels-0080). Sections 3.1 and 3.2
+  restated in GiB with the raw KiB/MiB beside each figure, the cumulative
+  process-RSS nature of the profile numbers stated, and the per-base figures
+  re-derived as baseline-subtracted process increments. `measure` JSON keys are
+  now `peak_host_rss_gib` / `peak_device_mem_gib` (the earlier
+  `measure-chrI/measure_chrI.json` keeps the old key name; its value, 0.3106,
+  was already GiB).
+- **Unsupported GPU-cap extrapolation** (P3, engels-0080). Removed from 3.1; the
+  direct 4,000–7,000 CPU-s/Mb figure stands and the GPU regime is pending.
+- **Empty window raised `IndexError` in the fast twin** (P3, engels-0080).
+  Symbol tensors are built with `dtype=torch.long`; `partition("", zeros(11, 0))`
+  returns `0` like the reference. Regression `test_empty_window_matches_reference`.
+- stalin-0081's 216-case phase/split sweep (introns inside initiator and stop
+  codons, three tables, `m` 1/2/4) is noted as independent parity evidence at
+  ≤ 7.1e-15; not added to the suite here, since the fixture and random-lattice
+  tests already cover it in under a second and the sweep takes six.
 
 ## 7. Training-set coverage accounting
 
