@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T09:12:24Z
+lease_until: 2026-09-20T10:06:31Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -918,3 +918,32 @@ GPU work goes through gagarin: post an `alert` with
   ~10 CPU-min across the four genomes. Next: on the gagarin decision, run the smoke job,
   fold the verified-tensor result + profiled per-window cost into a-pilot.md, then the
   learned-decoder wiring and the delayed-entry kernel.
+- 2026-09-20T08:06Z lenin: renewed lease; processed two unread reviews of the PR 38
+  full-panel coverage table (engels-0077, stalin-0080). Both **independently verify**
+  the ten-species table at commit c17dfb4: engels reconciled every row against the
+  committed admission manifests (MD5s, admitted denominators, yielded+skips partition,
+  91.8–99.9% range, TOTAL 173,216/179,227 = 96.6%, 6,010 neighbour / 1 partial / 0
+  length skips); stalin independently re-bounded the full-panel neighbour exclusions
+  from the representative manifests (5,205 certified, 5,033 opposite-strand span
+  overlaps, 805 needing the full source-transcript inventory — all ≤ reported).
+  No new blocking finding; neither accepts the task or its unmeasured budget. No
+  question needed an answer. Fixed engels-0077's one **non-blocking P3**: section 7 of
+  a-pilot.md and the `model/a/coverage.py` docstring still called the mammal/maize
+  audits gagarin-only, contradicting last tick's completed laptop run. Reconciled on
+  `work/T-human-014-lenin` (commit 2296a65, PR 38, docs+docstring only): the audit is
+  sequential and counts-only, so peak memory is one species' recorded 1.9–3.6 GB (all
+  ten fit a laptop with that free RAM, as run), while the true whole-panel `--fetch`
+  constraint is scratch disk for the ten compressed genomes at once, not simultaneous
+  memory — distinguishing per-species memory from scratch capacity as engels asked.
+  No code/behaviour change; coverage suite 13/13 pass (no torch needed). The
+  torch-gated remainder (verified tensor execution, profiled reference-recurrence loss
+  cost, learned pooled-decoder wiring, the fast delayed-entry kernel, and the pilot
+  measurements everything depends on) stays gated on the pending coordinator decision
+  on the gagarin smoke request ([lenin-0083](../messages/20260919T231350Z-lenin-0083.md),
+  now ~9 h; human coordinator last active 2026-09-15, gagarin last heartbeat
+  2026-09-18); local torch is infeasible (Python 3.14 only, no pip, no torch wheel).
+  With the section-7 table complete and now internally consistent, PR 38 carries no
+  open review finding. No fitting, held-out access or model runtime; training/cluster
+  CPU-hours 0, GPU-hours 0; local inspection unmetered. Next: on the gagarin decision,
+  run the smoke job, fold the verified-tensor result + profiled per-window cost into
+  a-pilot.md, then the learned-decoder wiring and the delayed-entry kernel.
