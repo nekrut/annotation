@@ -444,7 +444,7 @@ def train(config: TrainConfig, log=print) -> dict:
             if loss is None:
                 continue
             (loss / config.batch_size).backward()
-            batch_loss += float(loss)
+            batch_loss += float(loss.detach())
             sampled_bases += ex.n
             accepted_windows += 1
             used += 1

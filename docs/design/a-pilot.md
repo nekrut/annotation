@@ -1,10 +1,10 @@
 # Candidate A pilot: implementation and end-to-end measurement (T-human-014)
 
 Status: **in progress** (owner `lenin`). This document is the T-human-014
-deliverable and is revised in place each tick. Measurements against the
-budget are pending a gagarin fitting/inference run; this first revision
-records the implementation and the measurement plan so reviewers can check
-the design before any GPU time is spent.
+deliverable and is revised in place each tick. The tensor path is now
+verified and the reference-loss cost profiled locally on CPU (section 3.1);
+measurements against the budget on pilot chromosomes and the GPU regime are
+still pending a gagarin run and the fast training kernel.
 
 ## 1. What is implemented
 
@@ -220,6 +220,79 @@ Per the task's definition of done and proposal section 6:
   one metazoan development chromosome, both regimes, and fill the section 6.1
   sensitivity table here with measured numbers.
 
+### 3.1 Local smoke run, 2026-09-20 (CPU only; the gagarin request stays open for the GPU half)
+
+`uv` became available on the dev host, so a Python 3.11.14 venv with
+`torch 2.14.0+cpu` (no CUDA) was built and `model/a/gagarin_smoke.sh` was run
+unchanged at commit `dfa9df9` on an Intel Core Ultra 9 285K (24 logical CPUs,
+62 GB RAM). Raw outputs (test log, `run_manifest.json`, `coverage_yeast.tsv`,
+`measure_yeast.json`, both `/usr/bin/time -v` reports, per-window profile) are
+in `relay/artifacts/T-human-014/smoke-local-20260920/`. This covers everything
+in alert lenin-0083 except the CUDA build, device memory and the GPU regime,
+which still need gagarin.
+
+**1. Tensor path verified.** Full suite under Python 3.11 + torch:
+`pytest tests` → **133 passed, 0 skipped** (6.4 s wall, 599 MiB peak RSS); the
+five candidate-A modules via the script's `unittest` line → 75 tests OK. This is
+the first execution of the input-validation, local-attention oracle-parity,
+`chain_nll` autograd and duration-init tests that every review to date listed
+as unverified; all pass. The one runtime warning, a `float(loss)` on a grad-requiring scalar in
+`train.py`, is silenced with `.detach()` in this revision (no behaviour change).
+
+**2. Yeast fetch + coverage.** Both pinned sources MD5-verified from NCBI
+`genomes/all`. 5,858 admitted / 5,740 yielded (98.0 %), 118 skipped for
+neighbour overlap, 0 partial, 0 too long — identical to the committed
+section-7 row.
+
+**3. Encoder-only smoke fit (20 steps, batch 4, `max_window` 12288, seed 0):**
+
+| quantity | value |
+|---|---|
+| windows drawn / accepted | 80 / 80 |
+| sampled bases | 122,528 |
+| wall clock | 12 min 50 s |
+| CPU time (user+sys) | 1,634.8 s at 212 % CPU (torch default threads) |
+| CPU-s per sampled kb | **13.3** |
+| peak host RSS | **7.15 GB** |
+| train NLL/window at step 10 / 20 | 0.0001 / 0.0006 (no dev split declared, so `best.pt` is the final state) |
+
+**4. Per-window cost of the reference-recurrence chain loss** (single thread,
+`torch.set_num_threads(1)`, float64, fresh `CandidateA`, one window each;
+`profile_window.py` in the artifact directory):
+
+| window bases | encoder fwd | loss fwd (enc + chain) | backward | total | s per kb | peak RSS |
+|---:|---:|---:|---:|---:|---:|---:|
+| 422 | 0.006 s | 0.76 s | 0.83 s | 1.6 s | 3.8 | 0.56 GB |
+| 1,223 | 0.009 s | 2.58 s | 3.37 s | 5.9 s | 4.9 | 1.25 GB |
+| 2,804 | 0.020 s | 6.78 s | 9.25 s | 16.0 s | 5.7 | 2.68 GB |
+| 11,255 | 0.090 s | 26.1 s | 55.7 s | 81.7 s | 7.3 | **9.0 GB** |
+
+Reading: the encoder itself costs ~8 µs/base on one core (0.008 CPU-s/kb, i.e.
+~8 CPU-s/Mb before decoding — inside the 15 CPU-s/Mb budget with room for the
+decoder). The **reference chain loss is 500–900× the encoder**: 4–7 CPU-s/kb,
+superlinear in window length, and its autograd graph holds ~0.8 MB per base, so
+a single ~11 kb window already exceeds the 8 GB cap. Extrapolated to the pilot
+(train development chromosomes, tens of Mb per epoch) it is 10⁴–10⁵ CPU-s per
+Mb per pass, orders of magnitude outside the 24 GPU-hour cap even with perfect
+GPU speed-up. **Conclusion: the fast vectorized delayed-entry kernel (section 2,
+item 2) is mandatory before the pilot fit, not optional.** The reference forward
+keeps its role as the differentiable oracle the kernel is checked against.
+
+**5. `measure` on yeast** (all 5,740 admitted windows, ~8.6 Mb oriented,
+`best.pt` from the smoke fit, CPU) was started as the script's step 2d but had
+not finished after 25 min wall (~3 CPU-h across torch's default 10+ threads):
+the script-level run iterates the pure-Python reference delayed-entry Viterbi
+over every admitted window of the genome, which the per-window profile above
+did not time. Next tick re-runs it per sequence (`--seqid`, one chromosome)
+with `torch.set_num_threads(1)` so the CPU-regime row is a one-core number, and
+fills section 5. As the docstring says, that is an annotation-selected window
+profile (outputs discarded, no both-strand/I/O/output accounting), not a
+chromosome row.
+
+**Compute recorded:** local CPU only — 0.45 CPU-h for the smoke fit, ~0.05
+CPU-h for the per-window profile, ~3 CPU-h for the abandoned full-genome
+`measure`; cluster CPU-hours 0, GPU-hours 0. No held-out species touched.
+
 ## 4. Budget and caps
 
 Model ≤ 5 M parameters (455,841 ✓) and ≤ 8 GB. Fitting uses train species
@@ -230,8 +303,11 @@ hours are recorded in this task's log after every run.
 
 ## 5. Section 6.1 sensitivity table (measured)
 
-_Pending the gagarin run; to be filled with measured stem-efficiency,
-decoding and scratch numbers, not the proposal's arithmetic estimates._
+_Pending: to be filled with measured stem-efficiency, decoding and scratch
+numbers, not the proposal's arithmetic estimates. What is measured so far
+(section 3.1, CPU only): encoder forward ~8 µs/base on one core (≈8 CPU-s/Mb),
+inside the 15 CPU-s/Mb budget before decoding; the per-sequence decoder timing
+and the GPU regime are still open._
 
 ## 6. Review responses (PR #38)
 
