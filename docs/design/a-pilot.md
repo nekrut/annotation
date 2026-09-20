@@ -26,8 +26,8 @@ The neural half of candidate A (proposal section 3), on
   products only over the 16 permitted offsets per query, O(T·W) not O(T²)),
   fine/context fusion of the 16-channel
   stem with the repeated 96-channel context, and the 11-channel emission head.
-  Plus the 54 pooled-decoder scalars (`DecoderParams`) that feed the existing
-  `model.grammar` reference and delayed decoders.
+  Plus the 54 pooled-decoder scalars (`DecoderParams`), consumed through
+  `model/a/pooled.py` (below).
 - `model/a/inventory.py` — the section 3.5 parameter arithmetic, torch-free.
 - `model/a/loss.py` — the chain-loss **oracle** (sections 3.1–3.2), torch-free:
   `numerator_scores` builds the gold chain's hard `-inf` support mask over the
@@ -90,6 +90,27 @@ The neural half of candidate A (proposal section 3), on
   `-inf` in both), batched-vs-single equality with zero gradient on padding —
   plus `+inf` (not clamped) for an infeasible numerator and input rejection.
   Cost: section 3.2.
+- `model/a/pooled.py` — the **learned pooled decoder** (proposal 3.5's 54
+  scalars as decoder tables, 3.2 item 5). `duration_tables` turns the
+  phase × component mixture and hazard logits into differentiable `(3, R)`
+  `log π`, `log q`, `log (1 − q)` tables (`π = softmax`, `q = sigmoid`) that
+  `fast_loss.log_partition_batch`/`chain_nll`/`batch_chain_nll` and
+  `fast_viterbi.viterbi_batch`/`viterbi`/`viterbi_windows` take (`tables=`)
+  in place of the fixed `DurationMixture` values; the mixture then only fixes
+  the grammar's shape `(m, R)` (`structure`, a stable `Grammar` cache key —
+  the tables are rebuilt per step, the grammar is not). `motif_bias` adds the
+  16-entry donor and acceptor dinucleotide scores to the `donor`/`acceptor`
+  emission rows — a donor at boundary `t` pays `donor_dinuc[x[t] x[t+1]]`, an
+  acceptor `acceptor_dinuc[x[t−2] x[t−1]]`; non-ACGT pairs and pairs past the
+  window score 0 — so both kernels and the Python reference decoders are
+  unchanged. `as_mixture` gives the same law as a concrete `DurationMixture`
+  for parity runs. The four partial-family scalars are carried but not consumed
+  until the section-3.6 boundary-support increment. `tests/test_a_pooled.py`
+  (torch-gated, 8 cases) pins table/mixture agreement, bias indexing, fast-loss
+  and tensor-Viterbi parity with the reference kernels under the learned law
+  (fixtures, 30 + 40 random lattices, batched = single), a finite gradient on
+  all 50 consumed scalars, and central-difference agreement of the mixture,
+  hazard and dinucleotide gradients.
 - `model/a/dataset.py` — the section 3.6 structured **training-window loader**,
   torch-free at its core. The species `*.summary.json` **is** the loading
   interface: `iter_windows(summary, gff, fasta)` calls `verify_source` (a hard
@@ -178,12 +199,12 @@ split and manifest construction are unit-tested here without torch
 (`tests/test_a_train.py`, 14 stdlib cases). The tensor path — encoder forward,
 `chain_nll` autograd, checkpoint selection, and the decode/traceback timing —
 runs on gagarin; no local host has torch. See section 3.
-4. **Learned pooled-decoder scalars in the loss and decoder.** The decoder
-   that ships is now the tensor Viterbi (`model/a/fast_viterbi.py`, 3.2 item
-   4); it still runs the fixed grammar. Wiring `model.decoder`'s duration and
-   motif scalars into the fast kernel's tables (so they get a gradient) and
-   into the scan is the next increment, together with the first
-   chromosome-level `measure` row (both strands, overlapping windows, output).
+4. **First chromosome-level `measure` row** (both strands, overlapping
+   full-sequence windows, output writing and I/O), the step that turns the
+   per-stage costs of 3.2 items 4–5 into a section-5 row. The learned pooled
+   decoder is now in the loss and the decoder (`model/a/pooled.py`, 3.2 item
+   5); what remains of the decoder is the partial-family scalars, which
+   belong to the boundary-support increment above.
 
 ## 3. Measurement plan and the entry point
 
@@ -489,9 +510,54 @@ both-strand/I/O/output-writing accounting, encoder fit for 20 steps — so this
 is still the per-stage cost a section-5 chromosome row is built from, not the
 row; but the failing stage of item 3 is no longer failing.
 
+**5. Learned pooled decoder in the loss and the decoder; chromosome I
+re-measured with R = 3** (`model/a/pooled.py`, commit `9fb3aec`, source
+SHA-256 `6ab52a79…e8b4`, `source_dirty: false`; `pooled-decoder/`). `train`
+now fits all 455,841 parameters: the loss adds `motif_bias` to the emissions
+and passes `duration_tables(model.decoder)` to the fast kernel (the reference
+kernel, `loss_kernel: "reference"`, reads the same law through `as_mixture`),
+so the mixture logits, hazard logits and both dinucleotide tables get a
+gradient (`tests/test_a_pooled.py` checks it against central differences);
+the optimizer and gradient clip cover `model.parameters()`, and the manifest
+records `scope: encoder-and-pooled-decoder` and `min_intron` (`m`, default
+20; the previous manifests' `encoder-only-fixed-grammar` remain as they
+were). `measure` loads the checkpoint's decoder scalars, adds the bias (timed
+in the decode stage) and decodes under the learned tables; the row records
+`min_intron` and `pooled_decoder: learned`.
+
+The 3.2 item 2 smoke fit repeated with the pooled decoder (same config, seed
+and data, one thread, `taskset` one core): 26.9 s user / 27.8 s wall, peak RSS
+0.91 GiB (955,656 KiB), train NLL/window 0.0001 → 0.0007 as before (item 2:
+23.3 s at R = 1). All four consumed decoder tensors moved (max |Δ| 3–4 × 10⁻³
+after 20 Adam steps at lr 3 × 10⁻⁴), `partial_families` did not. Then the
+item 4 `measure` on chromosome I (94 windows, 143,653 oriented bases,
+`--decoder tensor`, one thread, one core) with this checkpoint:
+
+| stage | batch 16, CPU s | CPU-s per Mb | vs item 4 (R = 1) |
+|---|---:|---:|---:|
+| preprocessing (featurizer) | 0.51 | 3.6 | — |
+| encoder forward | 0.35 | 2.5 | — |
+| decode + traceback (tensor scan, R = 3, + bias) | 0.90 | **6.2** | +1.3 |
+| total | 1.76 | **12.2** | +1.3 |
+| peak host RSS | | 0.48 GiB (500,192 KiB) | +0.06 GiB |
+
+Unbatched (`--decode-batch 1`, `measure_chrI_pooled_b1.json`) decode is 31.7
+CPU-s/Mb, three-stage total 37.4. The +1.3 CPU-s/Mb is the proposal's
+**R = 3** duration mixture (items 3–4 decoded the default single-component
+`DurationMixture()`, R = 1, so their decoder rate understated the specified
+grammar) — the `(B, K, R)` tail update triples — plus ~0.2 CPU-s/Mb for the
+per-window dinucleotide lookup (Python indexing over the sequence; a tensor
+gather if it ever matters). At 12.2 CPU-s/Mb the three stages are at 81 % of
+the 15 CPU-s/Mb budget on one core, still inside. The item-3 caveats are
+unchanged (annotation-selected windows, outputs discarded, no both-strand /
+I/O / output accounting, 20-step encoder), and the learned scalars after 20
+steps are numerically the initial ones to three decimals — this is the cost
+of the specified decoder, not its accuracy.
+
 **Compute recorded:** local CPU only — ~0.4 CPU-h for the two fast-kernel
 smoke fits, ~0.02 CPU-h for the profile, 0.003 CPU-h for the chromosome I
-`measure`, 0.005 CPU-h for the tensor-decoder `measure` runs and profiles;
+`measure`, 0.005 CPU-h for the tensor-decoder `measure` runs and profiles,
+~0.01 CPU-h for the pooled-decoder fit and its two `measure` runs;
 cluster CPU-hours 0, GPU-hours 0. No held-out species touched.
 
 ## 4. Budget and caps
@@ -507,12 +573,13 @@ hours are recorded in this task's log after every run.
 _Pending: to be filled with measured stem-efficiency, decoding and scratch
 numbers, not the proposal's arithmetic estimates. What is measured so far
 (sections 3.1–3.2, CPU only, one core, yeast chromosome I admitted windows):
-featurizer 3.7 + encoder 2.3 + tensor Viterbi 4.9 = 10.9 CPU-s/Mb, inside the
-15 CPU-s/Mb budget (3.2 item 4); the pure-Python reference decoder at 66
-CPU-s/Mb (3.2 item 3) is kept only for parity runs. Still missing for a
-chromosome row: both strands, full-sequence windowing with overlap, output
-writing and I/O, and a checkpoint fit for more than 20 steps; the GPU regime
-is still open (gagarin)._
+featurizer 3.6 + encoder 2.5 + tensor Viterbi with the learned R = 3 pooled
+decoder 6.2 = 12.2 CPU-s/Mb, inside the 15 CPU-s/Mb budget (3.2 item 5; 10.9
+at R = 1, item 4); the pure-Python reference decoder at 66 CPU-s/Mb (3.2
+item 3) is kept only for parity runs. Still missing for a chromosome row:
+both strands, full-sequence windowing with overlap, output writing and I/O,
+and a checkpoint fit for more than 20 steps; the GPU regime is still open
+(gagarin)._
 
 ## 6. Review responses (PR #38)
 
@@ -714,6 +781,13 @@ Fast-kernel review findings (engels-0080, stalin-0081) and their resolution:
   codons, three tables, `m` 1/2/4) is noted as independent parity evidence at
   ≤ 7.1e-15; not added to the suite here, since the fixture and random-lattice
   tests already cover it in under a second and the sweep takes six.
+- **Stage ranking and the unbatched rate** (P3, engels-0082, corroborated by
+  stalin-0083): 3.2 item 4 called the batched decoder the cheapest stage; it
+  is the most expensive of the three (4.9 > 3.7 > 2.3 CPU-s/Mb), and the
+  unbatched 30.0 is decode + traceback alone (three-stage total 35.9). Wording
+  fixed; no number changes. engels-0082's 288-case and stalin-0083's 252-case
+  multi-gene/ambiguous/padded-batch sweeps are noted as independent parity
+  evidence at ≤ 1.3e-14, not added to the suite for the reason above.
 
 ## 7. Training-set coverage accounting
 
