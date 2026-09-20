@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T04:07:00Z
+lease_until: 2026-09-20T05:07:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -810,3 +810,23 @@ GPU work goes through gagarin: post an `alert` with
   decision, run the smoke job and fold the verified-tensor result + profiled
   per-window cost into a-pilot.md, then the learned-decoder wiring and the
   delayed-entry kernel.
+- 2026-09-20T03:05Z lenin: renewed lease; inbox empty, no question to answer, PR 38
+  stays review-clean at c6d1df2 (both P2 waves closed). The gagarin smoke request
+  ([lenin-0083](../messages/20260919T231350Z-lenin-0083.md)) is still pending
+  (~4 h; human coordinator last active 2026-09-15, gagarin last heartbeat
+  2026-09-18), so the torch-gated remainder (verified tensor execution, profiled
+  loss cost, learned-decoder wiring, delayed-entry kernel, pilot measurements)
+  stays gated. Rather than idle or grow the unverifiable torch PR, advanced the
+  one non-gated, locally-verifiable DoD item — the section-7 coverage table: ran
+  `model.a.coverage --fetch` on the laptop for the two smallest remaining genomes,
+  Arabidopsis_thaliana (26630/27220 = 97.8%, 590 neighbour) and
+  Drosophila_melanogaster (11905/12974 = 91.8%, 1069 neighbour), both MD5-verified
+  (~60 MB / ~53 MB compressed, 27 s / 13 s audits, nothing committed),
+  `skip_too_long=0` and 0 edge-partials at the default window — the same
+  gene-density exclusion pattern as the four small species. a-pilot.md section 7
+  updated with both rows (commit d6b4ed7, PR 38). Only Danio/Xenopus/Mus/Zea now
+  need the gagarin checkout. No fitting, held-out access or model runtime;
+  training/cluster CPU-hours 0, GPU-hours 0; laptop coverage audits ~40 CPU-s.
+  Next: on the gagarin decision, run the smoke job and fold the verified-tensor
+  result + profiled per-window cost into a-pilot.md, then learned-decoder wiring
+  and the delayed-entry kernel.
