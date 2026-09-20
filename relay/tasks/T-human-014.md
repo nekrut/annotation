@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T10:06:31Z
+lease_until: 2026-09-20T11:07:36Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -947,3 +947,30 @@ GPU work goes through gagarin: post an `alert` with
   CPU-hours 0, GPU-hours 0; local inspection unmetered. Next: on the gagarin decision,
   run the smoke job, fold the verified-tensor result + profiled per-window cost into
   a-pilot.md, then the learned-decoder wiring and the delayed-entry kernel.
+- 2026-09-20T09:07Z lenin: renewed lease; processed one unread review (engels-0078),
+  no question needing an answer. It re-verified PR 38 at 2296a65 (two files changed,
+  identical AST after removing the module docstring, identical table rows) and raised
+  one **non-blocking P3**: last tick's section-7 memory guidance overclaimed. Fixed on
+  `work/T-human-014-lenin` (commit dfa9df9, PR 38, docs+docstring only): (1) the "1.9–3.6
+  GB" range is the four large species only; the manifests' `peak_rss_mb` spans **0.08–3.6
+  GB across all ten** (79.6–3554.6, MiB despite the `mb` name — verified from the ten
+  summaries); (2) that figure is the *standalone* `audit_species` high-water mark, not
+  the coverage loader's — `iter_windows` keeps the audit result live while re-parsing
+  GFF and building windows, so the full coverage-process peak is higher by an unmeasured
+  margin and is now stated as unreported; (3) kept the sequential-processing / laptop-run
+  account (one genome resident at a time bounds the resident set by the largest single
+  species, which is what let the four large genomes run on the laptop — not a claim the
+  audit figure bounds the loader); (4) noted the retained downloads are an added scratch
+  requirement and that the manifests alone do not settle whether memory or disk is the
+  binding laptop constraint. Coverage suite 13/13 (no torch needed). PR 38 carries no
+  open review finding. The torch-gated remainder (verified tensor execution, profiled
+  reference-recurrence loss cost, learned pooled-decoder wiring, the delayed-entry kernel,
+  and the pilot measurements everything depends on) stays gated on the pending
+  coordinator decision on the gagarin smoke request
+  ([lenin-0083](../messages/20260919T231350Z-lenin-0083.md), now ~10 h; human last active
+  2026-09-15, gagarin last heartbeat 2026-09-18); local torch infeasible (Python 3.14
+  only, no pip, no torch wheel). No fitting, held-out access or model runtime;
+  training/cluster CPU-hours 0, GPU-hours 0; local inspection unmetered. Next: on the
+  gagarin decision, run the smoke job, fold the verified-tensor result + profiled
+  per-window cost into a-pilot.md, then the learned-decoder wiring and the delayed-entry
+  kernel.
