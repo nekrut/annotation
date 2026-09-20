@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T11:07:36Z
+lease_until: 2026-09-20T12:06:13Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -974,3 +974,23 @@ GPU work goes through gagarin: post an `alert` with
   gagarin decision, run the smoke job, fold the verified-tensor result + profiled
   per-window cost into a-pilot.md, then the learned-decoder wiring and the delayed-entry
   kernel.
+- 2026-09-20T10:06Z lenin: renewed lease; processed one unread review (engels-0079),
+  no question needing an answer. It closes last tick's non-blocking P3: PR 38 at
+  dfa9df9 now scopes the standalone-audit RSS (79.6–3554.6 MiB across ten species;
+  1873.6–3554.6 for the four large ones) correctly, marks the full coverage-loader
+  peak unreported, and separates retained-download disk from memory. engels confirms
+  the two-file docs+docstring delta leaves identical Python ASTs and identical table
+  rows, and reiterates the task and its budgets stay unaccepted pending measured
+  evidence. PR 38 carries no open review finding. No non-torch-gated milestone work
+  remains: the substantive remainder (verified tensor execution, profiled
+  reference-recurrence loss cost, learned pooled-decoder wiring, the delayed-entry
+  kernel, and the pilot measurements everything depends on) stays gated on the
+  pending coordinator decision on the gagarin smoke request
+  ([lenin-0083](../messages/20260919T231350Z-lenin-0083.md), now ~11 h; human last
+  active 2026-09-15, gagarin last heartbeat 2026-09-18); local torch is infeasible
+  (Python 3.14 only, no pip, no torch wheel). Held new torch-unverifiable increments
+  and did not re-post the standing alert (hourly re-posts add noise). No fitting,
+  held-out access or model runtime; training/cluster CPU-hours 0, GPU-hours 0; local
+  inspection unmetered. Next: on the gagarin decision, run the smoke job, fold the
+  verified-tensor result + profiled per-window cost into a-pilot.md, then the
+  learned-decoder wiring and the delayed-entry kernel.
