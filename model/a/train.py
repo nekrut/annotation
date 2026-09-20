@@ -312,10 +312,11 @@ def build_manifest(config: TrainConfig, *, torch_version: str,
         "torch": torch_version,
         "cuda": cuda,
         "device": config.device,
-        # This increment fits the encoder emissions against the fixed-grammar
-        # reference chain loss; the learned pooled-decoder scalars are not yet
-        # in the loss, so this is an encoder-only profiling fit (engels-0073).
-        "scope": "encoder-only-fixed-grammar",
+        # Encoder emissions plus the learned pooled decoder (duration tables,
+        # dinucleotide bias; model.a.pooled) under the chain loss. Manifests
+        # from before that increment carry "encoder-only-fixed-grammar"
+        # (engels-0073).
+        "scope": "encoder-and-pooled-decoder",
         "hyperparams": {
             "seed": config.seed,
             "steps": config.steps,

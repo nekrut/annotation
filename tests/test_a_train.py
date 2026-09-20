@@ -146,7 +146,7 @@ class TestManifest(unittest.TestCase):
             cfg = self._cfg(d, seed=3, steps=10, batch_size=4, eval_every=5)
             man = T.build_manifest(cfg, torch_version="x", cuda=None)
         self.assertEqual(man["task"], "T-human-014")
-        self.assertEqual(man["scope"], "encoder-only-fixed-grammar")
+        self.assertEqual(man["scope"], "encoder-and-pooled-decoder")
         self.assertEqual(man["param_count"], SECTION_35_PARAM_COUNT)
         self.assertEqual(man["hyperparams"]["seed"], 3)
         self.assertEqual(man["hyperparams"]["eval_every"], 5)
