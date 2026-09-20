@@ -12,11 +12,14 @@ This wires the three reviewed pieces of candidate A into one runnable program:
 
 Two subcommands:
 
-  ``train``    fit the encoder + pooled-decoder scalars on the *train*
-               sequences of the configured train species, selecting the
-               checkpoint on the declared development sequences only, and
-               write a run manifest (data digests, seed, commit, hardware,
-               sampled bases) next to the checkpoint.
+  ``train``    fit the encoder against the fixed-grammar reference chain loss
+               on the *train* sequences of the configured train species,
+               selecting the checkpoint on the declared development sequences
+               only, and write a run manifest (declared draw plan, data
+               digests, seed, commit, hardware, actual sampled bases) next to
+               the checkpoint. This is an encoder-only profiling fit: the
+               pooled-decoder scalars have no gradient under the fixed grammar
+               and are wired in a later increment (engels-0073).
 
   ``measure``  time preprocessing, encoder and decoder/traceback separately
                over one sequence, with peak host and (if present) device
@@ -77,15 +80,28 @@ class SpeciesSource:
 
     @classmethod
     def from_dict(cls, d: dict) -> "SpeciesSource":
+        known = {"name", "summary", "gff", "fasta", "dev_seqids"}
+        unknown = set(d) - known
+        if unknown:
+            # A silently-ignored key (e.g. the ``dev_seqid`` typo) would drop a
+            # declared reservation and train on the intended dev sequence
+            # (stalin-0076); reject it up front.
+            raise ValueError(f"unknown species source keys: {sorted(unknown)}")
         missing = {"name", "summary", "gff", "fasta"} - set(d)
         if missing:
             raise ValueError(f"species source missing keys: {sorted(missing)}")
+        dev = d.get("dev_seqids", [])
+        # A bare string is iterable per character; ``list("chrDev")`` would
+        # reserve six one-letter sequences and leave the real chromosome in the
+        # gradient pool. Require an explicit list/tuple of ids.
+        if isinstance(dev, str) or not isinstance(dev, (list, tuple)):
+            raise ValueError("dev_seqids must be a list of sequence ids")
         return cls(
             name=str(d["name"]),
             summary=str(d["summary"]),
             gff=str(d["gff"]),
             fasta=str(d["fasta"]),
-            dev_seqids=list(d.get("dev_seqids", [])),
+            dev_seqids=[str(x) for x in dev],
         )
 
 
@@ -191,36 +207,103 @@ def _source_digests(source: SpeciesSource) -> dict:
     }
 
 
-def build_manifest(config: TrainConfig, *, train_windows: int, dev_windows: int,
-                   sampled_bases: int, best_dev_nll: Optional[float],
-                   torch_version: str, cuda: Optional[str]) -> dict:
-    """The run manifest: everything needed to reproduce and to audit the budget.
+def validate_dev_reservations(config: TrainConfig, stats_by_species) -> None:
+    """Reject a declared development reservation that no admitted window can
+    satisfy, *before* any gradient step.
 
-    Recorded in the task log and committed next to the checkpoint (the
-    checkpoint itself is not committed; it exceeds nothing but lives in the
-    gagarin scratch/return path)."""
+    Each source's ``dev_seqids`` must name sequences that actually produced
+    admitted windows for that species. A typo, a wrong id, or a reservation
+    emptied by filtering would otherwise leave the intended development
+    sequence in the gradient pool and let ``evaluate`` fall back to the final
+    checkpoint (stalin-0076). ``stats_by_species[name].windows_by_seqid`` is the
+    per-species admitted inventory the loader already tallies.
+    """
+    for s in config.sources:
+        present = set(stats_by_species[s.name].windows_by_seqid)
+        for seqid in s.dev_seqids:
+            if seqid not in present:
+                raise ValueError(
+                    f"species {s.name!r} reserves dev seqid {seqid!r}, but no "
+                    f"admitted window has that sequence id "
+                    f"(present: {sorted(present)}); a declared reservation must "
+                    f"match the admitted inventory")
+
+
+def build_manifest(config: TrainConfig, *, torch_version: str,
+                   cuda: Optional[str]) -> dict:
+    """The *pre-fit* run manifest: the declared plan and provenance.
+
+    Written before the optimizer loop, as the charter requires the sampled
+    bases and repeats to be declared before fitting. The deterministic draw
+    (uniform with replacement, seeded by ``config.seed``) over the train
+    windows bounds the workload; ``planned_draws = steps * batch_size`` is the
+    declared repeat count and ``max_window`` bounds per-window length. Both
+    ``dev_seqids`` and ``eval_every`` are recorded, so two runs that reserve
+    different chromosomes or evaluate on different schedules produce distinct
+    manifests even at identical result counts (engels-0073).
+
+    Actual attempted/accepted work is attached afterward by ``record_actual``.
+    Committed next to the checkpoint (the checkpoint lives on the gagarin
+    scratch/return path, not in git)."""
     return {
         "task": "T-human-014",
         "commit": _git_commit(),
-        "seed": config.seed,
         "param_count": SECTION_35_PARAM_COUNT,
         "hardware": platform.platform(),
         "python": platform.python_version(),
         "torch": torch_version,
         "cuda": cuda,
         "device": config.device,
-        "steps": config.steps,
-        "batch_size": config.batch_size,
-        "lr": config.lr,
-        "weight_decay": config.weight_decay,
-        "grad_clip": config.grad_clip,
-        "max_window": config.max_window,
+        # This increment fits the encoder emissions against the fixed-grammar
+        # reference chain loss; the learned pooled-decoder scalars are not yet
+        # in the loss, so this is an encoder-only profiling fit (engels-0073).
+        "scope": "encoder-only-fixed-grammar",
+        "hyperparams": {
+            "seed": config.seed,
+            "steps": config.steps,
+            "batch_size": config.batch_size,
+            "lr": config.lr,
+            "weight_decay": config.weight_decay,
+            "grad_clip": config.grad_clip,
+            "eval_every": config.eval_every,
+            "max_window": config.max_window,
+        },
+        "sampling_plan": {
+            "draw": "uniform-with-replacement over train windows",
+            "seed": config.seed,
+            "steps": config.steps,
+            "batch_size": config.batch_size,
+            "planned_draws": config.steps * config.batch_size,
+            "max_window": config.max_window,
+        },
+        "sources": [
+            {"name": s.name, "dev_seqids": list(s.dev_seqids),
+             **_source_digests(s)}
+            for s in config.sources
+        ],
+    }
+
+
+def record_actual(manifest: dict, *, attempted_draws: int, accepted_windows: int,
+                  sampled_bases: int, train_windows: int, dev_windows: int,
+                  best_dev_nll: Optional[float]) -> dict:
+    """Attach the actually-executed work to a pre-fit manifest.
+
+    The charter asks for the planned draw to be declared before fitting and the
+    actual attempted/accepted work recorded separately afterward; this keeps
+    both in one artifact. ``attempted_draws`` is how many windows the loop drew,
+    ``accepted_windows`` how many produced a finite loss (an unusable crop is
+    dropped, section 3.6)."""
+    out = dict(manifest)
+    out["actual"] = {
+        "attempted_draws": attempted_draws,
+        "accepted_windows": accepted_windows,
+        "sampled_bases": sampled_bases,
         "train_windows": train_windows,
         "dev_windows": dev_windows,
-        "sampled_bases": sampled_bases,
         "best_dev_nll": best_dev_nll,
-        "sources": [_source_digests(s) for s in config.sources],
     }
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -272,13 +355,24 @@ def _window_loss(model, ex, device, dtype):
 
 
 def train(config: TrainConfig, log=print) -> dict:
-    """Fit candidate A and return the run manifest.
+    """Fit candidate A's encoder and return the run manifest.
+
+    This is an **encoder-only profiling fit against the fixed-grammar reference
+    chain loss**: the loss reads ``model.encoder`` emissions and scores them
+    through ``model.grammar``'s default duration/motif model, so the pooled
+    decoder scalars (``model.decoder``) have no gradient path and are
+    deliberately excluded from the optimizer (engels-0073). Wiring the learned
+    pooled duration/motif model into the loss and decoder is the next increment;
+    until then this profiles the encoder path and its per-window cost, not the
+    full candidate-A objective.
 
     One gradient step accumulates ``batch_size`` per-window losses (windows vary
     in length, so they are summed rather than tensor-batched; the fast kernel
     will collate). Development NLL is evaluated every ``eval_every`` steps and
-    the lowest-NLL checkpoint is kept. The manifest is written to
-    ``out_dir/run_manifest.json`` and the checkpoint to ``out_dir/best.pt``.
+    the lowest-NLL checkpoint is kept. The pre-fit manifest (declared plan +
+    provenance) is written to ``out_dir/run_manifest.json`` before the loop and
+    rewritten with the actual work afterward; the checkpoint is
+    ``out_dir/best.pt``.
     """
     import os
 
@@ -291,21 +385,38 @@ def train(config: TrainConfig, log=print) -> dict:
     dtype = torch.float64  # matches the oracle/parity tests
 
     examples, stats = _load_all_windows(config)
+    # Reject an unusable declared dev split before spending any gradient step.
+    validate_dev_reservations(config, stats)
     dev_ids = [i for s in config.sources for i in s.dev_seqids]
     train_ex, dev_ex = split_windows(examples, dev_ids)
     if not train_ex:
         raise ValueError("no training windows after the dev split")
+    declared_dev = any(s.dev_seqids for s in config.sources)
+    if declared_dev and not dev_ex:  # defensive: validate_dev_reservations covers this
+        raise ValueError("declared development reservations retained no windows")
     log(f"loaded {len(examples)} windows: {len(train_ex)} train, {len(dev_ex)} dev")
 
     model = CandidateA().to(device)
     assert model.num_parameters() == SECTION_35_PARAM_COUNT, model.num_parameters()
-    opt = torch.optim.Adam(model.parameters(), lr=config.lr,
+    # Encoder-only: the fixed-grammar loss gives model.decoder no gradient.
+    opt = torch.optim.Adam(model.encoder.parameters(), lr=config.lr,
                            weight_decay=config.weight_decay)
     gen = torch.Generator().manual_seed(config.seed)
 
     os.makedirs(config.out_dir, exist_ok=True)
+    # Declare the plan and provenance before fitting (charter). Actual work is
+    # recorded back into the same file after the loop.
+    manifest = build_manifest(
+        config, torch_version=torch.__version__,
+        cuda=(torch.version.cuda if torch.cuda.is_available() else None))
+    manifest_path = os.path.join(config.out_dir, "run_manifest.json")
+    with open(manifest_path, "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=2, sort_keys=True)
+
     best_dev = None
     sampled_bases = 0
+    attempted_draws = 0
+    accepted_windows = 0
 
     def evaluate() -> Optional[float]:
         if not dev_ex:
@@ -328,15 +439,17 @@ def train(config: TrainConfig, log=print) -> dict:
         batch_loss, used = 0.0, 0
         for j in idx.tolist():
             ex = train_ex[j]
+            attempted_draws += 1
             loss = _window_loss(model, ex, device, dtype)
             if loss is None:
                 continue
             (loss / config.batch_size).backward()
             batch_loss += float(loss)
             sampled_bases += ex.n
+            accepted_windows += 1
             used += 1
         if used:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
+            torch.nn.utils.clip_grad_norm_(model.encoder.parameters(), config.grad_clip)
             opt.step()
         if (step + 1) % config.eval_every == 0 or step + 1 == config.steps:
             dev_nll = evaluate()
@@ -348,13 +461,11 @@ def train(config: TrainConfig, log=print) -> dict:
     if best_dev is None:  # no dev set: keep the final model
         torch.save(model.state_dict(), os.path.join(config.out_dir, "best.pt"))
 
-    manifest = build_manifest(
-        config, train_windows=len(train_ex), dev_windows=len(dev_ex),
-        sampled_bases=sampled_bases, best_dev_nll=best_dev,
-        torch_version=torch.__version__,
-        cuda=(torch.version.cuda if torch.cuda.is_available() else None))
-    with open(os.path.join(config.out_dir, "run_manifest.json"), "w",
-              encoding="utf-8") as fh:
+    manifest = record_actual(
+        manifest, attempted_draws=attempted_draws,
+        accepted_windows=accepted_windows, sampled_bases=sampled_bases,
+        train_windows=len(train_ex), dev_windows=len(dev_ex), best_dev_nll=best_dev)
+    with open(manifest_path, "w", encoding="utf-8") as fh:
         json.dump(manifest, fh, indent=2, sort_keys=True)
     return manifest
 
@@ -377,11 +488,21 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
     """Time preprocessing, encoder and decode/traceback over one sequence.
 
     Returns a dict of measured stage times, oriented bases, and per-Mb rates,
-    plus peak host RSS and device memory. The CPU regime reports process CPU
-    seconds per Mb; the GPU regime the wall seconds per Mb, matching
-    ``docs/cost-baseline`` conventions. Windows on ``seqid`` (or every window if
-    ``seqid`` is None) are processed; the decoder is the reference delayed-entry
-    Viterbi over the emissions.
+    plus peak host RSS and device memory. Each stage records **both** process
+    CPU seconds and synchronized elapsed wall seconds: on ``cuda`` the device
+    runs asynchronously, so ``time.process_time`` does not see kernel execution;
+    the GPU budget (``gpu_s_per_mb``) is taken from the CUDA-synchronized wall
+    clock, the CPU budget (``cpu_s_per_mb``) from process CPU (engels-0073).
+
+    This is an **annotation-selected window profile**, not an end-to-end
+    chromosome row: ``_load_all_windows`` runs before timing, only clean
+    admitted gene windows enter the denominator, and predictions are discarded
+    (``outputs_discarded``). It profiles the encoder/decoder cost per admitted
+    base; it does not include full-sequence, both-strand, I/O, output-writing or
+    multi-worker accounting, so it cannot fill a chromosome sensitivity/budget
+    row on its own. The decoder is the fixed-grammar reference delayed-entry
+    Viterbi, consistent with the encoder-only training scope; the learned pooled
+    decoder is not yet wired.
     """
     import torch
 
@@ -413,36 +534,53 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
 
-    t_pre = t_enc = t_dec = 0.0
+    def _sync():
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)
+
+    pre_cpu = enc_cpu = dec_cpu = 0.0
+    pre_wall = enc_wall = dec_wall = 0.0
     bases = 0
     with torch.no_grad():
         for ex in examples:
             padded, available = pad_window(ex.window)
-            c0 = time.process_time()
+            c0, w0 = time.process_time(), time.perf_counter()
             feats = encode_sequence(padded, available=available).unsqueeze(0).to(device)
-            t_pre += time.process_time() - c0
+            _sync()
+            pre_cpu += time.process_time() - c0
+            pre_wall += time.perf_counter() - w0
 
-            c0 = time.process_time()
+            c0, w0 = time.process_time(), time.perf_counter()
             emissions = model.encoder(feats)[0][:, : ex.n].to(dtype)
-            if device.type == "cuda":
-                torch.cuda.synchronize(device)
-            t_enc += time.process_time() - c0
+            _sync()
+            enc_cpu += time.process_time() - c0
+            enc_wall += time.perf_counter() - w0
 
-            c0 = time.process_time()
+            c0, w0 = time.process_time(), time.perf_counter()
             decoder = DelayedEntryDecoder(TABLES[ex.table])
             sc = _scores_from_emissions(emissions)
             decoder.viterbi(ex.window, sc)
-            t_dec += time.process_time() - c0
+            dec_cpu += time.process_time() - c0
+            dec_wall += time.perf_counter() - w0
             bases += ex.n
 
     mb = bases / 1e6
     device_mem_gb = (torch.cuda.max_memory_allocated(device) / 2**30
                      if device.type == "cuda" else None)
+    cpu_total = pre_cpu + enc_cpu + dec_cpu
+    wall_total = pre_wall + enc_wall + dec_wall
+    # The GPU budget is elapsed device time (CUDA-synchronized wall), not CPU.
+    gpu_s_per_mb = wall_total / mb if (device.type == "cuda" and mb) else None
     row = {
         "species": species, "seqid": seqid, "windows": len(examples),
         "oriented_bases": bases, "device": config.device,
-        "preprocess_cpu_s": t_pre, "encoder_cpu_s": t_enc, "decode_cpu_s": t_dec,
-        "cpu_s_per_mb": (t_pre + t_enc + t_dec) / mb if mb else None,
+        "profile": "annotation-selected-windows", "outputs_discarded": True,
+        "preprocess_cpu_s": pre_cpu, "encoder_cpu_s": enc_cpu, "decode_cpu_s": dec_cpu,
+        "preprocess_wall_s": pre_wall, "encoder_wall_s": enc_wall,
+        "decode_wall_s": dec_wall,
+        "cpu_s_per_mb": cpu_total / mb if mb else None,
+        "wall_s_per_mb": wall_total / mb if mb else None,
+        "gpu_s_per_mb": gpu_s_per_mb,
         "peak_host_rss_gb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2**20,
         "peak_device_mem_gb": device_mem_gb,
     }

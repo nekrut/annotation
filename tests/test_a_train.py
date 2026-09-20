@@ -33,6 +33,20 @@ class TestConfig(unittest.TestCase):
         with self.assertRaises(ValueError):
             T.SpeciesSource.from_dict({"name": "sp"})
 
+    def test_source_rejects_unknown_key(self):
+        # A ``dev_seqid`` typo must not be silently dropped (stalin-0076).
+        with self.assertRaises(ValueError):
+            T.SpeciesSource.from_dict(self._src(dev_seqid=["chrDev"]))
+
+    def test_source_rejects_string_dev_seqids(self):
+        # ``list("chrDev")`` would reserve six one-letter ids; reject a string.
+        with self.assertRaises(ValueError):
+            T.SpeciesSource.from_dict(self._src(dev_seqids="chrDev"))
+
+    def test_source_accepts_list_dev_seqids(self):
+        s = T.SpeciesSource.from_dict(self._src(dev_seqids=["chrDev", "chr2"]))
+        self.assertEqual(s.dev_seqids, ["chrDev", "chr2"])
+
     def test_config_parses_and_defaults(self):
         c = T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o"})
         self.assertEqual(len(c.sources), 1)
@@ -118,27 +132,82 @@ class TestSplit(unittest.TestCase):
 
 
 class TestManifest(unittest.TestCase):
-    def test_manifest_reads_digests_and_records_budget(self):
+    def _cfg(self, d, **kw):
+        summary = os.path.join(d, "sp.summary.json")
+        with open(summary, "w", encoding="utf-8") as fh:
+            json.dump({"table": 6, "m": 30, "gff_md5": "aa", "fasta_md5": "bb"}, fh)
+        kw.setdefault("out_dir", d)
+        return T.TrainConfig(
+            sources=[T.SpeciesSource("sp", summary, "g.gff", "f.fna",
+                                     dev_seqids=["chrDev"])], **kw)
+
+    def test_prefit_manifest_declares_plan_and_provenance(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = self._cfg(d, seed=3, steps=10, batch_size=4, eval_every=5)
+            man = T.build_manifest(cfg, torch_version="x", cuda=None)
+        self.assertEqual(man["task"], "T-human-014")
+        self.assertEqual(man["scope"], "encoder-only-fixed-grammar")
+        self.assertEqual(man["param_count"], SECTION_35_PARAM_COUNT)
+        self.assertEqual(man["hyperparams"]["seed"], 3)
+        self.assertEqual(man["hyperparams"]["eval_every"], 5)
+        self.assertEqual(man["sampling_plan"]["planned_draws"], 40)  # steps*batch
+        self.assertEqual(man["sources"][0]["name"], "sp")
+        self.assertEqual(man["sources"][0]["dev_seqids"], ["chrDev"])
+        self.assertEqual(man["sources"][0]["gff_md5"], "aa")
+        self.assertEqual(man["sources"][0]["table"], 6)
+        self.assertNotIn("actual", man)
+
+    def test_dev_seqids_and_eval_every_break_collision(self):
+        # engels-0073: differing reserved chromosomes / eval schedule must yield
+        # distinct manifests even at identical result counts.
         with tempfile.TemporaryDirectory() as d:
             summary = os.path.join(d, "sp.summary.json")
             with open(summary, "w", encoding="utf-8") as fh:
-                json.dump({"table": 6, "m": 30,
-                           "gff_md5": "aa", "fasta_md5": "bb"}, fh)
-            cfg = T.TrainConfig(
-                sources=[T.SpeciesSource("sp", summary, "g.gff", "f.fna",
-                                         dev_seqids=["chrDev"])],
-                out_dir=d, seed=3, steps=10, batch_size=4)
-            man = T.build_manifest(
-                cfg, train_windows=12, dev_windows=3, sampled_bases=1234,
-                best_dev_nll=0.5, torch_version="x", cuda=None)
-        self.assertEqual(man["task"], "T-human-014")
-        self.assertEqual(man["seed"], 3)
-        self.assertEqual(man["param_count"], SECTION_35_PARAM_COUNT)
-        self.assertEqual(man["sampled_bases"], 1234)
-        self.assertEqual(man["train_windows"], 12)
-        self.assertEqual(man["sources"][0]["gff_md5"], "aa")
-        self.assertEqual(man["sources"][0]["table"], 6)
-        self.assertEqual(man["sources"][0]["m"], 30)
+                json.dump({"table": 1, "m": 20, "gff_md5": "a", "fasta_md5": "b"}, fh)
+            base = dict(out_dir=d, steps=10)
+            a = T.TrainConfig(sources=[T.SpeciesSource(
+                "sp", summary, "g", "f", dev_seqids=["chrA"])], eval_every=10, **base)
+            b = T.TrainConfig(sources=[T.SpeciesSource(
+                "sp", summary, "g", "f", dev_seqids=["chrB"])], eval_every=100, **base)
+            ma = T.build_manifest(a, torch_version="x", cuda=None)
+            mb = T.build_manifest(b, torch_version="x", cuda=None)
+        self.assertNotEqual(ma, mb)
+
+    def test_record_actual_appends_executed_work(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = self._cfg(d, seed=3, steps=10, batch_size=4)
+            man = T.build_manifest(cfg, torch_version="x", cuda=None)
+            man = T.record_actual(
+                man, attempted_draws=40, accepted_windows=37, sampled_bases=1234,
+                train_windows=12, dev_windows=3, best_dev_nll=0.5)
+        self.assertEqual(man["actual"]["attempted_draws"], 40)
+        self.assertEqual(man["actual"]["accepted_windows"], 37)
+        self.assertEqual(man["actual"]["sampled_bases"], 1234)
+        self.assertEqual(man["actual"]["train_windows"], 12)
+
+
+class TestReservations(unittest.TestCase):
+    @dataclass
+    class FakeStats:
+        windows_by_seqid: dict
+
+    def _cfg(self, dev):
+        return T.TrainConfig(
+            sources=[T.SpeciesSource("sp", "s.json", "g", "f", dev_seqids=dev)],
+            out_dir="/tmp/o")
+
+    def test_declared_seqid_present_passes(self):
+        stats = {"sp": self.FakeStats({"chrDev": 3, "chr1": 5})}
+        T.validate_dev_reservations(self._cfg(["chrDev"]), stats)  # no raise
+
+    def test_missing_declared_seqid_rejected(self):
+        stats = {"sp": self.FakeStats({"chr1": 5})}
+        with self.assertRaises(ValueError):
+            T.validate_dev_reservations(self._cfg(["chrDev"]), stats)
+
+    def test_no_reservation_passes(self):
+        stats = {"sp": self.FakeStats({"chr1": 5})}
+        T.validate_dev_reservations(self._cfg([]), stats)  # no raise
 
 
 if __name__ == "__main__":

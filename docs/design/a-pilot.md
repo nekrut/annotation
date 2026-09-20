@@ -344,6 +344,55 @@ Differentiable (torch) chain-loss review findings and their resolution
   autograd/tensor checks and require a torch host (skipped on the Python 3.14.4
   torch-less host here), as the reviewers noted.
 
+Training/measurement entry-point review findings and their resolution
+(engels-0073, stalin-0076):
+
+- **The pooled decoder was disconnected from the loss but put in Adam** (P1,
+  engels-0073). The fixed-grammar chain loss reads only `model.encoder`
+  emissions and scores them through `model.grammar`'s default duration/motif
+  model; `model.decoder`'s 54 pooled scalars therefore have no gradient path.
+  Rather than claim to fit them, this increment is now explicitly scoped as an
+  **encoder-only profiling fit against the fixed grammar**: `train` builds the
+  optimizer over `model.encoder.parameters()` only, the module/manifest carry
+  `scope: "encoder-only-fixed-grammar"`, and `measure` documents that its
+  decoder is the fixed-grammar reference. Wiring the learned pooled
+  duration/motif model into both the differentiable loss and the decoder — with
+  a nonzero-gradient fixture and a checkpoint-perturbation test — is the next
+  increment, kept distinct from this profiling run.
+- **Measurement promised GPU time from CPU clocks** (P2, engels-0073). `measure`
+  used `time.process_time()` for every stage, which does not see asynchronous
+  CUDA kernels. Each stage now records **both** process CPU seconds and
+  CUDA-synchronized elapsed wall seconds (`preprocess_wall_s`/`encoder_wall_s`/
+  `decode_wall_s`); `gpu_s_per_mb` is taken from the wall clock and is `None`
+  off `cuda`, `cpu_s_per_mb` from process CPU. The row is labelled
+  `profile: "annotation-selected-windows"` with `outputs_discarded: true`,
+  preserving in the returned artifact that it profiles clean admitted gene
+  windows, not a full-chromosome sensitivity/budget row.
+- **The manifest omitted the split/schedule and was built after fitting** (P2,
+  engels-0073). `build_manifest` now records per-source `name` and `dev_seqids`,
+  `eval_every`, and a `sampling_plan` (seed, steps, batch_size,
+  `planned_draws = steps*batch_size`, max_window), and is written **before** the
+  optimizer loop as the declared plan; the collision engels reproduced (differing
+  reserved chromosomes / eval schedule, identical manifest) no longer occurs.
+  Actual attempted/accepted work (`attempted_draws`, `accepted_windows`,
+  `sampled_bases`, window counts, best dev NLL) is attached afterward by
+  `record_actual` and rewritten into the same file. Regressions:
+  `test_prefit_manifest_declares_plan_and_provenance`,
+  `test_dev_seqids_and_eval_every_break_collision`,
+  `test_record_actual_appends_executed_work`.
+- **Malformed dev reservations were silently accepted** (P2, stalin-0076).
+  `SpeciesSource.from_dict` coerced `dev_seqids` with `list(...)` and ignored
+  unknown keys, so `"dev_seqids": "chrDev"` reserved six one-letter ids, a
+  `"dev_seqid"` typo reserved nothing, and an unknown id matched nothing — each
+  leaving the intended development sequence in the gradient pool with a silent
+  fallback to the final checkpoint. `from_dict` now rejects unknown source keys
+  and any non-list `dev_seqids`; `validate_dev_reservations` (run before the
+  first gradient step) rejects a declared id that produced no admitted window,
+  using the loader's per-species `windows_by_seqid` inventory. Regressions:
+  `test_source_rejects_unknown_key`, `test_source_rejects_string_dev_seqids`,
+  and `TestReservations`. The yeast smoke config's intentionally empty dev list
+  stays a valid profiling mode, distinct from a development-selected fit.
+
 ## 7. Training-set coverage accounting
 
 The complete-target, clean-window scope of section 3.6 is temporary: it drops

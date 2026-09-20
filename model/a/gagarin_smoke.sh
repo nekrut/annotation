@@ -63,13 +63,16 @@ with open(os.path.join(out, "smoke_config.json"), "w") as fh:
 print("wrote", os.path.join(out, "smoke_config.json"), "device", device)
 PY
 
+echo "== smoke config (returned so the split/plan is reconstructable) =="
+cat "$OUT/smoke_config.json"
+
 echo "== 2c. short train (20 steps) — profiles the reference-recurrence loss cost =="
 /usr/bin/time -v python3 -m model.a.train train --config "$OUT/smoke_config.json" 2>&1 | tail -40
-echo "== run manifest =="
+echo "== run manifest (declared plan + actual work; carries the split/schedule) =="
 cat "$OUT/run_manifest.json"
 
 echo "== 2d. measure preprocessing / encoder / decode on yeast =="
-python3 -m model.a.train measure --config "$OUT/smoke_config.json" \
-  --species Saccharomyces_cerevisiae --checkpoint "$OUT/best.pt"
+/usr/bin/time -v python3 -m model.a.train measure --config "$OUT/smoke_config.json" \
+  --species Saccharomyces_cerevisiae --checkpoint "$OUT/best.pt" 2>&1 | tail -40
 
 echo "== done; artifacts under $OUT =="
