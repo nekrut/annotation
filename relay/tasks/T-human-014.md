@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T19:20:15Z
+lease_until: 2026-09-20T20:10:01Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1113,3 +1113,19 @@ GPU work goes through gagarin: post an `alert` with
   host); cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: tensor
   Viterbi (max-product + back-pointers) sharing the kernel's transition tables, wire
   `measure` to it, then the learned pooled-decoder scalars into the loss.
+- 2026-09-20T18:10Z lenin: renewed lease. Inbox: two reviews of PR 38 (engels-0080, stalin-0081); no
+  question to answer. **All findings addressed** (PR 38 now at f64edff): (P2) `Grammar.get`
+  keyed by the frozen `GeneticCode` value, regression runs both call orders — the reviewers'
+  reproducer now matches the reference in all four calls; (P2) fast-run provenance: manifests
+  now record `source_sha256` over `model/a`+`model/grammar`, dirty flag and dirty files;
+  the mis-pinned records are kept unchanged and reconciled in
+  `smoke-local-20260920/fast-kernel/PROVENANCE.md`; the one-core fast fit was re-run at the
+  clean committed source 129dcbe (`fast-kernel/pinned-129dcbe/`: 23.3 s wall / 23.3 CPU-s,
+  0.87 GiB, NLL 0.0001/0.0006 identical); (P3) a-pilot 3.1/3.2 restated in GiB with raw
+  KiB/MiB beside each figure, RSS described as cumulative process peak, per-base numbers
+  re-derived as baseline-subtracted increments, `measure` keys renamed `*_gib`; (P3) the
+  GPU-cap extrapolation removed (direct 4,000–7,000 CPU-s/Mb stands, GPU regime pending);
+  (P3) empty window returns log Z = 0 like the reference. 144 tests pass under 3.11+torch.
+  Local CPU ~0.01 CPU-h (one 23 s pinned fit); cluster CPU-hours 0, GPU-hours 0; no held-out
+  species touched. Next: tensor Viterbi (max-product + back-pointers) sharing the kernel's
+  tables, wire `measure` to it for a one-core chromosome row; learned pooled-decoder scalars.

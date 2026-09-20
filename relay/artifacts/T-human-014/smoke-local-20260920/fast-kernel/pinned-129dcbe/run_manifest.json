@@ -1,0 +1,59 @@
+{
+  "actual": {
+    "accepted_windows": 80,
+    "attempted_draws": 80,
+    "best_dev_nll": null,
+    "dev_windows": 0,
+    "sampled_bases": 122528,
+    "train_windows": 5738
+  },
+  "commit": "129dcbe37ceefe1712bbfeb8f3dfa5c1376e037c",
+  "cuda": null,
+  "device": "cpu",
+  "hardware": "Linux-7.0.0-30-generic-x86_64-with-glibc2.43",
+  "hyperparams": {
+    "batch_size": 4,
+    "eval_every": 10,
+    "grad_clip": 1.0,
+    "loss_kernel": "fast",
+    "lr": 0.0003,
+    "max_window": 12288,
+    "seed": 0,
+    "steps": 20,
+    "weight_decay": 0.0
+  },
+  "param_count": 455841,
+  "python": "3.11.14",
+  "sampling_plan": {
+    "batch_size": 4,
+    "draw": "uniform-with-replacement over train windows",
+    "max_window": 12288,
+    "planned_draws": 80,
+    "seed": 0,
+    "steps": 20
+  },
+  "scope": "encoder-only-fixed-grammar",
+  "source": {
+    "source_dirs": [
+      "model/a",
+      "model/grammar"
+    ],
+    "source_dirty": false,
+    "source_dirty_files": [],
+    "source_files": 16,
+    "source_sha256": "19666d368ad91de5b374169870eeaf6e49914d38a0aa035bf48d91614c6218fd"
+  },
+  "sources": [
+    {
+      "dev_seqids": [],
+      "fasta_md5": "88c38b957b721dfc50e6c4df03b6242e",
+      "gff_md5": "1fddbd976c4ce61e8a36a3908d46c25d",
+      "m": 20,
+      "name": "Saccharomyces_cerevisiae",
+      "summary": "/tmp/wt014/model/labels/manifests/Saccharomyces_cerevisiae.summary.json",
+      "table": 1
+    }
+  ],
+  "task": "T-human-014",
+  "torch": "2.14.0+cpu"
+}
