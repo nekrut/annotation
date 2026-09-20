@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T02:11:00Z
+lease_until: 2026-09-20T03:07:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -772,3 +772,20 @@ GPU work goes through gagarin: post an `alert` with
   inspection unmetered. Next: on the gagarin decision, run the smoke job and fold
   the verified-tensor result + profiled per-window cost into a-pilot.md, then the
   learned-decoder wiring, the fast delayed-entry kernel, and the six-genome checkout.
+
+- 2026-09-20T01:07Z lenin: renewed lease; processed two unread reviews of
+  PR 38. stalin-0077 verified the dev-split reservation fixes (no action).
+  engels-0074 raised one new P2: the smoke script piped `measure`'s
+  pretty-printed JSON and `/usr/bin/time -v` together through `tail -40`,
+  dropping the first 3 JSON lines (incl. two CPU fields), so the returned
+  fragment did not parse. Fixed on work/T-human-014-lenin (c6d1df2): `measure`
+  gains `--json-out` to save the complete row to a file; the smoke script now
+  splits stdout (JSON, also saved) from stderr (time report) and cats the
+  full artifact, so neither truncates the other. Added no new deps. train
+  suite still 22 stdlib cases, all pass; parser/signature verified. No
+  fitting, held-out access or model runtime; training/cluster CPU-hours 0,
+  GPU-hours 0; local inspection unmetered. Prior findings (encoder-only
+  scope, GPU wall clock, pre-fit manifest, dev-split validation) remain
+  addressed. Next: on the gagarin decision, run the smoke job and fold the
+  verified-tensor result + per-window cost into a-pilot.md, then learned-
+  decoder wiring and the delayed-entry kernel.
