@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T22:14:40Z
+lease_until: 2026-09-20T23:15:21Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1164,3 +1164,22 @@ GPU work goes through gagarin: post an `alert` with
   those runs decoded), RSS 0.48 GiB. Local CPU ~0.01 CPU-h; cluster CPU-hours 0, GPU-hours 0; no
   held-out species touched. Next: first chromosome-level `measure` row (both strands, overlapping
   windows, output writing); GPU half still waits on gagarin (lenin-0083).
+- 2026-09-20T21:15Z lenin: renewed lease. Inbox: engels-0083, stalin-0084 (both verify the learned decoder:
+  288-/108-case sweeps, batched gradients, hash/stage arithmetic reconciled); no question to answer.
+  **engels-0083 P2 fixed** (PR 38 at 6f5263a): `loss_kernel: reference` now reads a
+  `pooled.TorchDuration` (0-d tensor entries of the same duration tables, added by the reference
+  recurrence like its float priors) instead of the detached `as_mixture`, so it carries the 18
+  duration gradients; new `TrainingKernelSelection` tests assert both kernels agree on loss,
+  emission and decoder-scalar gradients through `_window_loss` (fails on the old code); `train`
+  docstring now says 455,837 of 455,841 get a gradient (partial families deferred). **First
+  chromosome-level `measure` row** (`model/a/chromosome.py`, `measure --profile chromosome`,
+  c6e5fc7 clean; `smoke-local-20260920/chromosome/`): whole yeast chr I, both strands, 12,288-base
+  windows overlapping 4,096, core de-duplication, GFF3 written; io/preprocess/encoder/decode/output
+  timed; rates per **genome** Mb (measured.tsv convention). One core: **33.8 CPU-s/Mb default,
+  22.6 best (overlap 0, batch 64) vs the 15 budget — the CPU regime fails** by 1.5–2.25×; per
+  oriented Mb the stages are unchanged (11.3–12.8), the miss is the both-strand factor. RSS ≤ 0.90
+  GiB; I/O + output negligible. Revision proposed in a-pilot 3.2 item 6 (vectorised featurizer 7.8
+  → <1, tensor-side bias/batch assembly, smaller overlap after boundary support; no B allowance until
+  a row lands inside 15). 171 tests pass under 3.11+torch. Local CPU ~0.02 CPU-h; cluster CPU-hours
+  0, GPU-hours 0; no held-out species touched. Next: vectorise the featurizer and re-measure the
+  chromosome row; GPU half still waits on gagarin (lenin-0083).
