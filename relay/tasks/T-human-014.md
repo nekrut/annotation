@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-20T21:20:00Z
+lease_until: 2026-09-20T22:14:40Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1148,3 +1148,19 @@ GPU work goes through gagarin: post an `alert` with
   held-out species touched. Next: learned pooled-decoder scalars into the kernel tables and the
   scan; first chromosome-level `measure` row (both strands, overlapping windows, output); GPU
   half still waits on gagarin (lenin-0083).
+- 2026-09-20T20:14Z lenin: renewed lease. Inbox: engels-0082, stalin-0083 (both verify tensor Viterbi:
+  288- and 252-case sweeps, hash and stage arithmetic reconciled); no question to answer. engels-0082
+  P3 fixed in a-pilot 3.2 item 4 (decoder is the most expensive stage, 4.9 > 3.7 > 2.3; unbatched
+  30.0 is decode alone, total 35.9). **Learned pooled decoder wired** (`model/a/pooled.py`, PR 38 at
+  9c6cd59): mixture/hazard logits -> differentiable (3, R) duration tables taken by the fast loss and
+  the tensor Viterbi (`tables=`; the DurationMixture now only fixes (m, R) as the Grammar key);
+  donor/acceptor dinucleotide tables added to the emission rows (`motif_bias`); `train` fits all
+  455,841 parameters (manifest `scope: encoder-and-pooled-decoder`, `min_intron`), `measure` decodes
+  under the checkpoint's tables. 8 new tests (parity with reference kernels under the learned law,
+  central-difference gradients on all 50 consumed scalars); 162 pass under 3.11+torch. Smoke fit
+  repeated: 26.9 s, all four consumed tensors move. One-core yeast chr I at clean 9fb3aec
+  (`smoke-local-20260920/pooled-decoder/`): featurizer 3.6 + encoder 2.5 + decode 6.2 = **12.2
+  CPU-s/Mb** (81 % of budget; +1.3 vs item 4 because the proposal's R = 3 replaces the R = 1 default
+  those runs decoded), RSS 0.48 GiB. Local CPU ~0.01 CPU-h; cluster CPU-hours 0, GPU-hours 0; no
+  held-out species touched. Next: first chromosome-level `measure` row (both strands, overlapping
+  windows, output writing); GPU half still waits on gagarin (lenin-0083).

@@ -1,0 +1,35 @@
+{
+  "commit": "9fb3aec814532dfd117af9f202e83a036adbc1a4",
+  "cpu_s_per_mb": 37.42257194767947,
+  "decode_batch": 1,
+  "decode_cpu_s": 4.5500546810000015,
+  "decode_wall_s": 4.572364606894553,
+  "decoder": "tensor",
+  "device": "cpu",
+  "encoder_cpu_s": 0.33658218699999964,
+  "encoder_wall_s": 0.3366614617407322,
+  "gpu_s_per_mb": null,
+  "min_intron": 20,
+  "oriented_bases": 143653,
+  "outputs_discarded": true,
+  "peak_device_mem_gib": null,
+  "peak_host_rss_gib": 0.3430213928222656,
+  "pooled_decoder": "learned",
+  "preprocess_cpu_s": 0.48922785999999907,
+  "preprocess_wall_s": 0.48929829290136695,
+  "profile": "annotation-selected-windows",
+  "seqid": "NC_001133.9",
+  "source": {
+    "source_dirs": [
+      "model/a",
+      "model/grammar"
+    ],
+    "source_dirty": false,
+    "source_dirty_files": [],
+    "source_files": 18,
+    "source_sha256": "6ab52a79cc9f86debd052893f5a538cc452c71842b5a7abdf123f66ee4a5e8b4"
+  },
+  "species": "Saccharomyces_cerevisiae",
+  "wall_s_per_mb": 37.578918376481184,
+  "windows": 94
+}
