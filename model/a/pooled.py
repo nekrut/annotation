@@ -129,11 +129,31 @@ def as_torch_duration(decoder, m: int = DEFAULT_M, *, dtype=torch.float64) -> To
 
 
 def _dinuc_indices(x: str, n: int) -> "tuple[list, list]":
+    """Per-position donor (``x[t:t+2]``) and acceptor (``x[t-2:t]``) row
+    indices, ``_NO_SCORE`` where the dinucleotide is off the end or contains a
+    non-ACGT character; pure-Python reference for :func:`_dinuc_index_tensors`."""
     up = x.upper()
     donor = [DINUC_INDEX.get(up[t:t + 2], _NO_SCORE) if t + 2 <= n else _NO_SCORE
              for t in range(n)]
     acceptor = [DINUC_INDEX.get(up[t - 2:t], _NO_SCORE) if t >= 2 else _NO_SCORE
                 for t in range(n)]
+    return donor, acceptor
+
+
+def _dinuc_index_tensors(x: str) -> "tuple[torch.Tensor, torch.Tensor]":
+    """Vectorised :func:`_dinuc_indices` over the base codes of ``x``
+    (:func:`model.a.features.base_codes`); equal to the reference lists."""
+    from .features import base_codes
+
+    n = len(x)
+    index, _ = base_codes(x)
+    donor = torch.full((n,), _NO_SCORE, dtype=torch.long)
+    acceptor = torch.full((n,), _NO_SCORE, dtype=torch.long)
+    if n >= 2:
+        first, second = index[:-1], index[1:]
+        pair = torch.where((first < 4) & (second < 4), 4 * first + second, torch.full_like(first, _NO_SCORE))
+        donor[:-1] = pair       # donor at t reads x[t:t+2]
+        acceptor[2:] = pair[:-1] if n > 2 else pair[:0]  # acceptor at t reads x[t-2:t]
     return donor, acceptor
 
 
@@ -156,9 +176,7 @@ def motif_bias_batch(windows: Sequence[str], decoder, *, L: Optional[int] = None
         if n > L:
             raise ValueError(f"window {b} is longer than L={L}")
         if n:
-            d, a = _dinuc_indices(w, n)
-            donor_idx[b, :n] = torch.tensor(d)
-            acceptor_idx[b, :n] = torch.tensor(a)
+            donor_idx[b, :n], acceptor_idx[b, :n] = _dinuc_index_tensors(w)
     zero = torch.zeros(1, dtype=dtype, device=device)
     donor_tab = torch.cat((decoder.donor_dinuc.to(dtype=dtype, device=device), zero))
     acceptor_tab = torch.cat((decoder.acceptor_dinuc.to(dtype=dtype, device=device), zero))

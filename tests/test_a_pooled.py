@@ -92,6 +92,27 @@ class Tables(unittest.TestCase):
 
 
 @unittest.skipUnless(HAS_POOLED, "pooled decoder not available")
+class DinucleotideIndices(unittest.TestCase):
+    def test_tensor_indices_equal_reference(self):
+        # Vectorised donor/acceptor row lookup equals the per-position Python
+        # reference, including off-end and non-ACGT (no score) positions.
+        rng = random.Random(1407)
+        cases = ["", "A", "AG", "ag", "AN", "NA", "GTAG"]
+        for _ in range(40):
+            cases.append("".join(rng.choices("ACGTacgtNnRY", k=rng.randint(1, 120))))
+        for x in cases:
+            d, a = pooled._dinuc_indices(x, len(x))
+            dt, at = pooled._dinuc_index_tensors(x)
+            self.assertEqual(dt.tolist(), d, x)
+            self.assertEqual(at.tolist(), a, x)
+        bias = pooled.motif_bias("GTAG", _random_decoder(3))
+        dec = _random_decoder(3)
+        self.assertEqual(bias[pooled._DONOR, 0].item(), dec.donor_dinuc[pooled.DINUC_INDEX["GT"]].item())
+        self.assertEqual(bias[pooled._ACCEPTOR, 2].item(), dec.acceptor_dinuc[pooled.DINUC_INDEX["GT"]].item())
+        self.assertEqual(bias[pooled._DONOR, 3].item(), 0.0)
+
+
+@unittest.skipUnless(HAS_POOLED, "pooled decoder not available")
 class LossParity(unittest.TestCase):
     def test_fixture_matches_reference_and_all_scalars_get_gradient(self):
         dec = _random_decoder(4)

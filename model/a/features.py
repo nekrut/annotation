@@ -12,8 +12,12 @@ Channels, in order:
 None of these features use a reference annotation. There are no trainable
 parameters here, so the featurizer does not enter the section 3.5 count.
 
-The function is pure Python plus torch only for the returned tensor, so its
-logic (especially the GC window) is checkable without a GPU.
+`gc_track` and `_classify` are the pure-Python reference of the channel
+logic (checkable without torch); `encode_sequence` is the vectorised torch
+implementation of the same rules over the byte codes of the sequence
+(:func:`base_codes`), tested for exact equality against the reference. On one
+core the reference costs ~3.7 CPU-s per oriented Mb and the vectorised path
+well under 0.1 (a-pilot 3.2 item 6, revision step 1).
 """
 from __future__ import annotations
 
@@ -75,6 +79,55 @@ def gc_track(
     return track
 
 
+def base_codes(seq: str):
+    """Byte-level classification of ``seq`` for the vectorised paths.
+
+    Returns ``(index, lower)``: ``index`` is an int64 tensor of length
+    ``len(seq)`` with 0..3 for A/C/G/T in either case and 4 for any other
+    character (N, IUPAC ambiguity codes, anything else, as in `_classify`);
+    ``lower`` is a bool tensor marking ASCII lower-case letters (soft masking,
+    the same predicate as ``str.islower`` on one ASCII character).
+    """
+    import torch
+
+    try:
+        raw = seq.encode("ascii")
+    except UnicodeEncodeError as exc:
+        raise ValueError("sequence must be ASCII") from exc
+    codes = torch.frombuffer(bytearray(raw), dtype=torch.uint8) if raw else torch.zeros(0, dtype=torch.uint8)
+    lower = (codes >= 97) & (codes <= 122)
+    return _BASE_TABLE[codes.long()], lower
+
+
+def _build_base_table():
+    """256-entry lookup: byte -> base index (0..3) or 4."""
+    import torch
+
+    table = torch.full((256,), 4, dtype=torch.long)
+    for ch, idx in _BASE_INDEX.items():
+        table[ord(ch)] = idx
+        table[ord(ch.lower())] = idx
+    return table
+
+
+try:
+    _BASE_TABLE = _build_base_table()
+except ImportError:  # torch absent: only the pure-Python reference is usable
+    _BASE_TABLE = None
+
+
+def _bool_tensor(mask) -> "torch.Tensor":
+    """A bool tensor from a sequence of bools (or a tensor), via the buffer
+    protocol: ~10x cheaper than ``torch.tensor(list)`` for a 12 kb window."""
+    import torch
+
+    if isinstance(mask, torch.Tensor):
+        return mask.to(torch.bool)
+    if not len(mask):
+        return torch.zeros(0, dtype=torch.bool)
+    return torch.frombuffer(bytearray(bytes(bool(v) for v in mask)), dtype=torch.bool)
+
+
 def encode_sequence(seq: str, available: Optional[Sequence[bool]] = None):
     """Build the [8, L] feature tensor for one oriented sequence.
 
@@ -82,10 +135,54 @@ def encode_sequence(seq: str, available: Optional[Sequence[bool]] = None):
     other channel forced to 0); padding invents no sequence. When `available`
     is None every position is treated as real.
 
+    Vectorised torch implementation of `_classify` + `gc_track`; the result is
+    bit-identical to `encode_sequence_reference` (the GC fraction is formed in
+    float64 and rounded to float32 once, as the reference does).
+
     Requires torch; import is deferred so the module docstring/logic and
     `gc_track` are usable without it.
     """
     import torch  # local import: keep the module importable without torch
+
+    n = len(seq)
+    if available is None:
+        avail = torch.ones(n, dtype=torch.bool)
+    else:
+        if len(available) != n:
+            raise ValueError("available mask length must match sequence length")
+        avail = _bool_tensor(available)
+    index, lower = base_codes(seq)
+    unamb = (index < 4) & avail
+    feats = torch.zeros(8, n, dtype=torch.float32)
+    if n == 0:
+        return feats
+    pos = torch.arange(n)
+    feats[index[unamb], pos[unamb]] = 1.0
+    feats[4] = ((index == 4) & avail).float()
+    feats[5] = (lower & avail).float()
+    # Local GC over a centred window, ambiguous and unavailable bases excluded
+    # (prefix sums, as in gc_track).
+    is_gc = ((index == 1) | (index == 2)) & avail
+    gc_ps = torch.zeros(n + 1, dtype=torch.int64)
+    un_ps = torch.zeros(n + 1, dtype=torch.int64)
+    torch.cumsum(is_gc.long(), 0, out=gc_ps[1:])
+    torch.cumsum(unamb.long(), 0, out=un_ps[1:])
+    half = GC_WINDOW // 2
+    lo = (pos - half).clamp_(min=0)
+    hi = (pos + half + 1).clamp_(max=n)
+    un_w = un_ps[hi] - un_ps[lo]
+    gc_w = gc_ps[hi] - gc_ps[lo]
+    track = torch.where(un_w > 0, gc_w.double() / un_w.clamp(min=1).double(), torch.zeros((), dtype=torch.float64))
+    feats[6] = track.float() * avail
+    feats[7] = avail.float()
+    return feats
+
+
+def encode_sequence_reference(seq: str, available: Optional[Sequence[bool]] = None):
+    """Per-base Python reference for `encode_sequence` (same contract); kept
+    for the parity test and for checking the channel rules without reading
+    the vectorised code."""
+    import torch
 
     n = len(seq)
     if available is None:

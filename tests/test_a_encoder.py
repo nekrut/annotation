@@ -96,6 +96,32 @@ class BuiltModule(unittest.TestCase):
         }
         self.assertEqual(set(vals.values()), {0.0})
 
+    def test_vectorised_featurizer_equals_reference(self):
+        # The torch featurizer must be bit-identical to the per-base Python
+        # reference (a-pilot 3.2 item 6 revision step 1) over every character
+        # class it can meet: both cases of ACGT, N, IUPAC codes, non-letters,
+        # with and without an availability mask, including the empty window.
+        import random
+        from model.a.features import encode_sequence_reference
+        rng = random.Random(1406)
+        alphabet = "ACGTacgtNnRYKMSWrykmsw-*"
+        cases = [("", None), ("A", None), ("n", [False]), ("AC", [True, False])]
+        for trial in range(40):
+            n = rng.randint(1, 3 * GC_WINDOW)
+            seq = "".join(rng.choices(alphabet, k=n))
+            avail = None if trial % 2 else [rng.random() < 0.85 for _ in range(n)]
+            cases.append((seq, avail))
+        for seq, avail in cases:
+            got, want = encode_sequence(seq, avail), encode_sequence_reference(seq, avail)
+            self.assertEqual(got.dtype, torch.float32)
+            self.assertTrue(torch.equal(got, want), (seq, avail))
+
+    def test_featurizer_rejects_non_ascii_and_bad_mask(self):
+        with self.assertRaises(ValueError):
+            encode_sequence("AC\u00e9")
+        with self.assertRaises(ValueError):
+            encode_sequence("ACG", available=[True, True])
+
     def test_local_attention_matches_dense_oracle(self):
         # The windowed forward must equal the masked dense product it replaces,
         # in both value and gradient (engels-0059 P2).
