@@ -1,11 +1,15 @@
 # Candidate A pilot: implementation and end-to-end measurement (T-human-014)
 
 Status: **in progress** (owner `lenin`). This document is the T-human-014
-deliverable and is revised in place each tick. The tensor path is now
-verified, the reference-loss cost profiled and the fast delayed-entry training
-kernel implemented, checked and timed locally on CPU (sections 3.1–3.2);
-measurements against the budget on pilot chromosomes and the GPU regime are
-still pending a gagarin run and the tensor Viterbi decoder.
+deliverable and is revised in place each tick. The tensor path is verified,
+the fast delayed-entry training kernel implemented and timed, and the CPU
+regime is measured end to end with a frozen smoke checkpoint on the
+*S. pombe* normalization row and on the metazoan development chromosome
+(*C. elegans* chr V, 20.9 Mb), both at 19 segments per strand: **9.2–9.7
+CPU-s per genome Mb, 1/5.4–1/5.5 of AUGUSTUS on the same core, missing
+the 1/11 portable target by 2.0× (1.8× on user time); no positive CPU
+allowance for B** (section 3.2). Still pending: the fitted checkpoint and
+its accuracy column, and the GPU regime (gagarin, lenin-0083).
 
 ## 1. What is implemented
 
@@ -1245,6 +1249,47 @@ necessary for the portable CPU target, not optional, and the
 expectation stated in (3) stands. Compute: 0.17 CPU-h local for the six
 float32 runs; cluster CPU-hours 0, GPU-hours 0.
 
+**Metazoan development-chromosome row** (code `aee0134`; records
+`elegans-chrV/`, README with the table, JSON, stdout, `/usr/bin/time -v`,
+run scripts, leakage check, source MD5s, GFF3 SHA-256s, chain diff).
+*C. elegans* chromosome V (`NC_003283.11`, 20,924,180 bases; a train
+species, chr V declared the development chromosome in the run config,
+runtime only, unscored), the pinned WBcel235 sources MD5-verified, the
+leakage check run first (0 violations), the same frozen smoke checkpoint,
+machine, one process pinned to one core, and AUGUSTUS 3.5.0
+(`--species=caenorhabditis`, marx-0026's command otherwise) on the same
+chromosome on a second core. The seam overlap is **16,384** (an
+8,192-base chain-containment guarantee, covering 97% of chr V's 4,965
+admitted representatives; p99 13.7 kb) rather than the yeasts' 4,096,
+as the encoder-margin paragraph required: 1.014× oversampling at 19
+segments per strand. Results, per genome Mb (stage / user / user +
+system): A at 19 segments, float64, **9.64 / 8.48 / 9.67**, RSS 2.04 GiB
+(encoder 3.91, decode 5.50); float32 8.37 / 7.85 / 8.40, RSS 1.74 GiB;
+the exact strand decode 42.27 / 41.98 / 42.30, RSS 4.87 GiB (its one-row
+traceback expansion and packed store scale with the 20.9 Mb row; inside
+8 GB, not the configuration of record); AUGUSTUS **52.19** user CPU-s/Mb,
+0.70 GiB, 3,357 genes — within 2% of its 51.4 on *S. pombe* on the same
+core, so the *S. pombe* machine factor of 3.21× applies. **A is 1/5.4 of
+AUGUSTUS on user + system (1/6.2 on user), machine-normalized 31.0 CPU-s/Mb
+against 15: the metazoan row misses the CPU target by 2.0× (1.8× on
+user), the same miss as the *S. pombe* row.** The per-genome-Mb cost is
+chromosome-length independent within 5% between 12.6 and 20.9 Mb (the
+residual is the longer overlap's oversampling, the margin on more tiles
+and a higher system time, 25.0 s against 14.3 s, allocation churn the
+float32 path halves). Outputs: the 19-segment float64 decode is
+**byte-identical to the exact strand decode** (208,796 chains, 0 differ):
+with the 8,192-base guarantee no chain of this checkpoint is cut at a
+segment seam, where the yeasts at overlap 4,096 lost 3–4 per chromosome.
+Float32 flips 194 / 199 chains of 208,796 (0.09%; *S. pombe* 0.08%), the
+same near-tie behaviour, to be re-checked with a fitted checkpoint before
+float32 becomes the row of record. `measured.tsv` gets four rows (AUGUSTUS
+chr V same-machine, A exact, A 19 segments, A 19 segments float32); the
+definition of done's "at least S. pombe and one metazoan development
+chromosome" is now met for the CPU regime, with the smoke checkpoint —
+the fitted checkpoint re-measures both rows for the accuracy column and
+the GPU regime is the other half. Compute: 0.35 CPU-h local for the three
+A runs and 0.30 for AUGUSTUS; cluster CPU-hours 0, GPU-hours 0.
+
 **The CPU regime missed the budget before revision step 1.** Per oriented megabase the pipeline
 costs what items 4–5 measured (11.3–12.8 CPU-s), but a genome megabase is
 two oriented megabases before overlap, so the end-to-end row is
@@ -1319,7 +1364,8 @@ superseded), ~0.05 CPU-h for the tests and the sixteen chromosome runs
 of revision step 3 (`a4d393d`, `8a7b4a8`, `87bb3a1`, `8440560`), ~0.37
 CPU-h for the S. pombe normalization row (six A runs 0.17 h, AUGUSTUS
 0.18 h, two probe runs 0.01 h), 0.17 CPU-h for the six float32 runs of
-revision step 4 (`aee0134`); cluster CPU-hours 0, GPU-hours 0. The
+revision step 4 (`aee0134`), 0.65 CPU-h for the *C. elegans* chr V row
+(three A runs 0.35 h, AUGUSTUS 0.30 h); cluster CPU-hours 0, GPU-hours 0. The
 only held-out species touched is *S. pombe*, for the runtime
 normalization after the leakage check, unscored.
 
