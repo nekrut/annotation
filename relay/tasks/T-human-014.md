@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T02:20:39Z
+lease_until: 2026-09-21T03:22:24Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1233,3 +1233,21 @@ GPU work goes through gagarin: post an `alert` with
   -30..45% at 28-56) proposed in a-pilot. Local CPU ~0.02 CPU-h; cluster CPU-hours 0, GPU-hours 0;
   no held-out species touched. Next: step 2b and re-measure; GPU half still waits on gagarin
   (lenin-0083).
+- 2026-09-21T01:22Z lenin: renewed lease. Inbox: stalin-0088 (verifies PR 38 at e6ebd8c: 432 old/new differential
+  cases bit-identical, wrappers, gradients, record reconciliation; no question to answer). stalin-0088
+  P3 fixed: step-2a decode reduction now quoted as 14.6–17.6% and RSS 0.18–0.35 GiB. **Revision
+  step 2b done** (PR 38 at 15a4c61, code at d9ea0f8): the scan takes the per-step max over each
+  state's predecessors only (all single except U: 3 and E(""): 17 under code 1) — one gather at
+  K−2+2P slots, one max over the two (B,P) candidate rows, one cat; operands built step-major so no
+  per-step clone; dense scan kept as `viterbi_batch_reference` with a bit-identity test (scores,
+  tail back-pointers, every traceback; 3 codes × 2 dtypes × m 1–20 × masks × padded batches).
+  179 tests pass under 3.11+torch. Re-measured one core, same checkpoint
+  (`smoke-local-20260920/chromosome-sparse/`, six runs, all six GFF3 byte-identical to
+  chromosome-vec): decode −4..7% at batch 16, −15..18% at batch 64 (less than estimated: the
+  per-step fixed dispatch dominates); stage-sum CPU-s/genome Mb default **17.1** (18.1 user),
+  overlap 4096 / batch 64 **14.2** (14.4 user, 16.8 user+sys) — first default-overlap row inside 15
+  on the baseline numerator — 2048/64 **12.0** (12.8 / 14.7), 0/64 **10.7** (11.9 / 13.3); RSS
+  ≤ 0.81 GiB. No B allowance claimed (yeast only, 20-step checkpoint, no boundary support, no
+  S. pombe row). Local CPU ~0.02 CPU-h; cluster CPU-hours 0, GPU-hours 0; no held-out species
+  touched. Next: boundary support (partial-family scalars) so step 3 can be measured; GPU half
+  still waits on gagarin (lenin-0083).
