@@ -1,4 +1,4 @@
 77dfa68b962b0a785480bca781d66bc815048e91e0a82ffe781338620c5c6c56  augustus.gff3
 6162cd1deea22b44b0ebab658eca54629e8933396d2c2070638feb0b7d6a4cda  nuclear.fna
 augustus.gff3 rows: gene=4452 transcript=4452 CDS=9366 bytes=6081125
-nuclear.fna: 3 sequences NC_003424.3 NC_003423.3 NC_003421.2, 12,571,820 bases, from GCF_000002945.2_ASM294v3_genomic.fna.gz (md5 2fe7c38312c8bd16a49a5a9363a732e4), mitochondrion NC_001326.1 excluded
+nuclear.fna: 3 sequences NC_003424.3 NC_003423.3 NC_003421.2, 12,571,820 bases, from GCF_000002945.2_ASM294v3_genomic.fna.gz (md5 2fe7c38312c8bd16a49a5a9363a732e4), mitochondrion NC_088682.1 (19,433 bases) excluded

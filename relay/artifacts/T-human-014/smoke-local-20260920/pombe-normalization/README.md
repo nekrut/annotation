@@ -13,7 +13,10 @@ normalization only. The AUGUSTUS command is marx-0026's
 (`--species=schizosaccharomyces_pombe --gff3=on --UTR=off`, bioconda
 3.5.0 in a micromamba env, `augustus_install.log`). The GFF3 outputs
 (A: 14.5 MB per chromosome; AUGUSTUS: 6.1 MB) are not committed;
-SHA-256s are in `gff3_sha256.txt` and `augustus/outputs_sha256.txt`.
+SHA-256s are in `gff3_sha256.txt`, `A-f32/gff3_sha256.txt` and
+`augustus/outputs_sha256.txt`. Each A row aggregates three processes
+(one per nuclear chromosome, both strands inside); the excluded
+mitochondrion is NC_088682.1 (19,433 bases; engels-0093).
 
 | run | genome Mb | stage CPU-s (sum) | process user s | system s | wall s | **stage / Mb** | user / Mb | user + system / Mb | peak RSS (max over chromosomes) | chains / genes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -48,5 +51,39 @@ decodes differ from the exact strand decode by 3 chains of 121,937 at
 19 segments (chr II 2, chr III 1), 1 at 38 and 4 at 76 on chr III
 (`chaindiff.out`), consistent with the seam contract.
 
-Compute: ~0.3 CPU-h local (A 0.17 h, AUGUSTUS 0.18 h, probe 0.01 h);
-cluster CPU-hours 0, GPU-hours 0.
+**Float32 decode** (`A-f32/`, revision step 4, code `aee0134`: `measure
+--dtype float32`; emissions, motif bias, duration tables and the scan in
+float32, with the carried scores rebased at every tile seam in the segment
+mode so the running magnitude is a tile's, not a segment's; same
+checkpoint, protocol and core, 2026-09-21 10:11–10:22 UTC):
+
+| run | stage CPU-s (sum) | process user s | system s | wall s | **stage / Mb** | user / Mb | user + system / Mb | peak RSS (max) | chains |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| A, 1 segment per strand, float32 | 499.30 | 493.04 | 8.09 | 499.52 | 39.72 | 39.22 | 39.86 | 1.49 GiB (chr I) | 121,935 |
+| A, 19 segments per strand, float32 | 103.99 | 99.87 | 6.06 | 104.04 | **8.27** | 7.94 | 8.43 | 0.97 GiB (chr I) | 121,938 |
+
+Stages at 19 segments per genome Mb: preprocess 0.11, encoder 3.76,
+decode **4.34** (float64: 5.31), output 0.05, I/O 0.01; per chromosome
+stage / Mb 8.24 / 8.16 / 8.54. The exact strand decode barely moves
+(decode 36.4 → 35.8 CPU-s per Mb). Float32 takes 10 % off the 19-segment
+row (9.22 → 8.27 stage, 9.37 → 8.43 user + system: 1/6.1 of AUGUSTUS,
+**miss 1.8× on user + system, 1.7× on user**) and 26 % off its RSS; it does
+not halve the decode as proposed, because the decode is not
+bandwidth-bound: a tile scan of 12,288 steps at B = 38 costs 0.93 s in
+float64 and 0.73 in float32, of which the per-step loop is 0.52 / 0.47 s
+(42 / 38 µs per step, ~15 torch ops on (38, 24) tensors — dispatch, not
+arithmetic) and the per-tile operand build 0.41 / 0.26 s. **Outputs:**
+float32 differs from float64 by 103 chains of 121,937 at 19 segments
+(47 / 40 / 16 per chromosome; 93 are internal exon-boundary shifts in
+short 2–5-exon chains, 7 change the exon count, 3 have no partner) and
+by 112 at 1 segment, and the float32 exact and segment decodes differ
+from each other by ~120 chains where the float64 pair differ by 3
+(`chaindiff_f32.out`; classification by overlap-matching the
+differing chains). These are near-tie decisions of the flat smoke
+checkpoint at float32 resolution; the agreement must be re-measured with
+a fitted checkpoint before float32 is adopted for a reported row. The
+float64 rows above remain the rows of record.
+
+Compute: ~0.37 CPU-h local for the float64 rows (nine process records on
+user + system, 0.3661 h: A 0.17 h, AUGUSTUS 0.18 h, probe 0.01 h), plus
+0.17 CPU-h for the six float32 runs; cluster CPU-hours 0, GPU-hours 0.

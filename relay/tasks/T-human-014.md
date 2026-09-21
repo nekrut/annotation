@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T11:11:06Z
+lease_until: 2026-09-21T12:24:08Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1373,3 +1373,24 @@ GPU work goes through gagarin: post an `alert` with
   gets a `tool` column (AUGUSTUS rows unchanged) and three rows (AUGUSTUS same-machine, A exact, A 19 segments). Local
   CPU ~0.3 CPU-h (A 0.17, AUGUSTUS 0.18, probe 0.01); cluster CPU-hours 0, GPU-hours 0. Next: float32 decode path + tests,
   re-measure the S. pombe 19-segment row; then the metazoan row; GPU half still waits on gagarin (lenin-0083).
+- 2026-09-21T10:24Z lenin: renewed lease. Inbox: engels-0093, stalin-0096 (both verify PR 38 at 0489c11: eight A records reconcile, AUGUSTUS
+  4,452 genes, user-time convention 1.76×, user+system 2.00×, both fail; P3 processes=6 → 3 on the two A rows; P3 excluded
+  mitochondrion is NC_088682.1, not NC_001326.1; CPU-h accounting 0.3661 h; no question to answer). **Both P3s fixed** (TSV rows
+  processes=3, `augustus/outputs_sha256.txt` label, README; accounting ~0.37 h). **Revision step 4, float32 decode** (PR 38 at
+  d78114c, code at aee0134): `measure --dtype float32` (emissions, motif bias, duration tables, scan); in the segment mode the
+  carried scores are rebased at every tile seam (`scan_segments(rebase=)`, default for dtypes narrower than float64, shifts
+  summed back in float64; float64 stays the bit-for-bit unbroken scan); `SeamRebase` tests: rebased float64 == unrebased on
+  offset lattices, float32 rebased == float64 chains (173/173); 193 tests pass under 3.11 + torch. Measured on S. pombe (same
+  protocol, checkpoint, core; records `pombe-normalization/A-f32/`): 19 segments **8.27 / 7.94 / 8.43** CPU-s per genome Mb
+  (float64 9.22 / 8.23 / 9.37), RSS 0.97 GiB (was 1.31); exact decode 39.72 / 39.22 / 39.86 (was 40.35 / 39.82 / 40.49). Decode
+  5.31 → 4.34: **a 10 % gain, not the halving proposed** — one-tile profile 0.93 → 0.73 s of which the per-step loop is 0.52 → 0.47
+  (42 µs/step, ~15 torch ops on (38, 24) tensors: dispatch-bound), operand build 0.41 → 0.26. Row now 1/6.1 of AUGUSTUS, **miss
+  1.8× (1.7× user only), still failed; no B allowance.** Outputs: float32 flips 103 of 121,937 chains vs float64 at 19 segments
+  (93 internal boundary shifts in short chains), 112 at 1 segment, and float32 exact vs segment decodes differ by ~120 where
+  float64 differ by 3 — near-ties of the flat smoke checkpoint; float64 stays the row of record until a fitted checkpoint
+  re-checks the flip count. measured.tsv gets the float32 row as a measured option. a-pilot 3.2 amends the revision list: the
+  remaining decode lever is a compiled scan step (worth ~2 CPU-s/Mb, row → ~6–6.5, 1/8), so the encoder work reduction with a
+  fitted checkpoint's accuracy is necessary for 1/11 on CPU. Local CPU 0.17 CPU-h (six runs) + ~0.01 tests/profile; cluster
+  CPU-hours 0, GPU-hours 0; S. pombe touched only for runtime normalization, unscored. Next: the metazoan development-chromosome
+  row (seam overlap scaled to gene length), then the fitted checkpoint for the accuracy column; GPU half still waits on gagarin
+  (lenin-0083).

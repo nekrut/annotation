@@ -1,0 +1,9 @@
+NC_003424.3 seg19 float64 vs float32: chains 53243 53243 identical 53196 only_a 47 only_b 47
+NC_003423.3 seg19 float64 vs float32: chains 44129 44130 identical 44089 only_a 40 only_b 41
+NC_003421.2 seg19 float64 vs float32: chains 24565 24565 identical 24549 only_a 16 only_b 16
+NC_003424.3 seg1 float64 vs float32: chains 53243 53243 identical 53194 only_a 49 only_b 49
+NC_003423.3 seg1 float64 vs float32: chains 44129 44129 identical 44088 only_a 41 only_b 41
+NC_003421.2 seg1 float64 vs float32: chains 24565 24563 identical 24543 only_a 22 only_b 20
+NC_003424.3 float32 seg1 vs seg19: chains 53243 53243 identical 53195 only_a 48 only_b 48
+NC_003423.3 float32 seg1 vs seg19: chains 44129 44130 identical 44080 only_a 49 only_b 50
+NC_003421.2 float32 seg1 vs seg19: chains 24563 24565 identical 24540 only_a 23 only_b 25
