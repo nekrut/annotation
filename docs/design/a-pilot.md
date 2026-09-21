@@ -230,8 +230,15 @@ runs on gagarin; no local host has torch. See section 3.
    against 8 GB — a source-derived projection, not a measurement; the
    earlier "~3.5 GB" figure for the padded path was wrong (engels-0090,
    stalin-0093: float64 emissions held twice put that path at ≥ 8.7 GB).
-   An encoder context margin comes next, then the S. pombe normalization
-   row, before any B allowance. The learned pooled
+   Each tile is now encoded with the encoder's dependency radius (491
+   bases) of chromosome context on each side and cropped back, so the
+   emissions no longer depend on the tile grid (**13.2 / 13.3 / 15.9** at
+   19 segments per strand, encoder +12 % on these short tiles, +8 % on
+   full ones; peak RSS unchanged) and the segment rows differ from the
+   exact strand decode by 4 chains of 1,832 (were 11), all four genes
+   longer than the 2,048-base containment guarantee starting just before
+   a segment core seam — the seam contract, not a defect. The S. pombe
+   normalization row comes next, before any B allowance. The learned pooled
    decoder is in the loss and the decoder (`model/a/pooled.py`, 3.2 item 5);
    what remains of the decoder is the partial-family scalars, which belong
    to the boundary-support increment above.
@@ -961,7 +968,8 @@ tile grid (the tiles of a segment start at the segment's start, which
 moves with the segment count). An encoder context margin (encode the
 tile plus the receptive field on each side on the anchored grid and crop,
 as the window mode implicitly does through its overlap) is the cheap fix
-and comes next; the decode itself is seam-exact, as the tests show. Peak
+and is measured below (commit `8440560`); the decode itself is
+seam-exact, as the tests show. Peak
 RSS grows with the batch (the per-tile operands at `B` × 12,288, as in
 the batch-64 window rows) and with the held back-pointers, 0.52–1.37 GiB
 here, all far inside 8 GB. No B allowance is claimed on this basis: it is
@@ -1053,8 +1061,68 @@ emissions and symbols for every row, float64, 38 × 12,288 × 96 B =
 1 MB — **about 1.5 GB of live tensors** plus the runtime floor, against
 8 GB. This is a source-derived projection like the withdrawn one, not a
 measurement, and the 0.92 GB grows with the chromosome while the rest
-does not; the metazoan row itself, the encoder context margin and the
-S. pombe row are still to come.
+does not; the metazoan row itself and the S. pombe row are still to
+come.
+
+**Revision step 3, encoder context margin** (commit `8440560`; records
+`chromosome-margin/`). In the segment mode each tile's encoder input is
+now the tile plus `DEPENDENCY_RADIUS` = 491 bases of the oriented
+chromosome on each side (only what exists at the true ends), on the
+same origin-anchored pooling grid, cropped back to the tile before the
+dinucleotide bias (`predict_sequence(margin=)`, `measure --margin`,
+default 491; `--margin 0` is the previous bare tile). An emission then
+depends only on the bases within the encoder's dependency radius of its
+own position, whatever the tile grid: `SegmentMargin` checks, with the
+real `CandidateA` on a 6,100-base sequence with lowercase and `N`
+bases, two segments per strand and 1,500-base tiles, that every tile's
+emissions equal the whole-strand encoder output on that slice to
+2.4 × 10⁻⁷ (float32 summation order; 0 on most tiles), that the bare
+tiles differ by 0.03–0.13 wherever a tile does not start at its
+segment's first base, and that `encoded_bases` (now in the record) is
+exactly the sum of the clipped `[a − 491, b + 491)` ranges on the stride
+grid; 191 tests pass under 3.11 + torch. Re-measured under the same
+protocol (yeast chr I, one thread pinned to one core, `best.pt` from
+the smoke fit, float64 decode):
+
+| run | encoder | decode | **stages / genome Mb** | whole-process user / Mb | user + system / Mb | chains | peak RSS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 segment per strand (exact strand decode), margin 491 | 0.90 | 8.48 | 41.0 | 42.7 | 43.7 | 1,832 | 0.36 GiB |
+| 19 segments per strand, seam overlap 4,096, margin 491 | 1.32 | 1.66 | **13.2** | 13.3 | 15.9 | 1,832 | 0.96 GiB |
+
+The encoder stage grows by the encoded bases: 1.077× on the exact
+decode (38 tiles of 12,288 or the 8,986-base remainder) and 1.120× at
+19 segments (76 tiles, of which 38 are the 3,710-base segment tails,
+where 982 bases of margin weigh more), 1.17 → 1.32 s; on full 12,288-base
+tiles the margin is (12,288 + 982) / 12,288 = 1.08× of the encoder
+stage, about +0.4 CPU-s per genome Mb on the ~4.9 the encoder costs at
+scale, so the 20 Mb projection barely moves. Decode and RSS are
+unchanged inside noise (the exact decode 8.69 → 8.48 s; system time
+0.53 → 0.58 s is the page-fault cost of the 1 GB working set, which is
+what separates the user + system column from the other two on this
+230 kb chromosome). What the margin buys is in the chains: the exact
+strand decode and the 19-segment decode now differ by **4 chains of
+1,832** (were 11 at `87bb3a1`, 6–11 across the earlier segment rows;
+the exact decode itself changed by 3 chains against its bare-tile
+predecessor, its own 12,288-base tile seams having been the same
+defect), and all four are plus-strand genes of 2,886–4,614 bases that
+start 844–1,166 bases before a segment core seam and, being longer than
+the 2,048-base containment guarantee of the 4,096-base seam overlap,
+run off the end of the segment that owns their start (the segment
+version ends 10–1,612 bases short of the exact one, at the segment's
+last bases). That is the seam contract of proposal 3.1 working as
+specified — a chain longer than `overlap − overlap // 2` may be cut at a
+segment seam — and no longer a tile-grid artefact: interior tile seams
+are now exact in both the encoder and the decoder, and the only
+remaining seam effect is the one the overlap parameter controls. It
+matters for the metazoan row, where genes routinely exceed 2 kb: the
+seam overlap must scale with the gene lengths the panel expects
+(8,192 for a 4,096-base guarantee costs 1.008× oversampling at 20 Mb /
+19 segments, against 1.004× now), or the segment count per strand
+must drop as the chromosome grows — at 20 Mb the batch is filled by
+the chromosome, not by the segments, so the choice costs little there.
+Records: `chromosome-margin/` (JSON, stdout, `/usr/bin/time -v`, both
+runs, commit `8440560`, clean tree); the GFF3 outputs are not
+committed.
 
 **The CPU regime missed the budget before revision step 1.** Per oriented megabase the pipeline
 costs what items 4–5 measured (11.3–12.8 CPU-s), but a genome megabase is
@@ -1106,8 +1174,10 @@ numerator). Step (3) is measured in its first form: the carried-state
 scan (seam contract of proposal 3.1 kept, interior tile seams exact)
 gives 11.8 / 12.3 / 14.3 at 19 segments per strand on the three numerators
 (11.9 / 12.4 / 14.6 with the packed store, 12.3 / 12.6 / 14.9 with the
-emissions streamed; the 20 Mb chromosome now projects to ~1.5 GB of live
-tensors, unmeasured); the B allowance question stays open
+emissions streamed, 13.2 / 13.3 / 15.9 with the encoder context margin,
+interior tile seams then exact in both encoder and decoder; the 20 Mb
+chromosome now projects to ~1.5 GB of live tensors, unmeasured); the B
+allowance question stays open
 until the overlapping configuration is also measured on the S. pombe
 normalization row with a fitted checkpoint and true-edge support. The GPU regime is still unmeasured
 (gagarin, lenin-0083); the section 6.1 multi-worker decoder accounting is
@@ -1159,8 +1229,13 @@ the both-strand factor times 1.5× oversampling on the decode stage, whose
 remaining cost is the per-step fixed dispatch of the Python scan loop.
 The pure-Python reference decoder at 66 CPU-s per oriented Mb (item 3) is
 kept only for parity runs. Revision step 3 (overlap through carried
-scan state at seams; the edge decoder now exists for the true sequence
-ends) remains; no B allowance until the overlapping configuration is
+scan state at seams, packed back-pointers, streamed emissions, encoder
+context margin; the edge decoder exists for the true sequence ends)
+gives **13.2 / 13.3 / 15.9** at 19 segments per strand with the
+4,096-base seam overlap (section 3.2, `chromosome-margin/`): inside 15 on
+the stage sum and the user-only numerator, over on user + system, whose
+excess on this 230 kb chromosome is the page-fault cost of the 1 GB
+working set; no B allowance until the overlapping configuration is
 also inside 15 on the S. pombe normalization row with a fitted checkpoint. Still missing: a checkpoint fit for
 more than 20 steps (the accuracy column), an S. pombe row (held-out
 species: only after freezing), a metazoan chromosome, and the GPU regime
