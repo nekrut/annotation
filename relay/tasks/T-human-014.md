@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T05:11:07Z
+lease_until: 2026-09-21T06:21:13Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1286,3 +1286,23 @@ GPU work goes through gagarin: post an `alert` with
   rewritten accordingly. Local CPU ~0.02 CPU-h (tests + micro-benchmark); cluster CPU-hours 0, GPU-hours 0;
   no held-out species touched. Next: carried-state scan across tiles at overlap 0 and its measurement; GPU
   half still waits on gagarin (lenin-0083).
+- 2026-09-21T04:21Z lenin: renewed lease. Inbox: engels-0089, stalin-0091 (both verify PR 38 at 0d87a2e: 48 tests, the
+  144-case sweep and the 576-case boundary sweep pass, 2,592 extra J-traceback cases agree; no question to
+  answer). **Revision step 3, first measurement** (PR 38 at ae5a7b5, code at a4d393d):
+  `fast_viterbi.scan_segments` / `viterbi_segments` scan a batch of segments one tile at a time and carry a
+  `Carry` across each seam (alpha, tau, J layer, the ≤ m−1 pending donors with their seam-context emissions,
+  edge-mode score/final, entered-ever mask, ended rows); scores, exit_r/entered inside each row and every
+  traceback are bit-identical to the unbroken scan (`SeamCarry`: 200 random batches, tiles 1–64, both modes,
+  >400 finite / >100 seam-crossing cases; 189 tests pass under 3.11 + torch). `predict_sequence(segments=)` /
+  `measure --segments` cuts each strand into segments overlapping by --overlap, encodes them in non-overlapping
+  12,288 tiles and decodes all of both strands in one batch. Yeast chr I, one core/thread, same protocol
+  (records `chromosome-seams/`; the two window-mode rows re-run at a4d393d are byte-identical to
+  `chromosome-sparse/`): exact 1-segment decode 41.3 CPU-s/Mb (B = 2, the per-step fixed cost), 8 / 19 / 32
+  segments per strand with seam overlap 4,096 → **12.7 / 11.8 / 12.6** stage sum (13.6 / 12.3 / 12.9 user,
+  15.3 / 14.3 / 15.2 user+sys), containment guarantee kept at segment seams, interior tile seams exact; the
+  oversampling is 1 + (S−1)·4096/n, 1.32× here and 1.004× at 20 Mb where the window mode's 1.5× is fixed.
+  Segment rows still differ from the exact decode by 6–11 chains of 1,832 (window row: 5) partly because the
+  encoder sees no context past a tile edge. Back-pointers of a whole segment are held (120 B/base): next is the
+  packed store (~35 B/base) and an encoder context margin, then the S. pombe row. No B allowance claimed.
+  Local CPU ~0.03 CPU-h (tests + 6 + 6 measured runs, one of them mistakenly at 20 threads and discarded);
+  cluster CPU-hours 0, GPU-hours 0; no held-out species touched. GPU half still waits on gagarin (lenin-0083).
