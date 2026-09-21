@@ -220,11 +220,18 @@ runs on gagarin; no local host has torch. See section 3.
    every interior tile seam exact and the 2,048-base chain-containment
    guarantee kept at segment seams, and its oversampling shrinks with
    chromosome length (1.32× on yeast chr I, 1.004× at 20 Mb) where the
-   window mode's 1.5× is fixed; the back-pointers are now held packed at
-   23 bytes per base (120 dense), so the 20 Mb metazoan chromosome's
-   decode state is ~0.9 GB of pointers plus the emissions; an encoder
-   context margin and the padded emission copy come next, then the
-   S. pombe normalization row, before any B allowance. The learned pooled
+   window mode's 1.5× is fixed; the back-pointers are held packed at
+   23 bytes per base (120 dense) and the emissions are streamed into the
+   scan one tile at a time (**12.3 / 12.6 / 14.9**, peak RSS 0.96 GiB;
+   the exact strand decode 0.35 GiB), so the state that grows with the
+   chromosome is the packed store alone: the 20 Mb metazoan chromosome
+   projects to ~1.5 GB of live tensors (0.92 GB pointers, 0.40 GB per-tile
+   operands, 0.13 GB one row's dense expansion, 0.04 GB tile emissions)
+   against 8 GB — a source-derived projection, not a measurement; the
+   earlier "~3.5 GB" figure for the padded path was wrong (engels-0090,
+   stalin-0093: float64 emissions held twice put that path at ≥ 8.7 GB).
+   An encoder context margin comes next, then the S. pombe normalization
+   row, before any B allowance. The learned pooled
    decoder is in the loss and the decoder (`model/a/pooled.py`, 3.2 item 5);
    what remains of the decoder is the partial-family scalars, which belong
    to the boundary-support increment above.
@@ -969,7 +976,11 @@ the two argmax slots of `U` and `E("")` that the scan already computes
 dense `(K,)` column is a constant expanded on traceback), `exit_r` as
 nibbles (12 bytes: the values `-1 .. 2R - 1` fit four bits while `2R <
 16`) and `entered` as `K R = 72` bits (9 bytes) — **23 bytes per base
-instead of 120**, packed per tile as the scan produces them and expanded
+instead of 120** (logical payload; since `87bb3a1` every tensor the store
+retains owns exactly its storage, so `storage_nbytes()`, the distinct
+allocations deduplicated by data pointer, equals `nbytes()` — before that
+the superseded seam columns and the seam context stayed alive behind
+views, stalin-0093), packed per tile as the scan produces them and expanded
 one row at a time for the traceback, so one segment's dense pointers are
 alive at a time rather than the batch's. `SeamCarry` now also checks the
 store's byte count and that each row's expansion equals the unbroken
@@ -991,17 +1002,59 @@ transient dense expansion of both rows at once that the per-row expansion
 avoids), while the 19-segment row's 1.02 GiB is the per-tile operands at
 `B = 38` (`(12,288, 38, 24)` float64 tensors, ~90 MB each, several alive
 per tile) and does not move — on a 230 kb chromosome the pointers were
-never the peak. Where it matters is the metazoan row: for a 20 Mb
-chromosome decoded as 19 segments per strand the held state is now 40 M
-oriented bases × 23 B = 0.92 GB of pointers plus 44 B per base of float32
-emissions (1.76 GB, held twice today: `viterbi_segments` pads the segment
-emissions into one `(B, 11, L)` tensor before scanning, so the next
-change is to feed the scan tile by tile from the per-segment list and
-drop that copy), plus the ~0.6 GiB of per-tile operands and one
-segment's dense pointers during traceback (1 Mb × 120 B = 126 MB), about
-3.5 GB in all against 8 GB, where the dense store alone would have been
-4.8 GB. The rows above are not the metazoan measurement; the padded copy,
-the encoder context margin and then the S. pombe row come first.
+never the peak. The metazoan projection this paragraph first carried
+("about 3.5 GB") was wrong and is withdrawn: `measure` decodes in
+float64, not float32, and at `8a7b4a8` the chromosome mode retained every
+segment's emissions *and* `viterbi_segments` padded them into a second
+`(B, 11, L)` tensor, so for 20 Mb / 19 segments per strand (38 segments
+of 1,056,512 oriented bases, 40.1 M in all) the two 88 B/base copies
+alone were 7.07 GB and the live tensors just before the last tile at
+least 8.70 GB (engels-0090's source-derived lower bound, reproduced by
+stalin-0093) — over the cap before any runtime overhead.
+
+**Revision step 3, streamed emissions** (commit `87bb3a1`; records
+`chromosome-stream/`). `scan_segments` now also accepts a callable
+`chunk(start, end)` in place of the emission tensor and asks it for one
+tile of every row as the scan reaches it; `viterbi_segments` takes
+per-segment emitters `f(start, end)` the same way, and the chromosome
+mode encodes each tile (encoder on the pooling-grid-anchored slice, the
+dinucleotide bias with its two-base / one-base context inside the
+segment) when the scan asks for it, so no per-segment emission list and
+no padded copy exist. The store also owns its storage now (above).
+`SeamCarry` checks that streamed emissions give the scores and chains of
+the whole tensors and that each emitter is asked for exactly the tiles of
+its own segment once, and that `storage_nbytes()` equals `nbytes()`;
+190 tests pass. Re-measured under the same protocol:
+
+| run | encoder | decode | **stages / genome Mb** | whole-process user / Mb | user + system / Mb | chains | peak RSS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 segment per strand (exact strand decode), streamed | 0.89 | 8.69 | 41.9 | 43.4 | 44.5 | 1,832 | **0.35 GiB** (was 0.45) |
+| 19 segments per strand, seam overlap 4,096, streamed | 1.17 | 1.62 | **12.3** | 12.6 | 14.9 | 1,832 | **0.96 GiB** (was 1.02) |
+
+GFF3 outputs byte-identical to the `chromosome-seams/` and
+`chromosome-seams-packed/` runs of the same configuration (the encoder
+tiles are the same slices as before). The times are inside the noise of
+these 3–10 s runs (decode 1.60 → 1.62 s at 19 segments; the exact decode
+8.31 → 8.69 s, its `B = 2` per-step overhead unchanged); the encoder
+stage is now clocked inside the scan and taken back out of the decode
+stage, so the stage sum is still additive. RSS moves by what the retained
+emissions and the padded copy weighed on a 230 kb chromosome (2 × 88 B ×
+0.46–0.61 M bases = 80–107 MB): the 19-segment row's 0.96 GiB is the
+per-tile operands at `B = 38` plus the ~0.3 GiB runtime floor, and is
+independent of chromosome length. Corrected metazoan projection, 20 Mb /
+19 segments per strand / seam overlap 4,096 / tile 12,288, `B = 38`,
+`K = 24`, `R = 3`, `m = 20`, from the same helpers and operand formula as
+engels-0090: packed pointers 38 × 1,056,513 × 23 B = **0.92 GB**; one
+tile's operands (`8 B (L (2 + 3K + P) + (2L − m + 1) 3R)` at `L = 12,051`
+with the 19-base seam context, `P = 17`) **0.40 GB**; one tile of
+emissions and symbols for every row, float64, 38 × 12,288 × 96 B =
+**0.04 GB**; one row's dense expansion during its traceback 1,056,513 ×
+120 B = **0.13 GB**; carry, seam context and packed seam columns under
+1 MB — **about 1.5 GB of live tensors** plus the runtime floor, against
+8 GB. This is a source-derived projection like the withdrawn one, not a
+measurement, and the 0.92 GB grows with the chromosome while the rest
+does not; the metazoan row itself, the encoder context margin and the
+S. pombe row are still to come.
 
 **The CPU regime missed the budget before revision step 1.** Per oriented megabase the pipeline
 costs what items 4–5 measured (11.3–12.8 CPU-s), but a genome megabase is
@@ -1051,9 +1104,10 @@ overlap 2,048 / batch 64, 14.2 at overlap 4,096 / batch 64, 17.1 at the
 batch-16 defaults; 11.9 / 12.8 / 14.4 / 18.1 on the whole-process user
 numerator). Step (3) is measured in its first form: the carried-state
 scan (seam contract of proposal 3.1 kept, interior tile seams exact)
-gives 11.8 / 12.3 / 14.3 at 19 segments per strand on the three numerators,
-with the held back-pointers still to be packed before a metazoan
-chromosome fits the memory cap (see above); the B allowance question stays open
+gives 11.8 / 12.3 / 14.3 at 19 segments per strand on the three numerators
+(11.9 / 12.4 / 14.6 with the packed store, 12.3 / 12.6 / 14.9 with the
+emissions streamed; the 20 Mb chromosome now projects to ~1.5 GB of live
+tensors, unmeasured); the B allowance question stays open
 until the overlapping configuration is also measured on the S. pombe
 normalization row with a fitted checkpoint and true-edge support. The GPU regime is still unmeasured
 (gagarin, lenin-0083); the section 6.1 multi-worker decoder accounting is
@@ -1070,8 +1124,9 @@ profiling, the numpy-twin experiment and the six `6cae82f` runs (plus one
 mis-configured multi-threaded run, discarded), ~0.02 CPU-h for the
 sparse-scan micro-benchmarks and twelve chromosome runs at `de0746a` /
 `d9ea0f8` (the six `de0746a` runs, with transposed `K`-wide stacks,
-superseded); cluster CPU-hours 0, GPU-hours 0.
-No held-out species touched.
+superseded), ~0.05 CPU-h for the tests and the sixteen chromosome runs
+of revision step 3 (`a4d393d`, `8a7b4a8`, `87bb3a1`); cluster CPU-hours
+0, GPU-hours 0. No held-out species touched.
 
 ## 4. Budget and caps
 
