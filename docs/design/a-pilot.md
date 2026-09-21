@@ -216,12 +216,15 @@ runs on gagarin; no local host has torch. See section 3.
    batch 64; the batch-16 default still misses by 1.14–1.2×. Revision
    step 3 (carried scan state across tile seams, proposal 3.3) is
    measured: 19 segments per strand with a 4,096-base seam overlap gives
-   **11.8 / 12.3** with every interior tile seam exact and the containment
+   **11.8 / 12.3** (11.9 / 12.4 with the packed back-pointer store) with
+   every interior tile seam exact and the 2,048-base chain-containment
    guarantee kept at segment seams, and its oversampling shrinks with
    chromosome length (1.32× on yeast chr I, 1.004× at 20 Mb) where the
-   window mode's 1.5× is fixed; the packed back-pointer store and an
-   encoder context margin come next, then the S. pombe normalization row,
-   before any B allowance. The learned pooled
+   window mode's 1.5× is fixed; the back-pointers are now held packed at
+   23 bytes per base (120 dense), so the 20 Mb metazoan chromosome's
+   decode state is ~0.9 GB of pointers plus the emissions; an encoder
+   context margin and the padded emission copy come next, then the
+   S. pombe normalization row, before any B allowance. The learned pooled
    decoder is in the loss and the decoder (`model/a/pooled.py`, 3.2 item 5);
    what remains of the decoder is the partial-family scalars, which belong
    to the boundary-support increment above.
@@ -930,8 +933,10 @@ brings back the overlap. At 19 segments the batch equals the overlap-0
 window row's, the decode stage is the same 1.57 s, and the encoder
 carries the 1.32× oversampling — **11.8 CPU-s/Mb on the stage sum, 12.3
 whole-process user, 14.3 user + system, all inside 15, with the 4,096-base
-containment guarantee kept (at segment seams) and every interior tile
-seam exact**; 8 and 32 segments bracket it (12.7 / 12.6). Second, this
+seam overlap retaining the 2,048-base chain-containment guarantee (at
+segment seams; `chromosome.tiles` documents the bound, and a 4,096-base
+chain starting one base before a core boundary is the counterexample to
+any stronger claim) and every interior tile seam exact**; 8 and 32 segments bracket it (12.7 / 12.6). Second, this
 mode's advantage is proportional to chromosome length: with the same 38
 rows the oversampling is `1 + 18 × 4,096 / n`, 1.32 on yeast chr I and
 1.004 on a 20 Mb chromosome, where the window mode's 1.5× is fixed; the
@@ -949,13 +954,54 @@ tile grid (the tiles of a segment start at the segment's start, which
 moves with the segment count). An encoder context margin (encode the
 tile plus the receptive field on each side on the anchored grid and crop,
 as the window mode implicitly does through its overlap) is the cheap fix
-and belongs with the packing step; the decode itself is seam-exact, as
-the tests show. Peak RSS grows with the batch (the per-tile operands at
-`B` × 12,288, as in the batch-64 window rows) and with the held
-back-pointers, 0.52–1.37 GiB here, all far inside 8 GB. No B allowance is
-claimed on this basis: it is one yeast chromosome, a 20-step checkpoint,
-free-grammar decoding at the two real strand ends, and the S. pombe row
-is still unmeasured.
+and comes next; the decode itself is seam-exact, as the tests show. Peak
+RSS grows with the batch (the per-tile operands at `B` × 12,288, as in
+the batch-64 window rows) and with the held back-pointers, 0.52–1.37 GiB
+here, all far inside 8 GB. No B allowance is claimed on this basis: it is
+one yeast chromosome, a 20-step checkpoint, free-grammar decoding at the
+two real strand ends, and the S. pombe row is still unmeasured.
+
+**Revision step 3, packed back-pointers** (commit `8a7b4a8`; records
+`chromosome-seams-packed/`). `fast_viterbi.scan_segments` now returns a
+`PackedBackPointers` store instead of the three dense tensors: `prev` as
+the two argmax slots of `U` and `E("")` that the scan already computes
+(2 bytes per boundary; every other state has one predecessor, so the
+dense `(K,)` column is a constant expanded on traceback), `exit_r` as
+nibbles (12 bytes: the values `-1 .. 2R - 1` fit four bits while `2R <
+16`) and `entered` as `K R = 72` bits (9 bytes) — **23 bytes per base
+instead of 120**, packed per tile as the scan produces them and expanded
+one row at a time for the traceback, so one segment's dense pointers are
+alive at a time rather than the batch's. `SeamCarry` now also checks the
+store's byte count and that each row's expansion equals the unbroken
+scan's `prev` (for `t ≥ 1`), `exit_r` and `entered` bit for bit; 189
+tests pass. Re-measured under the same protocol:
+
+| run | encoder | decode | **stages / genome Mb** | whole-process user / Mb | user + system / Mb | chains | peak RSS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 segment per strand (exact strand decode), packed | 0.86 | 8.31 | 40.1 | 41.7 | 42.8 | 1,832 | **0.45 GiB** (was 0.52) |
+| 19 segments per strand, seam overlap 4,096, packed | 1.10 | 1.60 | **11.9** | 12.4 | 14.6 | 1,832 | 1.02 GiB (was 1.02) |
+
+Same chains as before (the GFF3 outputs are byte-identical to the
+`chromosome-seams/` runs of the same configuration). The packing costs
+nothing measurable in the decode stage (1.57 → 1.60 s is inside the
+run-to-run noise of these 2–3 s processes), and it shows in RSS only where
+the pointers were the largest live tensor: the two-row exact decode drops
+by 70 MB (460 k oriented bases × 97 bytes saved is 45 MB, the rest the
+transient dense expansion of both rows at once that the per-row expansion
+avoids), while the 19-segment row's 1.02 GiB is the per-tile operands at
+`B = 38` (`(12,288, 38, 24)` float64 tensors, ~90 MB each, several alive
+per tile) and does not move — on a 230 kb chromosome the pointers were
+never the peak. Where it matters is the metazoan row: for a 20 Mb
+chromosome decoded as 19 segments per strand the held state is now 40 M
+oriented bases × 23 B = 0.92 GB of pointers plus 44 B per base of float32
+emissions (1.76 GB, held twice today: `viterbi_segments` pads the segment
+emissions into one `(B, 11, L)` tensor before scanning, so the next
+change is to feed the scan tile by tile from the per-segment list and
+drop that copy), plus the ~0.6 GiB of per-tile operands and one
+segment's dense pointers during traceback (1 Mb × 120 B = 126 MB), about
+3.5 GB in all against 8 GB, where the dense store alone would have been
+4.8 GB. The rows above are not the metazoan measurement; the padded copy,
+the encoder context margin and then the S. pombe row come first.
 
 **The CPU regime missed the budget before revision step 1.** Per oriented megabase the pipeline
 costs what items 4–5 measured (11.3–12.8 CPU-s), but a genome megabase is
