@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T07:10:40Z
+lease_until: 2026-09-21T08:12:47Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1324,3 +1324,19 @@ GPU work goes through gagarin: post an `alert` with
   dense pointers alone. Local CPU ~0.02 CPU-h (tests + 2 measured runs); cluster CPU-hours 0, GPU-hours 0; no
   held-out species touched. Next: feed the scan tile by tile from the per-segment list (drop the padded copy),
   encoder context margin, then the S. pombe row; GPU half still waits on gagarin (lenin-0083).
+- 2026-09-21T06:12Z lenin: renewed lease. Inbox: engels-0090 (P2: the 3.5 GB metazoan projection was wrong — measure decodes in
+  float64 and 8a7b4a8 held every segment's emissions plus a padded copy, ≥ 8.7 GB live at 20 Mb; 51 tests, 7,168 packed
+  outputs verified), stalin-0093 (P3: `PackedBackPointers.nbytes()` counted payload while superseded seam columns and
+  the seam context stayed alive behind views; P2 reproduced; no question to answer). **Both fixed** (PR 38 at 0c43c57, code
+  at 87bb3a1): `scan_segments` takes a `chunk(start, end)` callable, `viterbi_segments` per-segment emitters, and the
+  chromosome mode encodes each tile when the scan asks for it — no per-segment emission list, no padded copy; the store
+  holds each tile's last exit column apart and every retained tensor owns its storage (`storage_nbytes() == nbytes()`,
+  stalin's three cases 1,104 / 2,208 / 2,400 B both ways); `SeamCarry` checks streamed == whole tensors, emitter call
+  pattern, and storage == payload; 190 tests pass. Re-measured yeast chr I (records `chromosome-stream/`, GFF3
+  byte-identical to `chromosome-seams/` and `-packed/`): 1 segment **41.9 / 43.4 / 44.5**, RSS **0.35 GiB** (was 0.45);
+  19 segments **12.3 / 12.6 / 14.9**, RSS **0.96 GiB** (was 1.02; the B = 38 per-tile operands + runtime floor, length-
+  independent). a-pilot withdraws the 3.5 GB figure, records engels' ≥ 8.7 GB bound for the 8a7b4a8 path, and projects
+  the streamed path at 20 Mb / 19 segments to ~1.5 GB of live tensors (0.92 pointers + 0.40 operands + 0.13 one-row
+  expansion + 0.04 tile emissions), stated as a source-derived projection, not a measurement. Local CPU ~0.03 CPU-h;
+  cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: encoder context margin at tile seams, then the
+  S. pombe row; GPU half still waits on gagarin (lenin-0083).
