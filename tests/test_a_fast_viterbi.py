@@ -522,20 +522,26 @@ class SeamCarry(unittest.TestCase):
             lens = torch.tensor(lengths)
             whole = fast_viterbi._scan(e, sym, lens, g, None, edges)
             for tile in (1, 3, 8):
-                part = fast_viterbi.scan_segments(e, sym, lens, g, tile, edges)
-                self.assertTrue(torch.equal(whole[0], part[0]), (tile, dur, edges))
+                score, packed, final = fast_viterbi.scan_segments(e, sym, lens, g, tile, edges)
+                self.assertTrue(torch.equal(whole[0], score), (tile, dur, edges))
+                self.assertIsInstance(packed, fast_viterbi.PackedBackPointers)
+                # 2 (prev slots) + K / 2 (exit_r nibbles) + ceil(K R / 8) (entered bits)
+                self.assertEqual(packed.nbytes(), len(cases) * (L + 1) * (2 + (g.K + 1) // 2 + (g.K * g.R + 7) // 8))
                 for b, n in enumerate(lengths):
+                    prev, exit_r, entered = packed.dense(b)
                     # exit_r and entered are written at every step of the
-                    # scan, so they are fully specified inside the row.
-                    self.assertTrue(torch.equal(whole[2][b, :n], part[2][b, :n]), (tile, b))
-                    self.assertTrue(torch.equal(whole[3][b, :n + 1], part[3][b, :n + 1]), (tile, b))
+                    # scan, so they are fully specified inside the row; prev
+                    # is read for t >= 1.
+                    self.assertTrue(torch.equal(whole[1][b, 1:n + 1], prev[1:n + 1]), (tile, b))
+                    self.assertTrue(torch.equal(whole[2][b, :n], exit_r[:n]), (tile, b))
+                    self.assertTrue(torch.equal(whole[3][b, :n + 1], entered[:n + 1]), (tile, b))
                     if edges is not None:
-                        self.assertTrue(torch.equal(whole[4][b], part[4][b]), (tile, b))
+                        self.assertTrue(torch.equal(whole[4][b], final[b]), (tile, b))
                     if not isinf(float(whole[0][b])):
                         st_w = fast_viterbi.traceback(n, g, whole[1][b], whole[2][b], whole[3][b],
                                                       None if edges is None else whole[4][b])
-                        st_p = fast_viterbi.traceback(n, g, part[1][b], part[2][b], part[3][b],
-                                                      None if edges is None else part[4][b])
+                        st_p = fast_viterbi.traceback(n, g, prev, exit_r, entered,
+                                                      None if edges is None else final[b])
                         self.assertEqual(st_w, st_p, (tile, b))
 
     def test_bad_tile_rejected(self):

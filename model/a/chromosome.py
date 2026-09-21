@@ -206,10 +206,11 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
     segments and ``counts["tiles"]`` the number of encoder tiles; the
     oversampling is ``1 + (segments - 1) * overlap / n`` per strand instead of
     ``window / (window - overlap)``. The emissions of every segment
-    (``11 * dtype`` bytes per oriented base) and the back-pointers of every
-    segment (``K * (2 + R)`` bytes per oriented base) are held at once, so
-    this mode is bounded by the chromosome length, not the window; packing
-    or replaying the back-pointers is the next step.
+    (``11 * dtype`` bytes per oriented base) and the packed back-pointers of
+    every segment (23 bytes per oriented base at ``K = 24``, ``R = 3``;
+    :class:`model.a.fast_viterbi.PackedBackPointers`) are held at once, plus
+    one segment's dense pointers (120 bytes per base) during its traceback,
+    so this mode is bounded by the chromosome length, not the window.
     """
     import torch
 

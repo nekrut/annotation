@@ -32,9 +32,10 @@ Back-pointers per boundary ``t + 1`` (``t`` is the consumed base):
   intronic positions are re-expanded to ``I(c, k)`` states on traceback,
   exactly as the Python decoder does), else it continued.
 
-Storage is ``L * K * (2 + R)`` bytes per window, so a whole chromosome would
-want the checkpoint-and-replay traceback of proposal 3.3 (not offered here);
-``measure`` decodes annotation-selected windows and does not need it.
+Storage is ``L * K * (2 + R)`` bytes per window in this dense layout (120 at
+``K = 24``, ``R = 3``); the tiled scan over segments (:func:`scan_segments`)
+holds them packed instead (:class:`PackedBackPointers`, 23 bytes per base)
+and expands one row at a time for its traceback.
 
 Complete-target only by default, like the training kernel: the path must
 end in ``U`` at boundary ``n``. :func:`viterbi_batch_edges` adds the
@@ -397,19 +398,28 @@ def _scan(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
         score = torch.where(z > FLOOR / 2, z, torch.full_like(z, float("-inf")))
     else:
         score = torch.where(score > FLOOR / 2, score, torch.full_like(score, float("-inf")))
-    # Expand the two argmax slots to the dense ``prev`` layout once, after
-    # the loop: single-predecessor states point at their one predecessor.
     prev2, exit_r, entered = prev2[:, t0:], exit_r[:, t0:], entered[:, t0:]
-    L -= t0
-    prev = torch.empty((B, L + 1, K), dtype=torch.int8, device=device)
-    prev[:, :, 1:e0] = gather[:e0 - 1].to(torch.int8)
-    prev[:, :, e0 + 1:] = gather[e0 - 1:K1].to(torch.int8)
-    chosen = sp.cand.gather(1, prev2.reshape(-1, 2).long().T).T.view(B, L + 1, 2)
-    prev[:, :, u] = chosen[..., 0]
-    prev[:, :, e0] = chosen[..., 1]
     if keep:
-        return score, prev, exit_r, entered, final, carry_out
-    return score, prev, exit_r, entered, final
+        # The tiled scan packs the raw two-slot ``prev2`` and expands one row
+        # at a time on traceback (:class:`PackedBackPointers`).
+        return score, prev2, exit_r, entered, final, carry_out
+    return score, _expand_prev(sp, prev2), exit_r, entered, final
+
+
+def _expand_prev(sp: "_Sparse", prev2: torch.Tensor) -> torch.Tensor:
+    """The dense ``prev`` ``(..., K)`` from the two argmax slots ``prev2``
+    ``(..., 2)`` of ``U`` and ``E("")``: single-predecessor states point at
+    their one predecessor."""
+    K, e0 = sp.gather.shape[0] - 2 * sp.cand.shape[1] + 2, sp.e0             # gather is (K - 2 + 2 P,)
+    K1 = K - 2
+    lead = prev2.shape[:-1]
+    prev = torch.empty(lead + (K,), dtype=torch.int8, device=prev2.device)
+    prev[..., 1:e0] = sp.gather[:e0 - 1].to(torch.int8)
+    prev[..., e0 + 1:] = sp.gather[e0 - 1:K1].to(torch.int8)
+    chosen = sp.cand.gather(1, prev2.reshape(-1, 2).long().T).T.view(lead + (2,))
+    prev[..., 0] = chosen[..., 0]
+    prev[..., e0] = chosen[..., 1]
+    return prev
 
 
 def _finish(rows, n, alpha, tau, pending, entered, intron, phase, m, u, exit_c, exit_i,
@@ -451,6 +461,81 @@ def _finish(rows, n, alpha, tau, pending, entered, intron, phase, m, u, exit_c, 
     final[rows, 0], final[rows, 1], final[rows, 2] = kind, j, x
 
 
+class PackedBackPointers:
+    """The back-pointers of a batch of segments, packed per tile as the scan
+    produces them and expanded one row at a time for :func:`traceback`:
+    ``prev`` as the two argmax slots of ``U`` and ``E("")`` (2 bytes per
+    boundary; the other states have one predecessor), ``exit_r`` as nibbles
+    (``K / 2`` bytes when ``2 R < 16``, else the int8 column), ``entered`` as
+    ``K R`` bits (``ceil(K R / 8)`` bytes). At ``K = 24``, ``R = 3`` this is
+    23 bytes per base instead of the 120 of the dense tensors. ``dense(b)``
+    returns ``(prev, exit_r, entered)`` of row ``b`` in the dense layout the
+    traceback reads (``(L + 1, K)`` int8, ``(L + 1, K)`` int8, ``(L + 1, K,
+    R)`` bool), so one row of dense pointers is alive during its traceback,
+    never the batch."""
+
+    def __init__(self, sp: "_Sparse", K: int, R: int, device):
+        self.sp, self.K, self.R = sp, K, R
+        self.nibble = 2 * R < 16
+        self.prev2: List[torch.Tensor] = []
+        self.exit_r: List[torch.Tensor] = []
+        self.entered: List[torch.Tensor] = []
+        self.bits = torch.tensor([1, 2, 4, 8, 16, 32, 64, 128], dtype=torch.uint8, device=device)
+
+    def append(self, prev2: torch.Tensor, exit_r: torch.Tensor, entered: torch.Tensor,
+               first: bool) -> None:
+        """Pack one tile's ``(B, T + 1, ...)`` pointers. A tile after the
+        first shares its boundary 0 with the previous tile's last boundary:
+        ``prev`` / ``entered`` at the seam are unread (the traceback reads
+        ``prev[t]`` for ``t >= 1``) and kept once; ``exit_r`` at the seam is
+        written by the later tile, so the earlier tile's last column is
+        dropped when the next arrives."""
+        if not first:
+            prev2, entered = prev2[:, 1:], entered[:, 1:]
+            self.exit_r[-1] = self.exit_r[-1][:, :-1]
+        self.prev2.append(prev2.contiguous())
+        self.exit_r.append(self._pack_exit(exit_r))
+        self.entered.append(self._pack_bits(entered))
+
+    def _pack_exit(self, exit_r: torch.Tensor) -> torch.Tensor:
+        if not self.nibble:
+            return exit_r.contiguous()
+        v = (exit_r + 1).to(torch.uint8)                                        # -1 .. 2R-1 -> 0 .. 2R
+        if v.shape[-1] % 2:
+            v = torch.cat([v, torch.zeros_like(v[..., :1])], -1)
+        return v[..., 0::2] | (v[..., 1::2] << 4)
+
+    def _unpack_exit(self, packed: torch.Tensor) -> torch.Tensor:
+        if not self.nibble:
+            return packed
+        v = torch.stack([packed & 15, packed >> 4], -1).flatten(-2)[..., :self.K]
+        return v.to(torch.int8) - 1
+
+    def _pack_bits(self, entered: torch.Tensor) -> torch.Tensor:
+        flat = entered.flatten(-2).to(torch.uint8)                             # (B, T, K R)
+        nbits = flat.shape[-1]
+        pad = (-nbits) % 8
+        if pad:
+            flat = torch.cat([flat, torch.zeros(flat.shape[:-1] + (pad,), dtype=torch.uint8,
+                                                device=flat.device)], -1)
+        return (flat.view(flat.shape[:-1] + (-1, 8)) * self.bits).sum(-1, dtype=torch.uint8)
+
+    def _unpack_bits(self, packed: torch.Tensor) -> torch.Tensor:
+        flat = (packed[..., None] & self.bits) != 0
+        return flat.flatten(-2)[..., :self.K * self.R].view(packed.shape[:-1] + (self.K, self.R))
+
+    def dense(self, b: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        prev2 = torch.cat([p[b] for p in self.prev2], 0) if len(self.prev2) > 1 else self.prev2[0][b]
+        exit_r = torch.cat([self._unpack_exit(p[b]) for p in self.exit_r], 0)
+        entered = torch.cat([self._unpack_bits(p[b]) for p in self.entered], 0)
+        return _expand_prev(self.sp, prev2), exit_r, entered
+
+    def nbytes(self) -> int:
+        """Bytes held by the packed store."""
+        return sum(t.numel() * t.element_size()
+                   for ts in (self.prev2, self.exit_r, self.entered) for t in ts)
+
+
 def scan_segments(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
                   grammar: Grammar, tile: int, edges: Optional[EdgePrior] = None, tables=None):
     """:func:`viterbi_batch` / :func:`viterbi_batch_edges` over a batch of
@@ -458,43 +543,32 @@ def scan_segments(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch
     the seams (proposal 3.3): the scores and back-pointers are those of one
     unbroken scan over each segment, but at most one tile of operands is
     alive at a time, so host memory for the operands is bounded by ``B *
-    tile`` rather than the segment length. The back-pointers of the whole
-    segment are still held (``L * K * (2 + R)`` bytes per row, the storage
-    the module docstring describes); packing them or the 3.3 replay is the
-    next step, not this one. ``emissions`` is ``(B, C, L)`` with each row's
-    segment in ``[0, lengths[b])``; interior seams are not sequence edges,
-    so a gene crossing one is decoded whole, and ``edges`` applies to the two
-    real ends of each segment only. Returns the same tuple as the
-    single-scan functions."""
+    tile`` rather than the segment length, and the back-pointers of the
+    whole segment are held packed (:class:`PackedBackPointers`, 23 bytes
+    per base at ``K = 24``, ``R = 3``) rather than dense (120). ``emissions``
+    is ``(B, C, L)`` with each row's segment in ``[0, lengths[b])``; interior
+    seams are not sequence edges, so a gene crossing one is decoded whole,
+    and ``edges`` applies to the two real ends of each segment only. Returns
+    ``(score, packed, final)``; ``packed.dense(b)`` gives row ``b``'s
+    ``(prev, exit_r, entered)`` for :func:`traceback`."""
     if tile < 1:
         raise ValueError("tile must be positive")
     B, C, L = emissions.shape
     device = emissions.device
     carry = None
-    prevs, exits, enters = [], [], []
+    packed = PackedBackPointers(_sparse(grammar), grammar.K, grammar.R, device)
     score = final = None
     for start in range(0, max(L, 1), tile):
         end = min(start + tile, L)
         chunk = (lengths - start).clamp(min=0, max=end - start)
         out = _scan(emissions[:, :, start:end], symbols[:, start:end], chunk, grammar, tables,
                     edges, carry, keep=True)
-        score, prev, exit_r, entered, final, carry = out
-        # Tile ``c > 0`` shares boundary 0 with the previous tile's last
-        # boundary: keep one copy of ``prev``/``entered`` (unread at the seam,
-        # the traceback reads ``prev[t]`` for ``t >= 1``) and take ``exit_r``
-        # at the seam from the tile that wrote it (the later one).
-        prevs.append(prev if start == 0 else prev[:, 1:])
-        enters.append(entered if start == 0 else entered[:, 1:])
-        if exits:
-            exits[-1] = exits[-1][:, :-1]
-        exits.append(exit_r)
-    prev = torch.cat(prevs, 1) if len(prevs) > 1 else prevs[0]
-    entered = torch.cat(enters, 1) if len(enters) > 1 else enters[0]
-    exit_r = torch.cat(exits, 1) if len(exits) > 1 else exits[0]
+        score, prev2, exit_r, entered, final, carry = out
+        packed.append(prev2, exit_r, entered, first=start == 0)
     # A row that ended before the last tile kept ``alpha[U]`` through the pad
     # steps of its later tiles (``U -> U`` at 0), so the free-grammar score
     # read at the end is its own, as in a padded batch.
-    return score, prev, exit_r, entered, final
+    return score, packed, final
 
 
 def viterbi_segments(segments: Sequence[str], emissions: Sequence[torch.Tensor], *,
@@ -520,7 +594,7 @@ def viterbi_segments(segments: Sequence[str], emissions: Sequence[torch.Tensor],
         e[b, :, :lengths[b]] = em
         if lengths[b]:
             sym[b, :lengths[b]] = symbol_index_tensor(x).to(device)
-    score, prev, exit_r, entered, final = scan_segments(
+    score, packed, final = scan_segments(
         e, sym, torch.tensor(lengths, device=device), g, tile, edges, tables)
     out = []
     for b, x in enumerate(segments):
@@ -528,7 +602,7 @@ def viterbi_segments(segments: Sequence[str], emissions: Sequence[torch.Tensor],
         if best == float("-inf"):
             out.append((best, []))
             continue
-        states = traceback(lengths[b], g, prev[b], exit_r[b], entered[b],
+        states = traceback(lengths[b], g, *packed.dense(b),
                            None if final is None else final[b])
         out.append((best, ReferenceDecoder._chains(states, [None] * lengths[b], x)))
     return out
