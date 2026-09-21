@@ -70,8 +70,9 @@ def _operands(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Ten
     folded into ``ucol[t][i]``, the column-``U`` extra by predecessor) and
     ``start[t] + cds[0][t]`` on ``U -> S(b)`` (``post[t][j]``, added after the
     max since only ``U`` reaches a length-1 initiator prefix). ``ucol`` is
-    returned gathered at ``U``'s predecessor candidates, ``(B, P)`` per step,
-    the only column the sparse scan adds it to."""
+    returned at ``U``'s predecessor candidates only, ``(B, P)`` per step, the
+    one column the sparse scan adds it to. Each operand is a tuple of ``L``
+    contiguous per-step tensors."""
     B, C, L = emissions.shape
     K, m = g.K, g.dur.m
     sp = _sparse(g)
@@ -82,21 +83,28 @@ def _operands(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Ten
     zero = torch.zeros((B, L), dtype=dtype, device=device)
     neg = torch.full((B, L), FLOOR, dtype=dtype, device=device)
 
-    def masked(ch, fill):
-        return torch.where(valid, e[:, _CH[ch], :], fill)
+    # Every operand is built step-major, ``(L, B, ...)``, so each step's slice
+    # is contiguous: a slice of ``(B, K, L)`` along ``L`` is strided, and
+    # ``index_select`` on such a slice (or with such an index) clones it
+    # every step; transposing the ``K``-wide stacks afterwards costs more
+    # than the scan saves, so only the ``(B, L)`` channels are transposed.
+    def masked_t(ch, fill):
+        return torch.where(valid, e[:, _CH[ch], :], fill).T                   # (L, B)
 
-    sym_pad = torch.where(valid, symbols, torch.full_like(symbols, len(SYMBOL_SETS)))
-    cds = torch.stack([masked(f"cds[{p}]", zero) for p in range(3)], 1)      # (B, 3, L)
-    base = cds[:, g.phase, :]                                                 # (B, K, L)
-    base[:, g.u_index, :] = 0.0
-    ucol = masked("stop", zero)[:, None, :].expand(B, K, L).clone()          # (B, K, L)
-    ucol[:, g.u_index, :] = masked("u", zero)
-    post = torch.zeros((B, K, L), dtype=dtype, device=device)
+    sym_pad = torch.where(valid, symbols, torch.full_like(symbols, len(SYMBOL_SETS))).T
+    cds = torch.stack([masked_t(f"cds[{p}]", zero) for p in range(3)], 2)    # (L, B, 3)
+    base = cds.index_select(2, g.phase)                                       # (L, B, K)
+    base[:, :, g.u_index] = 0.0
+    # Column-``U`` extras at ``U``'s predecessor candidates: ``u`` on ``U``
+    # (also the padding slots), ``stop`` on the stop-completing prefixes.
+    ucol = torch.where((sp.cand[0] == g.u_index)[None, None, :],
+                       masked_t("u", zero)[:, :, None], masked_t("stop", zero)[:, :, None])
+    post = torch.zeros((L, B, K), dtype=dtype, device=device)
     s1 = torch.tensor([s[0] == "S" and len(s[1]) == 1 for s in g.states], device=device)
-    post[:, s1, :] = (masked("start", zero) + masked("cds[0]", zero))[:, None, :]
-    donor = masked("donor", neg)[:, None, :].expand(B, K, L).clone()
-    donor[:, ~g.coding, :] = FLOOR
-    acceptor = masked("acceptor", neg)
+    post[:, :, s1] = (masked_t("start", zero) + masked_t("cds[0]", zero))[:, :, None]
+    donor = masked_t("donor", neg)[:, :, None].expand(L, B, K).clone()
+    donor[:, :, ~g.coding] = FLOOR
+    acceptor = masked_t("acceptor", neg)
     intron = torch.where(valid[:, None, :], e[:, 4:7, :], neg[:, None, :])    # (B, 3, L)
     if L >= m:
         window_sum = intron.unfold(2, m, 1).sum(-1)                           # (B, 3, L-m+1)
@@ -106,18 +114,10 @@ def _operands(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Ten
     # with one ``index_select`` per step, which costs less than building and
     # holding the ``K / 3``-fold larger ``(B, K, L, R)`` stacks (2 x 113 MB at
     # 16 windows of 12 kb, 2 x 450 MB at 64).
-    intron_q = intron[..., None] + log_q[None, :, None, :]                    # (B, 3, L, R)
-    window_pi = window_sum[..., None] + log_pi[None, :, None, :]              # (B, 3, L-m+1, R)
-    ucol = ucol.index_select(1, sp.cand[0])                                   # (B, P, L)
-
-    # Step-major, contiguous per step: a slice of ``(B, K, L)`` along ``L`` is
-    # strided, and ``index_select`` on such a slice (or with such an index)
-    # clones it every step.
-    def steps(a, dim):
-        return a.movedim(dim, 0).contiguous().unbind(0)
-
-    return (steps(sym_pad, 1), steps(base, 2), steps(ucol, 2), steps(post, 2),
-            steps(donor, 2), steps(acceptor, 1), steps(intron_q, 2), steps(window_pi, 2))
+    intron_q = intron.permute(2, 0, 1).contiguous()[..., None] + log_q            # (L, B, 3, R)
+    window_pi = window_sum.permute(2, 0, 1).contiguous()[..., None] + log_pi      # (L-m+1, B, 3, R)
+    return tuple(a.contiguous().unbind(0)
+                 for a in (sym_pad, base, ucol, post, donor, acceptor, intron_q, window_pi))
 
 
 
