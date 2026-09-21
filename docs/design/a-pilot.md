@@ -213,9 +213,15 @@ runs on gagarin; no local host has torch. See section 3.
    **14.2 / 14.4 at the default overlap with batch 64 — the first
    overlapping row inside the 15 budget on the baseline's numerator** —
    12.0 / 12.8 at overlap 2,048 / batch 64 and 10.7 / 11.9 at overlap 0 /
-   batch 64; the batch-16 default still misses by 1.14–1.2×. The remaining
-   revision step (3: smaller overlap once boundary support lands) and the
-   S. pombe normalization row come before any B allowance. The learned pooled
+   batch 64; the batch-16 default still misses by 1.14–1.2×. Revision
+   step 3 (carried scan state across tile seams, proposal 3.3) is
+   measured: 19 segments per strand with a 4,096-base seam overlap gives
+   **11.8 / 12.3** with every interior tile seam exact and the containment
+   guarantee kept at segment seams, and its oversampling shrinks with
+   chromosome length (1.32× on yeast chr I, 1.004× at 20 Mb) where the
+   window mode's 1.5× is fixed; the packed back-pointer store and an
+   encoder context margin come next, then the S. pombe normalization row,
+   before any B allowance. The learned pooled
    decoder is in the loss and the decoder (`model/a/pooled.py`, 3.2 item 5);
    what remains of the decoder is the partial-family scalars, which belong
    to the boundary-support increment above.
@@ -871,6 +877,86 @@ against the overlap-4,096 rows, not to relax the seam contract; the
 edge-enabled decoder is used at the two real sequence ends of each
 strand either way.
 
+*Revision step 3, first measurement: the carried-state scan* (commit
+`a4d393d`, source SHA-256
+`10c4f9f404f601381d56491d12649e1bb36552c2218a851ecd3275a81dc70710`;
+records in `smoke-local-20260920/chromosome-seams/`).
+`fast_viterbi.scan_segments` scans a batch of *segments* `tile` bases at a
+time and carries the state across each seam as a `Carry` (`alpha`, `tau`,
+the residual-intron layer, the `<= m − 1` pending donors with the matching
+seam-context emissions so the next tile re-reads their mandatory windows
+from the same operands, the edge-mode running score / final state, the
+tails a donor has entered so far, and the rows already ended); the next
+tile's loop starts at `t0 = len(pending)`, the boundary-0 entries and
+`t = 0` floors of the edge mode apply to the first tile only, and a row's
+terminal choice is made in the tile where its own length ends. Scores are
+bit-identical to the unbroken scan and so are `exit_r` / `entered` inside
+every row and every traceback (`tests/test_a_fast_viterbi.py::SeamCarry`:
+200 random batches of 1–6 segments at tiles 1 / 2 / 3 / 5 / 7 / 11 / 64,
+`m` 1–4, `R` 1–3, codes 1 / 6 / alternative initiators, `-inf` masks, with
+and without an `EdgePrior`, over 400 finite cases of which over 100 have a
+segment crossing a seam; 189 tests pass under 3.11 + torch). Only one
+tile of operands is alive at a time; the back-pointers of the whole
+segment are still held (`K (2 + R)` = 120 bytes per base at `R = 3`), so
+this is the "held, not packed" option above. `chromosome.predict_sequence(segments=)`
+(`measure --segments`) cuts each strand into about that many segments
+overlapping by `--overlap`, encodes every segment in non-overlapping
+12,288-base tiles on the anchored pooling grid, and decodes all segments
+of both strands in one batch (`B` = 2 × segments), so the overlap factor is
+`1 + (segments − 1) × overlap / n` per strand instead of `window / (window
+− overlap)` and the containment guarantee holds at segment seams only; a
+gene crossing a tile seam inside a segment is decoded whole.
+`tests/test_a_chromosome.py` adds the seam-crossing cases (one segment in
+50-base tiles with both genes across a tile seam, two segments, tiles of
+7). Same core, thread, checkpoint and `/usr/bin/time -v` protocol as the
+rows above; the two window-mode rows re-run at this commit are
+byte-identical to the `chromosome-sparse/` GFF3 outputs:
+
+| run | rows in the batch | encoder tiles | oriented bases | encoder | decode | **stages, user + system / genome Mb** | whole-process user / Mb | whole-process user + system / Mb | chains | chains differing from the exact strand decode (± ) | peak RSS |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| windows, overlap 0, batch 64 (cost floor, re-run) | 38 | 38 | 460,436 | 0.83 | 1.56 | **10.5** | 11.7 | 13.2 | 1,853 | +65 / −44 | 0.65 GiB |
+| windows, overlap 4,096, batch 64 (re-run) | 56 | 56 | 681,620 | 1.22 | 1.98 | **14.1** | 14.6 | 16.7 | 1,832 | +5 / −5 | 0.81 GiB |
+| 1 segment per strand (exact strand decode) | 2 | 38 | 460,436 | 0.88 | 8.56 | 41.3 | 42.6 | 43.9 | 1,832 | — | 0.52 GiB |
+| 8 segments per strand, seam overlap 4,096 | 16 | 48 | 517,780 | 0.96 | 1.93 | **12.7** | 13.6 | 15.3 | 1,831 | +6 / −7 | 0.70 GiB |
+| 19 segments per strand, seam overlap 4,096 | 38 | 76 | 607,892 | 1.09 | 1.57 | **11.8** | 12.3 | 14.3 | 1,832 | +11 / −11 | 1.02 GiB |
+| 32 segments per strand, seam overlap 4,096 | 64 | 64 | 714,388 | 1.28 | 1.57 | **12.6** | 12.9 | 15.2 | 1,832 | +10 / −10 | 1.37 GiB |
+
+(preprocess 0.02–0.04 s, io and output ≤ 0.03 s.) Three things follow.
+First, the scan's per-step fixed cost is the whole story on a 230 kb
+chromosome: the exact two-row decode costs 8.6 s (230 k steps at ~37 µs
+each, 5.5× the batch-64 window decode), so the batch dimension must be
+filled by cutting each strand into segments, and every segment seam
+brings back the overlap. At 19 segments the batch equals the overlap-0
+window row's, the decode stage is the same 1.57 s, and the encoder
+carries the 1.32× oversampling — **11.8 CPU-s/Mb on the stage sum, 12.3
+whole-process user, 14.3 user + system, all inside 15, with the 4,096-base
+containment guarantee kept (at segment seams) and every interior tile
+seam exact**; 8 and 32 segments bracket it (12.7 / 12.6). Second, this
+mode's advantage is proportional to chromosome length: with the same 38
+rows the oversampling is `1 + 18 × 4,096 / n`, 1.32 on yeast chr I and
+1.004 on a 20 Mb chromosome, where the window mode's 1.5× is fixed; the
+metazoan row of the definition of done is where the gap shows, and there
+the held back-pointers (120 B × 40 M oriented bases = 4.8 GB) plus the
+segment emissions (44 B per base in float32) are what forces the packing
+or replay before the 8 GB cap — so the next increment is the packed
+back-pointer store (`entered` as bits and `exit_r` / `prev2` as one byte
+each, ~35 B per base), not more segments. Third, the segment rows still
+differ from the exact decode by 6–11 chains of 1,832 (the window row at
+overlap 4,096 by 5), and not only at the 7–31 segment seams per strand:
+the encoder is run per 12,288-base tile with no context past the tile,
+so emissions within its receptive field of a tile seam depend on the
+tile grid (the tiles of a segment start at the segment's start, which
+moves with the segment count). An encoder context margin (encode the
+tile plus the receptive field on each side on the anchored grid and crop,
+as the window mode implicitly does through its overlap) is the cheap fix
+and belongs with the packing step; the decode itself is seam-exact, as
+the tests show. Peak RSS grows with the batch (the per-tile operands at
+`B` × 12,288, as in the batch-64 window rows) and with the held
+back-pointers, 0.52–1.37 GiB here, all far inside 8 GB. No B allowance is
+claimed on this basis: it is one yeast chromosome, a 20-step checkpoint,
+free-grammar decoding at the two real strand ends, and the S. pombe row
+is still unmeasured.
+
 **The CPU regime missed the budget before revision step 1.** Per oriented megabase the pipeline
 costs what items 4–5 measured (11.3–12.8 CPU-s), but a genome megabase is
 two oriented megabases before overlap, so the end-to-end row is
@@ -917,10 +1003,11 @@ done, and its remaining half (2b, the sparse-predecessor scan) is done
 and measured above (stage sum 10.7 at overlap 0 / batch 64, 12.0 at
 overlap 2,048 / batch 64, 14.2 at overlap 4,096 / batch 64, 17.1 at the
 batch-16 defaults; 11.9 / 12.8 / 14.4 / 18.1 on the whole-process user
-numerator). Step (3) is open: the edge-enabled Viterbi (the first half
-of boundary support) exists, but the seam contract of proposal 3.1 means
-the overlap can only go through carried scan state, not through edge
-partials at tile seams (see above); the B allowance question stays open
+numerator). Step (3) is measured in its first form: the carried-state
+scan (seam contract of proposal 3.1 kept, interior tile seams exact)
+gives 11.8 / 12.3 / 14.3 at 19 segments per strand on the three numerators,
+with the held back-pointers still to be packed before a metazoan
+chromosome fits the memory cap (see above); the B allowance question stays open
 until the overlapping configuration is also measured on the S. pombe
 normalization row with a fitted checkpoint and true-edge support. The GPU regime is still unmeasured
 (gagarin, lenin-0083); the section 6.1 multi-worker decoder accounting is
