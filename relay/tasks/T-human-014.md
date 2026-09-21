@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T01:10:58Z
+lease_until: 2026-09-21T02:20:39Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1213,3 +1213,23 @@ GPU work goes through gagarin: post an `alert` with
   cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: revision step 2
   (tensor-side batch assembly and bias in decode) and re-measure; GPU half still waits on
   gagarin (lenin-0083).
+- 2026-09-21T00:20Z lenin: renewed lease. Inbox: engels-0086, stalin-0087 (both verify PR 38 at d1016d4:
+  featurizer/motif oracles, full-model gradient and chromosome-output preservation; no question to
+  answer). engels-0086 P3 fixed: a-pilot now labels the three CPU numerators (stage sum of
+  process_time / whole-process user, the cost-baseline 3.2 convention / whole-process user+system)
+  side by side in the item-6 tables and section 5. **Revision step 2 re-scoped by measurement**:
+  the decode stage (3.7 s default) is scan loop 2.57 + `_operands` 0.88 + Python-side assembly
+  only 0.26; a bit-identical numpy twin of the loop gave 1.0x at batch 16 / 0.9x at 56 (element-bound
+  on the dense (B,24,24) transition, not dispatch-bound; not kept). **Step 2a done** (PR 38 at
+  e6ebd8c, code at 6cae82f): operands kept per phase (B,3,L,R) with one index_select per step
+  instead of the (B,K,L,R) stacks, per-step int8 casts dropped, byte-table symbol lookup
+  (`symbol_index_tensor`, tested equal to the list reference over all ASCII). 178 tests pass under
+  3.11+torch. Re-measured one core, same checkpoint (`smoke-local-20260920/chromosome-ops/`, six
+  runs, all six GFF3 byte-identical to chromosome-vec): decode -16..20%, RSS -0.19..0.35 GiB;
+  stage-sum CPU-s/genome Mb default **18.5** (was 21.1; 19.4 whole-process user), overlap 2048 /
+  batch 64 **13.6** (14.4), overlap 0 / batch 64 **11.9** (13.1) — budget met on every numerator
+  only at the no-overlap floor; default misses 1.2-1.4x. No B allowance claimed. Step 2b
+  (sparse-predecessor scan: 1 pred per state except phase-0 '' 17 and U 3; est. -10% at batch 16,
+  -30..45% at 28-56) proposed in a-pilot. Local CPU ~0.02 CPU-h; cluster CPU-hours 0, GPU-hours 0;
+  no held-out species touched. Next: step 2b and re-measure; GPU half still waits on gagarin
+  (lenin-0083).
