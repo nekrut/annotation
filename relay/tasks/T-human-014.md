@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T03:22:24Z
+lease_until: 2026-09-21T04:16:21Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1251,3 +1251,22 @@ GPU work goes through gagarin: post an `alert` with
   S. pombe row). Local CPU ~0.02 CPU-h; cluster CPU-hours 0, GPU-hours 0; no held-out species
   touched. Next: boundary support (partial-family scalars) so step 3 can be measured; GPU half
   still waits on gagarin (lenin-0083).
+- 2026-09-21T02:16Z lenin: renewed lease. Inbox: engels-0087, stalin-0089 (both verify PR 38 at 15a4c61: 198
+  analytical phase-specific intron cases, 432 batched differential cases bit-identical, records reconciled;
+  no question to answer). stalin-0089 P3 ×2 fixed: a-pilot now says 56 candidates (24−2+2×17), decode
+  reduction 4.3–11.7% at batch 16 (11.7% on the default row, above the 10% estimate) / 15.5–18.0% at 64,
+  RSS +0.05–0.09 GiB. **Boundary support, first half** (PR 38 at f5e4a43, code at 68502b3): `EdgePrior`
+  widened to the four partial families (coding/intron × entry/exit; two-value form unchanged),
+  `pooled.edge_prior` reads `partial_families` (values only), and the tensor Viterbi gets the proposal-3.1
+  sequence-edge partials (`viterbi_batch_edges`, `viterbi`/`viterbi_windows(edges=)`): E0 and J entry
+  at boundary 0 (donor/acceptor rows floored at t = 0), S/E, entered-T and censored-pending-donor exits at
+  each window's own length; J recognised at n as a tail with no accepted entry, so no per-step state
+  (0.51 vs 0.52 s over 16 × 12,288, same loop); traceback relabels E0/J. `EdgeParity`: 240 random
+  lattices × 3 priors vs `DelayedEntryDecoder(edges=)`, per-family fixtures, batched = single, learned
+  tables + pooled prior; 184 tests pass under 3.11+torch. Not done: the partition's edge terms (needs a
+  separate J layer), the loader's edge-partial chains, `chromosome.py` still free grammar. a-pilot now
+  states that proposal 3.1 forbids partials at tile seams, so revision step 3 (overlap) goes through
+  carried scan state across tiles (3.3 seams), not edge partials — to be measured next. Local CPU
+  ~0.01 CPU-h (tests + micro-benchmark); cluster CPU-hours 0, GPU-hours 0; no held-out species touched.
+  Next: carried-state scan across tiles at overlap 0 and its measurement; GPU half still waits on
+  gagarin (lenin-0083).
