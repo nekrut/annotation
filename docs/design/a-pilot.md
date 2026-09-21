@@ -238,7 +238,11 @@ runs on gagarin; no local host has torch. See section 3.
    exact strand decode by 4 chains of 1,832 (were 11), all four genes
    longer than the 2,048-base containment guarantee starting just before
    a segment core seam — the seam contract, not a defect. The S. pombe
-   normalization row comes next, before any B allowance. The learned pooled
+   normalization row is measured (section 3.2): 9.22 / 8.23 / 9.37 CPU-s
+   per genome Mb at 19 segments against AUGUSTUS 51.4 on the same core,
+   **1/5.5 against the 1/11 target — the CPU regime misses by 2.0×**, no
+   B allowance; float32 decode (revision step 4) is next, the encoder
+   halving waits for a fitted checkpoint. The learned pooled
    decoder is in the loss and the decoder (`model/a/pooled.py`, 3.2 item 5);
    what remains of the decoder is the partial-family scalars, which belong
    to the boundary-support increment above.
@@ -1124,6 +1128,70 @@ Records: `chromosome-margin/` (JSON, stdout, `/usr/bin/time -v`, both
 runs, commit `8440560`, clean tree); the GFF3 outputs are not
 committed.
 
+**S. pombe normalization row** (proposal 6.1, cost-baseline 5.2;
+records `pombe-normalization/`, code `8440560`, clean tree). The same
+protocol on the three *S. pombe* nuclear chromosomes (12,571,820 bases;
+the mitochondrion excluded), one process per run pinned to one core of
+the Core Ultra 9 285K, frozen smoke checkpoint, float64 decode, margin
+491, and AUGUSTUS 3.5.0 (bioconda, marx-0026's command
+`--species=schizosaccharomyces_pombe --gff3=on --UTR=off`) on the same
+nuclear FASTA, same core, immediately after. `benchmark/leakage_check.py`
+ran first (0 violations; *S. pombe* is cross-clade held out, nearest
+train species at phylum rank); the species was not scored and nothing
+was selected on it — this row is the runtime denominator only.
+
+| run | **stages / genome Mb** | whole-process user / Mb | user + system / Mb | peak RSS | chains or genes |
+|---|---:|---:|---:|---:|---:|
+| A, 1 segment per strand (exact strand decode) | 40.35 | 39.82 | 40.49 | 1.49 GiB (chr I) | 121,937 |
+| A, 19 segments per strand, seam overlap 4,096 | **9.22** | 8.23 | 9.37 | 1.31 GiB (chr I) | 121,937 |
+| AUGUSTUS 3.5.0, one process, whole nuclear genome | — | **51.41** | 51.43 | 0.40 GiB | 4,452 |
+
+Stages at 19 segments per genome Mb: preprocess 0.11, encoder 3.74,
+decode 5.31, output 0.06, I/O 0.01; the three chromosomes agree within
+2 % (9.17 / 9.21 / 9.38 on the stage sum). AUGUSTUS costs 51.4 user
+CPU-s/Mb here against 164.9 on the cost-baseline runner (marx-0026), so
+this machine is 3.21× faster on the same command and the absolute
+15 CPU-s/Mb of cost-baseline 5.2 is not directly applicable; the
+portable form is. **A at 19 segments is 1/5.5 of AUGUSTUS on
+user + system (1/6.2 on user only, 1/5.6 on the stage sum) against the
+1/11 target, i.e. it needs ≤ 4.67 CPU-s/Mb on this machine and costs
+9.4: the CPU regime misses the normalization row by 2.0× (1.8× on user
+only).** Machine-normalized to the baseline runner the row reads
+30.0 CPU-s/Mb against 15. Memory is inside 8 GB on every run. The exact
+strand decode is 1/1.3 of AUGUSTUS. The segment decodes differ from the
+exact ones by 3 chains of 121,937 (seam contract; `chaindiff.out`).
+Where the 2× is: encoder 3.74 + decode 5.31 = 9.05 of the 9.22, so both
+halves must roughly halve. A probe on chr III with 38 and 76 segments
+per strand (`A-probe/`) gives stage 8.72 and 8.96 CPU-s/Mb — decode
+11.30 and 11.00 s against 13.26 at 19 segments, the encoder up 4 % and
+13 % with the extra margin bases — at RSS 1.87 and 3.29 GiB against
+1.14: the decode stage is at its operand floor (~4.5 CPU-s per genome
+Mb, 2.1 per oriented Mb after the 1.08× seam oversampling), and the
+segment count is exhausted as a lever. **No positive CPU allowance for
+B follows; the task's failed-regime clause applies.** The revision
+proposed, in order of expected return per change, before the metazoan
+row: (1) decode in float32 — the operands (emissions, the R = 3 running
+scores and the pooled duration tables) are float64 today for the
+parity tests; the scan is memory-bound per step, so halving the operand
+bytes is expected to take the decode stage toward 2.5–3 CPU-s per
+genome Mb, checked against the float64 path with the existing 2e-6
+relative tolerance of the seam tests; (2) the encoder at 3.74 CPU-s per
+genome Mb already runs the proposal's counted 231 GFLOP per genome Mb
+(section 6, both orientations, assumed 30 GFLOPS → 7.72 s/Mb) at an
+effective 62 GFLOPS on this core, twice the proposal's assumed rate, so
+a further halving there is a change to the counted work (kernel width,
+channel count or the dilation schedule of the tail blocks), which must
+be measured with a fitted checkpoint's accuracy column before it is
+adopted, not before;
+(3) if (1) lands and (2) is deferred, the row would sit near
+6.5–7 CPU-s/Mb, 1/7.5 of AUGUSTUS — still short of 1/11 — so the
+honest expectation is that A meets the portable CPU target only with
+(2) or on the GPU regime (gagarin, lenin-0083), and the coordinator's
+decision on the budget should be taken with that in view. Records:
+`pombe-normalization/` (README with the table, JSON, stdout,
+`/usr/bin/time -v`, run scripts, leakage check, AUGUSTUS install log,
+GFF3 SHA-256s; GFF3 outputs of 6–15 MB not committed).
+
 **The CPU regime missed the budget before revision step 1.** Per oriented megabase the pipeline
 costs what items 4–5 measured (11.3–12.8 CPU-s), but a genome megabase is
 two oriented megabases before overlap, so the end-to-end row is
@@ -1195,8 +1263,11 @@ mis-configured multi-threaded run, discarded), ~0.02 CPU-h for the
 sparse-scan micro-benchmarks and twelve chromosome runs at `de0746a` /
 `d9ea0f8` (the six `de0746a` runs, with transposed `K`-wide stacks,
 superseded), ~0.05 CPU-h for the tests and the sixteen chromosome runs
-of revision step 3 (`a4d393d`, `8a7b4a8`, `87bb3a1`); cluster CPU-hours
-0, GPU-hours 0. No held-out species touched.
+of revision step 3 (`a4d393d`, `8a7b4a8`, `87bb3a1`, `8440560`), ~0.3
+CPU-h for the S. pombe normalization row (six A runs 0.17 h, AUGUSTUS
+0.18 h, two probe runs 0.01 h); cluster CPU-hours 0, GPU-hours 0. The
+only held-out species touched is *S. pombe*, for the runtime
+normalization after the leakage check, unscored.
 
 ## 4. Budget and caps
 
@@ -1235,11 +1306,21 @@ gives **13.2 / 13.3 / 15.9** at 19 segments per strand with the
 4,096-base seam overlap (section 3.2, `chromosome-margin/`): inside 15 on
 the stage sum and the user-only numerator, over on user + system, whose
 excess on this 230 kb chromosome is the page-fault cost of the 1 GB
-working set; no B allowance until the overlapping configuration is
-also inside 15 on the S. pombe normalization row with a fitted checkpoint. Still missing: a checkpoint fit for
-more than 20 steps (the accuracy column), an S. pombe row (held-out
-species: only after freezing), a metazoan chromosome, and the GPU regime
-with the 6.1 multi-worker decoder accounting (gagarin)._
+working set. **The S. pombe normalization row (section 3.2,
+`pombe-normalization/`) is measured: A at 19 segments 9.22 / 8.23 /
+9.37 CPU-s per genome Mb on the three numerators, RSS ≤ 1.31 GiB,
+against AUGUSTUS 3.5.0 at 51.41 user CPU-s/Mb on the same core (this
+machine is 3.21× the cost-baseline runner on that command) — 1/5.5 of
+AUGUSTUS against the 1/11 portable target, 30.0 CPU-s/Mb
+machine-normalized against 15: the CPU regime misses the budget by
+2.0× (1.8× on user only), and no positive CPU allowance for B follows.**
+The proposed revision is float32 decoding first (operand floor of the
+scan; segment count is exhausted, 38 and 76 segments per strand change
+the stage sum by −5 % / −3 % at 1.6× / 2.9× the memory), then an encoder
+change measured together with a fitted checkpoint's accuracy. Still
+missing: a checkpoint fit for more than 20 steps (the accuracy column),
+a metazoan chromosome, and the GPU regime with the 6.1 multi-worker
+decoder accounting (gagarin)._
 
 ## 6. Review responses (PR #38)
 

@@ -1,7 +1,10 @@
-species	genome_mb	processes	wall_s	cpu_user_s	cpu_s_per_mb	peak_rss_mb	genes	nucleotide_f1	locus_f1	transcript_f1	source
-Schizosaccharomyces_pombe	12.5718	3	2076.0	2073.0	164.9	403	4456	0.95466	0.92316	0.70235	marx-0026 (2026-09-10, same runner class)
-Saccharomyces_cerevisiae	12.1571	17	209.4	698.3	57.4	233	5154	0.95839	0.91850	0.78060	this document, 2026-09-10
-Plasmodium_falciparum	23.2926	14	622.0	2100.6	90.2	988	4813	0.88362	0.87984	0.42754	this document, 2026-09-10
-Caenorhabditis_elegans	100.2864	7	3950.7	11409.2	113.8	730	14999	0.86887	0.77123	0.30895	this document, 2026-09-10
-Neurospora_crassa	41.1024	21	1836.1	6938.7	168.8	381	8475	0.94804	0.92276	0.61283	this document, 2026-09-10
-Homo_sapiens_chr21	46.7100	8	347.2	1154.3	24.7	1647	308	0.69286	0.57509	0.10989	this document, 2026-09-10; NC_000021.9 only, 8 prediction windows; 29 CPU-s per non-N Mb (40.0886 Mb); audited replicate on a 2.10 GHz instance: 1225.5 CPU-s, 358.9 s wall, 1686 MB, identical predictions (windows-Homo_sapiens-chr21.tsv)
+tool	species	genome_mb	processes	wall_s	cpu_user_s	cpu_s_per_mb	peak_rss_mb	genes	nucleotide_f1	locus_f1	transcript_f1	source
+AUGUSTUS	Schizosaccharomyces_pombe	12.5718	3	2076.0	2073.0	164.9	403	4456	0.95466	0.92316	0.70235	marx-0026 (2026-09-10, same runner class)
+AUGUSTUS	Saccharomyces_cerevisiae	12.1571	17	209.4	698.3	57.4	233	5154	0.95839	0.91850	0.78060	this document, 2026-09-10
+AUGUSTUS	Plasmodium_falciparum	23.2926	14	622.0	2100.6	90.2	988	4813	0.88362	0.87984	0.42754	this document, 2026-09-10
+AUGUSTUS	Caenorhabditis_elegans	100.2864	7	3950.7	11409.2	113.8	730	14999	0.86887	0.77123	0.30895	this document, 2026-09-10
+AUGUSTUS	Neurospora_crassa	41.1024	21	1836.1	6938.7	168.8	381	8475	0.94804	0.92276	0.61283	this document, 2026-09-10
+AUGUSTUS	Homo_sapiens_chr21	46.7100	8	347.2	1154.3	24.7	1647	308	0.69286	0.57509	0.10989	this document, 2026-09-10; NC_000021.9 only, 8 prediction windows; 29 CPU-s per non-N Mb (40.0886 Mb); audited replicate on a 2.10 GHz instance: 1225.5 CPU-s, 358.9 s wall, 1686 MB, identical predictions (windows-Homo_sapiens-chr21.tsv)
+AUGUSTUS	Schizosaccharomyces_pombe	12.5718	1	646.8	646.3	51.4	405	4452				T-human-014 pombe-normalization (2026-09-21, Core Ultra 9 285K one core; nuclear chromosomes only, 3.5.0 bioconda; same-machine denominator for the candidate A rows, unscored)
+candidate-A	Schizosaccharomyces_pombe	12.5718	6	509.3	500.6	39.8	1528	121937				T-human-014 pombe-normalization (2026-09-21, same core; 1 segment per strand, exact strand decode, smoke checkpoint, stage sum 40.3, user+system 40.5 CPU-s/Mb; chains, not genes; unscored)
+candidate-A	Schizosaccharomyces_pombe	12.5718	6	117.9	103.5	8.2	1338	121937				T-human-014 pombe-normalization (2026-09-21, same core; 19 segments per strand, seam overlap 4096, margin 491, smoke checkpoint, stage sum 9.2, user+system 9.4 CPU-s/Mb = 1/5.5 of the AUGUSTUS row above; chains, not genes; unscored)
