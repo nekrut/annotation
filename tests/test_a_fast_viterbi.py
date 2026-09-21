@@ -173,5 +173,29 @@ class Batching(unittest.TestCase):
                                                                 dtype=e.dtype, device=e.device))
 
 
+@unittest.skipUnless(HAS_FAST, "tensor Viterbi not available")
+class SymbolLookup(unittest.TestCase):
+    def test_symbol_index_tensor_equals_reference(self):
+        from model.a.fast_loss import symbol_index_tensor, symbol_indices
+
+        every_byte = "".join(chr(b) for b in range(128))
+        rng = random.Random(11)
+        cases = ["", "A", every_byte, every_byte[::-1],
+                 "".join(rng.choices("ACGTacgtNnRYSWKMBDHVryswkmbdhvXxUu-*.", k=3001))]
+        for x in cases:
+            got = symbol_index_tensor(x)
+            self.assertEqual(got.dtype, torch.long)
+            self.assertEqual(got.tolist(), symbol_indices(x))
+        with self.assertRaises(ValueError):
+            symbol_index_tensor("AC\u00e9")
+
+    def test_phase_tables_match_state_tables(self):
+        from model.a.fast_loss import Grammar, duration_by_phase, duration_by_state
+
+        g = Grammar.get(TABLES[1], SHORT, dtype=torch.float64, device="cpu")
+        for by_phase, by_state in zip(duration_by_phase(g), duration_by_state(g)):
+            self.assertTrue(torch.equal(by_phase[g.phase], by_state))
+
+
 if __name__ == "__main__":
     unittest.main()

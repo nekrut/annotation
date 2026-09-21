@@ -41,7 +41,8 @@ import torch
 from model.grammar import DurationMixture, GeneticCode, TABLES
 from model.grammar.reference import Chain, ReferenceDecoder
 
-from .fast_loss import _CH, FLOOR, SYMBOL_SETS, Grammar, duration_by_state, symbol_indices
+from .fast_loss import (_CH, FLOOR, SYMBOL_SETS, Grammar, duration_by_phase, duration_by_state,
+                        symbol_index_tensor, symbol_indices)
 from .torch_loss import EMISSION_CHANNELS, _check_input
 
 
@@ -60,7 +61,7 @@ def _operands(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Ten
     max since only ``U`` reaches a length-1 initiator prefix)."""
     B, C, L = emissions.shape
     K, m = g.K, g.dur.m
-    log_pi, log_q, _ = duration_by_state(g, tables)
+    log_pi, log_q, _ = duration_by_phase(g, tables)
     dtype, device = emissions.dtype, emissions.device
     e = emissions.clamp(min=FLOOR)
     valid = (torch.arange(L, device=device)[None, :] < lengths[:, None])      # (B, L)
@@ -87,8 +88,12 @@ def _operands(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Ten
         window_sum = intron.unfold(2, m, 1).sum(-1)                           # (B, 3, L-m+1)
     else:
         window_sum = intron.new_full((B, 3, 0), FLOOR)
-    intron_q = intron[:, g.phase, :, None] + log_q[None, :, None, :]          # (B, K, L, R)
-    window_pi = window_sum[:, g.phase, :, None] + log_pi[None, :, None, :]    # (B, K, L-m+1, R)
+    # Per phase, not per state: the scan expands ``(B, 3, R)`` to ``(B, K, R)``
+    # with one ``index_select`` per step, which costs less than building and
+    # holding the ``K / 3``-fold larger ``(B, K, L, R)`` stacks (2 x 113 MB at
+    # 16 windows of 12 kb, 2 x 450 MB at 64).
+    intron_q = intron[..., None] + log_q[None, :, None, :]                    # (B, 3, L, R)
+    window_pi = window_sum[..., None] + log_pi[None, :, None, :]              # (B, 3, L-m+1, R)
     return (sym_pad.unbind(1), base.unbind(2), ucol.unbind(2), post.unbind(2),
             donor.unbind(2), acceptor.unbind(1), intron_q.unbind(2), window_pi.unbind(2))
 
@@ -114,7 +119,8 @@ def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
         emissions, symbols, lengths, g, tables)
     prior = g.prior_max
     log_1mq = duration_by_state(g, tables)[2][None]
-    neg_one = torch.full((B, K), -1, dtype=torch.int8, device=device)
+    phase = g.phase
+    neg_one = torch.full((B, K), -1, dtype=torch.long, device=device)
 
     prev = torch.zeros((B, L + 1, K), dtype=torch.int8, device=device)
     exit_r = torch.full((B, L + 1, K), -1, dtype=torch.int8, device=device)
@@ -130,17 +136,18 @@ def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
             exits, best_r = (tau + log_1mq).max(dim=-1)                       # (B, K)
             exits += acceptor_t[t][:, None]
             from_tail = exits > alpha
-            exit_r[:, t] = torch.where(from_tail, best_r.to(torch.int8), neg_one)
+            # ``copy_`` into the int8 stores converts; no separate ``to``.
+            exit_r[:, t] = torch.where(from_tail, best_r, neg_one)
             merged = torch.where(from_tail, exits, alpha) + base_t[t]
             trans = merged[:, :, None] + prior[sym_t[t]]                      # (B, K, K)
             trans[:, :, u] += ucol_t[t]
             alpha, best_i = trans.max(dim=1)
             alpha += post_t[t]
             alpha.clamp_(min=FLOOR)
-            prev[:, t + 1] = best_i.to(torch.int8)
-            tau += intron_q[t]
+            prev[:, t + 1] = best_i
+            tau += intron_q[t].index_select(1, phase)                          # (B, K, R)
             if len(pending) == m:
-                entry = pending.pop(0)[:, :, None] + window_pi[t - m + 1]
+                entry = pending.pop(0)[:, :, None] + window_pi[t - m + 1].index_select(1, phase)
                 enter = entry > tau
                 entered[:, t + 1] = enter
                 tau = torch.where(enter, entry, tau)
@@ -189,7 +196,7 @@ def viterbi(x: str, emissions: torch.Tensor, *, code: GeneticCode = TABLES[1],
     overrides ``duration``'s values (``duration`` then fixes ``m`` and ``R``)."""
     _check_input(x, emissions)
     g = Grammar.get(code, duration, dtype=emissions.dtype, device=emissions.device)
-    sym = torch.tensor([symbol_indices(x)], dtype=torch.long, device=emissions.device)
+    sym = symbol_index_tensor(x)[None].to(emissions.device)
     lengths = torch.tensor([len(x)], device=emissions.device)
     score, prev, exit_r, entered = viterbi_batch(emissions[None], sym, lengths, g, tables)
     best = float(score[0])
@@ -237,7 +244,7 @@ def viterbi_windows(windows: Sequence[str], emissions: Sequence[torch.Tensor], *
                 _check_input(windows[i], emissions[i])
                 e[b, :, :lengths[b]] = emissions[i]
                 if lengths[b]:
-                    sym[b, :lengths[b]] = torch.tensor(symbol_indices(windows[i]), device=device)
+                    sym[b, :lengths[b]] = symbol_index_tensor(windows[i]).to(device)
             score, prev, exit_r, entered = viterbi_batch(
                 e, sym, torch.tensor(lengths, device=device), g, tables)
             for b, i in enumerate(ids):

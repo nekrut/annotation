@@ -71,6 +71,30 @@ def symbol_indices(x: str) -> List[int]:
     return [_SYMBOL_INDEX[permitted_bases(ch)] for ch in x]
 
 
+def _build_symbol_table():
+    """256-entry byte -> :data:`SYMBOL_SETS` index lookup (unknown bytes map to
+    the fully ambiguous set, as :func:`permitted_bases` does)."""
+    table = torch.zeros((256,), dtype=torch.long)
+    for byte in range(256):
+        table[byte] = _SYMBOL_INDEX[permitted_bases(chr(byte))]
+    return table
+
+
+_SYMBOL_TABLE = _build_symbol_table()
+
+
+def symbol_index_tensor(x: str) -> torch.Tensor:
+    """:func:`symbol_indices` as an int64 tensor, through a byte lookup
+    (equal to the list reference; non-ASCII input raises)."""
+    try:
+        raw = x.encode("ascii")
+    except UnicodeEncodeError as exc:
+        raise ValueError("sequence must be ASCII") from exc
+    if not raw:
+        return torch.zeros((0,), dtype=torch.long)
+    return _SYMBOL_TABLE[torch.frombuffer(bytearray(raw), dtype=torch.uint8).long()]
+
+
 class Grammar:
     """The dense tables of one (genetic code, duration mixture) pair.
 
@@ -155,7 +179,9 @@ class Grammar:
                              dtype=dtype, device=device)
         log_1mq = torch.tensor([[duration.log_1mq(p, r) for r in range(R)] for p in range(3)],
                                dtype=dtype, device=device)
-        # Per-state (K, R) copies, indexed by the state's phase.
+        # The (3, R) per-phase tables and their per-state (K, R) copies,
+        # indexed by the state's phase.
+        self.phase_log_pi, self.phase_log_q, self.phase_log_1mq = log_pi, log_q, log_1mq
         self.log_pi = log_pi[self.phase]
         self.log_q = log_q[self.phase]
         self.log_1mq = log_1mq[self.phase]
@@ -216,6 +242,18 @@ def duration_by_state(grammar: Grammar, tables=None):
     if tuple(tables.log_pi.shape) != (3, g.R):
         raise ValueError(f"duration tables must be (3, {g.R}), got {tuple(tables.log_pi.shape)}")
     return tuple(t.to(dtype=g.log_pi.dtype, device=g.log_pi.device)[g.phase] for t in tables)
+
+
+def duration_by_phase(grammar: Grammar, tables=None):
+    """The ``(3, R)`` per-phase ``log pi``, ``log q``, ``log (1 - q)`` behind
+    :func:`duration_by_state` (the grammar's fixed law or the learned
+    ``tables``), for kernels that expand to states per step."""
+    g = grammar
+    if tables is None:
+        return g.phase_log_pi, g.phase_log_q, g.phase_log_1mq
+    if tuple(tables.log_pi.shape) != (3, g.R):
+        raise ValueError(f"duration tables must be (3, {g.R}), got {tuple(tables.log_pi.shape)}")
+    return tuple(t.to(dtype=g.log_pi.dtype, device=g.log_pi.device) for t in tables)
 
 
 def log_partition_batch(emissions: torch.Tensor, symbols: torch.Tensor,
