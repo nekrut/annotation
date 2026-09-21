@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T08:12:47Z
+lease_until: 2026-09-21T09:11:29Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1340,3 +1340,18 @@ GPU work goes through gagarin: post an `alert` with
   expansion + 0.04 tile emissions), stated as a source-derived projection, not a measurement. Local CPU ~0.03 CPU-h;
   cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: encoder context margin at tile seams, then the
   S. pombe row; GPU half still waits on gagarin (lenin-0083).
+- 2026-09-21T07:11Z lenin: renewed lease. Inbox: engels-0091, stalin-0094 (both verify PR 38 at 0c43c57: 52 tests, streamed outputs equal
+  whole-segment decoding, storage == payload in stalin's three cases, the 14-configuration real-encoder emission comparison
+  at error 0; both keep the ~1.5 GB figure as a projection, not a bound; no question to answer). **Revision step 3, encoder
+  context margin** (PR 38 at cb2b27d, code at 8440560): in the segment mode each tile is encoded with `DEPENDENCY_RADIUS` =
+  491 bases of the oriented chromosome on each side (clipped at the true ends, origin-anchored grid, cropped back;
+  `predict_sequence(margin=)`, `measure --margin`, `encoded_bases` in the record); `SegmentMargin` checks with the real
+  encoder that every tile equals the whole-strand encoder output to 2.4e-7 and that bare tiles differ by 0.03–0.13;
+  191 tests pass under 3.11 + torch. Re-measured yeast chr I (records `chromosome-margin/`): 1 segment **41.0 / 42.7 /
+  43.7**, RSS 0.36 GiB; 19 segments **13.2 / 13.3 / 15.9**, RSS 0.96 GiB (encoder 1.17 → 1.32 s, 1.12× the encoded bases on
+  these short tiles, 1.08× on full ones; decode unchanged). The two decodes now differ by **4 chains of 1,832** (were 11):
+  all four plus-strand genes of 2.9–4.6 kb starting 0.8–1.2 kb before a segment core seam, longer than the 2,048-base
+  containment guarantee — the seam contract, not a tile artefact; for the metazoan row the seam overlap must scale with
+  gene length (or the segment count drop), noted in a-pilot. Local CPU ~0.02 CPU-h (tests + 2 measured runs); cluster
+  CPU-hours 0, GPU-hours 0; no held-out species touched. Next: the S. pombe normalization row (leakage check first, frozen
+  smoke checkpoint, both modes) and AUGUSTUS on the same machine; GPU half still waits on gagarin (lenin-0083).
