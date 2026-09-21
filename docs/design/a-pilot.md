@@ -104,8 +104,12 @@ The neural half of candidate A (proposal section 3), on
   acceptor `acceptor_dinuc[x[t−2] x[t−1]]`; non-ACGT pairs and pairs past the
   window score 0 — so both kernels and the Python reference decoders are
   unchanged. `as_mixture` gives the same law as a concrete `DurationMixture`
-  for parity runs. The four partial-family scalars are carried but not consumed
-  until the section-3.6 boundary-support increment. `tests/test_a_pooled.py`
+  for parity runs. `edge_prior` reads the four partial-family scalars as the
+  `EdgePrior` of proposal 3.1 (coding entry / coding exit / intron entry /
+  intron exit; the reference decoders' two-value prior is the case where the
+  intron scalars equal the coding ones) for the edge-enabled decoders below —
+  values only; their gradient waits on the section-3.6 edge-partial
+  numerators in the loss. `tests/test_a_pooled.py`
   (torch-gated, 8 cases) pins table/mixture agreement, bias indexing, fast-loss
   and tensor-Viterbi parity with the reference kernels under the learned law
   (fixtures, 30 + 40 random lattices, batched = single), a finite gradient on
@@ -169,7 +173,8 @@ acceptor. Dependency radius is 491 bases, below the proposed 516-base halo.
    checksummed source and yields admitted complete windows. What remains is the
    boundary-support path — edge-partial admitted chains (compatible entry/exit
    families and a first-row phase carried alongside the CDS intervals, scored by
-   an edge-enabled decoder) which are currently skipped and counted — and
+   the edge-enabled decoder that now exists for Viterbi but not yet for the
+   partition) which are currently skipped and counted — and
    cropping whole genes longer than the encoder core into chunks with retained
    intron/codon/duration state (the crop-integration contracts checked in the
    prior owner's notes engels-0045…engels-0057). Batched multi-window collation
@@ -527,7 +532,9 @@ now carries all 455,841 parameters in the optimizer: the loss adds
 the fast kernel, so the mixture logits, hazard logits and both dinucleotide
 tables get a gradient (`tests/test_a_pooled.py` checks it against central
 differences); the four partial-family scalars are carried without a gradient
-until section 3.6 consumes them, so 455,837 parameters move. The selectable
+until the section-3.6 edge-partial numerators consume them in the loss (the
+edge-enabled Viterbi of item 6's boundary-support step reads them as values),
+so 455,837 parameters move. The selectable
 reference kernel (`loss_kernel: "reference"`) at `9c6cd59` read the same law
 through the detached `as_mixture`, so it fitted with the 18 duration scalars
 silently frozen under the same manifest scope (engels-0083 P2, confirmed by
@@ -744,8 +751,8 @@ gathers the merged layer at `K − 2 + 2P` candidate slots (`P` = 17 for
 code 1: the two multi-predecessor states padded to a common width under a
 `FLOOR` prior), adds the symbol's prior row, `U`'s column extras on its
 own candidates, takes one `max` over the two `(B, P)` candidate rows and
-reassembles the `(B, K)` layer with one `cat` — 58 elements per window
-per step instead of the dense 576, two more dispatches. Past a window's
+reassembles the `(B, K)` layer with one `cat` — 56 elements per window
+per step (`24 − 2 + 2 × 17`) instead of the dense 576, two more dispatches. Past a window's
 end the pad symbol row keeps `U → U` at 0 and everything else at `FLOOR`,
 so the score is still read at boundary `L`; back-pointers of unreachable
 states and of padded boundaries are unspecified (documented), and the
@@ -773,11 +780,14 @@ same core, thread, checkpoint and `/usr/bin/time -v` protocol:
 | overlap 0, batch 16 | 38 | 0.02 | 0.84 | 2.39 | 14.2 | 15.6 | 16.8 | 7.1 | 0.60 GiB |
 | overlap 0, batch 64 (one batch per code) | 38 | 0.02 | 0.84 | 1.57 | **10.7** (was 11.9) | 11.9 | 13.3 | 5.3 | 0.65 GiB |
 
-(io and output 0.01 s each.) The decode stage fell 4–7% at batch 16 and
-15–18% at batch 64 — less than the 10% / 30–45% estimated above, because
-the estimate counted the `(B, K, K)` block only and the per-step fixed
-cost (about 25 dispatches, ~35 µs) is untouched — and peak RSS rose
-0.06–0.09 GiB (the step-major intron tables). On the stage metric the
+(io and output 0.01 s each.) Against the same-named `chromosome-ops/`
+records the decode stage fell 4.3–11.7% at batch 16 (11.7% on the
+default overlap 4,096 row, 6.8% at 2,048, 4.3% at 0) and 15.5–18.0% at
+batch 64. The default row therefore slightly exceeds the 10% estimated
+above, while the batch-64 rows fall well short of the 30–45% estimate,
+because that estimate counted the `(B, K, K)` block only and the
+per-step fixed cost (about 25 dispatches, ~35 µs) is untouched; peak RSS
+rose 0.05–0.09 GiB (the step-major intron tables). On the stage metric the
 default row is **17.1** (1.14× over 15); **overlap 4,096 / batch 64 is the
 first default-overlap row inside the budget on the stage sum (14.2) and on
 whole-process user (14.4)**, though not on user + system (16.8, of which
@@ -792,8 +802,58 @@ boundary support, and the S. pombe normalization row of section 6.1 is
 still unmeasured. No B allowance is claimed on this basis; what remains
 of the decode stage is the per-step fixed cost of the Python loop, which
 is the checkpoint-and-replay / fused-kernel territory of proposal 3.3,
-not a further exact reshuffle. Step 3 (overlap after boundary support)
-is unchanged.
+not a further exact reshuffle.
+
+*Boundary support, first half: the sequence-edge partials of proposal 3.1
+in the tensor decoder* (`fast_viterbi.viterbi_batch_edges`, `viterbi` /
+`viterbi_windows(edges=)`; `EdgePrior` widened to the four partial
+families, `pooled.edge_prior`). Under an `EdgePrior` every `E(q)` may be
+entered at boundary 0 as `E0(q)` (coding entry plus the normalized
+phase/prefix prior, first base CDS: the donor row at `t = 0` is floored)
+and every tail `T(E(q), r)` as the residual intron `J` (intron entry plus
+prefix prior and `log π`; the acceptor row at `t = 0` is floored so it
+consumes one intronic base first); at a window's own end `n` an `S`/`E`
+state exits with the coding exit, a tail entered by a real donor with the
+intron exit and no `(1 − q)`, and a donor still parked at `s > n − m` as
+the censored `I(c, n − s)` with its intronic bases summed. `J` is never
+terminal, and no per-step state distinguishes it from `T`: a tail at `n`
+is `J` exactly when `entered[1..n, c, r]` is all false, so the choice is a
+one-time reduction at the step that reaches each window's length and the
+scan loop is otherwise the one measured above (0.51 vs 0.52 s over 16 ×
+12,288 with and without edges, same micro-benchmark). The traceback takes
+the chosen final state and relabels an un-entered tail run as `J` and a
+coding state at boundary 0 as `E0`, so `_chains` marks `partial_5` /
+`partial_3` as for the reference. `tests/test_a_fast_viterbi.py::EdgeParity`
+holds it to `DelayedEntryDecoder(code, duration, edges).viterbi` — 240
+random lattices with three priors (over 150 finite; 5′-partial, 3′-partial
+and doubly partial chains each present), fixtures in which each of the four
+scalars moves the score alone, batched (1 / 7 / 64, padded lengths, an
+empty window) equal to single, and the learned tables with the pooled
+prior; 184 tests pass under 3.11 + torch. This decoder is what a true
+chromosome end needs (`chromosome.py` still decodes the free grammar, so a
+gene cut by a sequence end is lost today) and what the section-3.6
+edge-partial training numerator will use once `fast_loss` has the same
+entry/exit terms (the partition needs a separate `J` layer, since a sum
+cannot recover the `T`-only part at `n`; not done).
+
+*Revision step 3 needs a decision on what "boundary support at a seam"
+means.* Proposal 3.1 and 3.6 are explicit that interior chunk boundaries
+get no partial entry or exit — a window seam is not a sequence edge — so
+the edge decoder above must not simply be switched on at every tile edge
+to drop the overlap; that would price a seam-crossing gene as two
+partials and change the model. The exact route is proposal 3.3's
+checkpointed seams: carry the scan state (`alpha`, `tau`, the `m` pending
+donor layers) from one tile into the next of the same strand, with the
+batch dimension over independent segments (strand × contiguous segment,
+each row scanning its segment tile by tile), overlap only at the few
+segment seams, and either the back-pointers of a whole segment held (about
+100 bytes per base as stored now — too much for 8 GB above ~50 Mb per
+batch — so they would need packing) or the 3.3 replay (a second scan,
+which on the numbers above costs more than the overlap it removes). The
+next step is therefore to measure the carried-state scan at overlap 0
+against the overlap-4,096 rows, not to relax the seam contract; the
+edge-enabled decoder is used at the two real sequence ends of each
+strand either way.
 
 **The CPU regime missed the budget before revision step 1.** Per oriented megabase the pipeline
 costs what items 4–5 measured (11.3–12.8 CPU-s), but a genome megabase is
@@ -841,9 +901,12 @@ done, and its remaining half (2b, the sparse-predecessor scan) is done
 and measured above (stage sum 10.7 at overlap 0 / batch 64, 12.0 at
 overlap 2,048 / batch 64, 14.2 at overlap 4,096 / batch 64, 17.1 at the
 batch-16 defaults; 11.9 / 12.8 / 14.4 / 18.1 on the whole-process user
-numerator). Step (3) is open, and the B allowance question stays open
+numerator). Step (3) is open: the edge-enabled Viterbi (the first half
+of boundary support) exists, but the seam contract of proposal 3.1 means
+the overlap can only go through carried scan state, not through edge
+partials at tile seams (see above); the B allowance question stays open
 until the overlapping configuration is also measured on the S. pombe
-normalization row with a fitted checkpoint and boundary support. The GPU regime is still unmeasured
+normalization row with a fitted checkpoint and true-edge support. The GPU regime is still unmeasured
 (gagarin, lenin-0083); the section 6.1 multi-worker decoder accounting is
 the other half of the same row.
 
@@ -891,8 +954,9 @@ Viterbi 2.9–5.2; what separates the batch-16 default from the budget is
 the both-strand factor times 1.5× oversampling on the decode stage, whose
 remaining cost is the per-step fixed dispatch of the Python scan loop.
 The pure-Python reference decoder at 66 CPU-s per oriented Mb (item 3) is
-kept only for parity runs. Revision step 3 (overlap after boundary
-support) remains; no B allowance until the overlapping configuration is
+kept only for parity runs. Revision step 3 (overlap through carried
+scan state at seams; the edge decoder now exists for the true sequence
+ends) remains; no B allowance until the overlapping configuration is
 also inside 15 on the S. pombe normalization row with a fitted checkpoint. Still missing: a checkpoint fit for
 more than 20 steps (the accuracy column), an S. pombe row (held-out
 species: only after freezing), a metazoan chromosome, and the GPU regime
