@@ -912,7 +912,7 @@ gene crossing a tile seam inside a segment is decoded whole.
 rows above; the two window-mode rows re-run at this commit are
 byte-identical to the `chromosome-sparse/` GFF3 outputs:
 
-| run | rows in the batch | encoder tiles | oriented bases | encoder | decode | **stages, user + system / genome Mb** | whole-process user / Mb | whole-process user + system / Mb | chains | chains differing from the exact strand decode (± ) | peak RSS |
+| run | rows in the batch | encoder tiles | oriented bases | encoder | decode | **stages, user + system / genome Mb** | whole-process user / Mb | whole-process user + system / Mb | chains | chains only in this row / only in the exact decode | peak RSS |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | windows, overlap 0, batch 64 (cost floor, re-run) | 38 | 38 | 460,436 | 0.83 | 1.56 | **10.5** | 11.7 | 13.2 | 1,853 | +65 / −44 | 0.65 GiB |
 | windows, overlap 4,096, batch 64 (re-run) | 56 | 56 | 681,620 | 1.22 | 1.98 | **14.1** | 14.6 | 16.7 | 1,832 | +5 / −5 | 0.81 GiB |
