@@ -35,8 +35,24 @@ Storage is ``L * K * (2 + R)`` bytes per window, so a whole chromosome would
 want the checkpoint-and-replay traceback of proposal 3.3 (not offered here);
 ``measure`` decodes annotation-selected windows and does not need it.
 
-Complete-target only, like the training kernel: the path must end in ``U``
-at boundary ``n``. Ties are broken by the first maximal index, which can
+Complete-target only by default, like the training kernel: the path must
+end in ``U`` at boundary ``n``. :func:`viterbi_batch_edges` adds the
+sequence-edge partials of proposal 3.1 under an :class:`EdgePrior` (the four
+partial-family scalars, :func:`model.a.pooled.edge_prior`): at boundary 0
+every ``E(q)`` may be entered as ``E0(q)`` (coding entry plus the
+normalized phase/prefix prior; its first base must be CDS, so no donor at
+``t = 0``) and every tail ``T(E(q), r)`` as the residual intron ``J``
+(intron entry plus the prefix prior and ``log pi``; it must consume one
+intronic base before it may close, so no acceptor at ``t = 0``); at a
+window's own end ``n`` any ``S``/``E`` state may exit with the coding exit,
+any tail ``T`` that was really entered by a donor with the intron exit and
+no ``(1 - q)`` factor, and any donor parked at ``s > n - m`` as the
+censored ``I(c, n - s)`` with its intronic bases summed and the intron
+exit. ``J`` is never terminal: a tail at ``n`` is ``J`` exactly when no
+donor entry was ever accepted on its row (``entered[1..n, c, r]`` all
+false), so no per-step state is added and the scan loop is the same;
+the per-window final choice is made once, at the step that reaches its
+length. Ties are broken by the first maximal index, which can
 differ from the Python decoder's insertion order; the score is tie-free.
 Back-pointers of states no finite path reaches, and of boundaries past a
 window's end inside a padded batch, are unspecified (the dense reference
@@ -49,8 +65,8 @@ from typing import List, NamedTuple, Optional, Sequence, Tuple
 
 import torch
 
-from model.grammar import DurationMixture, GeneticCode, TABLES
-from model.grammar.reference import Chain, ReferenceDecoder
+from model.grammar import DurationMixture, EdgePrior, GeneticCode, TABLES
+from model.grammar.reference import Chain, ReferenceDecoder, prefix_prior
 
 from .fast_loss import (_CH, FLOOR, SYMBOL_SETS, Grammar, duration_by_phase, duration_by_state,
                         symbol_index_tensor, symbol_indices)
@@ -162,7 +178,8 @@ def _sparse(g: Grammar) -> _Sparse:
 
 def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
                   lengths: torch.Tensor, grammar: Grammar, tables=None):
-    """Max-product scan. Returns ``(score, prev, exit_r, entered)``: ``score``
+    """Max-product scan over complete paths (``U`` to ``U``). Returns
+    ``(score, prev, exit_r, entered)``: ``score``
     is ``(B,)`` with ``-inf`` where no complete path exists; the back-pointer
     tensors are ``(B, L + 1, K)`` int8, ``(B, L + 1, K)`` int8 and
     ``(B, L + 1, K, R)`` bool (row 0 unused). ``exit_r[t, i]`` is indexed by
@@ -179,6 +196,31 @@ def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
     reassembled by ``cat``. Past a window's end the pad symbol row keeps
     ``U -> U`` at 0 and everything else at ``FLOOR``, so ``alpha[U]`` is
     preserved to boundary ``L`` while the other states are unspecified."""
+    return _scan(emissions, symbols, lengths, grammar, tables, None)[:4]
+
+
+# Final-state kinds of :func:`viterbi_batch_edges`: ``final[b] = (kind, j, x)``.
+FINAL_COMPLETE, FINAL_CODING, FINAL_TAIL, FINAL_PENDING = 0, 1, 2, 3
+
+
+def viterbi_batch_edges(emissions: torch.Tensor, symbols: torch.Tensor,
+                        lengths: torch.Tensor, grammar: Grammar, edges: EdgePrior,
+                        tables=None):
+    """:func:`viterbi_batch` with the sequence-edge partials of proposal 3.1
+    (module docstring) under ``edges``. Returns ``(score, prev, exit_r,
+    entered, final)``: ``score`` is the best complete-or-partial path (an
+    empty window scores 0 with no chain), and ``final`` is ``(B, 3)`` int64,
+    the state the best path holds at the window's own boundary ``n``:
+    ``(FINAL_COMPLETE, U, -1)``, ``(FINAL_CODING, j, -1)`` for an ``S``/``E``
+    exit, ``(FINAL_TAIL, c, r)`` for a ``T(c, r)`` exit, or
+    ``(FINAL_PENDING, c, k)`` for the censored ``I(c, k)`` of the donor parked
+    at ``n - k``. :func:`traceback` takes it as ``final=``; the entry
+    states at boundary 0 come out as ``("E0", q)`` and ``("J", c, r)``."""
+    return _scan(emissions, symbols, lengths, grammar, tables, edges)
+
+
+def _scan(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
+          grammar: Grammar, tables, edges: Optional[EdgePrior]):
     B, C, L = emissions.shape
     if C != EMISSION_CHANNELS:
         raise ValueError(f"emissions must be (B, {EMISSION_CHANNELS}, L)")
@@ -190,7 +232,8 @@ def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
     sp = _sparse(g)
     gather, prior, e0 = sp.gather, sp.prior, sp.e0
     K1, P = K - 2, sp.cand.shape[1]
-    log_1mq = duration_by_state(g, tables)[2][None]
+    log_pi, _, log_1mq = duration_by_state(g, tables)
+    log_1mq = log_1mq[None]
     phase = g.phase
     neg_one = torch.full((B, K), -1, dtype=torch.long, device=device)
 
@@ -201,6 +244,33 @@ def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
     alpha = torch.full((B, K), FLOOR, dtype=dtype, device=device)
     alpha[:, u] = 0.0
     tau = torch.full((B, K, R), FLOOR, dtype=dtype, device=device)
+    ends = None
+    final = None
+    if edges is not None:
+        # Entry at boundary 0: E0(q) in the coding layer, J(E(q), r) in the tails.
+        is_e = torch.tensor([st[0] == "E" for st in g.states], device=device)
+        pp = torch.tensor([prefix_prior(st[1]) if st[0] == "E" else 0.0 for st in g.states],
+                          dtype=dtype, device=device)
+        alpha = torch.where(is_e, pp + edges.entry, alpha)                                    # (B, K)
+        tau = torch.where(is_e[:, None], pp[:, None] + log_pi.to(dtype) + edges.intron_entry, tau)  # (B, K, R)
+        if L:
+            donor_t[0].fill_(FLOOR)            # E0's first base is CDS: no donor at t = 0
+            acceptor_t[0].fill_(FLOOR)         # J consumes one intronic base before closing
+        valid = torch.arange(L, device=device)[None, :] < lengths[:, None]
+        neg = torch.full((B, L), FLOOR, dtype=dtype, device=device)
+        intron = torch.where(valid[:, None, :], emissions[:, 4:7, :], neg[:, None, :])  # (B, 3, L)
+        exit_c = torch.full((K,), edges.exit, dtype=dtype, device=device)
+        exit_c[u] = FLOOR
+        exit_i = torch.tensor(edges.intron_exit, dtype=dtype, device=device)
+        score = torch.full((B,), FLOOR, dtype=dtype, device=device)
+        final = torch.zeros((B, 3), dtype=torch.long, device=device)
+        final[:, 1], final[:, 2] = u, -1
+        ends = {}
+        for b, n in enumerate(lengths.tolist()):
+            ends.setdefault(n, []).append(b)
+        ends = {n: torch.tensor(rows, device=device) for n, rows in ends.items()}
+        if 0 in ends:
+            score[ends.pop(0)] = 0.0           # only U -> U: partition 1, no chain
     pending: List[torch.Tensor] = []
     with torch.no_grad():
         for t in range(L):
@@ -226,8 +296,15 @@ def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
                 entered[:, t + 1] = enter
                 tau = torch.where(enter, entry, tau)
             tau.clamp_(min=FLOOR)
-    z = alpha[:, u]
-    score = torch.where(z > FLOOR / 2, z, torch.full_like(z, float("-inf")))
+            if ends is not None and t + 1 in ends:
+                rows = ends[t + 1]
+                _finish(rows, t + 1, alpha, tau, pending, entered, intron, phase, m, u,
+                        exit_c, exit_i, score, final)
+    if ends is None:
+        z = alpha[:, u]
+        score = torch.where(z > FLOOR / 2, z, torch.full_like(z, float("-inf")))
+    else:
+        score = torch.where(score > FLOOR / 2, score, torch.full_like(score, float("-inf")))
     # Expand the two argmax slots to the dense ``prev`` layout once, after
     # the loop: single-predecessor states point at their one predecessor.
     prev = torch.empty((B, L + 1, K), dtype=torch.int8, device=device)
@@ -236,7 +313,41 @@ def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
     chosen = sp.cand.gather(1, prev2.long().view(-1, 2).T).T.view(B, L + 1, 2)
     prev[:, :, u] = chosen[..., 0]
     prev[:, :, e0] = chosen[..., 1]
-    return score, prev, exit_r, entered
+    return score, prev, exit_r, entered, final
+
+
+def _finish(rows, n, alpha, tau, pending, entered, intron, phase, m, u, exit_c, exit_i,
+            score, final):
+    """Best terminal choice at boundary ``n`` for the windows ``rows`` of
+    that length (edge mode): complete, coding exit, tail exit (only tails a
+    donor really entered; the rest are ``J``), or a censored pending donor."""
+    a = alpha[rows]                                                       # (b, K)
+    cands = [a[:, u], (a + exit_c).max(dim=1)]
+    from_tail = ~entered[rows, 1:n + 1].any(dim=1)                        # (b, K, R): never entered = J
+    tail = torch.where(from_tail, torch.full_like(tau[rows], FLOOR), tau[rows] + exit_i)
+    cands.append(tail.flatten(1).max(dim=1))
+    # Donors parked at s in (n - m, n): I(c, n - s) exits with the intronic
+    # bases s .. n - 1 summed (a -inf inside stays -inf under the reversed cumsum).
+    first = n - len(pending)
+    suffix = intron[rows, :, first:n].flip(-1).cumsum(-1).flip(-1)         # (b, 3, len(pending))
+    pend = [(p[rows] + suffix[:, phase, i] + exit_i).max(dim=1) for i, p in enumerate(pending)]
+    if pend:
+        pv = torch.stack([v for v, _ in pend], 1)                         # (b, len(pending))
+        pj = torch.stack([j for _, j in pend], 1)
+        best_pv, best_i = pv.max(dim=1)
+        cands.append((best_pv, best_i))
+    values = torch.stack([cands[0], cands[1][0], cands[2][0]] + ([cands[3][0]] if pend else []), 1)
+    best, kind = values.max(dim=1)
+    score[rows] = best
+    R = tau.shape[-1]
+    j = torch.where(kind == FINAL_CODING, cands[1][1],
+                    torch.where(kind == FINAL_TAIL, cands[2][1] // R, torch.full_like(kind, u)))
+    x = torch.where(kind == FINAL_TAIL, cands[2][1] % R, torch.full_like(kind, -1))
+    if pend:
+        pj_best = pj.gather(1, best_i[:, None])[:, 0]
+        j = torch.where(kind == FINAL_PENDING, pj_best, j)
+        x = torch.where(kind == FINAL_PENDING, n - (first + best_i), x)
+    final[rows, 0], final[rows, 1], final[rows, 2] = kind, j, x
 
 
 def viterbi_batch_reference(emissions: torch.Tensor, symbols: torch.Tensor,
@@ -296,22 +407,36 @@ def viterbi_batch_reference(emissions: torch.Tensor, symbols: torch.Tensor,
 
 
 def traceback(n: int, grammar: Grammar, prev: torch.Tensor, exit_r: torch.Tensor,
-              entered: torch.Tensor) -> List[tuple]:
+              entered: torch.Tensor, final=None) -> List[tuple]:
     """State tuples at boundaries ``0..n`` of one window from its back-pointers
     (each ``(L + 1, ...)``), in the reference decoder's vocabulary:
-    ``("U",)``, ``("S", q)``, ``("E", q)``, ``("I", c, k)``, ``("T", c, r)``."""
+    ``("U",)``, ``("S", q)``, ``("E", q)``, ``("I", c, k)``, ``("T", c, r)``,
+    and with ``final`` (one row of :func:`viterbi_batch_edges`) also the
+    edge states ``("E0", q)`` and ``("J", c, r)`` at the start."""
     g = grammar
     m = g.dur.m
     # numpy scalar reads are ~10x cheaper than tensor indexing or ``tolist``.
     prev, exit_r, entered = (a.cpu().numpy() for a in (prev, exit_r, entered))
     states: List[Optional[tuple]] = [None] * (n + 1)
     t, j, r = n, g.u_index, -1                        # r >= 0: in tail T(j, r)
+    if final is not None:
+        kind, fj, fx = (int(v) for v in final)
+        if kind == FINAL_CODING:
+            j = fj
+        elif kind == FINAL_TAIL:
+            j, r = fj, fx
+        elif kind == FINAL_PENDING:                   # censored I(c, 1..k) from the donor at n - k
+            for k in range(1, fx + 1):
+                states[n - fx + k] = ("I", g.states[fj], k)
+            t, j = n - fx, fj
+    tail_end = t                                      # boundary where the current tail run began (going back)
     while t > 0:
         if r < 0:
             states[t] = g.states[j]
             i = int(prev[t, j])
             t -= 1
             j, r = i, int(exit_r[t, i])
+            tail_end = t
         else:
             states[t] = ("T", g.states[j], r)
             if entered[t, j, r]:
@@ -321,33 +446,40 @@ def traceback(n: int, grammar: Grammar, prev: torch.Tensor, exit_r: torch.Tensor
                 t, r = s, -1
             else:
                 t -= 1
-    states[0] = g.states[j] if r < 0 else ("T", g.states[j], r)
+    if r < 0:
+        states[0] = g.states[j] if j == g.u_index else ("E0", g.states[j][1])
+    else:                                             # a tail no donor entered: the residual intron J
+        for k in range(0, tail_end + 1):
+            states[k] = ("J", g.states[j], r)
     return states
 
 
 def viterbi(x: str, emissions: torch.Tensor, *, code: GeneticCode = TABLES[1],
             duration: DurationMixture = DurationMixture(),
-            tables=None) -> Tuple[float, List[Chain]]:
-    """Best complete-path score and its chains for one window; the tensor twin
-    of ``DelayedEntryDecoder(code, duration).viterbi(x, scores)`` without edge
-    priors. Returns ``(-inf, [])`` when the grammar admits no path. ``tables``
+            tables=None, edges: Optional[EdgePrior] = None) -> Tuple[float, List[Chain]]:
+    """Best path score and its chains for one window; the tensor twin of
+    ``DelayedEntryDecoder(code, duration, edges).viterbi(x, scores)``:
+    complete paths only without ``edges``, sequence-edge partials with them.
+    Returns ``(-inf, [])`` when the grammar admits no path. ``tables``
     overrides ``duration``'s values (``duration`` then fixes ``m`` and ``R``)."""
     _check_input(x, emissions)
     g = Grammar.get(code, duration, dtype=emissions.dtype, device=emissions.device)
     sym = symbol_index_tensor(x)[None].to(emissions.device)
     lengths = torch.tensor([len(x)], device=emissions.device)
-    score, prev, exit_r, entered = viterbi_batch(emissions[None], sym, lengths, g, tables)
+    score, prev, exit_r, entered, final = _scan(emissions[None], sym, lengths, g, tables, edges)
     best = float(score[0])
     if best == float("-inf"):
         return best, []
-    states = traceback(len(x), g, prev[0], exit_r[0], entered[0])
+    states = traceback(len(x), g, prev[0], exit_r[0], entered[0],
+                       None if final is None else final[0])
     return best, ReferenceDecoder._chains(states, [None] * len(x), x)
 
 
 def viterbi_windows(windows: Sequence[str], emissions: Sequence[torch.Tensor], *,
                     codes: Optional[Sequence[GeneticCode]] = None,
                     duration: DurationMixture = DurationMixture(), tables=None,
-                    batch_size: int = 16) -> List[Tuple[float, List[Chain]]]:
+                    batch_size: int = 16,
+                    edges: Optional[EdgePrior] = None) -> List[Tuple[float, List[Chain]]]:
     """:func:`viterbi` over many windows, batched to amortize the per-step
     launch cost of the scan (on one CPU core the scan over a ``(B, K)`` layer
     costs about the same as over ``(1, K)``, so decoding ``B`` windows
@@ -356,7 +488,8 @@ def viterbi_windows(windows: Sequence[str], emissions: Sequence[torch.Tensor], *
     padded to its longest window with ``-inf`` emissions past the end, which
     :func:`model.a.fast_loss.prepare_batch` turns into identity transitions.
     ``emissions[i]`` is ``(11, len(windows[i]))``. Results are returned in the
-    input order."""
+    input order. ``edges`` enables the sequence-edge partials for every
+    window (each window is then a whole sequence with two real edges)."""
     if len(windows) != len(emissions):
         raise ValueError("windows and emissions must agree in length")
     if codes is None:
@@ -383,13 +516,14 @@ def viterbi_windows(windows: Sequence[str], emissions: Sequence[torch.Tensor], *
                 e[b, :, :lengths[b]] = emissions[i]
                 if lengths[b]:
                     sym[b, :lengths[b]] = symbol_index_tensor(windows[i]).to(device)
-            score, prev, exit_r, entered = viterbi_batch(
-                e, sym, torch.tensor(lengths, device=device), g, tables)
+            score, prev, exit_r, entered, final = _scan(
+                e, sym, torch.tensor(lengths, device=device), g, tables, edges)
             for b, i in enumerate(ids):
                 best = float(score[b])
                 if best == float("-inf"):
                     out[i] = (best, [])
                     continue
-                states = traceback(lengths[b], g, prev[b], exit_r[b], entered[b])
+                states = traceback(lengths[b], g, prev[b], exit_r[b], entered[b],
+                                   None if final is None else final[b])
                 out[i] = (best, ReferenceDecoder._chains(states, [None] * lengths[b], windows[i]))
     return out  # type: ignore[return-value]

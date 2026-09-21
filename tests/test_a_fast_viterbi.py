@@ -15,7 +15,7 @@ import random
 import unittest
 from math import isinf, log
 
-from model.grammar import DurationMixture, TABLES
+from model.grammar import DurationMixture, EdgePrior, TABLES
 from model.grammar.delayed import DelayedEntryDecoder
 from model.grammar.scores import Scores
 
@@ -240,3 +240,142 @@ class SymbolLookup(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(HAS_FAST, "tensor Viterbi not available")
+class EdgeParity(unittest.TestCase):
+    """Sequence-edge partials (proposal 3.1) under the four-family
+    ``EdgePrior``: the edge-enabled tensor scan is held to
+    ``DelayedEntryDecoder(code, duration, edges).viterbi`` on random small
+    lattices and on fixtures whose best path is a partial chain, batched and
+    single, with the four scalars distinct so a family swap would show."""
+
+    EDGES = (EdgePrior(log(0.3), log(0.4)),
+             EdgePrior(entry=-0.2, exit=-1.7, intron_entry=-0.9, intron_exit=-0.05),
+             EdgePrior(entry=2.0, exit=1.0, intron_entry=3.0, intron_exit=2.5))
+
+    def _check(self, x, e, code, dur, edges):
+        a, ca = DelayedEntryDecoder(code, dur, edges).viterbi(x, _scores(e))
+        b, cb = fast_viterbi.viterbi(x, e, code=code, duration=dur, edges=edges)
+        if isinf(a):
+            self.assertTrue(isinf(b), (x, dur, edges))
+            self.assertEqual(cb, [])
+            return a, ca
+        self.assertAlmostEqual(a, b, places=9, msg=(x, dur, code, edges))
+        self.assertEqual(ca, cb, (x, dur, code, edges))
+        return a, ca
+
+    def test_random_lattices_with_edges(self):
+        rng = random.Random(11)
+        torch.manual_seed(11)
+        finite = partial5 = partial3 = both = 0
+        for _ in range(240):
+            dur = _random_mixture(rng)
+            x, code, e = _random_case(rng)
+            edges = rng.choice(self.EDGES)
+            a, ca = self._check(x, e, code, dur, edges)
+            if isinf(a):
+                continue
+            finite += 1
+            partial5 += any(c.partial_5 for c in ca)
+            partial3 += any(c.partial_3 for c in ca)
+            both += any(c.partial_5 and c.partial_3 for c in ca)
+        self.assertGreater(finite, 150)
+        self.assertGreater(partial5, 30)
+        self.assertGreater(partial3, 30)
+        self.assertGreater(both, 10)
+
+    def test_families_are_distinct(self):
+        # CDS from the edge (E0) pays the coding entry; a residual intron (J)
+        # the intron entry; an exit in S/E the coding exit; in T the intron
+        # exit. Each fixture's best path uses exactly one family, and the
+        # score moves with that scalar only.
+        dur = SHORT
+        x = "AAAAAAAAA"
+        e = torch.zeros(11, len(x), dtype=torch.float64)
+        e[0, :] = -3.0                                    # U disfavoured everywhere
+        e[4:7, :] = -10.0                                 # and so is every intronic base
+        base = EdgePrior(entry=0.0, exit=0.0, intron_entry=0.0, intron_exit=0.0)
+        best0, chains = self._check(x, e, TABLES[1], dur, base)
+        self.assertEqual(len(chains), 1)
+        self.assertTrue(chains[0].partial_5 and chains[0].partial_3)
+        self.assertEqual([s.kind for s in chains[0].segments], ["cds"])
+        for name, delta in (("entry", -1.5), ("exit", -0.5)):
+            best, _ = self._check(x, e, TABLES[1], dur, EdgePrior(**{**base.__dict__, name: delta}))
+            self.assertAlmostEqual(best, best0 + delta, places=12)
+        for name in ("intron_entry", "intron_exit"):
+            best, _ = self._check(x, e, TABLES[1], dur, EdgePrior(**{**base.__dict__, name: -1.5}))
+            self.assertAlmostEqual(best, best0, places=12)
+        # residual intron from the edge closing into CDS, then a censored intron
+        e = torch.zeros(11, len(x), dtype=torch.float64)
+        e[0, :] = -3.0
+        e[4:7, :3] = 2.0                                  # intronic at the start
+        e[1:4, :3] = -10.0
+        e[4:7, 3:6] = -10.0                               # coding in the middle
+        e[4:7, 6:] = 2.0                                  # intronic at the end
+        e[1:4, 6:] = -10.0
+        best0, chains = self._check(x, e, TABLES[1], dur, base)
+        self.assertEqual([s.kind for s in chains[0].segments], ["intron", "cds", "intron"])
+        for name, delta in (("intron_entry", -1.5), ("intron_exit", -0.5)):
+            best, _ = self._check(x, e, TABLES[1], dur, EdgePrior(**{**base.__dict__, name: delta}))
+            self.assertAlmostEqual(best, best0 + delta, places=12)
+        for name in ("entry", "exit"):
+            best, _ = self._check(x, e, TABLES[1], dur, EdgePrior(**{**base.__dict__, name: -1.5}))
+            self.assertAlmostEqual(best, best0, places=12)
+
+    def test_no_edges_unchanged_and_empty(self):
+        e = torch.zeros(11, len(SINGLE_X), dtype=torch.float64)
+        e[0, 2:14] = -5.0
+        for edges in self.EDGES:
+            best, chains = self._check(SINGLE_X, e, TABLES[1], DurationMixture(), edges)
+            if edges is self.EDGES[0]:                    # priors below log 0.5: the complete gene wins
+                self.assertEqual(best, 0.0)
+                self.assertEqual([(s.start, s.end) for s in chains[0].cds()], [(2, 14)])
+                self.assertFalse(chains[0].partial_5 or chains[0].partial_3)
+            else:                                         # parity holds whichever path wins
+                self.assertGreaterEqual(best, 0.0)
+        best, chains = fast_viterbi.viterbi("", torch.zeros(11, 0, dtype=torch.float64), edges=self.EDGES[1])
+        self.assertEqual((best, chains), (0.0, []))
+
+    def test_batched_with_edges_equals_single(self):
+        rng = random.Random(5)
+        torch.manual_seed(5)
+        cases = [_random_case(rng) for _ in range(48)] + [("", TABLES[1], torch.zeros(11, 0, dtype=torch.float64))]
+        ws, cs, es = zip(*cases)
+        for edges in self.EDGES[1:]:
+            single = [fast_viterbi.viterbi(x, e, code=c, duration=SHORT, edges=edges) for x, c, e in cases]
+            for bs in (1, 7, 64):
+                batched = fast_viterbi.viterbi_windows(ws, es, codes=cs, duration=SHORT, batch_size=bs, edges=edges)
+                for (a, ca), (b, cb) in zip(single, batched):
+                    if isinf(a):
+                        self.assertTrue(isinf(b))
+                    else:
+                        self.assertEqual(a, b)
+                    self.assertEqual(ca, cb)
+
+    def test_learned_tables_and_pooled_prior(self):
+        from model.a.encoder import DecoderParams
+        from model.a import pooled
+        torch.manual_seed(2)
+        dec = DecoderParams()
+        with torch.no_grad():
+            for prm in dec.parameters():
+                prm.add_(torch.randn_like(prm))
+        edges = pooled.edge_prior(dec)
+        self.assertEqual((edges.entry, edges.exit, edges.intron_entry, edges.intron_exit),
+                         tuple(dec.partial_families.tolist()))
+        tables, mix = pooled.duration_tables(dec), pooled.as_mixture(dec, m=2)
+        rng = random.Random(9)
+        finite = 0
+        for _ in range(60):
+            x, code, e = _random_case(rng)
+            a, ca = DelayedEntryDecoder(code, mix, edges).viterbi(x, _scores(e))
+            b, cb = fast_viterbi.viterbi(x, e, code=code, duration=pooled.structure(dec, m=2),
+                                         tables=tables, edges=edges)
+            if isinf(a):
+                self.assertTrue(isinf(b))
+                continue
+            finite += 1
+            self.assertAlmostEqual(a, b, places=9)
+            self.assertEqual(ca, cb)
+        self.assertGreater(finite, 30)

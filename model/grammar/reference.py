@@ -108,12 +108,25 @@ class DurationMixture:
 
 @dataclass(frozen=True)
 class EdgePrior:
-    """Explicit partial-end prior of proposal 3.1, as log weights. `entry`
-    is paid once for entering in E0 or J at boundary 0 (on top of the
-    normalized phase/prefix prior), `exit` once for leaving from S, E, I or T
-    at boundary n. Interior chunk boundaries never use it."""
+    """Explicit partial-end prior of proposal 3.1, as log weights: the four
+    partial-family scalars of the pooled decoder (proposal 3.5, coding /
+    intron x entry / exit). `entry` is paid once for entering in E0 (CDS from
+    the edge) at boundary 0 and `intron_entry` for entering in J (a residual
+    intron), both on top of the normalized phase/prefix prior; `exit` once
+    for leaving from S or E at boundary n and `intron_exit` for leaving from
+    I or T. The intron scalars default to the coding ones, so the two-value
+    form `EdgePrior(entry, exit)` is the earlier shared prior. Interior chunk
+    boundaries never use it."""
     entry: float = log(0.5)
     exit: float = log(0.5)
+    intron_entry: Optional[float] = None
+    intron_exit: Optional[float] = None
+
+    def __post_init__(self):
+        if self.intron_entry is None:
+            object.__setattr__(self, "intron_entry", self.entry)
+        if self.intron_exit is None:
+            object.__setattr__(self, "intron_exit", self.exit)
 
 
 def prefix_prior(q):
@@ -182,7 +195,7 @@ class ReferenceDecoder:
                 q = c[1]
                 init[("E0", q)] = self.edges.entry + prefix_prior(q)
                 for r in range(self.dur.R):
-                    init[("J", c, r)] = (self.edges.entry + prefix_prior(q)
+                    init[("J", c, r)] = (self.edges.intron_entry + prefix_prior(q)
                                          + self.dur.log_pi(len(q), r))
         return init
 
@@ -195,7 +208,7 @@ class ReferenceDecoder:
             return 0.0
         if self.edges is None or state[0] in ("J", "E0"):
             return NEG
-        return self.edges.exit
+        return self.edges.exit if state[0] in ("S", "E") else self.edges.intron_exit
 
     @staticmethod
     def _check_input(x, sc: Scores):

@@ -3,9 +3,9 @@
 :class:`model.a.encoder.DecoderParams` holds 54 scalars: phase x component
 mixture logits and hazard logits (the duration law of proposal 3.2), a
 16-entry donor and a 16-entry acceptor dinucleotide score table, and four
-partial-entry/exit family scores (section 3.6 boundary support, not consumed
-yet). This module turns them into what the kernels consume, keeping the
-gradient path:
+partial-entry/exit family scores (section 3.6 boundary support: consumed by
+the edge-enabled decoders, not yet by the loss). This module turns them into
+what the kernels consume, keeping the gradient path:
 
 * :func:`duration_tables` gives ``(log pi, log q, log(1 - q))`` as ``(3, R)``
   tensors -- ``pi[p] = softmax(mixture_logits[p])``, ``q = sigmoid(hazard)``
@@ -25,6 +25,13 @@ gradient path:
 * :func:`as_mixture` gives the same duration law as a concrete
   :class:`DurationMixture` for the Python reference decoders (parity runs,
   ``measure --decoder python``). It detaches: values only, no gradient.
+* :func:`edge_prior` reads the four partial-family scalars as the
+  :class:`model.grammar.EdgePrior` of proposal 3.1 (coding entry, coding
+  exit, intron entry, intron exit, in the parameter's order) that the
+  reference decoders and :func:`model.a.fast_viterbi.viterbi_batch_edges`
+  take at an actual sequence edge. Values only, no gradient: the edge
+  prior enters the training loss with the section-3.6 edge-partial
+  numerators, not yet.
 * :func:`as_torch_duration` gives the same law as a :class:`TorchDuration`,
   a duck-typed :class:`DurationMixture` whose ``log_pi``/``log_q``/``log_1mq``
   return 0-d tensors from :func:`duration_tables`. The reference recurrence
@@ -40,7 +47,7 @@ from typing import NamedTuple, Optional, Sequence
 import torch
 import torch.nn.functional as F
 
-from model.grammar import DurationMixture
+from model.grammar import DurationMixture, EdgePrior
 
 from .torch_loss import CHANNEL_ORDER, EMISSION_CHANNELS
 
@@ -120,6 +127,20 @@ class TorchDuration:
                               device=self.tables.log_pi.device)
         t = self.tables
         return torch.logsumexp(t.log_pi[p] + t.log_1mq[p] + (length - self.m) * t.log_q[p], dim=0)
+
+
+# ``DecoderParams.partial_families`` order: coding entry, coding exit, intron
+# entry, intron exit (E0 / S, E / J / I, T of proposal 3.1).
+PARTIAL_FAMILIES = ("entry", "exit", "intron_entry", "intron_exit")
+
+
+def edge_prior(decoder) -> EdgePrior:
+    """The decoder's four partial-family scalars as the sequence-edge prior
+    of the reference and tensor decoders (values only, no gradient)."""
+    fam = decoder.partial_families.detach().cpu()
+    if tuple(fam.shape) != (len(PARTIAL_FAMILIES),):
+        raise ValueError(f"partial_families must be ({len(PARTIAL_FAMILIES)},), got {tuple(fam.shape)}")
+    return EdgePrior(**dict(zip(PARTIAL_FAMILIES, fam.tolist())))
 
 
 def as_torch_duration(decoder, m: int = DEFAULT_M, *, dtype=torch.float64) -> TorchDuration:
