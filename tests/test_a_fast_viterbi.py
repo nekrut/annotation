@@ -7,7 +7,9 @@ small lattices with IUPAC ambiguity, both genetic-code tables, alternative
 initiators, ``m = 1..4``, ``R = 1..3`` and ``-inf`` masks; infeasible windows
 are ``-inf`` in both; length-bucketed batched decoding equals per-window
 decoding; the sparse-predecessor scan equals the dense-transition reference
-bit for bit on scores, tail back-pointers and every traceback. Skips without
+bit for bit on scores, tail back-pointers and every traceback; the
+carried-seam scan over segments (``scan_segments`` / ``viterbi_segments``)
+equals the unbroken scan at every tile length, in both modes. Skips without
 torch, like the other candidate-A tensor suites.
 """
 import importlib.util
@@ -447,3 +449,95 @@ class EdgeParity(unittest.TestCase):
             self.assertAlmostEqual(a, b, places=9)
             self.assertEqual(ca, cb)
         self.assertGreater(finite, 30)
+
+
+@unittest.skipUnless(HAS_FAST, "tensor Viterbi not available")
+class SeamCarry(unittest.TestCase):
+    """``viterbi_segments`` (the scan tiled with the state carried across
+    seams, proposal 3.3) equals ``viterbi`` on the whole segment: same score
+    bit for bit and the same ``Chain`` objects, for tiles of 1..64 bases
+    (shorter than ``m``, so pending donors straddle seams), segments of
+    unequal length in one batch (rows that end early idle through later
+    tiles), empty segments, both genetic-code families, ``-inf`` masks, and
+    with and without the sequence-edge partials (a tail entered before a
+    seam must still be offered at the segment's end)."""
+
+    EDGES = (None, EdgeParity.EDGES[1], EdgeParity.EDGES[2])
+
+    def _segment_case(self, rng, nmax=60):
+        n = rng.randint(0, nmax)
+        x = "".join(rng.choice("ACGTACGTNRY") for _ in range(n))
+        e = torch.randn(11, n, dtype=torch.float64) * 2
+        if rng.random() < 0.5:
+            e[torch.rand(11, n) < 0.15] = float("-inf")
+        return x, e
+
+    def test_tiled_equals_whole(self):
+        rng = random.Random(3)
+        torch.manual_seed(3)
+        finite = seamed = 0
+        for _ in range(200):
+            dur = _random_mixture(rng)
+            code = rng.choice([TABLES[1], TABLES[6], TABLES[1].with_alternative_initiators()])
+            edges = rng.choice(self.EDGES)
+            cases = [self._segment_case(rng) for _ in range(rng.randint(1, 6))]
+            xs, es = zip(*cases)
+            tile = rng.choice([1, 2, 3, 5, 7, 11, 64])
+            tiled = fast_viterbi.viterbi_segments(xs, es, tile=tile, code=code, duration=dur, edges=edges)
+            for (x, e), (b, cb) in zip(cases, tiled):
+                a, ca = fast_viterbi.viterbi(x, e, code=code, duration=dur, edges=edges)
+                if isinf(a):
+                    self.assertTrue(isinf(b), (x, dur, code, edges, tile))
+                    self.assertEqual(cb, [], (x, dur, code, edges, tile))
+                    continue
+                finite += 1
+                seamed += any(s.start < k < s.end for c in ca for s in c.segments
+                              for k in range(tile, len(x), tile))
+                self.assertEqual(a, b, (x, dur, code, edges, tile))
+                self.assertEqual(ca, cb, (x, dur, code, edges, tile))
+        self.assertGreater(finite, 400)
+        self.assertGreater(seamed, 100)
+
+    def test_back_pointers_equal_unbroken_scan(self):
+        # Beyond the traceback: the concatenated per-tile stores agree with
+        # the single scan wherever the single scan's values are specified
+        # (reachable states and boundaries inside each row's own length).
+        from model.a.fast_loss import Grammar, symbol_index_tensor
+        rng = random.Random(4)
+        torch.manual_seed(4)
+        for _ in range(40):
+            dur = _random_mixture(rng)
+            code = rng.choice([TABLES[1], TABLES[6]])
+            edges = rng.choice(self.EDGES)
+            cases = [self._segment_case(rng) for _ in range(rng.randint(1, 4))]
+            lengths = [len(x) for x, _ in cases]
+            L = max(lengths)
+            g = Grammar.get(code, dur, dtype=torch.float64, device=torch.device("cpu"))
+            e = torch.full((len(cases), 11, L), float("-inf"), dtype=torch.float64)
+            sym = torch.zeros((len(cases), L), dtype=torch.long)
+            for b, (x, em) in enumerate(cases):
+                e[b, :, :len(x)] = em
+                if x:
+                    sym[b, :len(x)] = symbol_index_tensor(x)
+            lens = torch.tensor(lengths)
+            whole = fast_viterbi._scan(e, sym, lens, g, None, edges)
+            for tile in (1, 3, 8):
+                part = fast_viterbi.scan_segments(e, sym, lens, g, tile, edges)
+                self.assertTrue(torch.equal(whole[0], part[0]), (tile, dur, edges))
+                for b, n in enumerate(lengths):
+                    # exit_r and entered are written at every step of the
+                    # scan, so they are fully specified inside the row.
+                    self.assertTrue(torch.equal(whole[2][b, :n], part[2][b, :n]), (tile, b))
+                    self.assertTrue(torch.equal(whole[3][b, :n + 1], part[3][b, :n + 1]), (tile, b))
+                    if edges is not None:
+                        self.assertTrue(torch.equal(whole[4][b], part[4][b]), (tile, b))
+                    if not isinf(float(whole[0][b])):
+                        st_w = fast_viterbi.traceback(n, g, whole[1][b], whole[2][b], whole[3][b],
+                                                      None if edges is None else whole[4][b])
+                        st_p = fast_viterbi.traceback(n, g, part[1][b], part[2][b], part[3][b],
+                                                      None if edges is None else part[4][b])
+                        self.assertEqual(st_w, st_p, (tile, b))
+
+    def test_bad_tile_rejected(self):
+        with self.assertRaises(ValueError):
+            fast_viterbi.viterbi_segments(["ATG"], [torch.zeros(11, 3, dtype=torch.float64)], tile=0)

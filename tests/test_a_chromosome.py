@@ -150,7 +150,14 @@ class EndToEnd(unittest.TestCase):
         model = self._model_for(seq, genes)
         dec = model.decoder
         expected = {("+", 41, 58), ("-", 201, 218)}
-        for window, overlap in [(300, 0), (120, 60), (100, 70)]:
+        # The last three are the carried-seam mode: one segment scanned in
+        # 50-base tiles (both genes cross a tile seam: 40-58 crosses 50, the
+        # minus gene at oriented 82-100 crosses 100), two segments overlapping
+        # by 60 (segment seam near 180, tile seams every 50 inside), and one
+        # segment in tiles of 7 (every ``m``-window of a pending donor
+        # straddles a seam).
+        for window, overlap, segments in [(300, 0, None), (120, 60, None), (100, 70, None),
+                                          (50, 0, 1), (50, 60, 2), (7, 0, 1)]:
             self.window, self.overlap = window, overlap
             # patch encode_sequence path: predict_sequence calls model.encoder(feats)
             # with the featurized window; remember the window text via a hook.
@@ -172,16 +179,22 @@ class EndToEnd(unittest.TestCase):
                                         structure=pooled.structure(dec, 20),
                                         tables=pooled.duration_tables(dec),
                                         window=window, overlap=overlap, decode_batch=4,
-                                        device=torch.device("cpu"), dtype=torch.float64)
+                                        device=torch.device("cpu"), dtype=torch.float64,
+                                        segments=segments)
                 finally:
                     Fe.encode_sequence = real
                 return rows, counts
             rows, counts = _run()
             found = {(r.split("\t")[6], int(r.split("\t")[3]), int(r.split("\t")[4]))
                      for r in rows if "\tCDS\t" in r}
-            self.assertEqual(found, expected, (window, overlap, rows))
-            self.assertEqual(counts["chains"], 2, (window, overlap))
+            self.assertEqual(found, expected, (window, overlap, segments, rows))
+            self.assertEqual(counts["chains"], 2, (window, overlap, segments))
             self.assertEqual(counts["strand_bases"], 2 * n)
+            if segments is not None:
+                self.assertEqual(counts["windows"], 2 * segments)
+                if segments == 1:
+                    self.assertEqual(counts["tiles"], 2 * -(-n // window))
+                self.assertGreaterEqual(counts["tiles"], counts["windows"])
 
     @unittest.skipUnless(_HAS_TORCH, "torch")
     def test_real_encoder_pooling_grid_is_chromosome_anchored(self):

@@ -227,14 +227,60 @@ def viterbi_batch_edges(emissions: torch.Tensor, symbols: torch.Tensor,
     return _scan(emissions, symbols, lengths, grammar, tables, edges)
 
 
+class Carry(NamedTuple):
+    """Scan state at a tile seam, carried into the next tile of the same
+    segments (proposal 3.3): the coding layer ``alpha`` ``(B, K)``, the
+    donor-entered tails ``tau`` ``(B, K, R)``, the residual-intron layer
+    ``tau_j`` (edge mode, else ``None``), the ``pending`` donors parked at the
+    last ``len(pending) <= m - 1`` boundaries (each ``(B, K)``; their ``m``
+    mandatory intronic bases straddle the seam, so the next tile re-reads the
+    matching ``context`` emissions ``(B, C, len(pending))`` and starts its
+    loop at ``t0 = len(pending)``), the running edge-mode ``score`` /
+    ``final``, the tails a donor has entered so far (``ever`` ``(B, K, R)``;
+    ``_finish`` offers only those) and the segment ``done`` mask (rows whose
+    own end has been reached; their later tiles have length 0)."""
+    alpha: torch.Tensor
+    tau: torch.Tensor
+    tau_j: Optional[torch.Tensor]
+    pending: List[torch.Tensor]
+    context: torch.Tensor
+    score: Optional[torch.Tensor]
+    final: Optional[torch.Tensor]
+    ever: Optional[torch.Tensor]
+    done: torch.Tensor
+
+
 def _scan(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
-          grammar: Grammar, tables, edges: Optional[EdgePrior]):
+          grammar: Grammar, tables, edges: Optional[EdgePrior],
+          carry: Optional[Carry] = None, keep: bool = False):
+    """One scan over a batch of windows (``carry`` is ``None``) or over the
+    next tile of a batch of segments whose state at the seam is ``carry``
+    (:func:`scan_segments`). Returns ``(score, prev, exit_r, entered, final)``
+    and, with ``keep``, the :class:`Carry` at the tile's end as a sixth
+    element. Under a ``carry`` the back-pointer tensors cover the tile's own
+    boundaries ``0..L`` (boundary 0 is the seam) and ``exit_r[:, L]`` is
+    unwritten (the seam exit is written by the next tile at its boundary 0);
+    the boundary-0 entries and the ``t = 0`` floors of the edge mode apply to
+    the first tile only, and ``_finish`` runs for a row at the tile in which
+    its segment ends."""
     B, C, L = emissions.shape
     if C != EMISSION_CHANNELS:
         raise ValueError(f"emissions must be (B, {EMISSION_CHANNELS}, L)")
     g = grammar
     K, R, m, u = g.K, g.R, g.dur.m, g.u_index
     dtype, device = emissions.dtype, emissions.device
+    t0 = 0
+    if carry is not None:
+        # Prepend the seam context so the pending donors' mandatory windows
+        # (``window_pi[t - m + 1]`` spans ``[t - m + 1, t]``) and the censored
+        # suffix of ``_finish`` index the same operands as an unbroken scan.
+        t0 = carry.context.shape[-1]
+        if len(carry.pending) != t0:
+            raise ValueError("carry context must match its pending donors")
+        emissions = torch.cat([carry.context, emissions], 2)
+        symbols = torch.cat([torch.zeros((B, t0), dtype=symbols.dtype, device=device), symbols], 1)
+        lengths = torch.where(lengths > 0, lengths + t0, lengths)
+        L += t0
     sym_t, base_t, ucol_t, post_t, donor_t, acceptor_t, intron_q, window_pi = _operands(
         emissions, symbols, lengths, g, tables)
     sp = _sparse(g)
@@ -249,45 +295,58 @@ def _scan(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
     exit_r = torch.full((B, L + 1, K), -1, dtype=torch.int8, device=device)
     entered = torch.zeros((B, L + 1, K, R), dtype=torch.bool, device=device)
 
-    alpha = torch.full((B, K), FLOOR, dtype=dtype, device=device)
-    alpha[:, u] = 0.0
-    tau = torch.full((B, K, R), FLOOR, dtype=dtype, device=device)
-    tau_j = None
+    if carry is None:
+        alpha = torch.full((B, K), FLOOR, dtype=dtype, device=device)
+        alpha[:, u] = 0.0
+        tau = torch.full((B, K, R), FLOOR, dtype=dtype, device=device)
+        tau_j = None
+        pending: List[torch.Tensor] = []
+        done = torch.zeros((B,), dtype=torch.bool, device=device)
+        ever = None
+    else:
+        alpha, tau, tau_j = carry.alpha.clone(), carry.tau.clone(), carry.tau_j
+        tau_j = None if tau_j is None else tau_j.clone()
+        pending = list(carry.pending)
+        done, ever = carry.done, carry.ever
     ends = None
     final = None
+    score = None
     if edges is not None:
-        # Entry at boundary 0: E0(q) in the coding layer, J(E(q), r) in its
-        # own tail layer, kept apart from the donor-entered ``tau`` because
-        # the two differ at the window's end (``T`` may exit there, ``J`` may
-        # not) and a ``J`` that outscored a donor entry would otherwise erase
-        # the only terminal candidate on that row (engels-0088, stalin-0090).
-        is_e = torch.tensor([st[0] == "E" for st in g.states], device=device)
-        pp = torch.tensor([prefix_prior(st[1]) if st[0] == "E" else 0.0 for st in g.states],
-                          dtype=dtype, device=device)
-        alpha = torch.where(is_e, pp + edges.entry, alpha)                                    # (B, K)
-        tau_j = torch.where(is_e[:, None], pp[:, None] + log_pi.to(dtype) + edges.intron_entry,
-                            tau)                                                              # (B, K, R)
-        if L:
-            donor_t[0].fill_(FLOOR)            # E0's first base is CDS: no donor at t = 0
-            acceptor_t[0].fill_(FLOOR)         # J consumes one intronic base before closing
+        if carry is None:
+            # Entry at boundary 0: E0(q) in the coding layer, J(E(q), r) in its
+            # own tail layer, kept apart from the donor-entered ``tau`` because
+            # the two differ at the window's end (``T`` may exit there, ``J`` may
+            # not) and a ``J`` that outscored a donor entry would otherwise erase
+            # the only terminal candidate on that row (engels-0088, stalin-0090).
+            is_e = torch.tensor([st[0] == "E" for st in g.states], device=device)
+            pp = torch.tensor([prefix_prior(st[1]) if st[0] == "E" else 0.0 for st in g.states],
+                              dtype=dtype, device=device)
+            alpha = torch.where(is_e, pp + edges.entry, alpha)                                # (B, K)
+            tau_j = torch.where(is_e[:, None], pp[:, None] + log_pi.to(dtype) + edges.intron_entry,
+                                tau)                                                          # (B, K, R)
+            if L:
+                donor_t[0].fill_(FLOOR)            # E0's first base is CDS: no donor at t = 0
+                acceptor_t[0].fill_(FLOOR)         # J consumes one intronic base before closing
+            score = torch.full((B,), FLOOR, dtype=dtype, device=device)
+            final = torch.zeros((B, 3), dtype=torch.long, device=device)
+            final[:, 1], final[:, 2] = u, -1
+        else:
+            score, final = carry.score.clone(), carry.final.clone()
         valid = torch.arange(L, device=device)[None, :] < lengths[:, None]
         neg = torch.full((B, L), FLOOR, dtype=dtype, device=device)
         intron = torch.where(valid[:, None, :], emissions[:, 4:7, :], neg[:, None, :])  # (B, 3, L)
         exit_c = torch.full((K,), edges.exit, dtype=dtype, device=device)
         exit_c[u] = FLOOR
         exit_i = torch.tensor(edges.intron_exit, dtype=dtype, device=device)
-        score = torch.full((B,), FLOOR, dtype=dtype, device=device)
-        final = torch.zeros((B, 3), dtype=torch.long, device=device)
-        final[:, 1], final[:, 2] = u, -1
         ends = {}
         for b, n in enumerate(lengths.tolist()):
-            ends.setdefault(n, []).append(b)
+            if n > 0 or carry is None:
+                ends.setdefault(n, []).append(b)
         ends = {n: torch.tensor(rows, device=device) for n, rows in ends.items()}
         if 0 in ends:
             score[ends.pop(0)] = 0.0           # only U -> U: partition 1, no chain
-    pending: List[torch.Tensor] = []
     with torch.no_grad():
-        for t in range(L):
+        for t in range(t0, L):
             pending.append(alpha + donor_t[t])
             exits, best_r = (tau + log_1mq).max(dim=-1)                       # (B, K)
             if tau_j is not None:
@@ -324,7 +383,15 @@ def _scan(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
             if ends is not None and t + 1 in ends:
                 rows = ends[t + 1]
                 _finish(rows, t + 1, alpha, tau, pending, entered, intron, phase, m, u,
-                        exit_c, exit_i, score, final)
+                        exit_c, exit_i, score, final, ever)
+    if keep:
+        ctx = len(pending)
+        if edges is not None:
+            seen = entered[:, t0 + 1:].any(dim=1)
+            ever = seen if ever is None else ever | seen
+        carry_out = Carry(alpha=alpha, tau=tau, tau_j=tau_j, pending=pending,
+                          context=emissions[:, :, L - ctx:L].clone() if ctx else emissions[:, :, :0].clone(),
+                          score=score, final=final, ever=ever, done=done | (lengths < L))
     if ends is None:
         z = alpha[:, u]
         score = torch.where(z > FLOOR / 2, z, torch.full_like(z, float("-inf")))
@@ -332,25 +399,32 @@ def _scan(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
         score = torch.where(score > FLOOR / 2, score, torch.full_like(score, float("-inf")))
     # Expand the two argmax slots to the dense ``prev`` layout once, after
     # the loop: single-predecessor states point at their one predecessor.
+    prev2, exit_r, entered = prev2[:, t0:], exit_r[:, t0:], entered[:, t0:]
+    L -= t0
     prev = torch.empty((B, L + 1, K), dtype=torch.int8, device=device)
     prev[:, :, 1:e0] = gather[:e0 - 1].to(torch.int8)
     prev[:, :, e0 + 1:] = gather[e0 - 1:K1].to(torch.int8)
-    chosen = sp.cand.gather(1, prev2.long().view(-1, 2).T).T.view(B, L + 1, 2)
+    chosen = sp.cand.gather(1, prev2.reshape(-1, 2).long().T).T.view(B, L + 1, 2)
     prev[:, :, u] = chosen[..., 0]
     prev[:, :, e0] = chosen[..., 1]
+    if keep:
+        return score, prev, exit_r, entered, final, carry_out
     return score, prev, exit_r, entered, final
 
 
 def _finish(rows, n, alpha, tau, pending, entered, intron, phase, m, u, exit_c, exit_i,
-            score, final):
+            score, final, ever=None):
     """Best terminal choice at boundary ``n`` for the windows ``rows`` of
     that length (edge mode): complete, coding exit, tail exit (``tau`` holds
     donor-entered tails only; rows no donor ever entered are floored, and the
     residual intron ``J`` lives in its own layer and is never terminal), or a
-    censored pending donor."""
+    censored pending donor. ``ever`` is the entered mask carried from earlier
+    tiles of the same scan (:func:`scan_segments`)."""
     a = alpha[rows]                                                       # (b, K)
     cands = [a[:, u], (a + exit_c).max(dim=1)]
     from_tail = ~entered[rows, 1:n + 1].any(dim=1)                        # (b, K, R): never entered
+    if ever is not None:
+        from_tail &= ~ever[rows]
     tail = torch.where(from_tail, torch.full_like(tau[rows], FLOOR), tau[rows] + exit_i)
     cands.append(tail.flatten(1).max(dim=1))
     # Donors parked at s in (n - m, n): I(c, n - s) exits with the intronic
@@ -375,6 +449,89 @@ def _finish(rows, n, alpha, tau, pending, entered, intron, phase, m, u, exit_c, 
         j = torch.where(kind == FINAL_PENDING, pj_best, j)
         x = torch.where(kind == FINAL_PENDING, n - (first + best_i), x)
     final[rows, 0], final[rows, 1], final[rows, 2] = kind, j, x
+
+
+def scan_segments(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
+                  grammar: Grammar, tile: int, edges: Optional[EdgePrior] = None, tables=None):
+    """:func:`viterbi_batch` / :func:`viterbi_batch_edges` over a batch of
+    *segments* scanned ``tile`` bases at a time with the state carried across
+    the seams (proposal 3.3): the scores and back-pointers are those of one
+    unbroken scan over each segment, but at most one tile of operands is
+    alive at a time, so host memory for the operands is bounded by ``B *
+    tile`` rather than the segment length. The back-pointers of the whole
+    segment are still held (``L * K * (2 + R)`` bytes per row, the storage
+    the module docstring describes); packing them or the 3.3 replay is the
+    next step, not this one. ``emissions`` is ``(B, C, L)`` with each row's
+    segment in ``[0, lengths[b])``; interior seams are not sequence edges,
+    so a gene crossing one is decoded whole, and ``edges`` applies to the two
+    real ends of each segment only. Returns the same tuple as the
+    single-scan functions."""
+    if tile < 1:
+        raise ValueError("tile must be positive")
+    B, C, L = emissions.shape
+    device = emissions.device
+    carry = None
+    prevs, exits, enters = [], [], []
+    score = final = None
+    for start in range(0, max(L, 1), tile):
+        end = min(start + tile, L)
+        chunk = (lengths - start).clamp(min=0, max=end - start)
+        out = _scan(emissions[:, :, start:end], symbols[:, start:end], chunk, grammar, tables,
+                    edges, carry, keep=True)
+        score, prev, exit_r, entered, final, carry = out
+        # Tile ``c > 0`` shares boundary 0 with the previous tile's last
+        # boundary: keep one copy of ``prev``/``entered`` (unread at the seam,
+        # the traceback reads ``prev[t]`` for ``t >= 1``) and take ``exit_r``
+        # at the seam from the tile that wrote it (the later one).
+        prevs.append(prev if start == 0 else prev[:, 1:])
+        enters.append(entered if start == 0 else entered[:, 1:])
+        if exits:
+            exits[-1] = exits[-1][:, :-1]
+        exits.append(exit_r)
+    prev = torch.cat(prevs, 1) if len(prevs) > 1 else prevs[0]
+    entered = torch.cat(enters, 1) if len(enters) > 1 else enters[0]
+    exit_r = torch.cat(exits, 1) if len(exits) > 1 else exits[0]
+    # A row that ended before the last tile kept ``alpha[U]`` through the pad
+    # steps of its later tiles (``U -> U`` at 0), so the free-grammar score
+    # read at the end is its own, as in a padded batch.
+    return score, prev, exit_r, entered, final
+
+
+def viterbi_segments(segments: Sequence[str], emissions: Sequence[torch.Tensor], *,
+                     tile: int, code: GeneticCode = TABLES[1],
+                     duration: DurationMixture = DurationMixture(), tables=None,
+                     edges: Optional[EdgePrior] = None) -> List[Tuple[float, List[Chain]]]:
+    """:func:`viterbi` over a batch of segments of one genetic code, scanned
+    ``tile`` bases at a time with the state carried across seams
+    (:func:`scan_segments`); ``emissions[i]`` is ``(11, len(segments[i]))``.
+    Equal to :func:`viterbi` on each whole segment."""
+    if len(segments) != len(emissions):
+        raise ValueError("segments and emissions must agree in length")
+    if not segments:
+        return []
+    dtype, device = emissions[0].dtype, emissions[0].device
+    g = Grammar.get(code, duration, dtype=dtype, device=device)
+    lengths = [len(x) for x in segments]
+    L = max(lengths)
+    e = torch.full((len(segments), emissions[0].shape[0], L), float("-inf"), dtype=dtype, device=device)
+    sym = torch.zeros((len(segments), L), dtype=torch.long, device=device)
+    for b, (x, em) in enumerate(zip(segments, emissions)):
+        _check_input(x, em)
+        e[b, :, :lengths[b]] = em
+        if lengths[b]:
+            sym[b, :lengths[b]] = symbol_index_tensor(x).to(device)
+    score, prev, exit_r, entered, final = scan_segments(
+        e, sym, torch.tensor(lengths, device=device), g, tile, edges, tables)
+    out = []
+    for b, x in enumerate(segments):
+        best = float(score[b])
+        if best == float("-inf"):
+            out.append((best, []))
+            continue
+        states = traceback(lengths[b], g, prev[b], exit_r[b], entered[b],
+                           None if final is None else final[b])
+        out.append((best, ReferenceDecoder._chains(states, [None] * lengths[b], x)))
+    return out
 
 
 def viterbi_batch_reference(emissions: torch.Tensor, symbols: torch.Tensor,

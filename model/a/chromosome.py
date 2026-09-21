@@ -181,7 +181,8 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                      decode_batch: int = 16, device=None, dtype=None,
                      clock: Optional[StageClock] = None,
                      strands: Sequence[str] = ("+", "-"),
-                     stride: Optional[int] = None) -> Tuple[List[str], dict]:
+                     stride: Optional[int] = None,
+                     segments: Optional[int] = None) -> Tuple[List[str], dict]:
     """Decode ``seq`` on ``strands`` and return ``(gff3 rows, counts)``.
 
     ``counts``: ``oriented_bases`` (sum of decoded window lengths, overlap
@@ -193,6 +194,22 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
     so the pooling grid is the oriented chromosome's, and windows are flushed
     through the decoder in groups of ``decode_batch`` (at most that many
     emission tensors are alive at once).
+
+    With ``segments`` (proposal 3.3's carried seams) each strand is instead
+    cut into about that many *segments* that overlap by ``overlap`` (the
+    containment guarantee then holds at segment seams only); every segment is
+    encoded in ``window``-base tiles that do not overlap, and all segments of
+    all strands are decoded in one batch by :func:`model.a.fast_viterbi.
+    scan_segments`, which scans ``window`` bases at a time and carries the
+    Viterbi state across the interior tile seams, so a gene crossing such a
+    seam is decoded whole. ``counts["windows"]`` is then the number of
+    segments and ``counts["tiles"]`` the number of encoder tiles; the
+    oversampling is ``1 + (segments - 1) * overlap / n`` per strand instead of
+    ``window / (window - overlap)``. The emissions of every segment
+    (``11 * dtype`` bytes per oriented base) and the back-pointers of every
+    segment (``K * (2 + R)`` bytes per oriented base) are held at once, so
+    this mode is bounded by the chromosome length, not the window; packing
+    or replaying the back-pointers is the next step.
     """
     import torch
 
@@ -230,6 +247,13 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                     rows.extend(gff3_rows(chain, seqid, n, strand, parent))
                     counts["chains"] += 1
 
+    if segments is not None:
+        return _predict_segments(model, seqid, seq, code=code, structure=structure,
+                                 tables=tables, window=window, overlap=overlap,
+                                 segments=segments, device=device, dtype=dtype,
+                                 clock=clock, strands=strands, stride=stride,
+                                 rows=rows, counts=counts)
+
     with torch.no_grad():
         for strand in strands:
             with clock("io"):
@@ -255,6 +279,73 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                     group = []
             flush(strand, oriented, group)
             del group
+    return rows, counts
+
+
+def segment_length(n: int, segments: int, overlap: int) -> int:
+    """The window length that cuts ``[0, n)`` into about ``segments`` tiles
+    overlapping by ``overlap`` (:func:`tiles`); at least ``overlap + 1``."""
+    if segments < 1:
+        raise ValueError("segments must be positive")
+    return max(overlap + 1, -(-(n + (segments - 1) * overlap) // segments))
+
+
+def _predict_segments(model, seqid, seq, *, code, structure, tables, window, overlap,
+                      segments, device, dtype, clock, strands, stride, rows, counts):
+    """The ``segments`` mode of :func:`predict_sequence`: encode every segment
+    of every strand tile by tile, then one carried-state scan over all of
+    them."""
+    import torch
+
+    from . import pooled
+    from .encoder import POOL_STRIDE
+    from .fast_viterbi import viterbi_segments
+    from .features import encode_sequence
+    from .train import pad_window
+
+    stride = POOL_STRIDE if stride is None else stride
+    n = len(seq)
+    counts["tiles"] = 0
+    seg_len = segment_length(n, segments, overlap)
+    owners: List[Tuple[str, Tile]] = []
+    xs: List[str] = []
+    ems: List["torch.Tensor"] = []
+    with torch.no_grad():
+        for strand in strands:
+            with clock("io"):
+                oriented = seq if strand == "+" else reverse_complement(seq)
+            for seg in tiles(n, seg_len, overlap):
+                parts = []
+                for tile in tiles(seg.end - seg.start, window, 0):
+                    start, end = seg.start + tile.start, seg.start + tile.end
+                    enc_start = start - start % stride
+                    with clock("preprocess"):
+                        padded, available = pad_window(oriented[enc_start:end], stride)
+                        feats = encode_sequence(padded, available=available).unsqueeze(0).to(device)
+                    with clock("encoder"):
+                        parts.append(model.encoder(feats)[0][:, start - enc_start:end - enc_start].to(dtype))
+                    counts["tiles"] += 1
+                x = oriented[seg.start:seg.end]
+                with clock("decode"):
+                    emissions = torch.cat(parts, 1) if len(parts) > 1 else parts[0]
+                    emissions = emissions + pooled.motif_bias(x, model.decoder, dtype=dtype, device=device)
+                owners.append((strand, seg))
+                xs.append(x)
+                ems.append(emissions)
+                counts["oriented_bases"] += len(x)
+                counts["windows"] += 1
+        with clock("decode"):
+            decoded = viterbi_segments(xs, ems, tile=window, code=code, duration=structure,
+                                       tables=tables)
+        del ems
+        gene = 0
+        with clock("output"):
+            for (strand, seg), (_score, chains) in zip(owners, decoded):
+                counts["chains_decoded"] += len(chains)
+                for chain in claimed(chains, seg):
+                    gene += 1
+                    rows.extend(gff3_rows(chain, seqid, n, strand, f"{seqid}.g{gene}"))
+                    counts["chains"] += 1
     return rows, counts
 
 
