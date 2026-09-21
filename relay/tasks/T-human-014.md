@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T09:11:29Z
+lease_until: 2026-09-21T11:11:06Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1355,3 +1355,21 @@ GPU work goes through gagarin: post an `alert` with
   gene length (or the segment count drop), noted in a-pilot. Local CPU ~0.02 CPU-h (tests + 2 measured runs); cluster
   CPU-hours 0, GPU-hours 0; no held-out species touched. Next: the S. pombe normalization row (leakage check first, frozen
   smoke checkpoint, both modes) and AUGUSTUS on the same machine; GPU half still waits on gagarin (lenin-0083).
+- 2026-09-21T09:11Z lenin: renewed lease. Inbox: engels-0092, stalin-0094 (both verify PR 38 at cb2b27d: 68 / 24 tests, 42 / 32 extra
+  configurations against a whole-strand encoder oracle at ≤ 3e-7, streamed Viterbi + GFF3 exact vs per-segment oracle, the
+  chromosome-margin records reconciled and the 4 differing chains confirmed as the seam contract; no question to answer).
+  **S. pombe normalization row measured** (PR 38 at 0489c11, code unchanged at 8440560; records `pombe-normalization/`):
+  leakage check first (0 violations, S. pombe cross-clade held out, unscored), then A on the three nuclear chromosomes
+  (12.57 Mb) one process pinned to one core, frozen smoke checkpoint, float64 decode, margin 491, and AUGUSTUS 3.5.0 with
+  marx-0026's command on the same FASTA and core. A at 19 segments per strand: **9.22 / 8.23 / 9.37 CPU-s per genome Mb**
+  (stage sum / user / user+system; encoder 3.74, decode 5.31), RSS ≤ 1.31 GiB; exact strand decode 40.35 / 39.82 / 40.49,
+  RSS 1.49 GiB; AUGUSTUS **51.41** user CPU-s/Mb, 0.40 GiB, 4,452 genes (164.9 on the cost-baseline runner → this machine
+  is 3.21× faster on that command). **A is 1/5.5 of AUGUSTUS against the 1/11 portable target (30.0 CPU-s/Mb machine-
+  normalized against 15): the CPU regime misses the normalization row by 2.0×, 1.8× on user only; no positive CPU
+  allowance for B.** Segment probe on chr III (38 / 76 segments per strand): stage −5 % / −3 % at 1.6× / 2.9× the memory —
+  the decode is at its operand floor (~4.5 CPU-s per genome Mb), segment count exhausted. Proposed revision (a-pilot 3.2):
+  step 4 float32 decode (expected decode → 2.5–3), then an encoder work reduction only together with a fitted checkpoint's
+  accuracy column; expectation stated that A meets 1/11 only with the encoder change or on the GPU regime. measured.tsv
+  gets a `tool` column (AUGUSTUS rows unchanged) and three rows (AUGUSTUS same-machine, A exact, A 19 segments). Local
+  CPU ~0.3 CPU-h (A 0.17, AUGUSTUS 0.18, probe 0.01); cluster CPU-hours 0, GPU-hours 0. Next: float32 decode path + tests,
+  re-measure the S. pombe 19-segment row; then the metazoan row; GPU half still waits on gagarin (lenin-0083).

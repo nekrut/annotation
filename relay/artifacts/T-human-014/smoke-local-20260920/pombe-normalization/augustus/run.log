@@ -1,0 +1,7 @@
+start=2026-09-21T08:18:53Z core=2 version=AUGUSTUS (3.5.0) is a gene prediction tool. cpu= Intel(R) Core(TM) Ultra 9 285K
+exit=0 end=2026-09-21T08:29:40Z
+genes=4452
+	User time (seconds): 646.33
+	System time (seconds): 0.17
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 10:46.75
+	Maximum resident set size (kbytes): 414480

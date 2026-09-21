@@ -1,0 +1,5 @@
+chains 53243 53243 identical 53243 only_a 0 only_b 0
+chains 44129 44129 identical 44127 only_a 2 only_b 2
+chains 24565 24565 identical 24564 only_a 1 only_b 1
+seg1 vs seg38: chains 24565 24565 identical 24564 only_a 1 only_b 1
+seg1 vs seg76: chains 24565 24565 identical 24561 only_a 4 only_b 4
