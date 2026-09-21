@@ -202,13 +202,15 @@ runs on gagarin; no local host has torch. See section 3.
 4. **Bring the chromosome row inside the CPU budget.** The first
    chromosome-level `measure` row exists (3.2 item 6: both strands,
    overlapping windows, GFF3 output, I/O). After revision steps 1
-   (vectorised featurizer) and 2a (per-phase decode operands) it is 18.5
-   CPU-s per genome Mb at the default overlap (stage sum; 19.4 whole-process
-   user, the `cost-baseline.md` convention) and **11.9 / 13.1 at overlap 0 /
-   batch 64 — inside the 15 budget only at the no-overlap cost floor**; the
-   default-overlap row still misses by 1.2–1.3×, so the remaining revision
-   steps (2b: sparse-predecessor scan; 3: smaller overlap once boundary
-   support lands) come before any B allowance. The learned pooled
+   (vectorised featurizer), 2a (per-phase decode operands) and 2b
+   (sparse-predecessor scan) it is 17.1 CPU-s per genome Mb at the defaults
+   (stage sum; 18.1 whole-process user, the `cost-baseline.md` convention),
+   **14.2 / 14.4 at the default overlap with batch 64 — the first
+   overlapping row inside the 15 budget on the baseline's numerator** —
+   12.0 / 12.8 at overlap 2,048 / batch 64 and 10.7 / 11.9 at overlap 0 /
+   batch 64; the batch-16 default still misses by 1.14–1.2×. The remaining
+   revision step (3: smaller overlap once boundary support lands) and the
+   S. pombe normalization row come before any B allowance. The learned pooled
    decoder is in the loss and the decoder (`model/a/pooled.py`, 3.2 item 5);
    what remains of the decoder is the partial-family scalars, which belong
    to the boundary-support increment above.
@@ -710,8 +712,9 @@ protocol; the three CPU numerators are given side by side:
 | overlap 0, batch 64 (one batch per code) | 38 | 0.02 | 0.83 | 1.86 | **11.9** (was 13.5) | 13.1 | 14.5 | 5.9 | 0.59 GiB |
 
 (io and output 0.01 s each; the untimed whole-process remainder is
-0.60–0.64 s in every run.) The decode stage fell 16–20% in every layout
-and peak RSS by 0.19–0.35 GiB. On the stage metric the default row is now
+0.60–0.64 s in every run.) The decode stage fell 14.6–17.6% across the
+six layouts (stalin-0088 corrected the range) and peak RSS by 0.18–0.35
+GiB. On the stage metric the default row is now
 **18.5** (1.2× over 15), the overlap-2,048 / batch-64 row **13.6** and both
 overlap-0 rows are inside; on whole-process user only, 2,048 / 64 (14.4)
 and 0 / 64 (13.1) are inside; on whole-process user + system only 0 / 64
@@ -730,6 +733,67 @@ candidates in the same index order); its estimated payoff is 10% at batch
 16 and 30–45% at batch 28–56, which together with the larger batch would
 put the default overlap near 15. Step 3, the overlap factor, still waits
 on boundary support.
+
+*Revision step 2b, the sparse-predecessor scan (commit `d9ea0f8`, source
+SHA-256 `5abe2f5507e7b72e33ae0779043cb598239ade0614f66cfdaa3b1da1218faf41`; records in
+`smoke-local-20260920/chromosome-sparse/`).* Every coding state has one
+predecessor except `U` (itself and the two stop-completing two-base
+prefixes under code 1) and the empty prefix `E("")` (all sixteen two-base
+prefixes plus the initiator-completing `S` prefixes), so the scan now
+gathers the merged layer at `K − 2 + 2P` candidate slots (`P` = 17 for
+code 1: the two multi-predecessor states padded to a common width under a
+`FLOOR` prior), adds the symbol's prior row, `U`'s column extras on its
+own candidates, takes one `max` over the two `(B, P)` candidate rows and
+reassembles the `(B, K)` layer with one `cat` — 58 elements per window
+per step instead of the dense 576, two more dispatches. Past a window's
+end the pad symbol row keeps `U → U` at 0 and everything else at `FLOOR`,
+so the score is still read at boundary `L`; back-pointers of unreachable
+states and of padded boundaries are unspecified (documented), and the
+dense scan is kept as `viterbi_batch_reference` with a test that the two
+agree bit for bit on scores, tail back-pointers and every traceback over
+codes 1 / 6 / alternative initiators, float32 / float64, `m` = 1–20,
+`-inf` masks and padded batches. The operands are also built step-major
+(`(L, B, …)`, contiguous per step): the earlier `(B, K, L)` stacks sliced
+along `L` were strided, and `index_select` cloned the slice — or its
+strided index — every step. Transposing the `K`-wide stacks afterwards
+cost more than that saved (`_operands` 0.17 → 0.46 s at 56 windows), so
+only the `(B, L)` channels are transposed before the `K`-wide expansions
+(`_operands` 0.30 s; the remainder is the element-wise phase gather in
+the new layout). In isolation the scan over 56 windows × 12,288 steps
+fell 1.35 → 0.97 s and over 16 windows 0.60 → 0.50 s. **All six GFF3
+files are again byte-identical to the `chromosome-vec/` outputs** (`cmp`);
+same core, thread, checkpoint and `/usr/bin/time -v` protocol:
+
+| run | windows | preprocess | encoder | decode | **stages, user + system / genome Mb** | whole-process user / Mb | whole-process user + system / Mb | per oriented Mb (stages) | peak RSS |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| overlap 4,096, batch 16 (defaults) | 56 | 0.04 | 1.25 | 2.64 | **17.1** (was 18.5) | 18.1 | 19.7 | 5.8 | 0.60 GiB |
+| overlap 4,096, batch 64 | 56 | 0.03 | 1.27 | 1.95 | **14.2** (was 16.2) | 14.4 | 16.8 | 4.8 | 0.81 GiB |
+| overlap 2,048, batch 16 | 46 | 0.03 | 1.01 | 2.47 | 15.3 | 16.5 | 18.0 | 6.4 | 0.60 GiB |
+| overlap 2,048, batch 64 | 46 | 0.03 | 0.98 | 1.74 | **12.0** (was 13.6) | 12.8 | 14.7 | 5.0 | 0.72 GiB |
+| overlap 0, batch 16 | 38 | 0.02 | 0.84 | 2.39 | 14.2 | 15.6 | 16.8 | 7.1 | 0.60 GiB |
+| overlap 0, batch 64 (one batch per code) | 38 | 0.02 | 0.84 | 1.57 | **10.7** (was 11.9) | 11.9 | 13.3 | 5.3 | 0.65 GiB |
+
+(io and output 0.01 s each.) The decode stage fell 4–7% at batch 16 and
+15–18% at batch 64 — less than the 10% / 30–45% estimated above, because
+the estimate counted the `(B, K, K)` block only and the per-step fixed
+cost (about 25 dispatches, ~35 µs) is untouched — and peak RSS rose
+0.06–0.09 GiB (the step-major intron tables). On the stage metric the
+default row is **17.1** (1.14× over 15); **overlap 4,096 / batch 64 is the
+first default-overlap row inside the budget on the stage sum (14.2) and on
+whole-process user (14.4)**, though not on user + system (16.8, of which
+2.6 CPU-s/Mb is fixed start-up on a 230 kb chromosome); overlap 2,048 /
+batch 64 is inside on all three numerators (12.0 / 12.8 / 14.7), as is
+overlap 0 / batch 64 (10.7 / 11.9 / 13.3). The default batch of 16 is a
+memory choice (0.60 vs 0.81 GiB here; both far inside 8 GB), so the
+overlapping configuration that carries the 2,048-base containment
+guarantee now lands inside 15 on the baseline's numerator at batch 64 —
+but only on the yeast chromosome, with a 20-step checkpoint and without
+boundary support, and the S. pombe normalization row of section 6.1 is
+still unmeasured. No B allowance is claimed on this basis; what remains
+of the decode stage is the per-step fixed cost of the Python loop, which
+is the checkpoint-and-replay / fused-kernel territory of proposal 3.3,
+not a further exact reshuffle. Step 3 (overlap after boundary support)
+is unchanged.
 
 **The CPU regime missed the budget before revision step 1.** Per oriented megabase the pipeline
 costs what items 4–5 measured (11.3–12.8 CPU-s), but a genome megabase is
@@ -773,12 +837,13 @@ should be assumed until a chromosome row is measured inside 15** with the
 revised featurizer and decode path. *Status:* step (1) is done, and step
 (2) turned out on measurement to be mostly the operand construction rather
 than the Python-side assembly (0.26 s of 3.7); its cheap half (2a) is
-done and measured above (stage sum 11.9 at overlap 0 / batch 64, 13.6 at
-overlap 2,048 / batch 64, 18.5 at the defaults; 13.1 / 14.4 / 19.4 on the
-whole-process user numerator), its remaining half (2b, the
-sparse-predecessor scan) and step (3) are open, and the B allowance
-question stays open until the configuration that carries the completeness
-guarantee lands inside 15. The GPU regime is still unmeasured
+done, and its remaining half (2b, the sparse-predecessor scan) is done
+and measured above (stage sum 10.7 at overlap 0 / batch 64, 12.0 at
+overlap 2,048 / batch 64, 14.2 at overlap 4,096 / batch 64, 17.1 at the
+batch-16 defaults; 11.9 / 12.8 / 14.4 / 18.1 on the whole-process user
+numerator). Step (3) is open, and the B allowance question stays open
+until the overlapping configuration is also measured on the S. pombe
+normalization row with a fitted checkpoint and boundary support. The GPU regime is still unmeasured
 (gagarin, lenin-0083); the section 6.1 multi-worker decoder accounting is
 the other half of the same row.
 
@@ -790,8 +855,10 @@ CPU-h for the ten chromosome-profile runs (five committed at `c6e5fc7`, five
 at a dirty tree before it, superseded), ~0.01 CPU-h for the two `92ddafd`
 re-measurements and the six `48f8a2b` runs, ~0.02 CPU-h for the decode
 profiling, the numpy-twin experiment and the six `6cae82f` runs (plus one
-mis-configured multi-threaded run, discarded); cluster CPU-hours 0,
-GPU-hours 0.
+mis-configured multi-threaded run, discarded), ~0.02 CPU-h for the
+sparse-scan micro-benchmarks and twelve chromosome runs at `de0746a` /
+`d9ea0f8` (the six `de0746a` runs, with transposed `K`-wide stacks,
+superseded); cluster CPU-hours 0, GPU-hours 0.
 No held-out species touched.
 
 ## 4. Budget and caps
@@ -806,23 +873,27 @@ hours are recorded in this task's log after every run.
 
 _Partially filled. CPU regime, one core, yeast chromosome I end to end
 (3.2 item 6; both strands, 12,288-base windows, GFF3 written, per genome
-Mb), after revision steps 1 (vectorised featurizer, `48f8a2b`) and 2a
-(per-phase decode operands, `6cae82f`). Numerators are labelled because
-they differ (engels-0086): stage sum of `process_time()` / whole-process
-user only (the `cost-baseline.md` 3.2 convention) / whole-process user +
-system. **Overlap 4,096 / batch 16 (defaults): 18.5 / 19.4 / 21.2 CPU-s
-per genome Mb; overlap 2,048 / batch 64: 13.6 / 14.4 / 16.2; overlap 0 /
-batch 64: 11.9 / 13.1 / 14.5 — against the 15 CPU-s/Mb budget the default
-overlap misses by 1.2–1.4× on every numerator, and the budget is met on
-all three only at the no-overlap cost floor**; peak RSS ≤ 0.72 GiB inside
-8 GB; I/O + output 0.1 CPU-s/Mb. Per oriented megabase the stages are now
-featurizer 0.05, encoder 1.8, R = 3 tensor Viterbi 4.0–5.4; what
-separates the default row from the budget is the both-strand factor times
-1.5× oversampling on the decode stage. The pure-Python reference decoder
-at 66 CPU-s per oriented Mb (item 3) is kept only for parity runs.
-Revision steps 2b (sparse-predecessor scan) and 3 (overlap after boundary
-support) remain; no B allowance until the overlapping configuration lands
-inside 15 on the baseline's numerator. Still missing: a checkpoint fit for
+Mb), after revision steps 1 (vectorised featurizer, `48f8a2b`), 2a
+(per-phase decode operands, `6cae82f`) and 2b (sparse-predecessor scan,
+`d9ea0f8`). Numerators are labelled because they differ (engels-0086):
+stage sum of `process_time()` / whole-process user only (the
+`cost-baseline.md` 3.2 convention) / whole-process user + system.
+**Overlap 4,096 / batch 16 (defaults): 17.1 / 18.1 / 19.7 CPU-s per
+genome Mb; overlap 4,096 / batch 64: 14.2 / 14.4 / 16.8; overlap 2,048 /
+batch 64: 12.0 / 12.8 / 14.7; overlap 0 / batch 64: 10.7 / 11.9 / 13.3 —
+against the 15 CPU-s/Mb budget the batch-16 default misses by 1.14–1.3×
+on every numerator, the default overlap at batch 64 is inside on the
+stage sum and the baseline's user-only numerator but not on user +
+system, and overlap 2,048 and 0 at batch 64 are inside on all three**;
+peak RSS ≤ 0.81 GiB inside 8 GB; I/O + output 0.1 CPU-s/Mb. Per oriented
+megabase the stages are now featurizer 0.05, encoder 1.8, R = 3 tensor
+Viterbi 2.9–5.2; what separates the batch-16 default from the budget is
+the both-strand factor times 1.5× oversampling on the decode stage, whose
+remaining cost is the per-step fixed dispatch of the Python scan loop.
+The pure-Python reference decoder at 66 CPU-s per oriented Mb (item 3) is
+kept only for parity runs. Revision step 3 (overlap after boundary
+support) remains; no B allowance until the overlapping configuration is
+also inside 15 on the S. pombe normalization row with a fitted checkpoint. Still missing: a checkpoint fit for
 more than 20 steps (the accuracy column), an S. pombe row (held-out
 species: only after freezing), a metazoan chromosome, and the GPU regime
 with the 6.1 multi-worker decoder accounting (gagarin)._
