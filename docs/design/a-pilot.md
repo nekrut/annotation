@@ -241,8 +241,13 @@ runs on gagarin; no local host has torch. See section 3.
    normalization row is measured (section 3.2): 9.22 / 8.23 / 9.37 CPU-s
    per genome Mb at 19 segments against AUGUSTUS 51.4 on the same core,
    **1/5.5 against the 1/11 target — the CPU regime misses by 2.0×**, no
-   B allowance; float32 decode (revision step 4) is next, the encoder
-   halving waits for a fitted checkpoint. The learned pooled
+   B allowance. Revision step 4, float32 decode, is measured: 8.27 /
+   7.94 / 8.43, a 10 % gain, not the halving of the decode that was
+   expected, because the scan is per-step dispatch-bound; it flips
+   103 near-tie chains of 121,937 at the smoke checkpoint, so float64
+   stays the row of record. The remaining decode lever is the per-step
+   dispatch (a compiled scan step), and the encoder halving waits for a
+   fitted checkpoint. The learned pooled
    decoder is in the loss and the decoder (`model/a/pooled.py`, 3.2 item 5);
    what remains of the decoder is the partial-family scalars, which belong
    to the boundary-support increment above.
@@ -1192,6 +1197,54 @@ decision on the budget should be taken with that in view. Records:
 `/usr/bin/time -v`, run scripts, leakage check, AUGUSTUS install log,
 GFF3 SHA-256s; GFF3 outputs of 6–15 MB not committed).
 
+**Revision step 4, float32 decode** (`aee0134`; records
+`pombe-normalization/A-f32/`, same protocol, checkpoint and core).
+`measure --dtype float32` puts the emissions, motif bias, duration
+tables and the scan in float32; in the segment mode the carried scores
+are rebased at every tile seam (`scan_segments(rebase=)`, default for
+dtypes narrower than float64: each unfinished row's best coding-layer
+score is shifted to 0 and the shifts summed back into the returned
+score in float64), so the running magnitude is a tile's (~10⁴, ulp
+~0.001) rather than a segment's (~3 × 10⁵, ulp ~0.03); the shift
+changes no comparison, and `SeamRebase` checks that rebased float64
+tiling equals unrebased tiling on offset lattices and that a float32
+rebased scan gives the float64 chains (173 of 173 finite cases).
+Float64 stays the bit-for-bit unbroken scan the seam tests verify.
+Measured on the three *S. pombe* chromosomes: 19 segments **8.27 /
+7.94 / 8.43** CPU-s per genome Mb (stage / user / user + system;
+float64 9.22 / 8.23 / 9.37), RSS ≤ 0.97 GiB (was 1.31); exact strand
+decode 39.72 / 39.22 / 39.86 (was 40.35 / 39.82 / 40.49). The decode
+stage goes 5.31 → 4.34 per genome Mb at 19 segments and 36.4 → 35.8 on
+the exact decode: **a 10 % gain on the row, not the halving proposed**,
+because the decode is not bandwidth-bound. A profile of one tile scan
+(12,288 steps at B = 38, one core) costs 0.93 s in float64 and 0.73 in
+float32: the per-step loop is 0.52 / 0.47 s — 42 / 38 µs per step for
+~15 torch ops on (38, 24) tensors, i.e. dispatch, which dtype cannot
+touch — and the per-tile operand build 0.41 / 0.26 s, which is where
+the float32 saving is. The exact decode, at B = 2 and 5.6 M steps per
+chromosome, is almost entirely per-step dispatch, hence unmoved.
+The row now reads 1/6.1 of AUGUSTUS on user + system: **the miss is
+1.8× (1.7× on user only), still failed**. Outputs: float32 differs from
+float64 by 103 chains of 121,937 at 19 segments (93 internal
+exon-boundary shifts in short 2–5-exon chains, 7 exon-count changes,
+3 without a partner) and 112 at 1 segment, and the float32 exact and
+segment decodes differ from each other by ~120 chains where the float64
+pair differ by 3 (`chaindiff_f32.out`) — near-tie decisions of the flat
+smoke checkpoint resolved differently at float32 precision. Until a
+fitted checkpoint shows the flip count to be negligible, float64 stays
+the row of record and float32 is a measured option. The revision list
+in the paragraph above is amended accordingly: (1) is measured and
+worth 10 %, not 25–30 %; the decode lever that remains is the per-step
+dispatch — a compiled scan step (one fused kernel per base instead of
+~15 dispatched ops) would take the per-step half of the 19-segment
+decode (~2.2 of 4.3 CPU-s per genome Mb) toward a few tenths and leave
+the operand build (~1.6 in float32), so the row would sit near
+6–6.5 CPU-s/Mb, 1/8 of AUGUSTUS, still short of 1/11; (2), the encoder
+work reduction with a fitted checkpoint's accuracy column, is therefore
+necessary for the portable CPU target, not optional, and the
+expectation stated in (3) stands. Compute: 0.17 CPU-h local for the six
+float32 runs; cluster CPU-hours 0, GPU-hours 0.
+
 **The CPU regime missed the budget before revision step 1.** Per oriented megabase the pipeline
 costs what items 4–5 measured (11.3–12.8 CPU-s), but a genome megabase is
 two oriented megabases before overlap, so the end-to-end row is
@@ -1263,9 +1316,10 @@ mis-configured multi-threaded run, discarded), ~0.02 CPU-h for the
 sparse-scan micro-benchmarks and twelve chromosome runs at `de0746a` /
 `d9ea0f8` (the six `de0746a` runs, with transposed `K`-wide stacks,
 superseded), ~0.05 CPU-h for the tests and the sixteen chromosome runs
-of revision step 3 (`a4d393d`, `8a7b4a8`, `87bb3a1`, `8440560`), ~0.3
+of revision step 3 (`a4d393d`, `8a7b4a8`, `87bb3a1`, `8440560`), ~0.37
 CPU-h for the S. pombe normalization row (six A runs 0.17 h, AUGUSTUS
-0.18 h, two probe runs 0.01 h); cluster CPU-hours 0, GPU-hours 0. The
+0.18 h, two probe runs 0.01 h), 0.17 CPU-h for the six float32 runs of
+revision step 4 (`aee0134`); cluster CPU-hours 0, GPU-hours 0. The
 only held-out species touched is *S. pombe*, for the runtime
 normalization after the leakage check, unscored.
 
@@ -1314,10 +1368,15 @@ machine is 3.21× the cost-baseline runner on that command) — 1/5.5 of
 AUGUSTUS against the 1/11 portable target, 30.0 CPU-s/Mb
 machine-normalized against 15: the CPU regime misses the budget by
 2.0× (1.8× on user only), and no positive CPU allowance for B follows.**
-The proposed revision is float32 decoding first (operand floor of the
-scan; segment count is exhausted, 38 and 76 segments per strand change
-the stage sum by −5 % / −3 % at 1.6× / 2.9× the memory), then an encoder
-change measured together with a fitted checkpoint's accuracy. Still
+Segment count is exhausted as a lever (38 and 76 segments per strand
+change the stage sum by −5 % / −3 % at 1.6× / 2.9× the memory), and
+revision step 4, float32 decode, is measured at **8.27 / 7.94 / 8.43**
+(`A-f32/`): a 10 % gain, miss 1.8× (1.7× on user only), with 103 of
+121,937 chains flipped at the smoke checkpoint, so float64 stays the row
+of record. The decode is per-step dispatch-bound (42 µs per step at
+B = 38), so the remaining decode lever is a compiled scan step, worth
+at most ~2 CPU-s/Mb; the encoder work reduction, measured together with
+a fitted checkpoint's accuracy, is necessary for 1/11 on CPU. Still
 missing: a checkpoint fit for more than 20 steps (the accuracy column),
 a metazoan chromosome, and the GPU regime with the 6.1 multi-worker
 decoder accounting (gagarin)._
