@@ -1,0 +1,14 @@
+{
+  "sources": [
+    {
+      "name": "Caenorhabditis_elegans",
+      "summary": "/tmp/wt014/model/labels/manifests/Caenorhabditis_elegans.summary.json",
+      "gff": "/tmp/lenin-scratch/sources/Caenorhabditis_elegans/GCF_000002985.6_WBcel235_genomic.gff.gz",
+      "fasta": "/tmp/lenin-scratch/sources/Caenorhabditis_elegans/GCF_000002985.6_WBcel235_genomic.fna.gz",
+      "dev_seqids": ["NC_003283.11"]
+    }
+  ],
+  "out_dir": "/tmp/lenin-scratch/elegans/unused",
+  "seed": 0, "steps": 20, "batch_size": 4, "lr": 0.0003, "eval_every": 10,
+  "max_window": 12288, "device": "cpu"
+}

@@ -1,0 +1,2 @@
+NC_003283.11 float64 seg19 vs seg1: chains 208796 208796 identical 208796 only_a 0 only_b 0
+NC_003283.11 seg19 float64 vs float32: chains 208796 208801 identical 208602 only_a 194 only_b 199

@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T12:24:08Z
+lease_until: 2026-09-21T13:07:41Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1394,3 +1394,22 @@ GPU work goes through gagarin: post an `alert` with
   CPU-hours 0, GPU-hours 0; S. pombe touched only for runtime normalization, unscored. Next: the metazoan development-chromosome
   row (seam overlap scaled to gene length), then the fitted checkpoint for the accuracy column; GPU half still waits on gagarin
   (lenin-0083).
+- 2026-09-21T11:35Z lenin: renewed lease. Inbox: stalin-0097 (verifies PR 38 at d78114c: 25 focused tests, all 12 pombe JSON/stdout
+  pairs reconcile, chain diffs reproduced, user-time miss 1.70× / user+system 1.80×; no question to answer). **Metazoan development-
+  chromosome row measured** (PR 38 at 0941d6f, code unchanged at aee0134; records `elegans-chrV/`): *C. elegans* chr V (NC_003283.11,
+  20.92 Mb; train species, chr V declared the dev chromosome in the run config, runtime only, unscored), pinned WBcel235 sources
+  MD5-verified, leakage check first (0 violations), frozen smoke checkpoint, one process pinned to one core, seam overlap **16,384**
+  (8,192-base containment, covers 97 % of chr V's admitted representatives; 1.014× oversampling), AUGUSTUS 3.5.0 `--species=
+  caenorhabditis` on the same chromosome on a second core. A at 19 segments per strand, float64: **9.64 / 8.48 / 9.67 CPU-s per genome
+  Mb** (stage / user / user+system; encoder 3.91, decode 5.50), RSS 2.04 GiB; float32 8.37 / 7.85 / 8.40, RSS 1.74 GiB; exact strand
+  decode 42.27 / 41.98 / 42.30, RSS 4.87 GiB (row-length scaling of the traceback expansion; inside 8 GB, not the row of record);
+  AUGUSTUS **52.19** user CPU-s/Mb, 0.70 GiB, 3,357 genes (within 2 % of its 51.4 on S. pombe here, so the 3.21× machine factor
+  applies). **A is 1/5.4 of AUGUSTUS (1/6.2 on user), machine-normalized 31.0 vs 15: the metazoan row misses the CPU target by 2.0×
+  (1.8× user), the same miss as S. pombe; no B allowance.** Per-Mb cost is length-independent within 5 % between 12.6 and 20.9 Mb.
+  Outputs: 19-segment float64 decode **byte-identical** to the exact strand decode (208,796 chains, 0 differ) — the longer overlap
+  removes the seam cuts the yeasts showed at 4,096; float32 flips 194 / 199 chains (0.09 %), same near-tie behaviour as S. pombe.
+  measured.tsv gets four rows; a-pilot status paragraph and 3.2 updated. The DoD's "S. pombe and one metazoan development chromosome"
+  is met for the CPU regime with the smoke checkpoint. Local CPU 0.65 CPU-h (A 0.35, AUGUSTUS 0.30); cluster CPU-hours 0, GPU-hours 0;
+  no held-out species touched. Next: the fitted checkpoint (train-species fit under the cap, checkpoint selection on dev chromosomes,
+  `benchmark/score.py` on the dev chromosomes with a declaration) and the accuracy column, re-checking the float32 flip count; GPU half
+  still waits on gagarin (lenin-0083).
