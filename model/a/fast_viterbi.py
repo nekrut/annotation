@@ -566,8 +566,33 @@ class PackedBackPointers:
         return sum(stores.values())
 
 
+def _rebase(carry: Carry, finished: torch.Tensor) -> Tuple[Carry, torch.Tensor]:
+    """Shift the carried scores of every unfinished row so that its best
+    coding-layer score is 0 at the seam. Every comparison the scan makes is
+    between scores that share the row's prefix, so the argmax and the
+    back-pointers are unchanged in exact arithmetic; what changes is the
+    magnitude the running scores reach, bounded by one tile instead of the
+    whole segment, which keeps a float32 scan's resolution near the tile's
+    ulp (about 0.002 at 12,288 bases) rather than the segment's (about 0.03
+    at 300 kb). Rows already finished keep their score as written by
+    ``_finish`` (``finished`` marks them: a row is done once its own end
+    lies in a scanned tile, before ``carry.done`` records it). Returns the
+    shifted carry and the per-row shift."""
+    c = carry.alpha.max(dim=1).values
+    # Finished rows keep their frame; a dead row (every state floored) is
+    # left at the floor rather than lifted to 0.
+    c = torch.where(finished | (c <= FLOOR / 2), torch.zeros_like(c), c)
+    col = c[:, None]
+    shifted = carry._replace(
+        alpha=carry.alpha - col, tau=carry.tau - col[:, :, None],
+        tau_j=None if carry.tau_j is None else carry.tau_j - col[:, :, None],
+        pending=[p - col for p in carry.pending])
+    return shifted, c
+
+
 def scan_segments(emissions, symbols: Optional[torch.Tensor], lengths: torch.Tensor,
-                  grammar: Grammar, tile: int, edges: Optional[EdgePrior] = None, tables=None):
+                  grammar: Grammar, tile: int, edges: Optional[EdgePrior] = None, tables=None,
+                  rebase: Optional[bool] = None):
     """:func:`viterbi_batch` / :func:`viterbi_batch_edges` over a batch of
     *segments* scanned ``tile`` bases at a time with the state carried across
     the seams (proposal 3.3): the scores and back-pointers are those of one
@@ -584,7 +609,10 @@ def scan_segments(emissions, symbols: Optional[torch.Tensor], lengths: torch.Ten
     sequence edges, so a gene crossing one is decoded whole, and ``edges``
     applies to the two real ends of each segment only. Returns ``(score,
     packed, final)``; ``packed.dense(b)`` gives row ``b``'s ``(prev, exit_r,
-    entered)`` for :func:`traceback`."""
+    entered)`` for :func:`traceback`. With ``rebase`` the carried scores are
+    shifted at every seam (:func:`_rebase`) and the shifts added back to the
+    returned ``score``; the default rebases every dtype narrower than
+    float64, and leaves float64 as the bit-for-bit unbroken scan."""
     if tile < 1:
         raise ValueError("tile must be positive")
     if callable(emissions):
@@ -601,12 +629,18 @@ def scan_segments(emissions, symbols: Optional[torch.Tensor], lengths: torch.Ten
     carry = None
     packed = PackedBackPointers(_sparse(grammar), grammar.K, grammar.R, device)
     score = final = None
+    offset = None
     for start in range(0, max(L, 1), tile):
         end = min(start + tile, L)
         e, sym = chunk(start, end)
         if e.shape[0] != lengths.shape[0] or e.shape[2] != end - start or sym.shape != e.shape[::2]:
             raise ValueError(f"tile [{start}, {end}) must be (B, C, {end - start}) emissions "
                              "and (B, {end - start}) symbols")
+        if rebase is None:
+            rebase = e.dtype != torch.float64
+        if carry is not None and rebase:
+            carry, shift = _rebase(carry, lengths <= start)
+            offset = offset + shift.double() if offset is not None else shift.double()
         chunk_len = (lengths - start).clamp(min=0, max=end - start)
         out = _scan(e, sym, chunk_len, grammar, tables, edges, carry, keep=True)
         score, prev2, exit_r, entered, final, carry = out
@@ -614,6 +648,9 @@ def scan_segments(emissions, symbols: Optional[torch.Tensor], lengths: torch.Ten
     # A row that ended before the last tile kept ``alpha[U]`` through the pad
     # steps of its later tiles (``U -> U`` at 0), so the free-grammar score
     # read at the end is its own, as in a padded batch.
+    if offset is not None:
+        # ``-inf`` rows stay ``-inf``; the shifts are summed in float64.
+        score = (score.double() + offset).to(score.dtype)
     return score, packed, final
 
 
@@ -621,7 +658,7 @@ def viterbi_segments(segments: Sequence[str], emissions: Sequence, *,
                      tile: int, code: GeneticCode = TABLES[1],
                      duration: DurationMixture = DurationMixture(), tables=None,
                      edges: Optional[EdgePrior] = None, dtype=None,
-                     device=None) -> List[Tuple[float, List[Chain]]]:
+                     device=None, rebase: Optional[bool] = None) -> List[Tuple[float, List[Chain]]]:
     """:func:`viterbi` over a batch of segments of one genetic code, scanned
     ``tile`` bases at a time with the state carried across seams
     (:func:`scan_segments`); ``emissions[i]`` is ``(11, len(segments[i]))``,
@@ -629,7 +666,8 @@ def viterbi_segments(segments: Sequence[str], emissions: Sequence, *,
     emissions of that slice of segment ``i`` on demand (``end <=
     len(segments[i])``), so that only one tile of emissions per segment is
     alive at a time; ``dtype`` / ``device`` are taken from the first tensor
-    when not given. Equal to :func:`viterbi` on each whole segment."""
+    when not given; ``rebase`` as in :func:`scan_segments`. Equal to
+    :func:`viterbi` on each whole segment."""
     if len(segments) != len(emissions):
         raise ValueError("segments and emissions must agree in length")
     if not segments:
@@ -665,7 +703,7 @@ def viterbi_segments(segments: Sequence[str], emissions: Sequence, *,
         return e, sym
 
     score, packed, final = scan_segments(
-        chunk, None, torch.tensor(lengths, device=device), g, tile, edges, tables)
+        chunk, None, torch.tensor(lengths, device=device), g, tile, edges, tables, rebase=rebase)
     out = []
     for b, x in enumerate(segments):
         best = float(score[b])

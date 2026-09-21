@@ -589,3 +589,74 @@ class SeamCarry(unittest.TestCase):
     def test_bad_tile_rejected(self):
         with self.assertRaises(ValueError):
             fast_viterbi.viterbi_segments(["ATG"], [torch.zeros(11, 3, dtype=torch.float64)], tile=0)
+
+
+class SeamRebase(unittest.TestCase):
+    """Rebasing the carried scores at tile seams (``scan_segments(rebase=)``,
+    the float32 range guard of a-pilot revision step 4) changes no decision:
+    in float64, rebased and unrebased tiling give the same chains and scores
+    to rounding, including rows that finish before the last tile and rows
+    with ``-inf`` scores; and a float32 rebased scan of the same lattices
+    gives the float64 chains, with the score within float32 resolution. The
+    shift is also exercised on lattices whose emissions are offset by a
+    constant, where the running scores reach magnitudes at which an
+    unrebased float32 scan would resolve about 0.06 nats."""
+
+    def _cases(self, rng, shift):
+        cases = []
+        for _ in range(rng.randint(1, 5)):
+            x, e = SeamCarry._segment_case(self, rng, nmax=240)
+            cases.append((x, e + shift))
+        return cases
+
+    def test_rebased_float64_equals_unrebased(self):
+        rng = random.Random(5)
+        torch.manual_seed(5)
+        finite = 0
+        for _ in range(70):
+            dur = _random_mixture(rng)
+            code = rng.choice([TABLES[1], TABLES[6]])
+            edges = rng.choice(SeamCarry.EDGES)
+            cases = self._cases(rng, rng.choice([0.0, -50.0, -2000.0]))
+            xs, es = zip(*cases)
+            tile = rng.choice([3, 7, 31, 64, 128])
+            plain = fast_viterbi.viterbi_segments(xs, es, tile=tile, code=code, duration=dur,
+                                                  edges=edges, rebase=False)
+            based = fast_viterbi.viterbi_segments(xs, es, tile=tile, code=code, duration=dur,
+                                                  edges=edges, rebase=True)
+            for (a, ca), (b, cb) in zip(plain, based):
+                if isinf(a):
+                    self.assertTrue(isinf(b))
+                    self.assertEqual(cb, [])
+                    continue
+                finite += 1
+                self.assertAlmostEqual(a, b, delta=1e-6 * max(1.0, abs(a)))
+                self.assertEqual(ca, cb, (tile, dur, code, edges))
+        self.assertGreater(finite, 120)
+
+    def test_float32_rebased_equals_float64(self):
+        rng = random.Random(6)
+        torch.manual_seed(6)
+        finite = agree = 0
+        for _ in range(70):
+            dur = _random_mixture(rng)
+            code = rng.choice([TABLES[1], TABLES[6]])
+            edges = rng.choice(SeamCarry.EDGES)
+            cases = self._cases(rng, rng.choice([0.0, -50.0, -2000.0]))
+            xs, es = zip(*cases)
+            tile = rng.choice([7, 31, 64, 128])
+            ref = fast_viterbi.viterbi_segments(xs, es, tile=tile, code=code, duration=dur, edges=edges)
+            f32 = fast_viterbi.viterbi_segments(xs, [e.float() for e in es], tile=tile, code=code,
+                                                duration=dur, edges=edges)
+            for (a, ca), (b, cb) in zip(ref, f32):
+                if isinf(a):
+                    self.assertTrue(isinf(b))
+                    continue
+                finite += 1
+                self.assertAlmostEqual(a, b, delta=2e-5 * max(1.0, abs(a)))
+                agree += ca == cb
+        self.assertGreater(finite, 120)
+        # Random lattices have no exact ties at float64; a float32 scan may
+        # still flip decisions closer than its resolution, so demand near
+        # rather than total agreement and report the count on failure.
+        self.assertGreaterEqual(agree, finite - 2, (finite, agree))

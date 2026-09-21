@@ -571,7 +571,8 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
             decoder: str = "tensor", decode_batch: int = 16, log=print,
             profile: str = "windows", window: Optional[int] = None,
             overlap: Optional[int] = None, gff_out: Optional[str] = None,
-            segments: Optional[int] = None, margin: Optional[int] = None) -> dict:
+            segments: Optional[int] = None, margin: Optional[int] = None,
+            dtype: str = "float64") -> dict:
     """Time preprocessing, encoder and decode/traceback over one sequence.
 
     ``profile="chromosome"`` is the end-to-end row (:mod:`model.a.chromosome`):
@@ -624,7 +625,9 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
     if src is None:
         raise ValueError(f"species {species!r} not in config")
     device = torch.device(config.device)
-    dtype = torch.float64
+    if dtype not in ("float64", "float32"):
+        raise ValueError("dtype must be 'float64' or 'float32'")
+    dtype_name, dtype = dtype, getattr(torch, dtype)
 
     model = CandidateA().to(device)
     if checkpoint:
@@ -639,7 +642,8 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
         return _measure_chromosome(config, src, seqid, model, structure, tables, device,
                                    dtype, decode_batch=decode_batch, json_out=json_out,
                                    window=window, overlap=overlap, gff_out=gff_out,
-                                   segments=segments, margin=margin, log=log)
+                                   segments=segments, margin=margin, log=log,
+                                   dtype_name=dtype_name)
     if profile != "windows":
         raise ValueError("profile must be 'windows' or 'chromosome'")
 
@@ -713,6 +717,7 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
         "oriented_bases": bases, "device": config.device,
         "profile": "annotation-selected-windows", "outputs_discarded": True,
         "decoder": decoder, "decode_batch": decode_batch if decoder == "tensor" else 1,
+        "dtype": dtype_name,
         "min_intron": config.min_intron, "pooled_decoder": "learned",
         "commit": _git_commit(), "source": _source_provenance(),
         "preprocess_cpu_s": pre_cpu, "encoder_cpu_s": enc_cpu, "decode_cpu_s": dec_cpu,
@@ -740,7 +745,7 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
                         json_out: Optional[str], window: Optional[int],
                         overlap: Optional[int], gff_out: Optional[str], log=print,
                         segments: Optional[int] = None,
-                        margin: Optional[int] = None) -> dict:
+                        margin: Optional[int] = None, dtype_name: str = "float64") -> dict:
     """The ``profile="chromosome"`` half of :func:`measure`."""
     import torch
 
@@ -800,6 +805,8 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
         "gff_out": gff_out, "gff_bytes": gff_bytes, "gff_rows": len(rows),
         "outputs_discarded": gff_out is None,
         "device": config.device, "decoder": "tensor", "decode_batch": decode_batch,
+        "dtype": dtype_name,
+        "seam_rebase": (segments is not None and dtype_name != "float64"),
         "min_intron": config.min_intron, "pooled_decoder": "learned",
         "commit": _git_commit(), "source": _source_provenance(),
         **{f"{st}_cpu_s": clock.cpu.get(st, 0.0) for st in stages},
@@ -859,6 +866,10 @@ def build_parser() -> argparse.ArgumentParser:
                          "0 encodes bare tiles)")
     pm.add_argument("--gff-out", default=None,
                     help="chromosome profile: write the predicted GFF3 here")
+    pm.add_argument("--dtype", default="float64", choices=("float64", "float32"),
+                    help="decode dtype for emissions, motif bias, duration tables and the "
+                         "scan (default float64, the parity-tested path; float32 rebases "
+                         "the carried scores at tile seams in the segment mode)")
     return p
 
 
@@ -872,7 +883,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 json_out=args.json_out, decoder=args.decoder,
                 decode_batch=args.decode_batch, profile=args.profile,
                 window=args.window, overlap=args.overlap, gff_out=args.gff_out,
-                segments=args.segments, margin=args.margin)
+                segments=args.segments, margin=args.margin, dtype=args.dtype)
     return 0
 
 
