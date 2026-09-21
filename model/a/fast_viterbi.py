@@ -461,6 +461,16 @@ def _finish(rows, n, alpha, tau, pending, entered, intron, phase, m, u, exit_c, 
     final[rows, 0], final[rows, 1], final[rows, 2] = kind, j, x
 
 
+def _owned(t: torch.Tensor) -> torch.Tensor:
+    """``t`` if it owns exactly its storage, else a compact copy: a slice
+    retained as a view keeps the whole allocation it was cut from alive
+    (stalin-0093)."""
+    if (t.is_contiguous() and t.storage_offset() == 0
+            and t.untyped_storage().nbytes() == t.numel() * t.element_size()):
+        return t
+    return t.clone(memory_format=torch.contiguous_format)
+
+
 class PackedBackPointers:
     """The back-pointers of a batch of segments, packed per tile as the scan
     produces them and expanded one row at a time for :func:`traceback`:
@@ -468,17 +478,21 @@ class PackedBackPointers:
     boundary; the other states have one predecessor), ``exit_r`` as nibbles
     (``K / 2`` bytes when ``2 R < 16``, else the int8 column), ``entered`` as
     ``K R`` bits (``ceil(K R / 8)`` bytes). At ``K = 24``, ``R = 3`` this is
-    23 bytes per base instead of the 120 of the dense tensors. ``dense(b)``
-    returns ``(prev, exit_r, entered)`` of row ``b`` in the dense layout the
-    traceback reads (``(L + 1, K)`` int8, ``(L + 1, K)`` int8, ``(L + 1, K,
-    R)`` bool), so one row of dense pointers is alive during its traceback,
-    never the batch."""
+    23 bytes per base instead of the 120 of the dense tensors. Every tensor
+    the store retains owns exactly its storage (:func:`_owned`; the seam
+    columns a later tile supersedes are never kept as views), so
+    :meth:`nbytes` is also the allocated size (:meth:`storage_nbytes`).
+    ``dense(b)`` returns ``(prev, exit_r, entered)`` of row ``b`` in the
+    dense layout the traceback reads (``(L + 1, K)`` int8, ``(L + 1, K)``
+    int8, ``(L + 1, K, R)`` bool), so one row of dense pointers is alive
+    during its traceback, never the batch."""
 
     def __init__(self, sp: "_Sparse", K: int, R: int, device):
         self.sp, self.K, self.R = sp, K, R
         self.nibble = 2 * R < 16
         self.prev2: List[torch.Tensor] = []
-        self.exit_r: List[torch.Tensor] = []
+        self.exit_r: List[torch.Tensor] = []      # each tile's columns but its last
+        self.exit_tail: Optional[torch.Tensor] = None  # the newest tile's last column
         self.entered: List[torch.Tensor] = []
         self.bits = torch.tensor([1, 2, 4, 8, 16, 32, 64, 128], dtype=torch.uint8, device=device)
 
@@ -488,18 +502,18 @@ class PackedBackPointers:
         first shares its boundary 0 with the previous tile's last boundary:
         ``prev`` / ``entered`` at the seam are unread (the traceback reads
         ``prev[t]`` for ``t >= 1``) and kept once; ``exit_r`` at the seam is
-        written by the later tile, so the earlier tile's last column is
-        dropped when the next arrives."""
+        written by the later tile, so every tile's last column is held apart
+        (``exit_tail``) and replaced when the next tile arrives."""
         if not first:
             prev2, entered = prev2[:, 1:], entered[:, 1:]
-            self.exit_r[-1] = self.exit_r[-1][:, :-1]
-        self.prev2.append(prev2.contiguous())
-        self.exit_r.append(self._pack_exit(exit_r))
+        self.prev2.append(_owned(prev2))
+        self.exit_r.append(self._pack_exit(exit_r[:, :-1]))
+        self.exit_tail = self._pack_exit(exit_r[:, -1:])
         self.entered.append(self._pack_bits(entered))
 
     def _pack_exit(self, exit_r: torch.Tensor) -> torch.Tensor:
         if not self.nibble:
-            return exit_r.contiguous()
+            return _owned(exit_r)
         v = (exit_r + 1).to(torch.uint8)                                        # -1 .. 2R-1 -> 0 .. 2R
         if v.shape[-1] % 2:
             v = torch.cat([v, torch.zeros_like(v[..., :1])], -1)
@@ -526,17 +540,33 @@ class PackedBackPointers:
 
     def dense(self, b: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         prev2 = torch.cat([p[b] for p in self.prev2], 0) if len(self.prev2) > 1 else self.prev2[0][b]
-        exit_r = torch.cat([self._unpack_exit(p[b]) for p in self.exit_r], 0)
+        exit_r = torch.cat([self._unpack_exit(p[b]) for p in self.exit_r]
+                           + [self._unpack_exit(self.exit_tail[b])], 0)
         entered = torch.cat([self._unpack_bits(p[b]) for p in self.entered], 0)
         return _expand_prev(self.sp, prev2), exit_r, entered
 
+    def _tensors(self):
+        for ts in (self.prev2, self.exit_r, self.entered):
+            yield from ts
+        if self.exit_tail is not None:
+            yield self.exit_tail
+
     def nbytes(self) -> int:
-        """Bytes held by the packed store."""
-        return sum(t.numel() * t.element_size()
-                   for ts in (self.prev2, self.exit_r, self.entered) for t in ts)
+        """Logical payload of the packed store (``numel * element_size``
+        over its tensors); equal to :meth:`storage_nbytes`."""
+        return sum(t.numel() * t.element_size() for t in self._tensors())
+
+    def storage_nbytes(self) -> int:
+        """Bytes of the distinct storages the store keeps alive (deduplicated
+        by data pointer), excluding the grammar tables and the bit mask."""
+        stores = {}
+        for t in self._tensors():
+            s = t.untyped_storage()
+            stores[s.data_ptr()] = s.nbytes()
+        return sum(stores.values())
 
 
-def scan_segments(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
+def scan_segments(emissions, symbols: Optional[torch.Tensor], lengths: torch.Tensor,
                   grammar: Grammar, tile: int, edges: Optional[EdgePrior] = None, tables=None):
     """:func:`viterbi_batch` / :func:`viterbi_batch_edges` over a batch of
     *segments* scanned ``tile`` bases at a time with the state carried across
@@ -546,23 +576,39 @@ def scan_segments(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch
     tile`` rather than the segment length, and the back-pointers of the
     whole segment are held packed (:class:`PackedBackPointers`, 23 bytes
     per base at ``K = 24``, ``R = 3``) rather than dense (120). ``emissions``
-    is ``(B, C, L)`` with each row's segment in ``[0, lengths[b])``; interior
-    seams are not sequence edges, so a gene crossing one is decoded whole,
-    and ``edges`` applies to the two real ends of each segment only. Returns
-    ``(score, packed, final)``; ``packed.dense(b)`` gives row ``b``'s
-    ``(prev, exit_r, entered)`` for :func:`traceback`."""
+    is ``(B, C, L)`` with each row's segment in ``[0, lengths[b])``, or a
+    callable ``chunk(start, end)`` returning the ``(B, C, end - start)``
+    emissions and ``(B, end - start)`` symbols of that tile of every row
+    (``symbols`` is then ``None``), in which case no more than one tile of
+    emissions is materialised at a time either. Interior seams are not
+    sequence edges, so a gene crossing one is decoded whole, and ``edges``
+    applies to the two real ends of each segment only. Returns ``(score,
+    packed, final)``; ``packed.dense(b)`` gives row ``b``'s ``(prev, exit_r,
+    entered)`` for :func:`traceback`."""
     if tile < 1:
         raise ValueError("tile must be positive")
-    B, C, L = emissions.shape
-    device = emissions.device
+    if callable(emissions):
+        chunk = emissions
+        L = int(lengths.max()) if lengths.numel() else 0
+    else:
+        if symbols is None:
+            raise ValueError("symbols are required with tensor emissions")
+        L = emissions.shape[2]
+
+        def chunk(start, end):
+            return emissions[:, :, start:end], symbols[:, start:end]
+    device = lengths.device
     carry = None
     packed = PackedBackPointers(_sparse(grammar), grammar.K, grammar.R, device)
     score = final = None
     for start in range(0, max(L, 1), tile):
         end = min(start + tile, L)
-        chunk = (lengths - start).clamp(min=0, max=end - start)
-        out = _scan(emissions[:, :, start:end], symbols[:, start:end], chunk, grammar, tables,
-                    edges, carry, keep=True)
+        e, sym = chunk(start, end)
+        if e.shape[0] != lengths.shape[0] or e.shape[2] != end - start or sym.shape != e.shape[::2]:
+            raise ValueError(f"tile [{start}, {end}) must be (B, C, {end - start}) emissions "
+                             "and (B, {end - start}) symbols")
+        chunk_len = (lengths - start).clamp(min=0, max=end - start)
+        out = _scan(e, sym, chunk_len, grammar, tables, edges, carry, keep=True)
         score, prev2, exit_r, entered, final, carry = out
         packed.append(prev2, exit_r, entered, first=start == 0)
     # A row that ended before the last tile kept ``alpha[U]`` through the pad
@@ -571,31 +617,55 @@ def scan_segments(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch
     return score, packed, final
 
 
-def viterbi_segments(segments: Sequence[str], emissions: Sequence[torch.Tensor], *,
+def viterbi_segments(segments: Sequence[str], emissions: Sequence, *,
                      tile: int, code: GeneticCode = TABLES[1],
                      duration: DurationMixture = DurationMixture(), tables=None,
-                     edges: Optional[EdgePrior] = None) -> List[Tuple[float, List[Chain]]]:
+                     edges: Optional[EdgePrior] = None, dtype=None,
+                     device=None) -> List[Tuple[float, List[Chain]]]:
     """:func:`viterbi` over a batch of segments of one genetic code, scanned
     ``tile`` bases at a time with the state carried across seams
-    (:func:`scan_segments`); ``emissions[i]`` is ``(11, len(segments[i]))``.
-    Equal to :func:`viterbi` on each whole segment."""
+    (:func:`scan_segments`); ``emissions[i]`` is ``(11, len(segments[i]))``,
+    or a callable ``f(start, end)`` returning the ``(11, end - start)``
+    emissions of that slice of segment ``i`` on demand (``end <=
+    len(segments[i])``), so that only one tile of emissions per segment is
+    alive at a time; ``dtype`` / ``device`` are taken from the first tensor
+    when not given. Equal to :func:`viterbi` on each whole segment."""
     if len(segments) != len(emissions):
         raise ValueError("segments and emissions must agree in length")
     if not segments:
         return []
-    dtype, device = emissions[0].dtype, emissions[0].device
+    for x, em in zip(segments, emissions):
+        if callable(em):
+            continue
+        _check_input(x, em)
+        dtype = em.dtype if dtype is None else dtype
+        device = em.device if device is None else device
+    if dtype is None or device is None:
+        raise ValueError("dtype and device are required when every emission is a callable")
     g = Grammar.get(code, duration, dtype=dtype, device=device)
     lengths = [len(x) for x in segments]
-    L = max(lengths)
-    e = torch.full((len(segments), emissions[0].shape[0], L), float("-inf"), dtype=dtype, device=device)
-    sym = torch.zeros((len(segments), L), dtype=torch.long, device=device)
-    for b, (x, em) in enumerate(zip(segments, emissions)):
-        _check_input(x, em)
-        e[b, :, :lengths[b]] = em
-        if lengths[b]:
-            sym[b, :lengths[b]] = symbol_index_tensor(x).to(device)
+    B = len(segments)
+
+    def chunk(start, end):
+        T = end - start
+        e = torch.full((B, EMISSION_CHANNELS, T), float("-inf"), dtype=dtype, device=device)
+        sym = torch.zeros((B, T), dtype=torch.long, device=device)
+        for b, (x, em) in enumerate(zip(segments, emissions)):
+            hi = min(end, lengths[b])
+            if hi <= start:
+                continue
+            part = em(start, hi) if callable(em) else em[:, start:hi]
+            if part.shape != (EMISSION_CHANNELS, hi - start):
+                raise ValueError(f"emissions of segment {b} at [{start}, {hi}) must be "
+                                 f"({EMISSION_CHANNELS}, {hi - start}), got {tuple(part.shape)}")
+            if callable(em):
+                _check_input(x[start:hi], part)
+            e[b, :, :hi - start] = part
+            sym[b, :hi - start] = symbol_index_tensor(x[start:hi]).to(device)
+        return e, sym
+
     score, packed, final = scan_segments(
-        e, sym, torch.tensor(lengths, device=device), g, tile, edges, tables)
+        chunk, None, torch.tensor(lengths, device=device), g, tile, edges, tables)
     out = []
     for b, x in enumerate(segments):
         best = float(score[b])

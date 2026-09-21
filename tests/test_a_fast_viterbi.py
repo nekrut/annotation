@@ -525,8 +525,11 @@ class SeamCarry(unittest.TestCase):
                 score, packed, final = fast_viterbi.scan_segments(e, sym, lens, g, tile, edges)
                 self.assertTrue(torch.equal(whole[0], score), (tile, dur, edges))
                 self.assertIsInstance(packed, fast_viterbi.PackedBackPointers)
-                # 2 (prev slots) + K / 2 (exit_r nibbles) + ceil(K R / 8) (entered bits)
+                # 2 (prev slots) + K / 2 (exit_r nibbles) + ceil(K R / 8) (entered bits),
+                # and the store keeps no wider allocation alive behind a view
+                # (stalin-0093: the superseded seam columns and the seam context).
                 self.assertEqual(packed.nbytes(), len(cases) * (L + 1) * (2 + (g.K + 1) // 2 + (g.K * g.R + 7) // 8))
+                self.assertEqual(packed.storage_nbytes(), packed.nbytes(), (tile, dur, edges))
                 for b, n in enumerate(lengths):
                     prev, exit_r, entered = packed.dense(b)
                     # exit_r and entered are written at every step of the
@@ -543,6 +546,45 @@ class SeamCarry(unittest.TestCase):
                         st_p = fast_viterbi.traceback(n, g, prev, exit_r, entered,
                                                       None if edges is None else final[b])
                         self.assertEqual(st_w, st_p, (tile, b))
+
+    def test_streamed_emissions_equal_tensors(self):
+        # Emissions handed over as ``f(start, end)`` callables (the chromosome
+        # mode encodes each tile when the scan asks for it) give the same
+        # scores and chains as the whole tensors, and the callable is asked
+        # for exactly the tiles of its own segment, each at most once.
+        rng = random.Random(5)
+        torch.manual_seed(5)
+        finite = 0
+        for _ in range(60):
+            dur = _random_mixture(rng)
+            code = rng.choice([TABLES[1], TABLES[6]])
+            edges = rng.choice(self.EDGES)
+            cases = [self._segment_case(rng) for _ in range(rng.randint(1, 5))]
+            xs, es = zip(*cases)
+            tile = rng.choice([1, 3, 7, 16, 64])
+            asked = [[] for _ in cases]
+
+            def emitter(b, e):
+                def f(start, end):
+                    asked[b].append((start, end))
+                    return e[:, start:end]
+                return f
+
+            whole = fast_viterbi.viterbi_segments(xs, es, tile=tile, code=code, duration=dur, edges=edges)
+            streamed = fast_viterbi.viterbi_segments(
+                xs, [emitter(b, e) for b, e in enumerate(es)], tile=tile, code=code, duration=dur,
+                edges=edges, dtype=torch.float64, device=torch.device("cpu"))
+            self.assertEqual(whole, streamed, (tile, dur, code, edges))
+            finite += sum(not isinf(a) for a, _ in whole)
+            for x, calls in zip(xs, asked):
+                expect = [(s, min(s + tile, len(x))) for s in range(0, len(x), tile)]
+                self.assertEqual(calls, expect, (tile, len(x)))
+        self.assertGreater(finite, 100)
+        with self.assertRaises(ValueError):
+            fast_viterbi.viterbi_segments(["ATG"], [lambda s, e: torch.zeros(11, e - s)], tile=2)
+        with self.assertRaises(ValueError):
+            fast_viterbi.viterbi_segments(["ATG"], [lambda s, e: torch.zeros(11, 3)], tile=2,
+                                          dtype=torch.float64, device=torch.device("cpu"))
 
     def test_bad_tile_rejected(self):
         with self.assertRaises(ValueError):

@@ -205,12 +205,13 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
     seam is decoded whole. ``counts["windows"]`` is then the number of
     segments and ``counts["tiles"]`` the number of encoder tiles; the
     oversampling is ``1 + (segments - 1) * overlap / n`` per strand instead of
-    ``window / (window - overlap)``. The emissions of every segment
-    (``11 * dtype`` bytes per oriented base) and the packed back-pointers of
-    every segment (23 bytes per oriented base at ``K = 24``, ``R = 3``;
-    :class:`model.a.fast_viterbi.PackedBackPointers`) are held at once, plus
-    one segment's dense pointers (120 bytes per base) during its traceback,
-    so this mode is bounded by the chromosome length, not the window.
+    ``window / (window - overlap)``. Each tile is encoded when the scan
+    reaches it, so the live state is one tile of emissions and operands for
+    every segment, the packed back-pointers of every segment (23 bytes per
+    oriented base at ``K = 24``, ``R = 3``;
+    :class:`model.a.fast_viterbi.PackedBackPointers`), and one segment's
+    dense pointers (120 bytes per base) during its traceback; the part that
+    grows with the chromosome is the packed store.
     """
     import torch
 
@@ -293,9 +294,11 @@ def segment_length(n: int, segments: int, overlap: int) -> int:
 
 def _predict_segments(model, seqid, seq, *, code, structure, tables, window, overlap,
                       segments, device, dtype, clock, strands, stride, rows, counts):
-    """The ``segments`` mode of :func:`predict_sequence`: encode every segment
-    of every strand tile by tile, then one carried-state scan over all of
-    them."""
+    """The ``segments`` mode of :func:`predict_sequence`: one carried-state
+    scan over every segment of every strand, fed one ``window``-base tile at
+    a time; each tile is encoded when the scan asks for it, so the emissions
+    alive at once are one tile of every segment, never a chromosome
+    (engels-0090, stalin-0093)."""
     import torch
 
     from . import pooled
@@ -310,34 +313,46 @@ def _predict_segments(model, seqid, seq, *, code, structure, tables, window, ove
     seg_len = segment_length(n, segments, overlap)
     owners: List[Tuple[str, Tile]] = []
     xs: List[str] = []
-    ems: List["torch.Tensor"] = []
+    ems: List[callable] = []
+
+    def emitter(oriented: str, seg: Tile, x: str):
+        def emit(start: int, end: int) -> "torch.Tensor":
+            # Encoder input anchored to the pooling grid as in the window
+            # mode; the dinucleotide bias reads one base past a tile's end
+            # and two before its start, within the segment.
+            a, b = seg.start + start, seg.start + end
+            enc_start = a - a % stride
+            with clock("preprocess"):
+                padded, available = pad_window(oriented[enc_start:b], stride)
+                feats = encode_sequence(padded, available=available).unsqueeze(0).to(device)
+            with clock("encoder"):
+                em = model.encoder(feats)[0][:, a - enc_start:b - enc_start].to(dtype)
+            lo, hi = max(0, start - 2), min(len(x), end + 1)
+            bias = pooled.motif_bias(x[lo:hi], model.decoder, dtype=dtype, device=device)
+            counts["tiles"] += 1
+            return em + bias[:, start - lo:end - lo]
+        return emit
+
     with torch.no_grad():
         for strand in strands:
             with clock("io"):
                 oriented = seq if strand == "+" else reverse_complement(seq)
             for seg in tiles(n, seg_len, overlap):
-                parts = []
-                for tile in tiles(seg.end - seg.start, window, 0):
-                    start, end = seg.start + tile.start, seg.start + tile.end
-                    enc_start = start - start % stride
-                    with clock("preprocess"):
-                        padded, available = pad_window(oriented[enc_start:end], stride)
-                        feats = encode_sequence(padded, available=available).unsqueeze(0).to(device)
-                    with clock("encoder"):
-                        parts.append(model.encoder(feats)[0][:, start - enc_start:end - enc_start].to(dtype))
-                    counts["tiles"] += 1
                 x = oriented[seg.start:seg.end]
-                with clock("decode"):
-                    emissions = torch.cat(parts, 1) if len(parts) > 1 else parts[0]
-                    emissions = emissions + pooled.motif_bias(x, model.decoder, dtype=dtype, device=device)
                 owners.append((strand, seg))
                 xs.append(x)
-                ems.append(emissions)
+                ems.append(emitter(oriented, seg, x))
                 counts["oriented_bases"] += len(x)
                 counts["windows"] += 1
+        # The encoder runs inside the scan; its stages are clocked by the
+        # emitter and taken back out of ``decode``.
+        inner = {s: (clock.cpu.get(s, 0.0), clock.wall.get(s, 0.0)) for s in ("preprocess", "encoder")}
         with clock("decode"):
             decoded = viterbi_segments(xs, ems, tile=window, code=code, duration=structure,
-                                       tables=tables)
+                                       tables=tables, dtype=dtype, device=device)
+        for s, (c0, w0) in inner.items():
+            clock.cpu["decode"] -= clock.cpu.get(s, 0.0) - c0
+            clock.wall["decode"] -= clock.wall.get(s, 0.0) - w0
         del ems
         gene = 0
         with clock("output"):
