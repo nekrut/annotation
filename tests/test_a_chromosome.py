@@ -282,6 +282,93 @@ class EndToEnd(unittest.TestCase):
         got = [l for _k, ls, _a in seen for l in ls]
         self.assertEqual(got, lengths * 2)
 
+    @unittest.skipUnless(_HAS_TORCH, "torch")
+    def test_segment_tiles_encode_with_context_margin(self):
+        """In the ``segments`` mode every tile's emissions equal the
+        whole-oriented-strand encoder output on that tile (float32 summation
+        order aside) with the default margin, so the tile grid leaves no
+        trace; with ``margin=0`` the bases within the dependency radius of a
+        tile seam differ. The margin is clipped at the true sequence ends and
+        ``encoded_bases`` counts the encoder input exactly."""
+        import random
+        from unittest.mock import patch
+        import torch
+        from model.a import fast_viterbi, pooled
+        from model.a.encoder import CandidateA, DEPENDENCY_RADIUS, POOL_STRIDE
+        from model.a.features import encode_sequence
+        from model.a.train import pad_window
+        from model.grammar import TABLES, reverse_complement
+
+        torch.set_num_threads(1)
+        rng = random.Random(921)
+        seq = "".join(rng.choices("ACGTACGTacgtN", k=6100))
+        torch.manual_seed(921)
+        model = CandidateA().eval()
+        structure, tables = pooled.structure(model.decoder), pooled.duration_tables(model.decoder)
+        window, overlap, segments = 1500, 400, 2
+        n = len(seq)
+        seg_len = C.segment_length(n, segments, overlap)
+        layout = C.tiles(n, seg_len, overlap)
+        self.assertEqual(len(layout), segments)
+        whole = {}
+        with torch.no_grad():
+            for strand in "+-":
+                oriented = seq if strand == "+" else reverse_complement(seq)
+                padded, available = pad_window(oriented, POOL_STRIDE)
+                e = model.encoder(encode_sequence(padded, available=available).unsqueeze(0))[0][:, :n]
+                whole[strand] = e.double()
+
+        def run(margin):
+            seen = []  # (strand, segment, tile start, tile end, max |tile - whole|)
+
+            def spy(xs, ems, *, tile, **kw):
+                self.assertEqual(len(xs), 2 * segments)
+                for i, (x, em) in enumerate(zip(xs, ems)):
+                    strand, seg = "+-"[i // segments], layout[i % segments]
+                    self.assertTrue(callable(em))
+                    bias = pooled.motif_bias(x, model.decoder, dtype=torch.float64,
+                                             device=torch.device("cpu"))
+                    ref = whole[strand][:, seg.start:seg.end] + bias
+                    for start in range(0, len(x), tile):
+                        end = min(len(x), start + tile)
+                        got = em(start, end)
+                        self.assertEqual(tuple(got.shape), (11, end - start))
+                        seen.append((strand, seg, start, end,
+                                     float((got - ref[:, start:end]).abs().max())))
+                return [(0.0, []) for _ in xs]
+
+            with patch.object(fast_viterbi, "viterbi_segments", side_effect=spy):
+                _rows, counts = C.predict_sequence(
+                    model, "synthetic", seq, code=TABLES[1], structure=structure,
+                    tables=tables, window=window, overlap=overlap, segments=segments,
+                    device=torch.device("cpu"), dtype=torch.float64, margin=margin)
+            return seen, counts
+
+        seen, counts = run(None)
+        self.assertEqual(len(seen), 2 * sum(-(-(t.end - t.start) // window) for t in layout))
+        self.assertEqual(counts["tiles"], len(seen))
+        self.assertTrue(all(d < 1e-5 for *_x, d in seen), seen)
+        # encoded_bases: every tile's [a - 491, b + 491) on the stride grid, clipped to [0, n)
+        expected = 0
+        for strand, seg, start, end, _d in seen:
+            a, b = seg.start + start, seg.start + end
+            lo = max(0, a - DEPENDENCY_RADIUS)
+            lo -= lo % POOL_STRIDE
+            expected += min(n, b + DEPENDENCY_RADIUS) - lo
+        self.assertEqual(counts["encoded_bases"], expected)
+        self.assertGreater(counts["encoded_bases"], counts["oriented_bases"])
+
+        bare, counts0 = run(0)
+        self.assertEqual(counts0["encoded_bases"],
+                         sum(b - (a - a % POOL_STRIDE)
+                             for _s, seg, a0, b0, _d in bare
+                             for a, b in [(seg.start + a0, seg.start + b0)]))
+        # Without the margin, tiles that do not start at the segment's first
+        # base (whose left context the bare encoder cannot see) differ.
+        interior = [d for _s, _seg, start, _end, d in bare if start > 0]
+        self.assertTrue(interior)
+        self.assertTrue(all(d > 1e-3 for d in interior), bare)
+
     def test_write_gff3(self):
         with tempfile.TemporaryDirectory() as d:
             p = os.path.join(d, "x.gff3")

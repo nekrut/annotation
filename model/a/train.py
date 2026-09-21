@@ -571,7 +571,7 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
             decoder: str = "tensor", decode_batch: int = 16, log=print,
             profile: str = "windows", window: Optional[int] = None,
             overlap: Optional[int] = None, gff_out: Optional[str] = None,
-            segments: Optional[int] = None) -> dict:
+            segments: Optional[int] = None, margin: Optional[int] = None) -> dict:
     """Time preprocessing, encoder and decode/traceback over one sequence.
 
     ``profile="chromosome"`` is the end-to-end row (:mod:`model.a.chromosome`):
@@ -639,7 +639,7 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
         return _measure_chromosome(config, src, seqid, model, structure, tables, device,
                                    dtype, decode_batch=decode_batch, json_out=json_out,
                                    window=window, overlap=overlap, gff_out=gff_out,
-                                   segments=segments, log=log)
+                                   segments=segments, margin=margin, log=log)
     if profile != "windows":
         raise ValueError("profile must be 'windows' or 'chromosome'")
 
@@ -739,7 +739,8 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
                         model, structure, tables, device, dtype, *, decode_batch: int,
                         json_out: Optional[str], window: Optional[int],
                         overlap: Optional[int], gff_out: Optional[str], log=print,
-                        segments: Optional[int] = None) -> dict:
+                        segments: Optional[int] = None,
+                        margin: Optional[int] = None) -> dict:
     """The ``profile="chromosome"`` half of :func:`measure`."""
     import torch
 
@@ -747,6 +748,7 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
 
     from . import chromosome as C
     from .dataset import verify_source
+    from .encoder import DEPENDENCY_RADIUS as C_DEPENDENCY_RADIUS
 
     if seqid is None:
         raise ValueError("profile 'chromosome' needs --seqid")
@@ -775,7 +777,8 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
                                       structure=structure, tables=tables,
                                       window=window, overlap=overlap,
                                       decode_batch=decode_batch, device=device,
-                                      dtype=dtype, clock=clock, segments=segments)
+                                      dtype=dtype, clock=clock, segments=segments,
+                                      margin=margin)
     gff_bytes = None
     with clock("output"):
         if gff_out:
@@ -788,6 +791,9 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
         "species": src.name, "seqid": seqid, "profile": "chromosome",
         "strands": "+-", "windows": counts["windows"], "window": window, "overlap": overlap,
         "segments": segments, "tiles": counts.get("tiles"),
+        "margin": (None if segments is None else
+                   (C_DEPENDENCY_RADIUS if margin is None else margin)),
+        "encoded_bases": counts.get("encoded_bases"),
         "sequence_bases": len(seq), "genome_mb": genome_mb,
         "oriented_bases": counts["oriented_bases"],
         "chains": counts["chains"], "chains_decoded": counts["chains_decoded"],
@@ -847,6 +853,10 @@ def build_parser() -> argparse.ArgumentParser:
                     help="chromosome profile: cut each strand into about this many segments "
                          "overlapping by --overlap and carry the Viterbi state across the "
                          "window seams inside a segment (proposal 3.3)")
+    pm.add_argument("--margin", type=int, default=None,
+                    help="chromosome profile with --segments: encoder context bases on each "
+                         "side of a tile (default model.a.encoder.DEPENDENCY_RADIUS = 491; "
+                         "0 encodes bare tiles)")
     pm.add_argument("--gff-out", default=None,
                     help="chromosome profile: write the predicted GFF3 here")
     return p
@@ -862,7 +872,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 json_out=args.json_out, decoder=args.decoder,
                 decode_batch=args.decode_batch, profile=args.profile,
                 window=args.window, overlap=args.overlap, gff_out=args.gff_out,
-                segments=args.segments)
+                segments=args.segments, margin=args.margin)
     return 0
 
 

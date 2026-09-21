@@ -182,12 +182,15 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                      clock: Optional[StageClock] = None,
                      strands: Sequence[str] = ("+", "-"),
                      stride: Optional[int] = None,
-                     segments: Optional[int] = None) -> Tuple[List[str], dict]:
+                     segments: Optional[int] = None,
+                     margin: Optional[int] = None) -> Tuple[List[str], dict]:
     """Decode ``seq`` on ``strands`` and return ``(gff3 rows, counts)``.
 
     ``counts``: ``oriented_bases`` (sum of decoded window lengths, overlap
     included), ``strand_bases`` (``len(seq)`` per strand), ``windows``,
-    ``chains`` (reported), ``chains_decoded`` (before core de-duplication).
+    ``chains`` (reported), ``chains_decoded`` (before core de-duplication);
+    in the ``segments`` mode also ``tiles`` and ``encoded_bases`` (encoder
+    input bases, margins included).
 
     ``stride`` is the encoder's pooling stride (default ``POOL_STRIDE``); each
     window's encoder input starts at the stride multiple at or before the tile
@@ -212,6 +215,17 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
     :class:`model.a.fast_viterbi.PackedBackPointers`), and one segment's
     dense pointers (120 bytes per base) during its traceback; the part that
     grows with the chromosome is the packed store.
+
+    In the ``segments`` mode each tile is encoded with ``margin`` bases of
+    the oriented chromosome on each side (clipped at the true sequence ends)
+    and cropped back, so an emission depends only on the bases within the
+    encoder's dependency radius of its own position, never on where the tile
+    grid falls; the default is :data:`model.a.encoder.DEPENDENCY_RADIUS`
+    (491), which makes the encoder's per-tile output the whole-chromosome
+    output up to floating-point summation order (``tests/test_a_chromosome``
+    ``SegmentMargin``). ``margin=0`` is the earlier tile-edge behaviour. The
+    window mode needs no margin: its cores sit ``overlap // 2`` bases inside
+    the window, beyond the radius at the default overlap.
     """
     import torch
 
@@ -254,7 +268,7 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                                  tables=tables, window=window, overlap=overlap,
                                  segments=segments, device=device, dtype=dtype,
                                  clock=clock, strands=strands, stride=stride,
-                                 rows=rows, counts=counts)
+                                 margin=margin, rows=rows, counts=counts)
 
     with torch.no_grad():
         for strand in strands:
@@ -293,23 +307,29 @@ def segment_length(n: int, segments: int, overlap: int) -> int:
 
 
 def _predict_segments(model, seqid, seq, *, code, structure, tables, window, overlap,
-                      segments, device, dtype, clock, strands, stride, rows, counts):
+                      segments, device, dtype, clock, strands, stride, margin, rows, counts):
     """The ``segments`` mode of :func:`predict_sequence`: one carried-state
     scan over every segment of every strand, fed one ``window``-base tile at
     a time; each tile is encoded when the scan asks for it, so the emissions
     alive at once are one tile of every segment, never a chromosome
-    (engels-0090, stalin-0093)."""
+    (engels-0090, stalin-0093). The encoder input is the tile plus ``margin``
+    bases of the oriented chromosome on each side, so the tile grid leaves no
+    trace in the emissions."""
     import torch
 
     from . import pooled
-    from .encoder import POOL_STRIDE
+    from .encoder import DEPENDENCY_RADIUS, POOL_STRIDE
     from .fast_viterbi import viterbi_segments
     from .features import encode_sequence
     from .train import pad_window
 
     stride = POOL_STRIDE if stride is None else stride
+    margin = DEPENDENCY_RADIUS if margin is None else margin
+    if margin < 0:
+        raise ValueError("margin must be non-negative")
     n = len(seq)
     counts["tiles"] = 0
+    counts["encoded_bases"] = 0
     seg_len = segment_length(n, segments, overlap)
     owners: List[Tuple[str, Tile]] = []
     xs: List[str] = []
@@ -317,16 +337,21 @@ def _predict_segments(model, seqid, seq, *, code, structure, tables, window, ove
 
     def emitter(oriented: str, seg: Tile, x: str):
         def emit(start: int, end: int) -> "torch.Tensor":
-            # Encoder input anchored to the pooling grid as in the window
-            # mode; the dinucleotide bias reads one base past a tile's end
-            # and two before its start, within the segment.
+            # Encoder input: the tile plus ``margin`` bases of the oriented
+            # chromosome on each side (only what exists at the true ends),
+            # anchored to the pooling grid as in the window mode and cropped
+            # back to the tile; the dinucleotide bias reads one base past a
+            # tile's end and two before its start, within the segment.
             a, b = seg.start + start, seg.start + end
-            enc_start = a - a % stride
+            enc_start = max(0, a - margin)
+            enc_start -= enc_start % stride
+            enc_end = min(n, b + margin)
             with clock("preprocess"):
-                padded, available = pad_window(oriented[enc_start:b], stride)
+                padded, available = pad_window(oriented[enc_start:enc_end], stride)
                 feats = encode_sequence(padded, available=available).unsqueeze(0).to(device)
             with clock("encoder"):
                 em = model.encoder(feats)[0][:, a - enc_start:b - enc_start].to(dtype)
+            counts["encoded_bases"] += enc_end - enc_start
             lo, hi = max(0, start - 2), min(len(x), end + 1)
             bias = pooled.motif_bias(x[lo:hi], model.decoder, dtype=dtype, device=device)
             counts["tiles"] += 1
