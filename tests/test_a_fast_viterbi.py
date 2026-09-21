@@ -6,7 +6,9 @@ and identical ``Chain`` objects on the section-3.4 fixtures and on random
 small lattices with IUPAC ambiguity, both genetic-code tables, alternative
 initiators, ``m = 1..4``, ``R = 1..3`` and ``-inf`` masks; infeasible windows
 are ``-inf`` in both; length-bucketed batched decoding equals per-window
-decoding. Skips without torch, like the other candidate-A tensor suites.
+decoding; the sparse-predecessor scan equals the dense-transition reference
+bit for bit on scores, tail back-pointers and every traceback. Skips without
+torch, like the other candidate-A tensor suites.
 """
 import importlib.util
 import random
@@ -157,6 +159,45 @@ class Batching(unittest.TestCase):
             else:
                 self.assertAlmostEqual(a, b, places=9)
             self.assertEqual(ca, cb)
+
+    def test_sparse_scan_equals_dense_reference(self):
+        """Scores, ``exit_r``/``entered`` and the traced states of every finite
+        window agree exactly between ``viterbi_batch`` (sparse predecessors)
+        and ``viterbi_batch_reference`` (dense ``(B, K, K)`` block), across
+        codes, dtypes, ``m``, ``-inf`` masks and padded batches."""
+        from model.a.fast_loss import Grammar, symbol_index_tensor
+        rng = random.Random(88)
+        torch.manual_seed(88)
+        finite = 0
+        for code in (TABLES[1], TABLES[6], TABLES[1].with_alternative_initiators()):
+            for dtype in (torch.float32, torch.float64):
+                for m in (1, 2, 4, 20):
+                    for mask in (0.0, 0.12):
+                        B, L = 6, 61
+                        xs = ["".join(rng.choices("ACGTacgtNRY", k=L)) for _ in range(B)]
+                        lengths = torch.tensor([L, L - 7, L // 2, L, 1, 0])
+                        e = 2 * torch.randn(B, 11, L, dtype=dtype)
+                        if mask:
+                            e[torch.rand(B, 11, L) < mask] = float("-inf")
+                        for b in range(B):
+                            e[b, :, lengths[b]:] = float("-inf")
+                        sym = torch.stack([symbol_index_tensor(x) for x in xs])
+                        dur = _random_mixture(rng)
+                        dur = DurationMixture(m=m, pi=dur.pi, q=dur.q)
+                        g = Grammar.get(code, dur, dtype=dtype, device=e.device)
+                        a = fast_viterbi.viterbi_batch(e, sym, lengths, g)
+                        b = fast_viterbi.viterbi_batch_reference(e, sym, lengths, g)
+                        self.assertTrue(torch.equal(a[0], b[0]), (code.table, dtype, m, mask))
+                        self.assertTrue(torch.equal(a[2], b[2]) and torch.equal(a[3], b[3]))
+                        for i in range(B):
+                            if isinf(float(a[0][i])):
+                                continue
+                            finite += 1
+                            n = int(lengths[i])
+                            sa = fast_viterbi.traceback(n, g, a[1][i], a[2][i], a[3][i])
+                            sb = fast_viterbi.traceback(n, g, b[1][i], b[2][i], b[3][i])
+                            self.assertEqual(sa, sb)
+        self.assertGreater(finite, 100)
 
     def test_bad_inputs_rejected(self):
         e = torch.zeros(11, 4, dtype=torch.float64)

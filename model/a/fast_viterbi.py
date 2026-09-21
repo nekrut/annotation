@@ -9,7 +9,15 @@ replaces it: the same ``n``-step loop over ``(B, K)`` and ``(B, K, R)``
 tensors as the training kernel, ``max``/``argmax`` in place of
 ``logsumexp``, sharing the grammar tables of :mod:`model.a.fast_loss` but
 building the coding transition per step from its sparse parts
-(:func:`_operands`) instead of the dense ``(B, L, K, K)`` stack.
+(:func:`_operands`) instead of the dense ``(B, L, K, K)`` stack, and taking
+the per-step maximum over each state's *predecessors* only
+(:func:`_sparse`): every coding state has exactly one except ``U`` (itself
+and the stop-completing two-base prefixes) and the empty prefix ``E("")``
+(every two-base prefix and the initiator-completing ``S`` prefixes), so the
+step gathers ``K - 2 + 2 P`` candidates per window instead of the dense
+``K x K`` block. :func:`viterbi_batch_reference` keeps the dense block; the
+two agree bit for bit on scores and on every back-pointer a traceback can
+read (``tests/test_a_fast_viterbi.py``).
 
 Back-pointers per boundary ``t + 1`` (``t`` is the consumed base):
 
@@ -30,11 +38,14 @@ want the checkpoint-and-replay traceback of proposal 3.3 (not offered here);
 Complete-target only, like the training kernel: the path must end in ``U``
 at boundary ``n``. Ties are broken by the first maximal index, which can
 differ from the Python decoder's insertion order; the score is tie-free.
+Back-pointers of states no finite path reaches, and of boundaries past a
+window's end inside a padded batch, are unspecified (the dense reference
+fills them with the identity; the sparse scan does not).
 """
 from __future__ import annotations
 
 from itertools import groupby
-from typing import List, Optional, Sequence, Tuple
+from typing import List, NamedTuple, Optional, Sequence, Tuple
 
 import torch
 
@@ -58,9 +69,12 @@ def _operands(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Ten
     entries: ``u[t]`` on ``U -> U``, ``stop[t]`` on ``coding -> U`` (both
     folded into ``ucol[t][i]``, the column-``U`` extra by predecessor) and
     ``start[t] + cds[0][t]`` on ``U -> S(b)`` (``post[t][j]``, added after the
-    max since only ``U`` reaches a length-1 initiator prefix)."""
+    max since only ``U`` reaches a length-1 initiator prefix). ``ucol`` is
+    returned gathered at ``U``'s predecessor candidates, ``(B, P)`` per step,
+    the only column the sparse scan adds it to."""
     B, C, L = emissions.shape
     K, m = g.K, g.dur.m
+    sp = _sparse(g)
     log_pi, log_q, _ = duration_by_phase(g, tables)
     dtype, device = emissions.dtype, emissions.device
     e = emissions.clamp(min=FLOOR)
@@ -94,8 +108,56 @@ def _operands(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Ten
     # 16 windows of 12 kb, 2 x 450 MB at 64).
     intron_q = intron[..., None] + log_q[None, :, None, :]                    # (B, 3, L, R)
     window_pi = window_sum[..., None] + log_pi[None, :, None, :]              # (B, 3, L-m+1, R)
-    return (sym_pad.unbind(1), base.unbind(2), ucol.unbind(2), post.unbind(2),
-            donor.unbind(2), acceptor.unbind(1), intron_q.unbind(2), window_pi.unbind(2))
+    ucol = ucol.index_select(1, sp.cand[0])                                   # (B, P, L)
+
+    # Step-major, contiguous per step: a slice of ``(B, K, L)`` along ``L`` is
+    # strided, and ``index_select`` on such a slice (or with such an index)
+    # clones it every step.
+    def steps(a, dim):
+        return a.movedim(dim, 0).contiguous().unbind(0)
+
+    return (steps(sym_pad, 1), steps(base, 2), steps(ucol, 2), steps(post, 2),
+            steps(donor, 2), steps(acceptor, 1), steps(intron_q, 2), steps(window_pi, 2))
+
+
+
+class _Sparse(NamedTuple):
+    gather: torch.Tensor    # (K - 2 + 2 P,) predecessor index per candidate slot
+    prior: torch.Tensor     # (S + 1, K - 2 + 2 P) prior per symbol row and slot
+    cand: torch.Tensor      # (2, P) candidate states of U (row 0) and E("") (row 1)
+    e0: int                 # index of E(""); U is 0, single-predecessor states fill the rest
+
+
+def _sparse(g: Grammar) -> _Sparse:
+    """Predecessor tables of the sparse scan for one grammar, cached on it.
+    Slot order is the single-predecessor states in index order (``1 .. e0 - 1``,
+    ``e0 + 1 .. K - 1``), then ``U``'s candidates, then ``E("")``'s, each
+    padded to ``P`` with ``U`` under a ``FLOOR`` prior; candidates ascend in
+    state index so the first maximum agrees with the dense scan's."""
+    tab = getattr(g, "_viterbi_sparse", None)
+    if tab is not None:
+        return tab
+    K, u, S = g.K, g.u_index, len(SYMBOL_SETS)
+    e0 = g.index[("E", "")]
+    dtype, device = g.prior_max.dtype, g.prior_max.device
+    permitted = (g.prior_max[:S] > FLOOR / 2).any(0)                           # (K, K) i -> j
+    preds = [permitted[:, j].nonzero().flatten() for j in range(K)]
+    single = list(range(1, e0)) + list(range(e0 + 1, K))
+    if u != 0 or any(len(preds[j]) != 1 for j in single):
+        raise AssertionError("grammar states are not U, single-predecessor prefixes, E('')")
+    one_pred = torch.tensor([int(preds[j][0]) for j in single], device=device)
+    P = max(len(preds[u]), len(preds[e0]))
+    cand = torch.full((2, P), u, dtype=torch.long, device=device)
+    prior = torch.full((S + 1, 2, P), FLOOR, dtype=dtype, device=device)
+    for row, j in enumerate((u, e0)):
+        cand[row, :len(preds[j])] = preds[j]
+        prior[:, row, :len(preds[j])] = g.prior_max[:, preds[j], j]
+    tab = _Sparse(gather=torch.cat([one_pred, cand.flatten()]),
+                  prior=torch.cat([g.prior_max[:, one_pred, torch.tensor(single, device=device)],
+                                   prior.view(S + 1, 2 * P)], 1).contiguous(),
+                  cand=cand, e0=e0)
+    g._viterbi_sparse = tab
+    return tab
 
 
 def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
@@ -108,7 +170,15 @@ def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
     ``T(i, r)`` whose exit gave ``i`` its merged score at ``t``, or ``-1`` if
     the coding layer did. ``tables`` (learned
     :class:`model.a.pooled.DurationTables`) replaces the grammar's fixed
-    duration values."""
+    duration values.
+
+    The coding transition is the sparse-predecessor form (:func:`_sparse`):
+    one ``index_select`` of the merged layer at every slot, the symbol's
+    prior row added, ``U``'s column extras on its candidates, one ``max``
+    over the two ``(B, P)`` candidate rows, and the ``(B, K)`` layer
+    reassembled by ``cat``. Past a window's end the pad symbol row keeps
+    ``U -> U`` at 0 and everything else at ``FLOOR``, so ``alpha[U]`` is
+    preserved to boundary ``L`` while the other states are unspecified."""
     B, C, L = emissions.shape
     if C != EMISSION_CHANNELS:
         raise ValueError(f"emissions must be (B, {EMISSION_CHANNELS}, L)")
@@ -117,6 +187,74 @@ def viterbi_batch(emissions: torch.Tensor, symbols: torch.Tensor,
     dtype, device = emissions.dtype, emissions.device
     sym_t, base_t, ucol_t, post_t, donor_t, acceptor_t, intron_q, window_pi = _operands(
         emissions, symbols, lengths, g, tables)
+    sp = _sparse(g)
+    gather, prior, e0 = sp.gather, sp.prior, sp.e0
+    K1, P = K - 2, sp.cand.shape[1]
+    log_1mq = duration_by_state(g, tables)[2][None]
+    phase = g.phase
+    neg_one = torch.full((B, K), -1, dtype=torch.long, device=device)
+
+    prev2 = torch.zeros((B, L + 1, 2), dtype=torch.int8, device=device)
+    exit_r = torch.full((B, L + 1, K), -1, dtype=torch.int8, device=device)
+    entered = torch.zeros((B, L + 1, K, R), dtype=torch.bool, device=device)
+
+    alpha = torch.full((B, K), FLOOR, dtype=dtype, device=device)
+    alpha[:, u] = 0.0
+    tau = torch.full((B, K, R), FLOOR, dtype=dtype, device=device)
+    pending: List[torch.Tensor] = []
+    with torch.no_grad():
+        for t in range(L):
+            pending.append(alpha + donor_t[t])
+            exits, best_r = (tau + log_1mq).max(dim=-1)                       # (B, K)
+            exits += acceptor_t[t][:, None]
+            from_tail = exits > alpha
+            # ``copy_`` into the int8 stores converts; no separate ``to``.
+            exit_r[:, t] = torch.where(from_tail, best_r, neg_one)
+            merged = torch.where(from_tail, exits, alpha) + base_t[t]
+            v = merged.index_select(1, gather) + prior.index_select(0, sym_t[t])  # (B, K1 + 2P)
+            cand = v[:, K1:].view(B, 2, P)
+            cand[:, 0] += ucol_t[t]
+            best, best_p = cand.max(dim=-1)                                   # (B, 2)
+            alpha = torch.cat([best[:, :1], v[:, :e0 - 1], best[:, 1:], v[:, e0 - 1:K1]], 1)
+            alpha += post_t[t]
+            alpha.clamp_(min=FLOOR)
+            prev2[:, t + 1] = best_p
+            tau += intron_q[t].index_select(1, phase)                          # (B, K, R)
+            if len(pending) == m:
+                entry = pending.pop(0)[:, :, None] + window_pi[t - m + 1].index_select(1, phase)
+                enter = entry > tau
+                entered[:, t + 1] = enter
+                tau = torch.where(enter, entry, tau)
+            tau.clamp_(min=FLOOR)
+    z = alpha[:, u]
+    score = torch.where(z > FLOOR / 2, z, torch.full_like(z, float("-inf")))
+    # Expand the two argmax slots to the dense ``prev`` layout once, after
+    # the loop: single-predecessor states point at their one predecessor.
+    prev = torch.empty((B, L + 1, K), dtype=torch.int8, device=device)
+    prev[:, :, 1:e0] = gather[:e0 - 1].to(torch.int8)
+    prev[:, :, e0 + 1:] = gather[e0 - 1:K1].to(torch.int8)
+    chosen = sp.cand.gather(1, prev2.long().view(-1, 2).T).T.view(B, L + 1, 2)
+    prev[:, :, u] = chosen[..., 0]
+    prev[:, :, e0] = chosen[..., 1]
+    return score, prev, exit_r, entered
+
+
+def viterbi_batch_reference(emissions: torch.Tensor, symbols: torch.Tensor,
+                            lengths: torch.Tensor, grammar: Grammar, tables=None):
+    """The dense-transition scan :func:`viterbi_batch` replaced: the same
+    contract, with the per-step ``(B, K, K)`` block ``merged + prior_max[x[t]]``
+    maximised over all ``K`` predecessors. Kept as the test oracle of the
+    sparse scan and for profiling; not used by the pipeline."""
+    B, C, L = emissions.shape
+    if C != EMISSION_CHANNELS:
+        raise ValueError(f"emissions must be (B, {EMISSION_CHANNELS}, L)")
+    g = grammar
+    K, R, m, u = g.K, g.R, g.dur.m, g.u_index
+    dtype, device = emissions.dtype, emissions.device
+    sym_t, base_t, ucol_t, post_t, donor_t, acceptor_t, intron_q, window_pi = _operands(
+        emissions, symbols, lengths, g, tables)
+    ucol_t = tuple(torch.zeros((B, K), dtype=dtype, device=device).index_copy_(1, _sparse(g).cand[0], c)
+                   for c in ucol_t)
     prior = g.prior_max
     log_1mq = duration_by_state(g, tables)[2][None]
     phase = g.phase
