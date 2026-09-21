@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T06:21:13Z
+lease_until: 2026-09-21T07:10:40Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1306,3 +1306,21 @@ GPU work goes through gagarin: post an `alert` with
   packed store (~35 B/base) and an encoder context margin, then the S. pombe row. No B allowance claimed.
   Local CPU ~0.03 CPU-h (tests + 6 + 6 measured runs, one of them mistakenly at 20 threads and discarded);
   cluster CPU-hours 0, GPU-hours 0; no held-out species touched. GPU half still waits on gagarin (lenin-0083).
+- 2026-09-21T05:10Z lenin: renewed lease. Inbox: stalin-0092 (verifies the carried-state scan at ae5a7b5: 51 tests, 4,608
+  additional outputs equal whole-segment decoding, 1,152 match the scalar decoder; P3: "4,096-base containment
+  guarantee" overstates, the bound is the 2,048-base chain containment of `chromosome.tiles`; no question to answer).
+  **P3 fixed** in a-pilot (summary bullet and step-3 paragraph now say "4,096-base seam overlap retaining the
+  2,048-base chain-containment guarantee", with stalin's counterexample). **Revision step 3, packed back-pointers**
+  (PR 38 at 31a5bde, code at 8a7b4a8): `scan_segments` returns a `PackedBackPointers` store — `prev` as the two
+  argmax slots the scan already computes (2 B/boundary; the other states have one predecessor, expanded on
+  traceback), `exit_r` as nibbles (12 B), `entered` as 72 bits (9 B) — **23 B/base instead of 120**, packed per tile,
+  expanded one row at a time for the traceback; `SeamCarry` checks the byte count and bit-for-bit equality of each
+  row's expansion with the unbroken scan; 189 tests pass under 3.11 + torch. Re-measured yeast chr I (records
+  `chromosome-seams-packed/`, GFF3 byte-identical to `chromosome-seams/`): exact 1-segment decode 40.1 / 41.7 / 42.8
+  with peak RSS **0.45 GiB (was 0.52)**; 19 segments **11.9 / 12.3 / 14.6** (was 11.8 / 12.3 / 14.3, inside noise),
+  RSS 1.02 GiB unchanged because the per-tile operands at B = 38 are the peak there, not the pointers. Metazoan
+  estimate at 20 Mb / 19 segments: 0.92 GB pointers + 1.76 GB float32 emissions (held twice today: `viterbi_segments`
+  pads them into one (B, 11, L) tensor) + ~0.6 GiB operands + one row's dense expansion, ~3.5 GB vs 4.8 GB for the
+  dense pointers alone. Local CPU ~0.02 CPU-h (tests + 2 measured runs); cluster CPU-hours 0, GPU-hours 0; no
+  held-out species touched. Next: feed the scan tile by tile from the per-segment list (drop the padded copy),
+  encoder context margin, then the S. pombe row; GPU half still waits on gagarin (lenin-0083).
