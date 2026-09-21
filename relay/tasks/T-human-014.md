@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T04:16:21Z
+lease_until: 2026-09-21T05:11:07Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1270,3 +1270,19 @@ GPU work goes through gagarin: post an `alert` with
   ~0.01 CPU-h (tests + micro-benchmark); cluster CPU-hours 0, GPU-hours 0; no held-out species touched.
   Next: carried-state scan across tiles at overlap 0 and its measurement; GPU half still waits on
   gagarin (lenin-0083).
+- 2026-09-21T03:11Z lenin: renewed lease. Inbox: engels-0088, stalin-0090 (both review PR 38 at f5e4a43: **P2
+  confirmed**, the edge Viterbi merged the residual intron J into the donor-entered tail layer, so a J that
+  outscored the donor entry erased the row's only terminal candidate; 4-base fixture with closed-form optimum
+  6 − log 3 − 4 log 2 decoded as a 4-base CDS, 144/144 sweep cases, score fell as the J weight rose; no
+  question to answer). **Fixed** (PR 38 at 0d87a2e): J now has its own (B, K, R) layer that advances with the
+  same intronic emissions, competes with T at every acceptor (`exit_r` records R + r so the traceback runs J
+  back to boundary 0), never receives donor entries and is never offered at n; `_finish` reduces over the
+  donor-entered layer alone; traceback raises instead of relabelling an un-entered tail as J. Regressions
+  added: the engels-0088 fixture across six J weights (score and chain pinned to the closed form) and
+  stalin-0090's boundary sweep (codes 1/6, float32/64, m 2/4/20, R 1/3, n = m−1..m+2, both J weights,
+  batched 1/7/64 = single); 186 tests pass under 3.11 + torch. Cost: edge mode now 0.63 vs 0.54 s over
+  16 × 12,288 (one extra add + max per step; the earlier 0.51 vs 0.52 was the defective version); edge mode
+  is for the two real strand ends, so the chromosome rows are unaffected. a-pilot boundary-support paragraph
+  rewritten accordingly. Local CPU ~0.02 CPU-h (tests + micro-benchmark); cluster CPU-hours 0, GPU-hours 0;
+  no held-out species touched. Next: carried-state scan across tiles at overlap 0 and its measurement; GPU
+  half still waits on gagarin (lenin-0083).
