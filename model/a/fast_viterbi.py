@@ -25,7 +25,8 @@ Back-pointers per boundary ``t + 1`` (``t`` is the consumed base):
   transition reached coding state ``j``;
 * ``exit_r[t, i]`` (int8): ``-1`` if coding state ``i`` at boundary ``t``
   scored from the coding layer itself, else the component ``r`` of the tail
-  ``T(i, r)`` whose exit at ``t`` beat it;
+  ``T(i, r)`` whose exit at ``t`` beat it (``R + r`` when the exiting tail
+  is the residual intron ``J(i, r)`` of the edge mode);
 * ``entered[t + 1, c, r]`` (bool): tail ``T(c, r)`` at ``t + 1`` was entered
   by the donor parked at boundary ``t + 1 - m`` (its ``m - 1`` mandatory
   intronic positions are re-expanded to ``I(c, k)`` states on traceback,
@@ -48,11 +49,17 @@ window's own end ``n`` any ``S``/``E`` state may exit with the coding exit,
 any tail ``T`` that was really entered by a donor with the intron exit and
 no ``(1 - q)`` factor, and any donor parked at ``s > n - m`` as the
 censored ``I(c, n - s)`` with its intronic bases summed and the intron
-exit. ``J`` is never terminal: a tail at ``n`` is ``J`` exactly when no
-donor entry was ever accepted on its row (``entered[1..n, c, r]`` all
-false), so no per-step state is added and the scan loop is the same;
-the per-window final choice is made once, at the step that reaches its
-length. Ties are broken by the first maximal index, which can
+exit. ``J`` is never terminal, and it lives in its own ``(B, K, R)`` layer:
+it advances with the same intronic emissions as the donor-entered tails and
+competes with them at every acceptor, but never receives donor entries and
+is not offered at ``n``. Folding it into the tail layer (the first edge
+implementation) lost the best donor-entered tail whenever ``J`` outscored
+the entry on its row, and with it the window's only valid terminal path
+(engels-0088, stalin-0090; ``tests/test_a_fast_viterbi.py::EdgeParity``
+``test_terminal_tail_survives_residual_intron``). The extra layer costs one
+add and one max per step in edge mode only; the per-window final choice is
+made once, at the step that reaches its length. Ties are broken by the
+first maximal index, which can
 differ from the Python decoder's insertion order; the score is tie-free.
 Back-pointers of states no finite path reaches, and of boundaries past a
 window's end inside a padded batch, are unspecified (the dense reference
@@ -215,7 +222,8 @@ def viterbi_batch_edges(emissions: torch.Tensor, symbols: torch.Tensor,
     exit, ``(FINAL_TAIL, c, r)`` for a ``T(c, r)`` exit, or
     ``(FINAL_PENDING, c, k)`` for the censored ``I(c, k)`` of the donor parked
     at ``n - k``. :func:`traceback` takes it as ``final=``; the entry
-    states at boundary 0 come out as ``("E0", q)`` and ``("J", c, r)``."""
+    states at boundary 0 come out as ``("E0", q)`` and ``("J", c, r)``
+    (``exit_r`` holds ``R + r`` where ``J`` closed)."""
     return _scan(emissions, symbols, lengths, grammar, tables, edges)
 
 
@@ -244,15 +252,21 @@ def _scan(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
     alpha = torch.full((B, K), FLOOR, dtype=dtype, device=device)
     alpha[:, u] = 0.0
     tau = torch.full((B, K, R), FLOOR, dtype=dtype, device=device)
+    tau_j = None
     ends = None
     final = None
     if edges is not None:
-        # Entry at boundary 0: E0(q) in the coding layer, J(E(q), r) in the tails.
+        # Entry at boundary 0: E0(q) in the coding layer, J(E(q), r) in its
+        # own tail layer, kept apart from the donor-entered ``tau`` because
+        # the two differ at the window's end (``T`` may exit there, ``J`` may
+        # not) and a ``J`` that outscored a donor entry would otherwise erase
+        # the only terminal candidate on that row (engels-0088, stalin-0090).
         is_e = torch.tensor([st[0] == "E" for st in g.states], device=device)
         pp = torch.tensor([prefix_prior(st[1]) if st[0] == "E" else 0.0 for st in g.states],
                           dtype=dtype, device=device)
         alpha = torch.where(is_e, pp + edges.entry, alpha)                                    # (B, K)
-        tau = torch.where(is_e[:, None], pp[:, None] + log_pi.to(dtype) + edges.intron_entry, tau)  # (B, K, R)
+        tau_j = torch.where(is_e[:, None], pp[:, None] + log_pi.to(dtype) + edges.intron_entry,
+                            tau)                                                              # (B, K, R)
         if L:
             donor_t[0].fill_(FLOOR)            # E0's first base is CDS: no donor at t = 0
             acceptor_t[0].fill_(FLOOR)         # J consumes one intronic base before closing
@@ -276,6 +290,13 @@ def _scan(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
         for t in range(L):
             pending.append(alpha + donor_t[t])
             exits, best_r = (tau + log_1mq).max(dim=-1)                       # (B, K)
+            if tau_j is not None:
+                # The residual intron closes like a tail; ``exit_r`` records
+                # it as ``R + r`` so the traceback knows it reaches boundary 0.
+                exits_j, best_rj = (tau_j + log_1mq).max(dim=-1)
+                from_j = exits_j > exits
+                exits = torch.where(from_j, exits_j, exits)
+                best_r = torch.where(from_j, best_rj + R, best_r)
             exits += acceptor_t[t][:, None]
             from_tail = exits > alpha
             # ``copy_`` into the int8 stores converts; no separate ``to``.
@@ -289,7 +310,11 @@ def _scan(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
             alpha += post_t[t]
             alpha.clamp_(min=FLOOR)
             prev2[:, t + 1] = best_p
-            tau += intron_q[t].index_select(1, phase)                          # (B, K, R)
+            step = intron_q[t].index_select(1, phase)                          # (B, K, R)
+            tau += step
+            if tau_j is not None:
+                tau_j += step
+                tau_j.clamp_(min=FLOOR)
             if len(pending) == m:
                 entry = pending.pop(0)[:, :, None] + window_pi[t - m + 1].index_select(1, phase)
                 enter = entry > tau
@@ -319,11 +344,13 @@ def _scan(emissions: torch.Tensor, symbols: torch.Tensor, lengths: torch.Tensor,
 def _finish(rows, n, alpha, tau, pending, entered, intron, phase, m, u, exit_c, exit_i,
             score, final):
     """Best terminal choice at boundary ``n`` for the windows ``rows`` of
-    that length (edge mode): complete, coding exit, tail exit (only tails a
-    donor really entered; the rest are ``J``), or a censored pending donor."""
+    that length (edge mode): complete, coding exit, tail exit (``tau`` holds
+    donor-entered tails only; rows no donor ever entered are floored, and the
+    residual intron ``J`` lives in its own layer and is never terminal), or a
+    censored pending donor."""
     a = alpha[rows]                                                       # (b, K)
     cands = [a[:, u], (a + exit_c).max(dim=1)]
-    from_tail = ~entered[rows, 1:n + 1].any(dim=1)                        # (b, K, R): never entered = J
+    from_tail = ~entered[rows, 1:n + 1].any(dim=1)                        # (b, K, R): never entered
     tail = torch.where(from_tail, torch.full_like(tau[rows], FLOOR), tau[rows] + exit_i)
     cands.append(tail.flatten(1).max(dim=1))
     # Donors parked at s in (n - m, n): I(c, n - s) exits with the intronic
@@ -429,14 +456,17 @@ def traceback(n: int, grammar: Grammar, prev: torch.Tensor, exit_r: torch.Tensor
             for k in range(1, fx + 1):
                 states[n - fx + k] = ("I", g.states[fj], k)
             t, j = n - fx, fj
-    tail_end = t                                      # boundary where the current tail run began (going back)
+    R = entered.shape[-1]
     while t > 0:
         if r < 0:
             states[t] = g.states[j]
             i = int(prev[t, j])
             t -= 1
             j, r = i, int(exit_r[t, i])
-            tail_end = t
+        elif r >= R:                                  # the residual intron J: boundary 0 to here
+            for k in range(0, t + 1):
+                states[k] = ("J", g.states[j], r - R)
+            return states
         else:
             states[t] = ("T", g.states[j], r)
             if entered[t, j, r]:
@@ -446,11 +476,9 @@ def traceback(n: int, grammar: Grammar, prev: torch.Tensor, exit_r: torch.Tensor
                 t, r = s, -1
             else:
                 t -= 1
-    if r < 0:
-        states[0] = g.states[j] if j == g.u_index else ("E0", g.states[j][1])
-    else:                                             # a tail no donor entered: the residual intron J
-        for k in range(0, tail_end + 1):
-            states[k] = ("J", g.states[j], r)
+    if r >= 0:
+        raise ValueError("traceback reached boundary 0 inside a tail no donor entered")
+    states[0] = g.states[j] if j == g.u_index else ("E0", g.states[j][1])
     return states
 
 

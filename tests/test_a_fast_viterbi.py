@@ -254,14 +254,14 @@ class EdgeParity(unittest.TestCase):
              EdgePrior(entry=-0.2, exit=-1.7, intron_entry=-0.9, intron_exit=-0.05),
              EdgePrior(entry=2.0, exit=1.0, intron_entry=3.0, intron_exit=2.5))
 
-    def _check(self, x, e, code, dur, edges):
+    def _check(self, x, e, code, dur, edges, places=9):
         a, ca = DelayedEntryDecoder(code, dur, edges).viterbi(x, _scores(e))
         b, cb = fast_viterbi.viterbi(x, e, code=code, duration=dur, edges=edges)
         if isinf(a):
             self.assertTrue(isinf(b), (x, dur, edges))
             self.assertEqual(cb, [])
             return a, ca
-        self.assertAlmostEqual(a, b, places=9, msg=(x, dur, code, edges))
+        self.assertAlmostEqual(a, b, places=places, msg=(x, dur, code, edges))
         self.assertEqual(ca, cb, (x, dur, code, edges))
         return a, ca
 
@@ -322,6 +322,74 @@ class EdgeParity(unittest.TestCase):
         for name in ("entry", "exit"):
             best, _ = self._check(x, e, TABLES[1], dur, EdgePrior(**{**base.__dict__, name: -1.5}))
             self.assertAlmostEqual(best, best0, places=12)
+
+    def test_terminal_tail_survives_residual_intron(self):
+        # engels-0088 / stalin-0090: the best path is E0 at base 0, a donor at
+        # 1 and the tail T through the end (score 6 - log 3 - 4 log 2, closed
+        # form). With J folded into the tail layer, a residual-intron entry
+        # that outscored the donor entry erased the tail's only terminal
+        # candidate and the scan fell back to CDS [0, 4). The score cannot
+        # depend on the J weight since the winning path never uses J.
+        x = "AAAA"
+        e = torch.zeros(11, 4, dtype=torch.float64)
+        e[0] = -10.0
+        e[4:7] = 2.0
+        e[4:7, 0] = 10.0
+        e[7:11] = -100.0
+        e[9, 1] = 0.0
+        dur = DurationMixture(m=1)
+        want = 6 - log(3) - 4 * log(2)
+        for j in (-20.0, -10.0, -5.0, log(0.5), 0.0, 5.0):
+            edges = EdgePrior(intron_entry=j)
+            best, chains = self._check(x, e, TABLES[1], dur, edges)
+            self.assertAlmostEqual(best, want, places=12, msg=j)
+            self.assertEqual([(s.kind, s.start, s.end) for s in chains[0].segments],
+                             [("cds", 0, 1), ("intron", 1, 4)])
+            self.assertTrue(chains[0].partial_5 and chains[0].partial_3)
+
+    def test_terminal_tail_boundary_sweep(self):
+        # stalin-0090's boundary sweep: the intron reaches the tail at n = m + 1
+        # and beyond; n <= m is a censored pending donor or single-base CDS.
+        # Both J weights, codes 1 and 6, both dtypes, R = 1 and 3, batched
+        # equal to single.
+        mixes = {1: lambda m: DurationMixture(m=m, pi=((1.0,),) * 3, q=((0.6,), (0.7,), (0.8,))),
+                 3: lambda m: DurationMixture(m=m, pi=((.2, .3, .5), (.5, .2, .3), (.3, .5, .2)),
+                                              q=((.2, .5, .9), (.3, .7, .8), (.4, .6, .95)))}
+        tails = 0
+        for code in (TABLES[1], TABLES[6]):
+            for dtype in (torch.float64, torch.float32):
+                for m in (2, 4, 20):
+                    for R, mk in mixes.items():
+                        dur = mk(m)
+                        cases = []
+                        for n in (m - 1, m, m + 1, m + 2):
+                            x = "A" * n
+                            e = torch.zeros(11, n, dtype=dtype)
+                            e[0] = -1000.0
+                            e[7:11] = -1000.0
+                            e[1:4, 1:] = -1000.0
+                            e[4:7] = 2.0
+                            e[4:7, 0] = 100.0
+                            if n > 1:
+                                e[9, 1] = 0.0
+                            cases.append((x, e))
+                        for j in (-1000.0, log(0.5)):
+                            edges = EdgePrior(intron_entry=j)
+                            single = [self._check(x, e, code, dur, edges,
+                                                  places=9 if dtype is torch.float64 else 4)
+                                      for x, e in cases]
+                            tails += sum(any(sg.kind == "intron" and sg.end == len(x)
+                                             for c in ch for sg in c.segments)
+                                         for (x, _), (_, ch) in zip(cases, single))
+                            for bs in (1, 7, 64):
+                                batched = fast_viterbi.viterbi_windows(
+                                    [x for x, _ in cases], [e for _, e in cases], codes=[code] * 4,
+                                    duration=dur, batch_size=bs, edges=edges)
+                                for (x, e), (a, ca), (b, cb) in zip(cases, single, batched):
+                                    tb = fast_viterbi.viterbi(x, e, code=code, duration=dur, edges=edges)
+                                    self.assertEqual(tb[0], b, (n, m, R, j))
+                                    self.assertEqual(ca, cb)
+        self.assertGreaterEqual(tails, 48)
 
     def test_no_edges_unchanged_and_empty(self):
         e = torch.zeros(11, len(SINGLE_X), dtype=torch.float64)

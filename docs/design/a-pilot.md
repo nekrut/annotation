@@ -816,20 +816,36 @@ consumes one intronic base first); at a window's own end `n` an `S`/`E`
 state exits with the coding exit, a tail entered by a real donor with the
 intron exit and no `(1 − q)`, and a donor still parked at `s > n − m` as
 the censored `I(c, n − s)` with its intronic bases summed. `J` is never
-terminal, and no per-step state distinguishes it from `T`: a tail at `n`
-is `J` exactly when `entered[1..n, c, r]` is all false, so the choice is a
-one-time reduction at the step that reaches each window's length and the
-scan loop is otherwise the one measured above (0.51 vs 0.52 s over 16 ×
-12,288 with and without edges, same micro-benchmark). The traceback takes
-the chosen final state and relabels an un-entered tail run as `J` and a
-coding state at boundary 0 as `E0`, so `_chains` marks `partial_5` /
+terminal, so it cannot share the tail layer with `T`: the first version
+folded it in and told the two apart only at `n` (a tail is `J` when
+`entered[1..n, c, r]` is all false), and engels-0088 / stalin-0090 showed
+that this loses the window's only valid terminal path whenever the `J`
+entry outscores the donor entry on the same row (the max keeps `J`, which
+is then floored at `n`; a 4-base fixture with closed-form optimum
+`6 − log 3 − 4 log 2` decoded to a 4-base CDS instead, in 144 / 144
+sweep cases, and the score fell as the `J` weight rose). The scan now
+carries `J` in its own `(B, K, R)` layer: it advances with the same
+intronic emissions, competes with `T` at every acceptor (`exit_r` records
+`R + r` so the traceback runs it back to boundary 0), never receives donor
+entries and is never offered at `n`, which is therefore a one-time
+reduction over the donor-entered layer alone. The extra layer costs one
+add and one max per step in edge mode only: 0.63 vs 0.54 s over 16 ×
+12,288 on the same micro-benchmark (the earlier 0.51 vs 0.52 s was the
+defective version; edge mode is meant for the two real ends of a strand,
+not every tile, so the chromosome numbers above are unaffected). The
+traceback takes the chosen final state and relabels a `J` exit and a
+coding state at boundary 0 as `J` / `E0`, so `_chains` marks `partial_5` /
 `partial_3` as for the reference. `tests/test_a_fast_viterbi.py::EdgeParity`
 holds it to `DelayedEntryDecoder(code, duration, edges).viterbi` — 240
 random lattices with three priors (over 150 finite; 5′-partial, 3′-partial
 and doubly partial chains each present), fixtures in which each of the four
 scalars moves the score alone, batched (1 / 7 / 64, padded lengths, an
-empty window) equal to single, and the learned tables with the pooled
-prior; 184 tests pass under 3.11 + torch. This decoder is what a true
+empty window) equal to single, the learned tables with the pooled prior,
+the engels-0088 fixture across six `J` weights (score and chain fixed at
+the closed form), and stalin-0090's boundary sweep (codes 1 / 6, both
+dtypes, `m` 2 / 4 / 20, `R` 1 / 3, `n = m − 1 .. m + 2`, both `J`
+weights, batched 1 / 7 / 64 equal to single); 186 tests pass under 3.11 +
+torch. This decoder is what a true
 chromosome end needs (`chromosome.py` still decodes the free grammar, so a
 gene cut by a sequence end is lost today) and what the section-3.6
 edge-partial training numerator will use once `fast_loss` has the same
