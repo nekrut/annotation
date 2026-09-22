@@ -133,6 +133,12 @@ class TrainConfig:
     # 0 keeps the chain-only scope of the earlier smoke fits.
     background_windows: int = 0
     background_length: int = 4096
+    # Checkpoint selection evaluates at most this many development windows,
+    # a seeded draw without replacement from the reserved chromosomes'
+    # windows (None = all of them). A 20 Mb metazoan development chromosome
+    # holds ~4,900 windows, ~8 CPU-min per evaluation on one core, so the
+    # fitted-checkpoint runs subsample; the manifest records both counts.
+    dev_windows_max: Optional[int] = None
 
     @classmethod
     def from_dict(cls, d: dict) -> "TrainConfig":
@@ -157,6 +163,8 @@ class TrainConfig:
             raise ValueError("background_windows must not be negative")
         if int(kwargs.get("background_length", 4096)) < 1:
             raise ValueError("background_length must be at least 1")
+        if kwargs.get("dev_windows_max") is not None and int(kwargs["dev_windows_max"]) < 1:
+            raise ValueError("dev_windows_max must be at least 1 or null")
         config = cls(sources=sources, **kwargs)
         config.check_window_bound()
         return config
@@ -215,6 +223,22 @@ def split_windows(examples, dev_seqids) -> Tuple[list, list]:
     for ex in examples:
         (dev if ex.key[0] in dev_set else train).append(ex)
     return train, dev
+
+
+def subsample_dev(dev, limit: Optional[int], seed: int) -> list:
+    """The development windows checkpoint selection actually evaluates.
+
+    ``limit`` None or at least ``len(dev)`` keeps every window in load order;
+    otherwise a ``random.Random(seed)`` draw without replacement keeps
+    ``limit`` of them, in load order, so the same config and seed evaluate
+    the same windows on every run and on every evaluation of one run.
+    """
+    if limit is None or limit >= len(dev):
+        return list(dev)
+    import random
+
+    keep = sorted(random.Random(seed).sample(range(len(dev)), limit))
+    return [dev[i] for i in keep]
 
 
 def _git_commit() -> str:
@@ -351,6 +375,7 @@ def build_manifest(config: TrainConfig, *, torch_version: str,
             "min_intron": config.min_intron,
             "background_windows": config.background_windows,
             "background_length": config.background_length,
+            "dev_windows_max": config.dev_windows_max,
         },
         "sampling_plan": {
             "draw": "uniform-with-replacement over train windows",
@@ -361,6 +386,8 @@ def build_manifest(config: TrainConfig, *, torch_version: str,
             "max_window": config.max_window,
             "background_windows_per_species": config.background_windows,
             "background_length": config.background_length,
+            "dev_draw": "seeded without replacement, at most dev_windows_max",
+            "dev_windows_max": config.dev_windows_max,
         },
         "sources": [
             {"name": s.name, "dev_seqids": list(s.dev_seqids),
@@ -372,14 +399,23 @@ def build_manifest(config: TrainConfig, *, torch_version: str,
 
 def record_actual(manifest: dict, *, attempted_draws: int, accepted_windows: int,
                   sampled_bases: int, train_windows: int, dev_windows: int,
-                  best_dev_nll: Optional[float]) -> dict:
+                  best_dev_nll: Optional[float], best_step: Optional[int] = None,
+                  history: Optional[list] = None,
+                  timing: Optional[dict] = None,
+                  dev_windows_evaluated: Optional[int] = None) -> dict:
     """Attach the actually-executed work to a pre-fit manifest.
 
     The charter asks for the planned draw to be declared before fitting and the
     actual attempted/accepted work recorded separately afterward; this keeps
     both in one artifact. ``attempted_draws`` is how many windows the loop drew,
     ``accepted_windows`` how many produced a finite loss (an unusable crop is
-    dropped, section 3.6)."""
+    dropped, section 3.6). ``best_step`` is the step whose checkpoint is
+    ``best.pt``, ``history`` the per-evaluation ``{step, train_nll, dev_nll,
+    elapsed_s}`` rows and ``timing`` the load/fit/eval wall and process-CPU
+    seconds, so the run's actual cost is in the manifest, not only in an
+    external ``/usr/bin/time`` capture. ``dev_windows`` is every window of
+    the reserved chromosomes, ``dev_windows_evaluated`` the subsample
+    checkpoint selection scored (equal unless ``dev_windows_max`` cut it)."""
     out = dict(manifest)
     out["actual"] = {
         "attempted_draws": attempted_draws,
@@ -387,7 +423,12 @@ def record_actual(manifest: dict, *, attempted_draws: int, accepted_windows: int
         "sampled_bases": sampled_bases,
         "train_windows": train_windows,
         "dev_windows": dev_windows,
+        "dev_windows_evaluated": (dev_windows if dev_windows_evaluated is None
+                                  else dev_windows_evaluated),
         "best_dev_nll": best_dev_nll,
+        "best_step": best_step,
+        "history": list(history or []),
+        "timing": dict(timing or {}),
     }
     return out
 
@@ -494,6 +535,7 @@ def train(config: TrainConfig, log=print) -> dict:
     ``out_dir/best.pt``.
     """
     import os
+    import time
 
     import torch
 
@@ -503,7 +545,9 @@ def train(config: TrainConfig, log=print) -> dict:
     device = torch.device(config.device)
     dtype = torch.float64  # matches the oracle/parity tests
 
+    wall0, cpu0 = time.monotonic(), time.process_time()
     examples, stats = _load_all_windows(config)
+    load_wall, load_cpu = time.monotonic() - wall0, time.process_time() - cpu0
     # Reject an unusable declared dev split before spending any gradient step.
     validate_dev_reservations(config, stats)
     dev_ids = [i for s in config.sources for i in s.dev_seqids]
@@ -514,8 +558,10 @@ def train(config: TrainConfig, log=print) -> dict:
     if declared_dev and not dev_ex:  # defensive: validate_dev_reservations covers this
         raise ValueError("declared development reservations retained no windows")
     n_bg = sum(ex.key[2].startswith("background:") for ex in examples)
-    log(f"loaded {len(examples)} windows: {len(train_ex)} train, {len(dev_ex)} dev "
-        f"({n_bg} gene-free background)")
+    dev_all = len(dev_ex)
+    dev_ex = subsample_dev(dev_ex, config.dev_windows_max, config.seed)
+    log(f"loaded {len(examples)} windows: {len(train_ex)} train, {dev_all} dev "
+        f"({n_bg} gene-free background); {len(dev_ex)} dev windows evaluated")
 
     model = CandidateA().to(device)
     assert model.num_parameters() == SECTION_35_PARAM_COUNT, model.num_parameters()
@@ -534,13 +580,25 @@ def train(config: TrainConfig, log=print) -> dict:
         json.dump(manifest, fh, indent=2, sort_keys=True)
 
     best_dev = None
+    best_step = None
+    history = []
+    eval_wall = eval_cpu = 0.0
     sampled_bases = 0
     attempted_draws = 0
     accepted_windows = 0
 
     def evaluate() -> Optional[float]:
+        nonlocal eval_wall, eval_cpu
         if not dev_ex:
             return None
+        w, c = time.monotonic(), time.process_time()
+        try:
+            return _evaluate()
+        finally:
+            eval_wall += time.monotonic() - w
+            eval_cpu += time.process_time() - c
+
+    def _evaluate() -> Optional[float]:
         model.eval()
         total, count = 0.0, 0
         with torch.no_grad():
@@ -554,6 +612,7 @@ def train(config: TrainConfig, log=print) -> dict:
         return total / count if count else None
 
     model.train()
+    fit_wall0, fit_cpu0 = time.monotonic(), time.process_time()
     for step in range(config.steps):
         idx = torch.randint(len(train_ex), (config.batch_size,), generator=gen)
         opt.zero_grad()
@@ -575,18 +634,32 @@ def train(config: TrainConfig, log=print) -> dict:
             opt.step()
         if (step + 1) % config.eval_every == 0 or step + 1 == config.steps:
             dev_nll = evaluate()
-            log(f"step {step + 1}: train_nll/window={batch_loss / max(used, 1):.4f} "
-                f"dev_nll={dev_nll}")
+            train_nll = batch_loss / max(used, 1)
+            elapsed = time.monotonic() - fit_wall0
+            log(f"step {step + 1}: train_nll/window={train_nll:.4f} "
+                f"dev_nll={dev_nll} elapsed_s={elapsed:.1f}")
+            history.append({"step": step + 1, "train_nll": train_nll,
+                            "dev_nll": dev_nll, "elapsed_s": elapsed})
             if dev_nll is not None and (best_dev is None or dev_nll < best_dev):
                 best_dev = dev_nll
+                best_step = step + 1
                 torch.save(model.state_dict(), os.path.join(config.out_dir, "best.pt"))
     if best_dev is None:  # no dev set: keep the final model
+        best_step = config.steps
         torch.save(model.state_dict(), os.path.join(config.out_dir, "best.pt"))
+    fit_wall = time.monotonic() - fit_wall0
+    fit_cpu = time.process_time() - fit_cpu0
 
     manifest = record_actual(
         manifest, attempted_draws=attempted_draws,
         accepted_windows=accepted_windows, sampled_bases=sampled_bases,
-        train_windows=len(train_ex), dev_windows=len(dev_ex), best_dev_nll=best_dev)
+        train_windows=len(train_ex), dev_windows=dev_all, best_dev_nll=best_dev,
+        dev_windows_evaluated=len(dev_ex), best_step=best_step, history=history,
+        timing={"load_wall_s": load_wall, "load_cpu_s": load_cpu,
+                "fit_wall_s": fit_wall, "fit_cpu_s": fit_cpu,
+                "eval_wall_s": eval_wall, "eval_cpu_s": eval_cpu,
+                "fit_includes_eval": True,
+                "torch_threads": torch.get_num_threads()})
     with open(manifest_path, "w", encoding="utf-8") as fh:
         json.dump(manifest, fh, indent=2, sort_keys=True)
     return manifest

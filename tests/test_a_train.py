@@ -246,6 +246,64 @@ class TestManifest(unittest.TestCase):
         self.assertEqual(man["actual"]["accepted_windows"], 37)
         self.assertEqual(man["actual"]["sampled_bases"], 1234)
         self.assertEqual(man["actual"]["train_windows"], 12)
+        # Optional cost fields default to empty so older callers still work.
+        self.assertIsNone(man["actual"]["best_step"])
+        self.assertEqual(man["actual"]["history"], [])
+        self.assertEqual(man["actual"]["timing"], {})
+
+    def test_record_actual_keeps_best_step_history_and_timing(self):
+        with tempfile.TemporaryDirectory() as d:
+            cfg = self._cfg(d, seed=3, steps=10, batch_size=4)
+            man = T.build_manifest(cfg, torch_version="x", cuda=None)
+            hist = [{"step": 5, "train_nll": 2.0, "dev_nll": 3.0, "elapsed_s": 1.0},
+                    {"step": 10, "train_nll": 1.0, "dev_nll": 2.5, "elapsed_s": 2.0}]
+            man = T.record_actual(
+                man, attempted_draws=40, accepted_windows=40, sampled_bases=1,
+                train_windows=12, dev_windows=3, best_dev_nll=2.5, best_step=10,
+                history=hist, timing={"fit_wall_s": 2.0, "fit_cpu_s": 1.9})
+        self.assertEqual(man["actual"]["best_step"], 10)
+        self.assertEqual(man["actual"]["history"], hist)
+        self.assertEqual(man["actual"]["timing"]["fit_cpu_s"], 1.9)
+        json.dumps(man)  # the manifest stays serialisable
+
+
+class TestDevSubsample(unittest.TestCase):
+    def test_none_or_large_limit_keeps_all_in_order(self):
+        dev = ["a", "b", "c"]
+        self.assertEqual(T.subsample_dev(dev, None, 0), dev)
+        self.assertEqual(T.subsample_dev(dev, 3, 0), dev)
+        self.assertEqual(T.subsample_dev(dev, 99, 0), dev)
+
+    def test_limit_draws_without_replacement_in_load_order_and_is_seeded(self):
+        dev = list(range(100))
+        a = T.subsample_dev(dev, 10, 7)
+        self.assertEqual(len(a), 10)
+        self.assertEqual(len(set(a)), 10)
+        self.assertEqual(a, sorted(a))
+        self.assertEqual(a, T.subsample_dev(dev, 10, 7))
+        self.assertNotEqual(a, T.subsample_dev(dev, 10, 8))
+
+    def test_config_key_is_validated_and_recorded(self):
+        with tempfile.TemporaryDirectory() as d:
+            summary = os.path.join(d, "sp.summary.json")
+            with open(summary, "w", encoding="utf-8") as fh:
+                json.dump({"table": 6, "m": 30, "gff_md5": "aa", "fasta_md5": "bb"}, fh)
+            base = {"sources": [{"name": "sp", "summary": summary, "gff": "g", "fasta": "f"}],
+                    "out_dir": d}
+            self.assertIsNone(T.TrainConfig.from_dict(base).dev_windows_max)
+            cfg = T.TrainConfig.from_dict(dict(base, dev_windows_max=256))
+            self.assertEqual(cfg.dev_windows_max, 256)
+            man = T.build_manifest(cfg, torch_version="x", cuda=None)
+            self.assertEqual(man["hyperparams"]["dev_windows_max"], 256)
+            self.assertEqual(man["sampling_plan"]["dev_windows_max"], 256)
+            with self.assertRaises(ValueError):
+                T.TrainConfig.from_dict(dict(base, dev_windows_max=0))
+            man = T.record_actual(
+                man, attempted_draws=1, accepted_windows=1, sampled_bases=1,
+                train_windows=1, dev_windows=4893, best_dev_nll=None,
+                dev_windows_evaluated=256)
+            self.assertEqual(man["actual"]["dev_windows"], 4893)
+            self.assertEqual(man["actual"]["dev_windows_evaluated"], 256)
 
 
 class TestReservations(unittest.TestCase):
