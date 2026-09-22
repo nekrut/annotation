@@ -1,4 +1,4 @@
-# fit-cpu-v3: longer bounded local CPU fit with a decayed learning rate (started 2026-09-22T11:07Z, running)
+# fit-cpu-v3: longer bounded local CPU fit with a decayed learning rate (2026-09-22T11:07Z to 15:27Z, exit 0)
 
 The longer fit proposed in a-pilot section 3.3 after v2 sharply reduced
 the fusions (4 remain on chr V, 2 on chr I, from 238 and 2 under v1;
@@ -65,22 +65,56 @@ The dev subsample is drawn by the same seed from the same v2 dev pool, so
 v2 and v3 raw dev NLLs *are* comparable to each other (unlike v1 vs v2);
 `score-final/` on chr I and chr V remains the reported comparison.
 
-Projected cost at v2's measured 5.3 CPU-s/step: ~4.4 CPU-h on one core,
-finishing around 15:30Z. Observed at step 1,950 of 3,000 (10,089.9 s
-elapsed): 5.17 s/step inclusive of evaluations, i.e. ~4.3 CPU-h and a
-finish near 15:27Z. Dev NLL so far, on the fixed 256-window subsample:
-176.0 (step 150), 66.6, 46.2, 48.6, 46.4, 52.0, 50.4, 50.2, 41.6, 42.7,
-**38.0 (step 1,650, best so far)**, 48.3, 49.0 (step 1,950), at `lr`
-3.000e-04 falling to 1.003e-04. The best point so far is below v2's
-selected 45.3 on the same subsample, and the trace is still oscillating
-by ~10 NLL between adjacent evaluations at a third of the initial step
-size; nothing is claimed from any of it until the run exits 0 and the
-manifest, history, timing and `best.pt` checksum are collected here.
+## Result (run finished 15:27:57Z, `train exit=0`, `/usr/bin/time` `Exit status: 0`)
 
-`score-final/` holds the scoring inputs, committed now, before the
-checkpoint exists: v2's launcher with only the v2 -> v3 paths changed,
-v2's `declaration.yaml` with only the `model:` line changed, and v2's
-seqid lists. Nothing there has been run.
+3,000 steps in **15,562.6 CPU-s inclusive of evaluations = 4.32 CPU-h**
+on one core (`/usr/bin/time` user+system 15,588.05 s = 4.33 CPU-h,
+wall 4:19:59), 5.188 CPU-s/step against v2's 5.293, peak RSS 2.11 GiB
+(2,209,192 kB). Loading cost 24.16 CPU-s, as in v2. Both the launcher's
+recorded `train exit=0` and the GNU-time `Exit status: 0` are present;
+per stalin-0113 the launcher's own status alone would not establish this.
+
+- **Actual evaluation share 868.75 / 15,562.64 = 5.582 %**, against the
+  5.693 % projected above from v2's 8.303 % under the constant-unit-cost
+  assumption. The projection was close but not exact, as flagged.
+- **Best checkpoint is the last step**: step 3,000 of 3,000, dev NLL
+  **28.640** on the fixed 256-window subsample, against v2's 45.335 at
+  step 900 of 1,500. `best.pt` sha256 `8a32c93e…`.
+- Dev NLL trace: 176.0 (150), 66.6, 46.2, 48.6, 46.4, 52.0, 50.4, 50.2,
+  41.6, 42.7, 38.0 (1,650), 48.3, 49.0, **32.4 (2,100), 32.4, 29.9,
+  29.92, 31.1, 30.1, 28.64 (3,000)**, at `lr` 3.000e-04 → 1.500e-05. The
+  ~10-NLL oscillation of the first half disappears once the rate falls
+  below ~1e-4; the last seven evaluations sit in a 28.6–32.4 band. The
+  monotone tail and the best point landing on the final step mean the
+  budget, not convergence, ended this fit — a still longer schedule is
+  not ruled out by the trace.
+- Accepted-draw composition: 24,000 accepted of 24,000 attempted,
+  71,218,348 sampled bases = **40.0 % CDS + 29.6 % intron + 30.3 %
+  intergenic** (19,194,637 context bases, 955 background draws), matching
+  v2's 39.9 / 29.6 / 30.6 at twice the volume. The supervision balance
+  is unchanged; only the number of updates and the rate schedule are.
+
+Dev NLL is not the acceptance criterion. The chromosome scores are in
+[`score-final/`](score-final/README.md): nucleotide F1 0.825 → 0.891 on
+chr I and 0.538 → 0.598 on chr V, locus F1 0.558 → 0.786 and 0.413 →
+0.603, cost unchanged at 12.38 and 8.88 CPU-s/Mb — but exact-transcript
+sensitivity on chr V falls 0.015 → 0.010, chr V fusions rise 4 → 312,
+and donor/acceptor F1 reach only 0.070/0.081. A does not meet the
+accuracy target under v3, and no positive CPU allowance for B follows.
+
+`score-final/` held the scoring inputs, committed before fit completion
+and final checkpoint selection, and before any v3 chromosome scoring:
+v2's launcher with the v2 -> v3 paths changed, v2's `declaration.yaml`
+with only the `model:` line changed, and v2's seqid lists. They were then
+run unchanged after the fit exited 0, and that directory now holds the
+measurements. The earlier "before the checkpoint exists" wording was
+wrong — the training loop writes `best.pt` on every improving development
+evaluation, so interim checkpoints predate the commit (engels-0108,
+stalin-0113); what is fixed in advance is the scoring configuration, not
+the absence of a model. The launcher has since gained an explicit
+completion gate and workload failure propagation, with every workload
+argument still identical to v2's; see
+[`score-final/README.md`](score-final/README.md).
 
 ## Files
 
@@ -89,7 +123,9 @@ seqid lists. Nothing there has been run.
 - `leakage_check.out`, `source_md5.txt` — pre-run gates (leakage exit 0,
   0 violations).
 - `run.log` — start/end stamps, commit, core, CPU model.
-- `score-final/` — scoring inputs only, committed before the checkpoint
-  exists; no measurement yet.
+- `score-final/` — the pre-registered scoring inputs and the chr I /
+  chr V measurements run under `best.pt`.
 - `train.out`, `train_time.txt`, `run_manifest.json`, `best_pt.sha256` —
-  added when the run finishes.
+  the completed run: per-evaluation trace, `/usr/bin/time -v` report,
+  manifest (hyperparameters with the per-step rate, history, timing,
+  composition, source digest) and the checkpoint checksum.

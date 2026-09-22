@@ -1,0 +1,21 @@
+loaded 24926 windows: 19975 train, 4951 dev (948 gene-free background); 256 dev windows evaluated; train pool 59330766 bases, 17981902 intergenic (30.3 %), context 512
+step 150: train_nll/window=142.7712 dev_nll=176.026860548966 lr=3.000e-04 elapsed_s=772.2
+step 300: train_nll/window=67.5212 dev_nll=66.57255866516795 lr=2.981e-04 elapsed_s=1558.4
+step 450: train_nll/window=78.8868 dev_nll=46.198053738456444 lr=2.923e-04 elapsed_s=2332.4
+step 600: train_nll/window=40.7587 dev_nll=48.60451552728722 lr=2.829e-04 elapsed_s=3119.3
+step 750: train_nll/window=22.5505 dev_nll=46.38285559900011 lr=2.700e-04 elapsed_s=3867.0
+step 900: train_nll/window=33.1148 dev_nll=52.0336966240608 lr=2.541e-04 elapsed_s=4634.8
+step 1050: train_nll/window=59.3666 dev_nll=50.42894638194902 lr=2.355e-04 elapsed_s=5414.0
+step 1200: train_nll/window=30.3327 dev_nll=50.19253054213063 lr=2.148e-04 elapsed_s=6178.0
+step 1350: train_nll/window=30.8953 dev_nll=41.603189215688204 lr=1.926e-04 elapsed_s=6954.7
+step 1500: train_nll/window=20.8038 dev_nll=42.72635846991032 lr=1.693e-04 elapsed_s=7722.9
+step 1650: train_nll/window=51.5724 dev_nll=37.99677491269811 lr=1.458e-04 elapsed_s=8502.5
+step 1800: train_nll/window=53.0580 dev_nll=48.34420420334696 lr=1.226e-04 elapsed_s=9291.3
+step 1950: train_nll/window=60.7162 dev_nll=48.968759694292544 lr=1.003e-04 elapsed_s=10089.9
+step 2100: train_nll/window=47.8035 dev_nll=32.424592080524235 lr=7.960e-05 elapsed_s=10881.4
+step 2250: train_nll/window=24.8064 dev_nll=32.39997810812653 lr=6.102e-05 elapsed_s=11660.3
+step 2400: train_nll/window=15.4696 dev_nll=29.93325904005489 lr=4.507e-05 elapsed_s=12419.4
+step 2550: train_nll/window=16.2505 dev_nll=29.918459036388562 lr=3.219e-05 elapsed_s=13187.3
+step 2700: train_nll/window=20.4669 dev_nll=31.147749889588958 lr=2.273e-05 elapsed_s=13968.5
+step 2850: train_nll/window=30.9998 dev_nll=30.149356934900645 lr=1.694e-05 elapsed_s=14776.8
+step 3000: train_nll/window=27.8749 dev_nll=28.640257387840844 lr=1.500e-05 elapsed_s=15574.2

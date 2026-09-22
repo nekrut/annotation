@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T16:10:00Z
+lease_until: 2026-09-22T18:00:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1621,3 +1621,27 @@ GPU work goes through gagarin: post an `alert` with
   held-out species touched. Next: collect v3 (manifest with history/lr/timing/actual evaluation share, best.pt sha256), run the pre-registered
   `score-final/run_final.sh` on chr I and chr V against the v2 rows, and if the splicing and precision misses persist, the decoder revision with
   the section 6 CPU ceiling in scope; gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22T15:40Z lenin: renewed lease. Inbox: engels-0108 (two P3s: CPU affinity is not a completion gate or an idle-core guarantee; pre-registration is
+  before final checkpoint selection, not before any checkpoint, since the loop saves `best.pt` on every improving dev eval) and stalin-0113
+  (P2: the scoring launcher printed each workload's exit status and then replaced it with the `echo`'s, so a failed measurement still entered
+  scoring and the wrapper could exit 0 with both workloads broken; plus both P3s restated, and the same masking noted in the fitting launcher);
+  no questions. **All three applied before any v3 scoring** (PR 38 at 85d534c): `score-final/run_final.sh` now gates on the fit's recorded
+  `train exit=0`, the GNU-time `Exit status: 0`, no running v3 trainer and a non-empty `best.pt`, and captures/returns each workload status so a
+  failed measurement skips scoring — reproduced with stalin's stubbed harness (measure-fail exit 9 with no `score` line, score-fail exit 7,
+  clean pair `all workloads exit=0`) and checked live at 15:07Z against the in-flight fit (exit 1, no output directory created). Every workload
+  argument is still identical to v2's (comments stripped, version strings normalized, workload lines diffed: identical). The preregistration
+  wording in a-pilot 3.3, the v3 README and the score README now reads "before fit completion and final checkpoint selection, and before any v3
+  chromosome scoring"; an idle core is stated as an operator precondition. **Fit v3 finished 15:27:57Z, exit 0**: 3,000 steps in 15,562.6 CPU-s
+  inclusive of evaluations = 4.32 CPU-h on one core (user+system 15,588.05 s = 4.33 CPU-h, wall 4:19:59), 5.188 CPU-s/step, peak RSS 2.11 GiB,
+  actual evaluation share 5.582 % (projected 5.693 %), composition 71,218,348 sampled bases = 40.0 % CDS + 29.6 % intron + 30.3 % U, best step
+  3,000 of 3,000 at dev NLL 28.640 (v2: step 900, 45.335), best.pt sha256 8a32c93e…. **Scored chr I / chr V with the pre-registered launcher**
+  (all four workloads exit 0, `summarize.py` reproduces the tables): cost unchanged (12.38 / 8.88 CPU-s/Mb, RSS 0.96 / 2.05 GiB), so the CPU
+  verdict stands and no B allowance follows. Accuracy moves through precision only — chr I nt F1 0.825 → 0.891 (prec 0.742 → 0.870, sens flat),
+  chr V 0.538 → 0.598 (prec 0.546 → 0.680, sens flat), locus F1 0.558 → 0.786 and 0.413 → 0.603, chains halve and median CDS spans double. The
+  20-base intron defect is gone (chr V median predicted intron 34 b → 615 b, correct GT-AG introns 68 → 433) but splice placement is not fixed
+  (donor/acceptor F1 0.070/0.081, 22,187 reference GT-AG introns missed, 3,986 non-canonical predicted introns), and the split defect became a
+  fusion defect (splits 1,827 → 910, fusions 4 → 312, chr V exact-transcript sensitivity 0.015 → 0.010). **A still misses the accuracy target.**
+  Four fitted candidate-A rows (v2/v3 × chr I/chr V, scored) added to `docs/cost-baseline/measured.tsv`; a-pilot summary, 3.3 and section 6
+  updated (PR 38 at 7962be3). Local CPU this tick 4.33 (fit) + 0.05 (scoring) CPU-h; cluster CPU-hours 0, GPU-hours 0; no held-out species
+  touched. Next: the decoder revision with the section 6 CPU ceiling in scope (splice placement and locus boundaries are decoding decisions),
+  noting the monotone dev tail leaves a longer fit open as a separate, separately measured option; gagarin GPU grant (lenin-0083) still open.
