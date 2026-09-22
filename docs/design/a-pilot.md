@@ -308,7 +308,15 @@ runs on gagarin; no local host has torch. See section 3.
 The config is a JSON `TrainConfig`: a `sources` list of
 `{name, summary, gff, fasta, dev_seqids}` (the pinned paths the loader
 checksum-verifies), plus `seed`, `steps`, `batch_size`, `lr`, `weight_decay`,
-`grad_clip`, `max_window`, `eval_every`, `out_dir`, `device`.
+`grad_clip`, `max_window`, `eval_every`, `out_dir`, `device`, `loss_kernel`,
+`min_intron`, `background_windows`, `background_length` and
+`dev_windows_max` (checkpoint selection scores at most this many
+development windows, a seeded draw without replacement from the reserved
+chromosomes' windows; the manifest records both `dev_windows` and
+`dev_windows_evaluated`). The manifest's `actual` block also carries
+`best_step`, the per-evaluation `history` (step, train NLL, dev NLL,
+elapsed) and `timing` (load / fit / eval wall and process-CPU seconds,
+thread count), so a fitted run's cost is in the artifact itself.
 
 Per the task's definition of done and proposal section 6, the gagarin runs will:
 
@@ -1403,6 +1411,49 @@ revision step 4 (`aee0134`), 0.65 CPU-h for the *C. elegans* chr V row
 (three A runs 0.35 h, AUGUSTUS 0.30 h); cluster CPU-hours 0, GPU-hours 0. The
 only held-out species touched is *S. pombe*, for the runtime
 normalization after the leakage check, unscored.
+
+### 3.3 Fitted checkpoint: bounded local CPU fit v1, 2026-09-22 (in progress)
+
+The recorded rows above all use the 20-step *S. cerevisiae* smoke
+checkpoint (chain-only, no gene-free windows: 208,796 chains on chr V's
+3,357 genes). The first fit of record is a **bounded local CPU fit** on the
+two train species whose pinned sources are on this host, launched this
+tick (code `4c43819`, run script and config to be recorded in
+`smoke-local-20260920/fit-cpu-v1/`; the gagarin GPU request lenin-0083
+stays open for the fit under the cap and the GPU half):
+
+- Sources: *S. cerevisiae* (development chromosome I, `NC_001133.9`) and
+  *C. elegans* (development chromosome V, `NC_003283.11`, the measured
+  metazoan row); `benchmark/leakage_check.py` run first (0 violations),
+  source MD5s verified by the loader against the committed summaries.
+- Windows: `max_window` 12,288; 24,601 windows loaded — 19,708 train,
+  4,893 dev, of which 548 are gene-free background tiles of 2,048 bases
+  (148 = every *S. cerevisiae* candidate, 400 of *C. elegans*), drawn
+  under seed 0, half reverse-complemented.
+- Fit: 1,500 Adam steps, batch 8 (12,000 draws, ~29 Mb sampled, ~0.6 of
+  one pass over the train windows), lr 3e-4, gradient clip 1, fast
+  delayed-entry kernel, float64; checkpoint selection every 100 steps on
+  256 seeded dev windows (`dev_windows_max`); one thread pinned to one
+  core.
+- Cost from the two probe runs at the same config (10 steps / 200 dev
+  windows): load 21 s CPU; **4.0 s per step of 8 windows** (0.5 s per
+  ~2.4 kb window forward + backward, i.e. ~0.2 ms per base); evaluation
+  **0.13 s per dev window** (the full 4,893-window chr V set is ~10 min
+  per evaluation, which is why selection subsamples); RSS 1.9 GiB. The
+  1,500-step run projects to ~1.7 CPU-h on one core (6,000 s of steps,
+  ~500 s of evaluations, ~20 s load), inside the tick-to-tick interval.
+- Initial loss: 963 nats per window on the first batch (background tiles
+  dominate: the all-intergenic numerator against a partition that at
+  initialisation spreads mass over every chain), 431 train / 440 dev
+  after 10 steps.
+
+What it will feed (next tick): `measure --checkpoint` chromosome rows on
+*S. pombe* and *C. elegans* chr V under the fitted weights (the encoder
+cost is checkpoint-independent, the decode's near-tie float32 flip count
+is not), `benchmark/score.py` on the two development chromosomes for the
+accuracy column, and the section 6.1 table's accuracy entries. This fit is
+bounded by the local host, not by the Phase 4 cap: its 1.7 CPU-h is
+recorded in the task log; cluster GPU-hours stay 0.
 
 ## 4. Budget and caps
 
