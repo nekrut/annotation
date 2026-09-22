@@ -331,6 +331,72 @@ class TestDevSubsample(unittest.TestCase):
             self.assertEqual(man["actual"]["dev_windows_evaluated"], 256)
 
 
+class TestLearningRateSchedule(unittest.TestCase):
+    """The schedule of ``lr_at`` (fit v3 runs "cosine"; v1/v2 ran "constant")."""
+
+    def _cfg(self, **kw):
+        kw.setdefault("steps", 10)
+        return T.TrainConfig(
+            sources=[T.SpeciesSource("sp", "s.json", "g", "f")],
+            out_dir="/tmp/o", lr=1.0, **kw)
+
+    def test_constant_holds_lr_at_every_step(self):
+        cfg = self._cfg()
+        self.assertEqual([T.lr_at(i, cfg) for i in range(10)], [1.0] * 10)
+
+    def test_constant_ignores_warmup_and_floor(self):
+        cfg = self._cfg(warmup_steps=4, lr_min_factor=0.5)
+        self.assertEqual([T.lr_at(i, cfg) for i in range(10)], [1.0] * 10)
+
+    def test_cosine_warmup_ramps_linearly_and_is_never_zero(self):
+        cfg = self._cfg(lr_schedule="cosine", warmup_steps=4)
+        self.assertEqual([T.lr_at(i, cfg) for i in range(4)],
+                         [0.25, 0.5, 0.75, 1.0])
+
+    def test_cosine_without_warmup_starts_at_lr(self):
+        cfg = self._cfg(lr_schedule="cosine")
+        self.assertEqual(T.lr_at(0, cfg), 1.0)
+
+    def test_cosine_decays_monotonically_to_the_floor(self):
+        cfg = self._cfg(lr_schedule="cosine", warmup_steps=2, lr_min_factor=0.05,
+                        steps=100)
+        tail = [T.lr_at(i, cfg) for i in range(2, 100)]
+        self.assertEqual(tail, sorted(tail, reverse=True))
+        self.assertAlmostEqual(tail[0], 1.0)
+        self.assertAlmostEqual(tail[-1], 0.05)
+
+    def test_cosine_floor_zero_ends_at_zero(self):
+        cfg = self._cfg(lr_schedule="cosine", steps=50)
+        self.assertAlmostEqual(T.lr_at(49, cfg), 0.0)
+
+    def test_steps_past_the_end_stay_at_the_floor(self):
+        cfg = self._cfg(lr_schedule="cosine", lr_min_factor=0.1)
+        self.assertAlmostEqual(T.lr_at(50, cfg), 0.1)
+
+    def test_config_validates_and_manifest_records_the_schedule(self):
+        with tempfile.TemporaryDirectory() as d:
+            summary = os.path.join(d, "sp.summary.json")
+            with open(summary, "w", encoding="utf-8") as fh:
+                json.dump({"table": 6, "m": 30, "gff_md5": "aa", "fasta_md5": "bb"}, fh)
+            base = {"sources": [{"name": "sp", "summary": summary, "gff": "g", "fasta": "f"}],
+                    "out_dir": d, "steps": 100}
+            default = T.TrainConfig.from_dict(base)
+            self.assertEqual(default.lr_schedule, "constant")
+            self.assertEqual(default.warmup_steps, 0)
+            self.assertEqual(default.lr_min_factor, 0.0)
+            cfg = T.TrainConfig.from_dict(dict(base, lr_schedule="cosine",
+                                               warmup_steps=10, lr_min_factor=0.05))
+            man = T.build_manifest(cfg, torch_version="x", cuda=None)
+            self.assertEqual(man["hyperparams"]["lr_schedule"], "cosine")
+            self.assertEqual(man["hyperparams"]["warmup_steps"], 10)
+            self.assertEqual(man["hyperparams"]["lr_min_factor"], 0.05)
+            for bad in ({"lr_schedule": "linear"}, {"warmup_steps": -1},
+                        {"warmup_steps": 100}, {"lr_min_factor": 1.5},
+                        {"lr_min_factor": -0.1}):
+                with self.assertRaises(ValueError):
+                    T.TrainConfig.from_dict(dict(base, **bad))
+
+
 class TestReservations(unittest.TestCase):
     @dataclass
     class FakeStats:

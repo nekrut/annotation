@@ -43,6 +43,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import platform
 from pathlib import Path
 import resource
@@ -144,6 +145,15 @@ class TrainConfig:
     # holds ~4,900 windows, ~8 CPU-min per evaluation on one core, so the
     # fitted-checkpoint runs subsample; the manifest records both counts.
     dev_windows_max: Optional[int] = None
+    # Learning-rate schedule across the fit. "constant" holds ``lr`` for every
+    # step (fits v1 and v2, whose dev NLL oscillated by 30 units between
+    # neighbouring evaluations after step 300 without improving). "cosine"
+    # ramps linearly from 0 over ``warmup_steps`` and then decays as a half
+    # cosine from ``lr`` to ``lr * lr_min_factor`` at the last step, so a
+    # longer fit spends its tail at a small step size instead of bouncing.
+    lr_schedule: str = "constant"
+    warmup_steps: int = 0
+    lr_min_factor: float = 0.0
 
     @classmethod
     def from_dict(cls, d: dict) -> "TrainConfig":
@@ -172,6 +182,14 @@ class TrainConfig:
             raise ValueError("context must not be negative")
         if kwargs.get("dev_windows_max") is not None and int(kwargs["dev_windows_max"]) < 1:
             raise ValueError("dev_windows_max must be at least 1 or null")
+        if kwargs.get("lr_schedule", "constant") not in ("constant", "cosine"):
+            raise ValueError("lr_schedule must be 'constant' or 'cosine'")
+        if int(kwargs.get("warmup_steps", 0)) < 0:
+            raise ValueError("warmup_steps must not be negative")
+        if int(kwargs.get("warmup_steps", 0)) >= int(kwargs.get("steps", cls.steps)):
+            raise ValueError("warmup_steps must be below steps")
+        if not 0.0 <= float(kwargs.get("lr_min_factor", 0.0)) <= 1.0:
+            raise ValueError("lr_min_factor must be in [0, 1]")
         config = cls(sources=sources, **kwargs)
         config.check_window_bound()
         return config
@@ -338,6 +356,27 @@ def validate_dev_reservations(config: TrainConfig, stats_by_species) -> None:
                     f"match the admitted inventory")
 
 
+def lr_at(step: int, config: TrainConfig) -> float:
+    """Learning rate for the 0-based gradient ``step`` (torch-free, so the
+    schedule is unit-testable and reproducible from the manifest alone).
+
+    ``lr_schedule="constant"`` returns ``config.lr`` at every step, which is
+    what fits v1 and v2 ran. ``"cosine"`` ramps linearly over the first
+    ``warmup_steps`` steps (step 0 gets ``lr / warmup_steps``, never 0, so no
+    step is wasted) and then decays as a half cosine, reaching exactly
+    ``config.lr * config.lr_min_factor`` at the final step.
+    """
+    if config.lr_schedule == "constant":
+        return config.lr
+    if step < config.warmup_steps:
+        return config.lr * (step + 1) / config.warmup_steps
+    span = max(config.steps - config.warmup_steps - 1, 1)
+    progress = min(max((step - config.warmup_steps) / span, 0.0), 1.0)
+    factor = config.lr_min_factor + (1.0 - config.lr_min_factor) * 0.5 * (
+        1.0 + math.cos(math.pi * progress))
+    return config.lr * factor
+
+
 def build_manifest(config: TrainConfig, *, torch_version: str,
                    cuda: Optional[str]) -> dict:
     """The *pre-fit* run manifest: the declared plan and provenance.
@@ -384,6 +423,9 @@ def build_manifest(config: TrainConfig, *, torch_version: str,
             "background_length": config.background_length,
             "context": config.context,
             "dev_windows_max": config.dev_windows_max,
+            "lr_schedule": config.lr_schedule,
+            "warmup_steps": config.warmup_steps,
+            "lr_min_factor": config.lr_min_factor,
         },
         "sampling_plan": {
             "draw": "uniform-with-replacement over train windows",
@@ -637,6 +679,9 @@ def train(config: TrainConfig, log=print) -> dict:
     model.train()
     fit_wall0, fit_cpu0 = time.monotonic(), time.process_time()
     for step in range(config.steps):
+        step_lr = lr_at(step, config)
+        for group in opt.param_groups:
+            group["lr"] = step_lr
         idx = torch.randint(len(train_ex), (config.batch_size,), generator=gen)
         opt.zero_grad()
         batch_loss, used = 0.0, 0
@@ -665,9 +710,10 @@ def train(config: TrainConfig, log=print) -> dict:
             train_nll = batch_loss / max(used, 1)
             elapsed = time.monotonic() - fit_wall0
             log(f"step {step + 1}: train_nll/window={train_nll:.4f} "
-                f"dev_nll={dev_nll} elapsed_s={elapsed:.1f}")
+                f"dev_nll={dev_nll} lr={step_lr:.3e} elapsed_s={elapsed:.1f}")
             history.append({"step": step + 1, "train_nll": train_nll,
-                            "dev_nll": dev_nll, "elapsed_s": elapsed})
+                            "dev_nll": dev_nll, "lr": step_lr,
+                            "elapsed_s": elapsed})
             if dev_nll is not None and (best_dev is None or dev_nll < best_dev):
                 best_dev = dev_nll
                 best_step = step + 1
