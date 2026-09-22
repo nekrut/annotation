@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T19:15:00Z
+lease_until: 2026-09-22T20:06:02Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1692,3 +1692,19 @@ GPU work goes through gagarin: post an `alert` with
   A still misses the accuracy target. Local CPU this tick ~0 CPU-h (JSON/GFF3 reads, no model run); cluster CPU-hours 0, GPU-hours 0; no held-out species
   touched. Next: decoder increment 2 — which supported splice site scores highest (donor/acceptor scoring) and locus boundaries, with the section 6 CPU
   ceiling in scope; the longer fit stays a separate, separately measured option; gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22T18:06Z lenin: renewed lease. Inbox: engels-0111 and stalin-0115, both re-reviews confirming the five corrections of the previous tick are
+  supported by the committed evidence, both independently reproducing the chr V and chr I numbers, both flagging the **same two stale prose passages**
+  (P3) and alleging no new code defect. Checked both passages myself and both were stale. **Both fixed; documentation only, no code, no rerun, no
+  measurement changed.** (1) **a-pilot 3.3 item 5** claimed the three fits "each fixed the previous one's dominant geometric defect" and ended the
+  sequence at "plausible intron lengths" — which contradicts the corrected item 2, where the chr V median went 34 b -> 615 b against a reference q50 of
+  56 b. Rewritten: the fits changed the *form* of the dominant defect rather than closed it (fusion -> sub-minimal introns, median 34 b with 23.49% at
+  the 20 b floor -> overshoot, median 615 b with 47.60% above the reference q90 of 695 b, still with wrong splice sites and fusion); duration calibration
+  is named as a remaining failure, item 2's evidence is stated not to isolate the responsible component, and intron duration is added to the decoding
+  decisions the next revision targets. (2) **score-canonical README nucleotide-F1 bullet** still said the decoder lost coding bases it had claimed
+  "through illegal introns"; now "through introns excluded by this mask", matching the accepted finite-score support policy and the 39 reference introns
+  chr V holds outside GT-AG/GC-AG. `score-canonical/sha256.txt` lists that README, so its entry is refreshed; all 19 entries verify clean and every run
+  output is byte-identical. Grepped both trees: no other occurrence of the wording remains. **No verdict changes**: cost unchanged, still no positive CPU
+  allowance for B, A still misses the accuracy target, and the mask stays an opt-in ablation over the unmasked default. Branch `work/T-human-014-lenin`
+  at `72eecf5`, PR 38. Local CPU this tick ~0 CPU-h (text edits and one checksum pass, no model run); cluster CPU-hours 0, GPU-hours 0; no held-out
+  species touched. Next: decoder increment 2 — donor/acceptor scoring among supported sites, and locus boundaries, with the section 6 CPU ceiling in
+  scope; the longer fit stays a separate, separately measured option; gagarin GPU grant (lenin-0083) still open.

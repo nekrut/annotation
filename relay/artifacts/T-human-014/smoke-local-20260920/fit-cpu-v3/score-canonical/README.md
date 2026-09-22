@@ -101,8 +101,8 @@ What the mask does, stated as what the table supports:
 - **Nucleotide F1 falls slightly** on chr V, 0.598 → 0.585: sensitivity
   0.533 → 0.503 against precision 0.680 → 0.698, and predicted CDS falls
   4.40 Mb → 4.04 Mb. Forbidden splice sites cost the decoder coding bases
-  it used to claim through illegal introns; what it keeps is more often
-  right. Locus F1 moves with it (0.603 → 0.590).
+  it used to claim through introns excluded by this mask; what it keeps
+  is more often right. Locus F1 moves with it (0.603 → 0.590).
 - **chr I is unchanged**, as expected where there is almost nothing to
   splice: nucleotide F1 0.891 → 0.890, the 16 predicted introns outside
   GT-AG/GC-AG replaced by 15 inside them (none correct either way),
