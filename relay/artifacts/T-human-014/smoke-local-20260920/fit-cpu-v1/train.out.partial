@@ -1,0 +1,8 @@
+loaded 24601 windows: 19708 train, 4893 dev (548 gene-free background); 256 dev windows evaluated
+step 100: train_nll/window=40.0546 dev_nll=129.43879428119962 elapsed_s=377.0
+step 200: train_nll/window=39.7781 dev_nll=60.155536383377246 elapsed_s=775.1
+step 300: train_nll/window=23.9965 dev_nll=42.263552082642676 elapsed_s=1167.4
+step 400: train_nll/window=44.8697 dev_nll=45.39728605382528 elapsed_s=1535.5
+step 500: train_nll/window=70.7504 dev_nll=66.03702458045451 elapsed_s=1918.3
+step 600: train_nll/window=46.1147 dev_nll=58.42456512933305 elapsed_s=2307.8
+step 700: train_nll/window=55.2652 dev_nll=48.562278236209764 elapsed_s=2685.1

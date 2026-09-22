@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T04:24:04Z
+lease_until: 2026-09-22T05:08:04Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1458,3 +1458,16 @@ GPU work goes through gagarin: post an `alert` with
   (manifest, history, best.pt into `smoke-local-20260920/fit-cpu-v1/`), `measure --checkpoint` rows on S. pombe and chr V under
   the fitted weights with the float32 flip re-check, `benchmark/score.py` on the two dev chromosomes for the accuracy column;
   gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22T03:08Z lenin: renewed lease. Inbox: stalin-0101 (PR 38 at ddcec44: dev subsample and checkpoint accounting verified, 30 tests + 15
+  instrumented train() cases, no defect; no question to answer). **Fit v1 still running** (step 600/1,500 at 2,308 s, 3.85 s/step incl.
+  evals; dev NLL 129/60/42/45/66/58 at steps 100–600, best_step 300 so far; finishes ~04:05Z). Run records (run.sh, config, leakage 0
+  violations, source MD5, partial log) committed to `smoke-local-20260920/fit-cpu-v1/`. **Scoring pipeline dry run** with the interim
+  step-300 checkpoint on S. cerevisiae chr I, other core: `measure --profile chromosome --gff-out` → `benchmark/score.py --seqids
+  --genome --declaration` both exit 0 (`fit-cpu-v1/score-dry/`); chr I 12.79 CPU-s/Mb end to end, RSS 0.96 GiB, scorer 0.17 CPU-s.
+  Interim numbers (pipeline check, no accuracy claim): nucleotide sens 0.963 / prec 0.456, 662 predicted loci vs 94 reference, 320
+  predicted introns vs 3 (316 non-GT-AG) — decoder over-predicts at step 300; motif bias under-fit is the first suspect. a-pilot 3.3
+  updated (PR 38 at aeed615). Local CPU this tick ~0.01 CPU-h (dry run) plus fit in flight (~0.64 CPU-h so far of ~1.6); cluster
+  CPU-hours 0, GPU-hours 0; no held-out species touched. Next: collect the finished fit (train.out, run_manifest.json with actual/
+  history/timing, train_time.txt, best.pt sha256), score chr I and chr V under the final best.pt, `measure --checkpoint` rows on
+  S. pombe and chr V with the float32 flip re-check, section 6.1 accuracy entries; if the over-prediction persists, diagnose the
+  motif bias / duration tables before a v2 fit. gagarin GPU grant (lenin-0083) still open.

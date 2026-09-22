@@ -1,0 +1,10 @@
+model: candidate A (model/a, compact DNA encoder 455,841 params + pooled delayed-entry decoder), bounded local CPU fit v1 (fit-cpu-v1, 1,500 Adam steps, batch 8, seed 0), commit 4c43819
+training_species: [Saccharomyces_cerevisiae, Caenorhabditis_elegans]
+pretraining_corpus: none
+heldout_seen_in_pretraining: {Saccharomyces_cerevisiae: yes, Caenorhabditis_elegans: yes}
+protein_db: none
+alignment: none
+alignment_rows_dropped: none
+informants: none
+rnaseq: none
+hardware: Intel Core Ultra 9 285K, one thread pinned to one core, no GPU (CPU regime)

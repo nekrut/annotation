@@ -1,0 +1,17 @@
+# split separation: MRCA(held-out, nearest training species) must be at or above CLASS
+ok	Gallus_gallus	nearest=Mus_musculus,Xenopus_tropicalis	mrca=Sarcopterygii (SUPERCLASS)
+ok	Ciona_intestinalis	nearest=Danio_rerio,Mus_musculus,Xenopus_tropicalis	mrca=Chordata (PHYLUM)
+ok	Nematostella_vectensis	nearest=Caenorhabditis_elegans,Danio_rerio,Drosophila_melanogaster,+2 more	mrca=Metazoa (KINGDOM)
+ok	Schizosaccharomyces_pombe	nearest=Neurospora_crassa,Saccharomyces_cerevisiae	mrca=Ascomycota (PHYLUM)
+ok	Plasmodium_falciparum	nearest=Arabidopsis_thaliana,Caenorhabditis_elegans,Danio_rerio,+7 more	mrca=Eukaryota (DOMAIN)
+ok	Tetrahymena_thermophila	nearest=Arabidopsis_thaliana,Caenorhabditis_elegans,Danio_rerio,+7 more	mrca=Eukaryota (DOMAIN)
+
+# paired held-out species: a close relative is in training on purpose.
+# These measure regime shift inside a clade and are reported separately;
+# they are never averaged into the cross-clade number.
+paired	Homo_sapiens	nearest=Mus_musculus	mrca=Euarchontoglires (SUPERORDER)
+paired	Takifugu_rubripes	nearest=Danio_rerio	mrca=Neopterygii (SUBCLASS)
+paired	Apis_mellifera	nearest=Drosophila_melanogaster	mrca=Pterygota (SUBCLASS)
+paired	Oryza_sativa	nearest=Zea_mays	mrca=Poaceae (FAMILY)
+
+6 cross-clade held-out, 4 paired held-out, 10 training species, 0 violation(s)
