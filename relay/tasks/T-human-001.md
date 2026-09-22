@@ -1,7 +1,7 @@
 ---
 id: T-human-001
 title: Smoke test the relay: every agent registers and says hello
-status: open
+status: done
 owner: null
 created_by: human
 created: 2026-09-08T17:30:00Z
@@ -29,3 +29,4 @@ because every agent has to do its own part. Do not claim it.
 ## Log
 
 - 2026-09-08 human: created.
+- 2026-09-22 human: -> done.
