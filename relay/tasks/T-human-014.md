@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T18:00:00Z
+lease_until: 2026-09-22T18:30:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1645,3 +1645,27 @@ GPU work goes through gagarin: post an `alert` with
   updated (PR 38 at 7962be3). Local CPU this tick 4.33 (fit) + 0.05 (scoring) CPU-h; cluster CPU-hours 0, GPU-hours 0; no held-out species
   touched. Next: the decoder revision with the section 6 CPU ceiling in scope (splice placement and locus boundaries are decoding decisions),
   noting the monotone dev tail leaves a longer fit open as a separate, separately measured option; gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22T16:25Z lenin: renewed lease. Inbox: engels-0109 (independent confirmation of stalin-0113's P2 — the scoring wrapper's `echo` replaced
+  each workload's status, so a failed measurement still entered scoring and the wrapper could exit 0; reproduced with extracted `run()` and stubbed
+  `taskset`, all four stub combinations returning 0; no question, and no acceptance or B allowance claim). It reviews main at `4c2e1e05`, which is
+  **before** the fix: that P2 and both P3s were applied at `85d534c` and the v3 scoring ran under the fixed launcher (lenin-0126). No further change
+  is needed, and this tick's launcher inherits the gate; its failure propagation was exercised for real when I stopped the first ablation launch by
+  hand mid-chromosome (`measure NC_003283.11 exit=143`, no `score` line, outputs discarded). **Decoder revision, step 1 — the hard splice mask** (PR 38
+  at `7875483`), the revision 3.3 proposed, on the v3 checkpoint with no refitting. The pooled decoder's dinucleotide tables are a soft bias: they
+  reorder splice sites but cannot forbid one, and v3 emitted 3,986 non-canonical introns on chr V while exactly one of its true introns was
+  non-canonical. `motif_bias` gains a `canonical` mask (donor `-inf` unless the first two intron bases are GT/GC, acceptor `-inf` unless the last two
+  are AG; ambiguous bases and window edges unmasked, so only positive evidence removes a site), threaded through `predict_sequence` and
+  `measure --canonical-splice`, recorded in the measured row, refused by the window profile, and inference-only (a hard mask in the numerator would
+  make an unusual reference intron unreachable). Tests: `CanonicalSpliceMask` (mask is exactly the concrete non-canonical sites; every decoded intron
+  canonical under it, non-canonical ones without it) and `CanonicalFlag` (both decode modes pass the flag; the window profile raises); 226 tests pass.
+  **Ablation** (`fit-cpu-v3/score-canonical/`, same weights, tiling, scorer and pinned core; launcher = `run_final.sh` + the flag, reverse-substitution
+  diffs empty; all four workloads exit 0): chr V donor F1 0.070 -> 0.117, acceptor 0.081 -> 0.158, correct GT-AG introns 433 -> 1,070, exact
+  transcripts 70 -> 101, exact exon F1 0.030 -> 0.062, fusions 312 -> 226, all 3,986 non-canonical introns gone; nucleotide F1 0.598 -> 0.585
+  (sens 0.533 -> 0.503, prec 0.680 -> 0.698) and locus F1 0.603 -> 0.590. chr I essentially unchanged (nt F1 0.891 -> 0.890, 64 -> 65 exact). Cost
+  **falls**: 8.88 -> 8.65 CPU-s/Mb on chr V (decode 105.48 -> 100.90), 12.38 -> 12.14 on chr I, so the CPU verdict stands and **no positive CPU
+  allowance for B follows**. **A still misses the accuracy target** (exact-transcript sensitivity 0.020 per scored locus, 0.015 per reference
+  transcript; 21,550 reference GT-AG introns still missed). a-pilot gains section 3.4 and a rewritten summary; two masked rows added to
+  `docs/cost-baseline/measured.tsv`. Local CPU this tick ~0.11 CPU-h (ablation 0.05, discarded first launch ~0.04, tests); cluster CPU-hours 0,
+  GPU-hours 0; no held-out species touched. Next: decoder increment 2 — which *legal* splice site scores highest (donor/acceptor scoring) and locus
+  boundaries, with the section 6 CPU ceiling in scope; the longer fit the monotone dev tail leaves open stays a separate, separately measured option;
+  gagarin GPU grant (lenin-0083) still open.

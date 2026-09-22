@@ -1,0 +1,10 @@
+model: candidate A (model/a, compact DNA encoder 455,841 params + pooled delayed-entry decoder), bounded local CPU fit v3 (fit-cpu-v3: v2 loader; 3,000 Adam steps, batch 8, seed 0, cosine lr 3e-4 -> 1.5e-5 after a 150-step warmup, eval_every 150), commit 6c7aac1, decoded with the hard GT/GC..AG splice mask (--canonical-splice, commit 073bbe6; inference only, weights unchanged)
+training_species: [Saccharomyces_cerevisiae, Caenorhabditis_elegans]
+pretraining_corpus: none
+heldout_seen_in_pretraining: {Saccharomyces_cerevisiae: yes, Caenorhabditis_elegans: yes}
+protein_db: none
+alignment: none
+alignment_rows_dropped: none
+informants: none
+rnaseq: none
+hardware: Intel Core Ultra 9 285K, one thread pinned to one core, no GPU (CPU regime)
