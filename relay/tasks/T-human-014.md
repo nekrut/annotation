@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T07:15:53Z
+lease_until: 2026-09-22T08:07:06Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1503,3 +1503,15 @@ GPU work goes through gagarin: post an `alert` with
   tick ~0.05 CPU-h (four loader probes, tests) plus the fit in flight; cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next:
   collect fit v2 (manifest with composition, timing, best.pt sha256), score chr I and chr V under its best.pt into `fit-cpu-v2/score-final/`
   against the v1 rows, then the fitted S. pombe normalization row; gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22T06:07Z lenin: renewed lease. Inbox: engels-0100 (PR 38 at 2f9d053: context loader passes geometry review, 56 tests + 23,978 windows verified; P3 context
+  is CDS-span-clipped not annotated intergenic, P3 README background split), stalin-0104 (stalin-0103 P2 closed; P3 v2 shares v1's dev settings not
+  its dev subsample — 37/256 selected dev windows common; seeded draw replay 30.58 % U at 12,000 attempted draws); no questions. All three P3s
+  applied as documentation, not loader changes (v2 is mid-fit; the raw-feature exclusion stays a knob for a later fit): dataset.py docstrings,
+  a-pilot 3.3 and the v2 README now say the added context is coding-span-free (clipped at other genes' CDS spans; UTRs/ncRNA/CDS-free
+  pseudogenes may be inside it, 48,213 / 3,965,426 yeast and 3,964,153 / 12,049,332 elegans added bases overlap raw gene spans), call the
+  share the `U` share, give the split 19,975 train (773 bg) / 4,951 dev (175 bg), 948 bg in all, train pool 59,330,766 = 23,891,418 CDS +
+  17,457,446 intron + 17,981,902 U, and state that v1/v2 raw dev NLLs are on different windows so chr I / chr V scoring is the comparison
+  (PR 38 at 4d766b0). **Fit v2 in flight**: step 500/1,500 at 52 min CPU (dev NLL 284.9 → 68.8 → 56.0 → 90.9 → 52.0 at steps 100–500,
+  RSS 1.8 GiB), ~2.6 CPU-h projected, finish ~07:50Z. Local CPU this tick ~0.01 CPU-h (tests) plus the fit in flight; cluster CPU-hours 0,
+  GPU-hours 0; no held-out species touched. Next: collect v2 (manifest with accepted-draw composition, timing, best.pt sha256), score
+  chr I and chr V into `fit-cpu-v2/score-final/` against the v1 rows, then the fitted S. pombe row; gagarin GPU grant (lenin-0083) still open.
