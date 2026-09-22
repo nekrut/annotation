@@ -69,6 +69,16 @@ class TestConfig(unittest.TestCase):
             T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o",
                                      "background_length": 0})
 
+    def test_config_context(self):
+        c = T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o"})
+        self.assertEqual(c.context, 0)
+        c = T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o",
+                                     "context": 512})
+        self.assertEqual(c.context, 512)
+        with self.assertRaises(ValueError):
+            T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o",
+                                     "context": -1})
+
     def test_config_background_length_bounded_by_max_window(self):
         # engels-0096: max_window bounds background windows too
         with self.assertRaises(ValueError):
@@ -184,6 +194,8 @@ class TestManifest(unittest.TestCase):
         self.assertEqual(man["hyperparams"]["seed"], 3)
         self.assertEqual(man["hyperparams"]["eval_every"], 5)
         self.assertEqual(man["sampling_plan"]["planned_draws"], 40)  # steps*batch
+        self.assertEqual(man["hyperparams"]["context"], 0)
+        self.assertEqual(man["sampling_plan"]["context_per_side"], 0)
         self.assertEqual(man["sources"][0]["name"], "sp")
         self.assertEqual(man["sources"][0]["dev_seqids"], ["chrDev"])
         self.assertEqual(man["sources"][0]["gff_md5"], "aa")
@@ -250,6 +262,19 @@ class TestManifest(unittest.TestCase):
         self.assertIsNone(man["actual"]["best_step"])
         self.assertEqual(man["actual"]["history"], [])
         self.assertEqual(man["actual"]["timing"], {})
+        self.assertEqual(man["actual"]["composition"], {})
+
+    def test_record_actual_keeps_composition(self):
+        comp = {"cds_bases": 100, "intron_bases": 50, "intergenic_bases": 30,
+                "background_draws": 2, "context_bases": 20}
+        with tempfile.TemporaryDirectory() as d:
+            cfg = self._cfg(d, seed=3, steps=10, batch_size=4)
+            man = T.build_manifest(cfg, torch_version="x", cuda=None)
+            man = T.record_actual(
+                man, attempted_draws=4, accepted_windows=4, sampled_bases=180,
+                train_windows=12, dev_windows=3, best_dev_nll=0.5, composition=comp)
+        self.assertEqual(man["actual"]["composition"], comp)
+        json.dumps(man)
 
     def test_record_actual_keeps_best_step_history_and_timing(self):
         with tempfile.TemporaryDirectory() as d:

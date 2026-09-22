@@ -34,6 +34,17 @@ re-deriving it:
   from the full window's annotations, and edge-partial boundary support, are
   later section-3.6 increments; `complete_only=False` receives edge-partial
   chains (with their flags) once the boundary loss lands.
+- **Intergenic context, clipped at the neighbours (fit v2).** With
+  ``context > 0`` a clean window is widened by up to ``context`` bases on each
+  side, but never past the nearest span of a *different* gene (any transcript,
+  admitted or not) or the sequence end, so every added base is annotated
+  intergenic and the ``U`` supervision ``numerator_scores`` applies to it stays
+  correct without a loss change. Fit v1 supervised only 3 % of its sampled
+  bases as intergenic (10-base flanks plus background tiles) and its decoder
+  fused genes through intergenic sequence (a-pilot 3.3); this is the
+  minimal loader increment that adds real gene-adjacent intergenic sequence
+  to every chain window. The clean check itself is unchanged (a gene inside
+  the 10-base flank still skips the window).
 - **No silent length cap.** A complete gene's oriented window is the CDS span
   plus flank; ~40% of admitted train chains are longer than the 3,072-base
   encoder core (engels-0047). Cropping such genes into the core with retained
@@ -134,10 +145,30 @@ class WindowExample:
     partial_5: bool = False
     partial_3: bool = False
     flank: int = FLANK
+    # Intergenic context actually added beyond ``flank`` on the oriented 5'
+    # and 3' sides (0 when the loader ran without ``context`` or the window
+    # was clipped at a neighbouring gene or the sequence end).
+    context_5: int = 0
+    context_3: int = 0
 
     @property
     def n(self) -> int:
         return len(self.window)
+
+    @property
+    def cds_bases(self) -> int:
+        return sum(b - a for a, b in self.cds_ranges)
+
+    @property
+    def intron_bases(self) -> int:
+        return sum(b - a for a, b in self.intron_ranges)
+
+    @property
+    def intergenic_bases(self) -> int:
+        """Bases the support mask supervises as intergenic ``U``: everything
+        outside the CDS/intron cover (flanks, context, or the whole window of
+        a gene-free background tile)."""
+        return self.n - self.cds_bases - self.intron_bases
 
     def support(self, base=None):
         """The hard support mask for this chain's numerator, over ``base``
@@ -168,6 +199,11 @@ class LoaderStats:
     # Gene-free (background) windows, counted apart from the chain windows.
     background_candidates: int = 0
     background_yielded: int = 0
+    # Intergenic context bases added to yielded chain windows (``context``),
+    # and how many of those windows were clipped short of the requested
+    # context by a neighbouring gene or the sequence end on at least one side.
+    context_bases: int = 0
+    context_clipped: int = 0
 
 
 @dataclass
@@ -261,20 +297,46 @@ def format_coverage(rows: Sequence[CoverageRow]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _oriented_window(t, seq: str) -> str:
+def _oriented_window(t, seq: str, ws: Optional[int] = None,
+                     we: Optional[int] = None) -> str:
     """The focal window's oriented sequence with case preserved.
 
-    Same ``[ws, we]`` clamp as ``oriented_chain`` (which stays the authority for
-    the CDS/intron coordinates); this only avoids that helper's ``.upper()`` so
-    the soft-mask channel survives. ``revcomp`` preserves case on the minus
-    strand.
+    By default the same ``[ws, we]`` clamp as ``oriented_chain`` (which stays
+    the authority for the CDS/intron coordinates); this only avoids that
+    helper's ``.upper()`` so the soft-mask channel survives. ``revcomp``
+    preserves case on the minus strand. Explicit 1-based inclusive ``ws``/``we``
+    select a wider (context) slice.
     """
     s, e = t.span
-    ws, we = max(1, s - FLANK), min(len(seq), e + FLANK)
+    if ws is None:
+        ws = max(1, s - FLANK)
+    if we is None:
+        we = min(len(seq), e + FLANK)
     window = seq[ws - 1:we]
     if t.strand == "-":
         window = revcomp(window)
     return window
+
+
+def _context_bounds(ws: int, we: int, seq_len: int, context: int, gid: str,
+                    others) -> Tuple[int, int]:
+    """Widen the clean window ``[ws, we]`` by up to ``context`` bases per side,
+    stopping at the sequence ends and at the nearest span of any *other* gene
+    (so the added bases are annotated intergenic). Returns the 1-based
+    inclusive bounds; equal to the input when ``context`` is 0."""
+    if context <= 0:
+        return ws, we
+    left_gene_end = 0
+    right_gene_start = seq_len + 1
+    for os_, oe, g in others:
+        if g == gid:
+            continue
+        if oe < ws and oe > left_gene_end:
+            left_gene_end = oe
+        elif os_ > we and os_ < right_gene_start:
+            right_gene_start = os_
+    return (max(1, ws - context, left_gene_end + 1),
+            min(seq_len, we + context, right_gene_start - 1))
 
 
 def iter_windows(
@@ -285,6 +347,7 @@ def iter_windows(
     complete_only: bool = True,
     max_window: Optional[int] = None,
     stats: Optional[LoaderStats] = None,
+    context: int = 0,
 ) -> Iterator[WindowExample]:
     """Yield one :class:`WindowExample` per admitted representative chain.
 
@@ -306,10 +369,19 @@ def iter_windows(
     neighbour's coding (or masked) bases to intergenic ``U``. When
     ``complete_only`` (the default), edge-partial admitted chains are also
     skipped and counted in ``stats.skipped_partial``. ``max_window`` skips (and
-    counts) any window longer than it; ``None`` keeps every window.
+    counts) any window longer than it (after context); ``None`` keeps every
+    window.
+
+    ``context`` widens each clean window by up to that many bases per side of
+    annotated intergenic sequence, clipped at the nearest other gene's span
+    and the sequence ends (:func:`_context_bounds`); the CDS/intron
+    coordinates are shifted accordingly and the example records the bases
+    actually added as ``context_5``/``context_3`` (oriented).
     """
     if stats is None:
         stats = LoaderStats()
+    if context < 0:
+        raise ValueError("context must not be negative")
 
     verify_source(summary, gff, fasta)
     with open(summary, "r", encoding="utf-8") as fh:
@@ -353,15 +425,27 @@ def iter_windows(
                 stats.skipped_neighbor += 1
                 continue
             _up_window, cds, introns = oriented_chain(t, seq)
-            window = _oriented_window(t, seq)
-            if window.upper() != _up_window:
+            ws2, we2 = _context_bounds(ws, we, len(seq), context, t.gid, others)
+            window = _oriented_window(t, seq, ws2, we2)
+            # Oriented offset of the flank-only window inside the wider one.
+            if t.strand == "-":
+                shift, ctx5, ctx3 = we2 - we, we2 - we, ws - ws2
+            else:
+                shift, ctx5, ctx3 = ws - ws2, ws - ws2, we2 - we
+            if window.upper()[shift:shift + len(_up_window)] != _up_window:
                 raise RuntimeError(
                     f"cased window disagrees with oriented_chain for {t.key}")
+            if shift:
+                cds = [(a + shift, b + shift) for a, b in cds]
+                introns = [(a + shift, b + shift) for a, b in introns]
             if max_window is not None and len(window) > max_window:
                 stats.skipped_too_long += 1
                 continue
             stats.yielded += 1
             stats.windows_by_seqid[t.seqid] += 1
+            stats.context_bases += ctx5 + ctx3
+            if context and (ctx5 < context or ctx3 < context):
+                stats.context_clipped += 1
             yield WindowExample(
                 key=t.key,
                 window=window,
@@ -370,6 +454,8 @@ def iter_windows(
                 table=table,
                 partial_5=bool(mt.five),
                 partial_3=bool(mt.three),
+                context_5=ctx5,
+                context_3=ctx3,
             )
 
 

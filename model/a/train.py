@@ -133,6 +133,11 @@ class TrainConfig:
     # 0 keeps the chain-only scope of the earlier smoke fits.
     background_windows: int = 0
     background_length: int = 4096
+    # Intergenic context added to each clean chain window, up to this many
+    # bases per side, clipped at the nearest other gene and the sequence
+    # ends (model.a.dataset.iter_windows ``context``); 0 keeps the
+    # gene-plus-10-base-flank windows of fit v1.
+    context: int = 0
     # Checkpoint selection evaluates at most this many development windows,
     # a seeded draw without replacement from the reserved chromosomes'
     # windows (None = all of them). A 20 Mb metazoan development chromosome
@@ -163,6 +168,8 @@ class TrainConfig:
             raise ValueError("background_windows must not be negative")
         if int(kwargs.get("background_length", 4096)) < 1:
             raise ValueError("background_length must be at least 1")
+        if int(kwargs.get("context", 0)) < 0:
+            raise ValueError("context must not be negative")
         if kwargs.get("dev_windows_max") is not None and int(kwargs["dev_windows_max"]) < 1:
             raise ValueError("dev_windows_max must be at least 1 or null")
         config = cls(sources=sources, **kwargs)
@@ -375,6 +382,7 @@ def build_manifest(config: TrainConfig, *, torch_version: str,
             "min_intron": config.min_intron,
             "background_windows": config.background_windows,
             "background_length": config.background_length,
+            "context": config.context,
             "dev_windows_max": config.dev_windows_max,
         },
         "sampling_plan": {
@@ -386,6 +394,7 @@ def build_manifest(config: TrainConfig, *, torch_version: str,
             "max_window": config.max_window,
             "background_windows_per_species": config.background_windows,
             "background_length": config.background_length,
+            "context_per_side": config.context,
             "dev_draw": "seeded without replacement, at most dev_windows_max",
             "dev_windows_max": config.dev_windows_max,
         },
@@ -402,7 +411,8 @@ def record_actual(manifest: dict, *, attempted_draws: int, accepted_windows: int
                   best_dev_nll: Optional[float], best_step: Optional[int] = None,
                   history: Optional[list] = None,
                   timing: Optional[dict] = None,
-                  dev_windows_evaluated: Optional[int] = None) -> dict:
+                  dev_windows_evaluated: Optional[int] = None,
+                  composition: Optional[dict] = None) -> dict:
     """Attach the actually-executed work to a pre-fit manifest.
 
     The charter asks for the planned draw to be declared before fitting and the
@@ -415,7 +425,12 @@ def record_actual(manifest: dict, *, attempted_draws: int, accepted_windows: int
     seconds, so the run's actual cost is in the manifest, not only in an
     external ``/usr/bin/time`` capture. ``dev_windows`` is every window of
     the reserved chromosomes, ``dev_windows_evaluated`` the subsample
-    checkpoint selection scored (equal unless ``dev_windows_max`` cut it)."""
+    checkpoint selection scored (equal unless ``dev_windows_max`` cut it).
+    ``composition`` breaks the accepted draws' bases into what the support
+    mask supervised them as (``cds_bases``, ``intron_bases``,
+    ``intergenic_bases``) and counts the ``background_draws`` among them, so
+    the supervision balance is in the manifest rather than reconstructed by
+    replaying the seeded draw (engels-0099)."""
     out = dict(manifest)
     out["actual"] = {
         "attempted_draws": attempted_draws,
@@ -429,6 +444,7 @@ def record_actual(manifest: dict, *, attempted_draws: int, accepted_windows: int
         "best_step": best_step,
         "history": list(history or []),
         "timing": dict(timing or {}),
+        "composition": dict(composition or {}),
     }
     return out
 
@@ -451,7 +467,8 @@ def _load_all_windows(config: TrainConfig):
     for src in config.sources:
         stats = LoaderStats()
         for ex in iter_windows(src.summary, src.gff, src.fasta,
-                               max_window=config.max_window, stats=stats):
+                               max_window=config.max_window, stats=stats,
+                               context=config.context):
             examples.append(ex)
         if config.background_windows:
             for ex in iter_background_windows(
@@ -560,8 +577,12 @@ def train(config: TrainConfig, log=print) -> dict:
     n_bg = sum(ex.key[2].startswith("background:") for ex in examples)
     dev_all = len(dev_ex)
     dev_ex = subsample_dev(dev_ex, config.dev_windows_max, config.seed)
+    pool_bases = sum(ex.n for ex in train_ex)
+    pool_u = sum(ex.intergenic_bases for ex in train_ex)
     log(f"loaded {len(examples)} windows: {len(train_ex)} train, {dev_all} dev "
-        f"({n_bg} gene-free background); {len(dev_ex)} dev windows evaluated")
+        f"({n_bg} gene-free background); {len(dev_ex)} dev windows evaluated; "
+        f"train pool {pool_bases} bases, {pool_u} intergenic "
+        f"({100.0 * pool_u / max(pool_bases, 1):.1f} %), context {config.context}")
 
     model = CandidateA().to(device)
     assert model.num_parameters() == SECTION_35_PARAM_COUNT, model.num_parameters()
@@ -586,6 +607,8 @@ def train(config: TrainConfig, log=print) -> dict:
     sampled_bases = 0
     attempted_draws = 0
     accepted_windows = 0
+    composition = {"cds_bases": 0, "intron_bases": 0, "intergenic_bases": 0,
+                   "background_draws": 0, "context_bases": 0}
 
     def evaluate() -> Optional[float]:
         nonlocal eval_wall, eval_cpu
@@ -628,6 +651,11 @@ def train(config: TrainConfig, log=print) -> dict:
             batch_loss += float(loss.detach())
             sampled_bases += ex.n
             accepted_windows += 1
+            composition["cds_bases"] += ex.cds_bases
+            composition["intron_bases"] += ex.intron_bases
+            composition["intergenic_bases"] += ex.intergenic_bases
+            composition["context_bases"] += ex.context_5 + ex.context_3
+            composition["background_draws"] += int(ex.key[2].startswith("background:"))
             used += 1
         if used:
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
@@ -655,6 +683,7 @@ def train(config: TrainConfig, log=print) -> dict:
         accepted_windows=accepted_windows, sampled_bases=sampled_bases,
         train_windows=len(train_ex), dev_windows=dev_all, best_dev_nll=best_dev,
         dev_windows_evaluated=len(dev_ex), best_step=best_step, history=history,
+        composition=composition,
         timing={"load_wall_s": load_wall, "load_cpu_s": load_cpu,
                 "fit_wall_s": fit_wall, "fit_cpu_s": fit_cpu,
                 "eval_wall_s": eval_wall, "eval_cpu_s": eval_cpu,

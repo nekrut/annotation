@@ -350,6 +350,81 @@ class DatasetTest(unittest.TestCase):
         self.assertEqual(stats.admitted, 2)
         self.assertEqual(stats.skipped_neighbor, 2)
 
+    # -- intergenic context clipped at neighbours (fit v2 loader increment) --
+    def test_context_widens_window_and_shifts_ranges(self):
+        # Gene at 11..62 on a 10 kb contig: 10 bases of sequence on the left,
+        # so the 5' context is clipped to 0 by the sequence start (ws stays 1)
+        # and the 3' side gets the full 100 bases.
+        ex = next(iter_windows(self.summary, self.gff, self.fasta, context=100))
+        self.assertEqual((ex.context_5, ex.context_3), (0, 100))
+        self.assertEqual(ex.n, 172)
+        self.assertEqual(ex.cds_ranges, [(10, 25), (50, 62)])
+        self.assertEqual(ex.intron_ranges, [(25, 50)])
+        self.assertEqual(ex.window[10:13], "ATG")
+        self.assertEqual(ex.intergenic_bases, 172 - 27 - 25)
+        # every added base is supervised U and the gold chain still decodes
+        num = ex.support(None)
+        score, chains = ReferenceDecoder().viterbi(ex.window, num)
+        self.assertTrue(math.isfinite(score))
+        self.assertEqual([(a.start, a.end) for a in chains[0].cds()], ex.cds_ranges)
+
+    def test_context_stops_at_neighbouring_gene_both_strands(self):
+        # Three complete genes: g1 at 101..109 (+), focal g2 at 301..309 (-),
+        # g3 at 401..409 (+). Context 500 for g2 must stop at 110 on the left
+        # and 400 on the right, i.e. add 181 genomic bases on the left and
+        # 81 on the right; on the minus strand these are the 3' and 5' sides.
+        seq = list("A" * CONTIG_LEN)
+        seq[100:109] = "ATGAAATAA"
+        seq[300:309] = revcomp("ATGCCCTAA")
+        seq[400:409] = "ATGGGGTAA"
+        seq = "".join(seq)
+        rows = ["##gff-version 3", "##sequence-region chr1 1 %d" % CONTIG_LEN]
+        for i, (a, b, st) in enumerate(((101, 109, "+"), (301, 309, "-"), (401, 409, "+")), 1):
+            rows += [
+                "chr1\tt\tgene\t%d\t%d\t.\t%s\t.\tID=g%d;gene_biotype=protein_coding" % (a, b, st, i),
+                "chr1\tt\tmRNA\t%d\t%d\t.\t%s\t.\tID=t%d;Parent=g%d" % (a, b, st, i, i),
+                "chr1\tt\tCDS\t%d\t%d\t.\t%s\t0\tID=c%d;Parent=t%d" % (a, b, st, i, i)]
+        gff = "\n".join(rows) + "\n"
+        fasta = ">chr1\n" + seq + "\n"
+        for path, text in ((self.gff, gff), (self.fasta, fasta)):
+            with open(path, "w") as fh:
+                fh.write(text)
+        with open(self.summary, "w") as fh:
+            json.dump({"gff_md5": _md5(gff), "fasta_md5": _md5(fasta)}, fh)
+        stats = LoaderStats()
+        by_key = {ex.key: ex for ex in iter_windows(
+            self.summary, self.gff, self.fasta, stats=stats, context=500)}
+        self.assertEqual(stats.yielded, 3)
+        g2 = by_key[("chr1", "-", "t2")]
+        # flank window 291..319; context left to 110, right to 400
+        self.assertEqual((g2.context_5, g2.context_3), (81, 181))
+        self.assertEqual(g2.n, 400 - 110 + 1)
+        self.assertEqual(g2.cds_ranges, [(81 + 10, 81 + 19)])
+        self.assertEqual(g2.window[91:94], "ATG")
+        self.assertEqual(g2.window[91:100], "ATGCCCTAA")
+        g1 = by_key[("chr1", "+", "t1")]     # left: sequence start, right: g2
+        self.assertEqual((g1.context_5, g1.context_3), (90, 181))
+        self.assertEqual(g1.window[100:109], "ATGAAATAA")
+        g3 = by_key[("chr1", "+", "t3")]     # left: g2, right: full 500
+        self.assertEqual((g3.context_5, g3.context_3), (81, 500))
+        self.assertEqual(stats.context_bases, 81 + 181 + 90 + 181 + 81 + 500)
+        self.assertEqual(stats.context_clipped, 3)
+        # no context: unchanged flank-only windows
+        plain = {ex.key: ex for ex in iter_windows(self.summary, self.gff, self.fasta)}
+        for k, ex in plain.items():
+            self.assertEqual((ex.context_5, ex.context_3), (0, 0))
+            self.assertEqual(ex.n, 29)
+            self.assertEqual(ex.cds_ranges, [(10, 19)])
+
+    def test_context_counts_toward_max_window(self):
+        stats = LoaderStats()
+        got = list(iter_windows(self.summary, self.gff, self.fasta, stats=stats,
+                                context=100, max_window=100))
+        self.assertEqual(got, [])
+        self.assertEqual(stats.skipped_too_long, 1)
+        with self.assertRaises(ValueError):
+            list(iter_windows(self.summary, self.gff, self.fasta, context=-1))
+
 
     # -- coverage accounting across a panel (engels-0065, stalin-0068) --------
     def _write_species(self, name, gff, fasta):
