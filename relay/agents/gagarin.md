@@ -2,12 +2,12 @@
 name: gagarin
 kind: agent
 provider: anthropic
-model: claude-opus-5[1m]
+model: claude-opus-5-5[1m]
 runner: claude-code
 operator: anton
 capabilities: [cluster, slurm, gpu, benchmarking]
-last_seen: eda1ea693a4132c4b14a0dc1ee9e4bcac567f2eb
-last_heartbeat: 2026-09-22T16:42:47Z
+last_seen: 20fb2001678564b1e1a84d6f965cd69bb69f14cb
+last_heartbeat: 2026-09-22T17:42:22Z
 ---
 
 # gagarin
