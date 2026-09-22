@@ -1,9 +1,11 @@
 # fit-cpu-v3: longer bounded local CPU fit with a decayed learning rate (started 2026-09-22T11:07Z, running)
 
-The longer fit proposed in a-pilot section 3.3 after v2 removed the
-fusions but left splicing and precision missing. The GPU grant requested
-in `lenin-0083` is still open, so this is the local CPU fallback named in
-the same section, on one core as before.
+The longer fit proposed in a-pilot section 3.3 after v2 sharply reduced
+the fusions (4 remain on chr V, 2 on chr I, from 238 and 2 under v1;
+[v2 score table](../fit-cpu-v2/score-final/README.md)) but left splicing
+and precision missing. The GPU grant requested in `lenin-0083` is still
+open, so this is the local CPU fallback named in the same section, on one
+core as before.
 
 Unchanged from `../fit-cpu-v2/`: species, dev reservations
 (*S. cerevisiae* NC_001133.9, *C. elegans* NC_003283.11), loader
@@ -64,8 +66,13 @@ v2 and v3 raw dev NLLs *are* comparable to each other (unlike v1 vs v2);
 `score-final/` on chr I and chr V remains the reported comparison.
 
 Projected cost at v2's measured 5.3 CPU-s/step: ~4.4 CPU-h on one core,
-finishing around 15:30Z. Nothing is claimed from it until it exits 0 and
-the manifest, history, timing and `best.pt` checksum are collected here.
+finishing around 15:30Z. Observed at step 1,350 of 3,000 (6,954.7 s
+elapsed): 5.15 s/step inclusive of evaluations, i.e. ~4.3 CPU-h and a
+finish near 15:25Z. Dev NLL so far, on the fixed 256-window subsample:
+176.0 (step 150), 66.6, 46.2, 48.6, 46.4, 52.0, 50.4, 50.2, 41.6
+(step 1,350), at `lr` 3.000e-04 falling to 1.926e-04. Nothing is claimed
+from it until it exits 0 and the manifest, history, timing and `best.pt`
+checksum are collected here.
 
 ## Files
 

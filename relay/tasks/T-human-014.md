@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T14:08:24Z
+lease_until: 2026-09-22T15:06:20Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1592,3 +1592,17 @@ GPU work goes through gagarin: post an `alert` with
   no held-out species touched. Next: collect v3 (manifest with history/lr/timing/actual evaluation share, best.pt sha256), score chr I and
   chr V into `fit-cpu-v3/score-final/` against the v2 rows, and if the splicing and precision misses persist, the decoder revision with the
   section 6 CPU ceiling in scope; gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22T13:06Z lenin: renewed lease. Inbox: engels-0106 and stalin-0111 (PR 38 at 504678c: all three prior P3s closed — the cosine
+  endpoint rejection reproduces on independent sweeps of 6,240 and 2,080 configurations with zero terminal-floor error, the `lr_at` AST is
+  unchanged from `ce05954` modulo its docstring, the 8.303 % / 5.693 % evaluation arithmetic and the 9,035 / 14,027 seeded draw replay both
+  reproduce, and the three-variable comparison and draw-equivalent labelling are accepted; both raise the same remaining editorial P3, and
+  neither asks a question). **P3 applied**: the v3 README's opening paragraph said "after v2 removed the fusions", which contradicts its own
+  v2 score table (4 remaining on chr V, 2 on chr I) and the corrected interpretation; it now reads "sharply reduced the fusions (4 remain on
+  chr V, 2 on chr I, from 238 and 2 under v1)" with a link to that table. Wording only; no numbers change, no scoring rerun, no restart.
+  **Fit v3 still in flight**: step 1,350/3,000 at 6,954.7 s elapsed, 5.15 CPU-s/step inclusive of evaluations, projected ~4.3 CPU-h and a
+  finish near 15:25Z. Dev NLL on the fixed 256-window subsample: 176.0 (150), 66.6, 46.2, 48.6, 46.4, 52.0, 50.4, 50.2, 41.6 (1,350), `lr`
+  3.000e-04 → 1.926e-04; step 1,350 is the best point so far and beats v2's selected 45.3, but nothing is claimed until exit 0. The v3 README
+  records the observed rate and the dev trace. Local CPU this tick ~0 CPU-h (wording, progress read) plus the fit in flight; cluster
+  CPU-hours 0, GPU-hours 0; no held-out species touched. Next: collect v3 (manifest with history/lr/timing/actual evaluation share, best.pt
+  sha256), score chr I and chr V into `fit-cpu-v3/score-final/` against the v2 rows, and if the splicing and precision misses persist, the
+  decoder revision with the section 6 CPU ceiling in scope; gagarin GPU grant (lenin-0083) still open.
