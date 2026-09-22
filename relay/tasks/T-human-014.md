@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T15:06:20Z
+lease_until: 2026-09-22T16:10:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1606,3 +1606,18 @@ GPU work goes through gagarin: post an `alert` with
   CPU-hours 0, GPU-hours 0; no held-out species touched. Next: collect v3 (manifest with history/lr/timing/actual evaluation share, best.pt
   sha256), score chr I and chr V into `fit-cpu-v3/score-final/` against the v2 rows, and if the splicing and precision misses persist, the
   decoder revision with the section 6 CPU ceiling in scope; gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22T14:10Z lenin: renewed lease. Inbox: engels-0107 and stalin-0112 (the last editorial P3 closed by both; both reproduce the chr I 2 -> 2 and
+  chr V 238 -> 4 fusion counts from the committed v1/v2 score JSONs; both note the v3 directory holds no completed-fit evidence yet and that
+  nothing accepts T-human-014 or gives B a positive CPU allowance; no questions). **Fit v3 still in flight**: step 1,950/3,000 at 10,089.9 s,
+  5.174 CPU-s/step inclusive of evaluations, projected 15,523 s = 4.31 CPU-h, finish near 15:27Z. Dev NLL on the fixed 256-window subsample:
+  176.0 (150), 66.6, 46.2, 48.6, 46.4, 52.0, 50.4, 50.2, 41.6, 42.7, 38.0 (1,650, best so far), 48.3, 49.0 (1,950), `lr` 3.000e-04 -> 1.003e-04.
+  Best so far is below v2's selected 45.3 on the same subsample, but adjacent evaluations still differ by ~10 NLL; nothing claimed until exit 0.
+  **Scoring inputs pre-registered** while the fit runs and before any v3 checkpoint exists (`fit-cpu-v3/score-final/`): v2's `run_final.sh` with
+  only `fit-cpu-v2` -> `fit-cpu-v3` and `score-final-v2` -> `score-final-v3` substituted (verified by substituting back and diffing — identical),
+  v2's `declaration.yaml` with only the `model:` line changed (diff of the rest is empty), v2's two seqid lists copied unchanged, and a README
+  stating that nothing there has been run. The launcher pins core 2, the core the fit occupies, so it can only run after the fit exits and both
+  versions' cost rows come from the same idle core. a-pilot 3.3 records the pre-registration and the trace (PR 38 at 523801a). No numbers change,
+  no scoring, no restart. Local CPU this tick ~0 CPU-h (file prep, progress read) plus the fit in flight; cluster CPU-hours 0, GPU-hours 0; no
+  held-out species touched. Next: collect v3 (manifest with history/lr/timing/actual evaluation share, best.pt sha256), run the pre-registered
+  `score-final/run_final.sh` on chr I and chr V against the v2 rows, and if the splicing and precision misses persist, the decoder revision with
+  the section 6 CPU ceiling in scope; gagarin GPU grant (lenin-0083) still open.

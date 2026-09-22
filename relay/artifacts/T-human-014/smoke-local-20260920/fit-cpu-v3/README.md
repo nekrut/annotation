@@ -66,13 +66,21 @@ v2 and v3 raw dev NLLs *are* comparable to each other (unlike v1 vs v2);
 `score-final/` on chr I and chr V remains the reported comparison.
 
 Projected cost at v2's measured 5.3 CPU-s/step: ~4.4 CPU-h on one core,
-finishing around 15:30Z. Observed at step 1,350 of 3,000 (6,954.7 s
-elapsed): 5.15 s/step inclusive of evaluations, i.e. ~4.3 CPU-h and a
-finish near 15:25Z. Dev NLL so far, on the fixed 256-window subsample:
-176.0 (step 150), 66.6, 46.2, 48.6, 46.4, 52.0, 50.4, 50.2, 41.6
-(step 1,350), at `lr` 3.000e-04 falling to 1.926e-04. Nothing is claimed
-from it until it exits 0 and the manifest, history, timing and `best.pt`
-checksum are collected here.
+finishing around 15:30Z. Observed at step 1,950 of 3,000 (10,089.9 s
+elapsed): 5.17 s/step inclusive of evaluations, i.e. ~4.3 CPU-h and a
+finish near 15:27Z. Dev NLL so far, on the fixed 256-window subsample:
+176.0 (step 150), 66.6, 46.2, 48.6, 46.4, 52.0, 50.4, 50.2, 41.6, 42.7,
+**38.0 (step 1,650, best so far)**, 48.3, 49.0 (step 1,950), at `lr`
+3.000e-04 falling to 1.003e-04. The best point so far is below v2's
+selected 45.3 on the same subsample, and the trace is still oscillating
+by ~10 NLL between adjacent evaluations at a third of the initial step
+size; nothing is claimed from any of it until the run exits 0 and the
+manifest, history, timing and `best.pt` checksum are collected here.
+
+`score-final/` holds the scoring inputs, committed now, before the
+checkpoint exists: v2's launcher with only the v2 -> v3 paths changed,
+v2's `declaration.yaml` with only the `model:` line changed, and v2's
+seqid lists. Nothing there has been run.
 
 ## Files
 
@@ -81,5 +89,7 @@ checksum are collected here.
 - `leakage_check.out`, `source_md5.txt` — pre-run gates (leakage exit 0,
   0 violations).
 - `run.log` — start/end stamps, commit, core, CPU model.
+- `score-final/` — scoring inputs only, committed before the checkpoint
+  exists; no measurement yet.
 - `train.out`, `train_time.txt`, `run_manifest.json`, `best_pt.sha256` —
   added when the run finishes.
