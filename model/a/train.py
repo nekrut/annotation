@@ -774,7 +774,7 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
             profile: str = "windows", window: Optional[int] = None,
             overlap: Optional[int] = None, gff_out: Optional[str] = None,
             segments: Optional[int] = None, margin: Optional[int] = None,
-            dtype: str = "float64") -> dict:
+            dtype: str = "float64", canonical: bool = False) -> dict:
     """Time preprocessing, encoder and decode/traceback over one sequence.
 
     ``profile="chromosome"`` is the end-to-end row (:mod:`model.a.chromosome`):
@@ -812,6 +812,12 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
     encoder timing is unchanged; the decode stage is timed as a whole), which
     is how a chromosome's windows would be decoded in either regime.
     """
+    if canonical and profile != "chromosome":
+        # Only the chromosome profile decodes through
+        # :func:`model.a.chromosome.predict_sequence`, which takes the mask;
+        # accepting the flag elsewhere would report an unmasked row as masked.
+        raise ValueError("--canonical-splice needs --profile chromosome")
+
     import torch
 
     from . import pooled
@@ -844,7 +850,8 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
         return _measure_chromosome(config, src, seqid, model, structure, tables, device,
                                    dtype, decode_batch=decode_batch, json_out=json_out,
                                    window=window, overlap=overlap, gff_out=gff_out,
-                                   segments=segments, margin=margin, log=log,
+                                   segments=segments, margin=margin,
+                                   canonical=canonical, log=log,
                                    dtype_name=dtype_name)
     if profile != "windows":
         raise ValueError("profile must be 'windows' or 'chromosome'")
@@ -921,6 +928,9 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
         "decoder": decoder, "decode_batch": decode_batch if decoder == "tensor" else 1,
         "dtype": dtype_name,
         "min_intron": config.min_intron, "pooled_decoder": "learned",
+        "canonical_splice": bool(canonical),
+        "canonical_donors": (list(pooled.CANONICAL_DONORS) if canonical else None),
+        "canonical_acceptors": (list(pooled.CANONICAL_ACCEPTORS) if canonical else None),
         "commit": _git_commit(), "source": _source_provenance(),
         "preprocess_cpu_s": pre_cpu, "encoder_cpu_s": enc_cpu, "decode_cpu_s": dec_cpu,
         "preprocess_wall_s": pre_wall, "encoder_wall_s": enc_wall,
@@ -947,13 +957,15 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
                         json_out: Optional[str], window: Optional[int],
                         overlap: Optional[int], gff_out: Optional[str], log=print,
                         segments: Optional[int] = None,
-                        margin: Optional[int] = None, dtype_name: str = "float64") -> dict:
+                        margin: Optional[int] = None, canonical: bool = False,
+                        dtype_name: str = "float64") -> dict:
     """The ``profile="chromosome"`` half of :func:`measure`."""
     import torch
 
     from model.grammar.codes import TABLES
 
     from . import chromosome as C
+    from . import pooled
     from .dataset import verify_source
     from .encoder import DEPENDENCY_RADIUS as C_DEPENDENCY_RADIUS
 
@@ -985,7 +997,7 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
                                       window=window, overlap=overlap,
                                       decode_batch=decode_batch, device=device,
                                       dtype=dtype, clock=clock, segments=segments,
-                                      margin=margin)
+                                      margin=margin, canonical=canonical)
     gff_bytes = None
     with clock("output"):
         if gff_out:
@@ -1068,6 +1080,8 @@ def build_parser() -> argparse.ArgumentParser:
                          "0 encodes bare tiles)")
     pm.add_argument("--gff-out", default=None,
                     help="chromosome profile: write the predicted GFF3 here")
+    pm.add_argument("--canonical-splice", action="store_true",
+                    help="hard GT/GC..AG splice mask in the decoder (inference only)")
     pm.add_argument("--dtype", default="float64", choices=("float64", "float32"),
                     help="decode dtype for emissions, motif bias, duration tables and the "
                          "scan (default float64, the parity-tested path; float32 rebases "
@@ -1085,7 +1099,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 json_out=args.json_out, decoder=args.decoder,
                 decode_batch=args.decode_batch, profile=args.profile,
                 window=args.window, overlap=args.overlap, gff_out=args.gff_out,
-                segments=args.segments, margin=args.margin, dtype=args.dtype)
+                segments=args.segments, margin=args.margin, dtype=args.dtype,
+                canonical=args.canonical_splice)
     return 0
 
 

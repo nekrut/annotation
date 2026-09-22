@@ -281,5 +281,74 @@ class TrainingKernelSelection(unittest.TestCase):
         self.assertTrue(td.log_prob(0, 7).requires_grad)
 
 
+@unittest.skipUnless(HAS_POOLED, "pooled decoder not available")
+class CanonicalSpliceMask(unittest.TestCase):
+    """The hard GT/GC..AG mask of the section 3.4 decoder revision."""
+
+    def test_mask_is_exactly_the_concrete_non_canonical_sites(self):
+        dec = _random_decoder(6)
+        x = "GTAGCAGTNNAGTT"  # n = 14, with an N pair and both window edges
+        plain = pooled.motif_bias(x, dec)
+        masked = pooled.motif_bias(x, dec, canonical=True)
+        up = x.upper()
+        for t in range(len(x)):
+            d, a = up[t:t + 2], up[t - 2:t] if t >= 2 else ""
+            known_d = len(d) == 2 and all(b in "ACGT" for b in d)
+            known_a = len(a) == 2 and all(b in "ACGT" for b in a)
+            if known_d and d not in pooled.CANONICAL_DONORS:
+                self.assertTrue(isinf(float(masked[pooled._DONOR, t])), (t, d))
+                self.assertLess(float(masked[pooled._DONOR, t]), 0.0)
+            else:   # canonical, ambiguous, or past the end: bias unchanged
+                self.assertEqual(float(masked[pooled._DONOR, t]),
+                                 float(plain[pooled._DONOR, t]), (t, d))
+            if known_a and a not in pooled.CANONICAL_ACCEPTORS:
+                self.assertTrue(isinf(float(masked[pooled._ACCEPTOR, t])), (t, a))
+            else:
+                self.assertEqual(float(masked[pooled._ACCEPTOR, t]),
+                                 float(plain[pooled._ACCEPTOR, t]), (t, a))
+        # No other channel moves, and the batched form agrees.
+        self.assertTrue(torch.equal(masked[:9], plain[:9]))
+        bb = pooled.motif_bias_batch([x, "GT"], dec, canonical=True)
+        self.assertTrue(torch.equal(bb[0], masked))
+        self.assertEqual(float(bb[1, pooled._DONOR, 0]),
+                         float(dec.donor_dinuc[pooled.DINUC_INDEX["GT"]]))
+        self.assertEqual(float(bb[1, :, 2:].abs().sum()), 0.0)  # past the window: unmasked
+
+    def test_mask_rejects_a_non_acgt_dinucleotide(self):
+        with self.assertRaises(ValueError):
+            pooled._mask_row(("GN",), torch.float64, None)
+
+    def test_decoded_introns_are_canonical_under_the_mask(self):
+        # Emissions that make a spliced path attractive everywhere: without
+        # the mask the best path splices at non-canonical sites; with it,
+        # every decoded intron reads GT/GC..AG.
+        rng = random.Random(21)
+        dec = _random_decoder(7)
+        duration = pooled.structure(dec, m=2)
+        tables = pooled.duration_tables(dec)
+        seen_non_canonical = False
+        for _ in range(25):
+            x = "".join(rng.choice("ACGT") for _ in range(60))
+            torch.manual_seed(rng.randrange(10 ** 6))
+            e = torch.randn(11, len(x), dtype=torch.float64)
+            e[0] -= 4.0                      # intergenic is expensive
+            e[9] += 3.0; e[10] += 3.0        # splicing is cheap
+            for canonical in (False, True):
+                biased = e + pooled.motif_bias(x, dec, canonical=canonical)
+                _, chains = fast_viterbi.viterbi(x, biased, code=TABLES[1],
+                                                 duration=duration, tables=tables)
+                for chain in chains:
+                    for seg in chain.introns():
+                        a, b = seg.start, seg.end
+                        pair = (x[a:a + 2], x[b - 2:b])
+                        if canonical:
+                            self.assertIn(pair[0], pooled.CANONICAL_DONORS, (x, a, b))
+                            self.assertIn(pair[1], pooled.CANONICAL_ACCEPTORS, (x, a, b))
+                        elif (pair[0] not in pooled.CANONICAL_DONORS
+                              or pair[1] not in pooled.CANONICAL_ACCEPTORS):
+                            seen_non_canonical = True
+        self.assertTrue(seen_non_canonical, "unmasked decode never left the canonical set")
+
+
 if __name__ == "__main__":
     unittest.main()

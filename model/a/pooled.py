@@ -21,7 +21,11 @@ what the kernels consume, keeping the gradient path:
   boundary ``t`` pays ``acceptor_dinuc[x[t-2] x[t-1]]`` (the last two).
   Dinucleotides that are not four concrete bases, or reach past the window,
   score 0. Adding them to the emissions before the scan keeps both kernels
-  and the reference decoders unchanged.
+  and the reference decoders unchanged. With ``canonical=True`` the same
+  bias carries the *hard* splice mask (:data:`CANONICAL_DONORS`,
+  :data:`CANONICAL_ACCEPTORS`): a concrete non-canonical dinucleotide scores
+  ``-inf``, which both decoders already read as "this site cannot fire".
+  Inference only; see the function.
 * :func:`as_mixture` gives the same duration law as a concrete
   :class:`DurationMixture` for the Python reference decoders (parity runs,
   ``measure --decoder python``). It detaches: values only, no gradient.
@@ -57,6 +61,18 @@ DEFAULT_M = 20
 DINUC_INDEX = {a + b: 4 * i + j for i, a in enumerate("ACGT") for j, b in enumerate("ACGT")}
 _NO_SCORE = len(DINUC_INDEX)  # padded table row that scores 0
 _DONOR, _ACCEPTOR = CHANNEL_ORDER.index("donor"), CHANNEL_ORDER.index("acceptor")
+
+# Hard splice-site mask (section 3.4 decoder revision). The dinucleotide
+# *bias* is learned and soft: it reorders donors, it cannot forbid one. With
+# the mask a donor may fire only where the first two intron bases are one of
+# ``CANONICAL_DONORS`` and an acceptor only where the last two are one of
+# ``CANONICAL_ACCEPTORS``; every other concrete dinucleotide scores ``-inf``,
+# which both decoders already treat as a hard mask. A dinucleotide that is
+# not four concrete bases, or reaches past the window, is *not* masked
+# (``_NO_SCORE``, score 0): the mask only fires on positive evidence, so an
+# ambiguous base or a window edge never removes a legal splice site.
+CANONICAL_DONORS = ("GT", "GC")
+CANONICAL_ACCEPTORS = ("AG",)
 
 
 class DurationTables(NamedTuple):
@@ -178,16 +194,39 @@ def _dinuc_index_tensors(x: str) -> "tuple[torch.Tensor, torch.Tensor]":
     return donor, acceptor
 
 
-def motif_bias(x: str, decoder, *, dtype=torch.float64, device=None) -> torch.Tensor:
+def _mask_row(allowed: Sequence[str], dtype, device) -> torch.Tensor:
+    """``(17,)`` additive mask over the dinucleotide table rows: ``0`` for a
+    dinucleotide in ``allowed`` and for the unknown row, ``-inf`` otherwise."""
+    row = torch.full((len(DINUC_INDEX) + 1,), float("-inf"), dtype=dtype, device=device)
+    row[_NO_SCORE] = 0.0
+    for d in allowed:
+        try:
+            row[DINUC_INDEX[d.upper()]] = 0.0
+        except KeyError:
+            raise ValueError(f"not an ACGT dinucleotide: {d!r}")
+    return row
+
+
+def motif_bias(x: str, decoder, *, canonical: bool = False,
+               dtype=torch.float64, device=None) -> torch.Tensor:
     """``(11, n)`` additive emission bias: the dinucleotide scores on the
-    ``donor`` and ``acceptor`` rows, zero elsewhere."""
-    return motif_bias_batch([x], decoder, dtype=dtype, device=device)[0, :, :len(x)]
+    ``donor`` and ``acceptor`` rows, zero elsewhere. With ``canonical`` the
+    hard splice mask (:data:`CANONICAL_DONORS`, :data:`CANONICAL_ACCEPTORS`)
+    is added on top, making a non-canonical site ``-inf``."""
+    return motif_bias_batch([x], decoder, canonical=canonical,
+                            dtype=dtype, device=device)[0, :, :len(x)]
 
 
 def motif_bias_batch(windows: Sequence[str], decoder, *, L: Optional[int] = None,
+                     canonical: bool = False,
                      dtype=torch.float64, device=None) -> torch.Tensor:
     """``(B, 11, L)`` :func:`motif_bias` for padded windows (zero past each
-    window's end)."""
+    window's end).
+
+    ``canonical`` masks non-canonical splice sites to ``-inf``. It is an
+    *inference* option: a hard mask in the chain-loss numerator would make a
+    reference intron with an unusual dinucleotide unreachable and the loss
+    infinite, so the fitting paths leave it off."""
     B = len(windows)
     L = max((len(w) for w in windows), default=0) if L is None else L
     donor_idx = torch.full((B, L), _NO_SCORE, dtype=torch.long)
@@ -201,6 +240,9 @@ def motif_bias_batch(windows: Sequence[str], decoder, *, L: Optional[int] = None
     zero = torch.zeros(1, dtype=dtype, device=device)
     donor_tab = torch.cat((decoder.donor_dinuc.to(dtype=dtype, device=device), zero))
     acceptor_tab = torch.cat((decoder.acceptor_dinuc.to(dtype=dtype, device=device), zero))
+    if canonical:
+        donor_tab = donor_tab + _mask_row(CANONICAL_DONORS, dtype, donor_tab.device)
+        acceptor_tab = acceptor_tab + _mask_row(CANONICAL_ACCEPTORS, dtype, acceptor_tab.device)
     bias = torch.zeros((B, EMISSION_CHANNELS, L), dtype=dtype, device=device)
     bias[:, _DONOR, :] = donor_tab[donor_idx.to(device)]
     bias[:, _ACCEPTOR, :] = acceptor_tab[acceptor_idx.to(device)]

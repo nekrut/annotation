@@ -183,7 +183,8 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                      strands: Sequence[str] = ("+", "-"),
                      stride: Optional[int] = None,
                      segments: Optional[int] = None,
-                     margin: Optional[int] = None) -> Tuple[List[str], dict]:
+                     margin: Optional[int] = None,
+                     canonical: bool = False) -> Tuple[List[str], dict]:
     """Decode ``seq`` on ``strands`` and return ``(gff3 rows, counts)``.
 
     ``counts``: ``oriented_bases`` (sum of decoded window lengths, overlap
@@ -226,6 +227,14 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
     ``SegmentMargin``). ``margin=0`` is the earlier tile-edge behaviour. The
     window mode needs no margin: its cores sit ``overlap // 2`` bases inside
     the window, beyond the radius at the default overlap.
+
+    ``canonical`` turns on the hard splice mask of
+    :func:`model.a.pooled.motif_bias`: a donor may fire only at ``GT``/``GC``
+    and an acceptor only at ``AG``, every other concrete dinucleotide being
+    ``-inf``. It changes which paths exist, not the weights, so it is an
+    ablation of the decoder alone over any checkpoint. In both modes the
+    mask reads the same extended slice as the bias, so a tile boundary never
+    decides whether a site is masked.
     """
     import torch
 
@@ -268,7 +277,8 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                                  tables=tables, window=window, overlap=overlap,
                                  segments=segments, device=device, dtype=dtype,
                                  clock=clock, strands=strands, stride=stride,
-                                 margin=margin, rows=rows, counts=counts)
+                                 margin=margin, canonical=canonical,
+                                 rows=rows, counts=counts)
 
     with torch.no_grad():
         for strand in strands:
@@ -286,7 +296,8 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                 with clock("encoder"):
                     emissions = model.encoder(feats)[0][:, tile.start - enc_start:tile.end - enc_start].to(dtype)
                 with clock("decode"):
-                    emissions = emissions + pooled.motif_bias(x, model.decoder, dtype=dtype, device=device)
+                    emissions = emissions + pooled.motif_bias(x, model.decoder, canonical=canonical,
+                                                             dtype=dtype, device=device)
                 group.append((tile, x, emissions))
                 counts["oriented_bases"] += len(x)
                 counts["windows"] += 1
@@ -307,7 +318,8 @@ def segment_length(n: int, segments: int, overlap: int) -> int:
 
 
 def _predict_segments(model, seqid, seq, *, code, structure, tables, window, overlap,
-                      segments, device, dtype, clock, strands, stride, margin, rows, counts):
+                      segments, device, dtype, clock, strands, stride, margin, canonical,
+                      rows, counts):
     """The ``segments`` mode of :func:`predict_sequence`: one carried-state
     scan over every segment of every strand, fed one ``window``-base tile at
     a time; each tile is encoded when the scan asks for it, so the emissions
@@ -353,7 +365,8 @@ def _predict_segments(model, seqid, seq, *, code, structure, tables, window, ove
                 em = model.encoder(feats)[0][:, a - enc_start:b - enc_start].to(dtype)
             counts["encoded_bases"] += enc_end - enc_start
             lo, hi = max(0, start - 2), min(len(x), end + 1)
-            bias = pooled.motif_bias(x[lo:hi], model.decoder, dtype=dtype, device=device)
+            bias = pooled.motif_bias(x[lo:hi], model.decoder, canonical=canonical,
+                                     dtype=dtype, device=device)
             counts["tiles"] += 1
             return em + bias[:, start - lo:end - lo]
         return emit

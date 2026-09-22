@@ -379,5 +379,61 @@ class EndToEnd(unittest.TestCase):
             self.assertEqual(nbytes, len(text))
 
 
+class CanonicalFlag(unittest.TestCase):
+    """``canonical`` reaches the bias call in both decode modes, and the
+    window profile of ``measure`` refuses it rather than reporting an
+    unmasked row as masked."""
+
+    @unittest.skipUnless(_HAS_TORCH, "torch")
+    def _seen(self, canonical, **kw):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        import torch
+        from model.a import fast_viterbi, features, pooled
+        from model.a.encoder import DecoderParams
+        from model.grammar import TABLES
+
+        dec = DecoderParams().double()
+        n = 30_000
+        seen = []
+
+        def bias(x, decoder, **kwargs):
+            seen.append(kwargs.get("canonical"))
+            return torch.zeros(11, len(x), dtype=kwargs["dtype"])
+
+        with patch.object(features, "encode_sequence",
+                          side_effect=lambda x, available=None: torch.zeros(8, len(x))), \
+             patch.object(pooled, "motif_bias", side_effect=bias), \
+             patch.object(fast_viterbi, "viterbi_windows",
+                          side_effect=lambda ws, es, **k: [(0.0, []) for _ in ws]), \
+             patch.object(fast_viterbi, "viterbi_segments",
+                          side_effect=lambda xs, ems, **k: [(0.0, []) for e in
+                                                            [em(0, min(len(x), k["tile"]))
+                                                             for x, em in zip(xs, ems)]]):
+            C.predict_sequence(
+                SimpleNamespace(encoder=lambda f: torch.zeros(1, 11, f.shape[-1]), decoder=dec),
+                "synthetic", "A" * n, code=TABLES[1],
+                structure=pooled.structure(dec), tables=pooled.duration_tables(dec),
+                window=12288, overlap=4096, device=torch.device("cpu"),
+                dtype=torch.float64, canonical=canonical, **kw)
+        return seen
+
+    @unittest.skipUnless(_HAS_TORCH, "torch")
+    def test_both_modes_pass_the_flag_through(self):
+        for kw in ({}, {"segments": 3}):
+            for canonical in (False, True):
+                seen = self._seen(canonical, **kw)
+                self.assertTrue(seen, (kw, canonical))
+                self.assertEqual(set(seen), {canonical}, (kw, canonical))
+
+    @unittest.skipUnless(_HAS_TORCH, "torch")
+    def test_window_profile_refuses_the_mask(self):
+        from model.a import train
+        with self.assertRaises(ValueError) as cm:
+            train.measure(train.TrainConfig(sources=[], out_dir="/tmp"), "x", None, None,
+                          profile="windows", canonical=True)
+        self.assertIn("canonical-splice", str(cm.exception))
+
+
 if __name__ == "__main__":
     unittest.main()
