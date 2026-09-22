@@ -23,12 +23,26 @@ accuracy target in this fit**. The fusion reduction supports the
 supervision-balance hypothesis for v1 without establishing that the
 defect is fully removed (3.3); the misses that remain are splicing and
 precision, with their cause unresolved. The fitted rows are 1.9–2.7×
-over the portable CPU ceiling. The revision proposed next is a longer fit under the same
-loader (the lenin-0083 GPU grant), scored the same way, before any
-decoder change. The S. pombe normalization row under the v2 checkpoint
-is 9.06 CPU-s/Mb user + system, 1/5.7 of AUGUSTUS against the 1/11
-target (section 3.3). Still pending: that fit and the GPU regime
-(gagarin, lenin-0083).
+over the portable CPU ceiling. **Fit v3** (section 3.3), the longer fit proposed there — 3,000 steps
+with a cosine rate and a 150-step warmup, 4.33 CPU-h on one core, best
+checkpoint at the final step, dev NLL 45.3 → 28.6 — changes the picture
+again without accepting A. Nucleotide F1 rises to 0.891 on chr I and
+0.598 on chr V and locus F1 to 0.786 / 0.603, entirely through precision
+(0.742 → 0.870, 0.546 → 0.680) at flat sensitivity: half as many chains,
+twice as long. The 20-base intron defect is gone (median predicted intron
+34 b → 615 b, correct GT-AG introns 68 → 433) but splice-site placement
+is not fixed (donor F1 0.070, acceptor 0.081, 22,187 reference GT-AG
+introns still missed), and the split defect has become a fusion defect
+(splits 1,827 → 910, fusions 4 → 312, chr V exact-transcript sensitivity
+0.015 → 0.010). Cost is unchanged (12.38 / 8.88 CPU-s/Mb), so the CPU
+verdict stands and **no positive CPU allowance for B follows**. The
+S. pombe normalization row under the v2 checkpoint is 9.06 CPU-s/Mb
+user + system, 1/5.7 of AUGUSTUS against the 1/11 target (section 3.3).
+The revision proposed next is the **decoder**, with the section 6 CPU
+ceiling in scope, since the remaining failures are decoding decisions;
+the monotone dev tail also leaves a still longer fit open, and the two
+would have to be measured separately. Still pending: that revision and
+the GPU regime (gagarin, lenin-0083).
 
 ## 1. What is implemented
 
@@ -1431,7 +1445,7 @@ revision step 4 (`aee0134`), 0.65 CPU-h for the *C. elegans* chr V row
 only held-out species touched is *S. pombe*, for the runtime
 normalization after the leakage check, unscored.
 
-### 3.3 Fitted checkpoints: bounded local CPU fits v1 and v2, 2026-09-22 (both finished; A misses the accuracy target in both, for different reasons)
+### 3.3 Fitted checkpoints: bounded local CPU fits v1, v2 and v3, 2026-09-22 (all finished; A misses the accuracy target in all three, for different reasons)
 
 The recorded rows above all use the 20-step *S. cerevisiae* smoke
 checkpoint (chain-only, no gene-free windows: 208,796 chains on chr V's
@@ -1788,19 +1802,85 @@ for the fit nor makes the core idle, and the v2 launcher reported success
 even when its measurement and scoring commands failed (engels-0108 P3,
 stalin-0113 P2). Every workload argument remains identical to v2's, an
 idle core remains an operator precondition recorded with the run, and
-nothing there has been run. At step 1,950 of 3,000 (10,089.9 s elapsed, 5.17 CPU-s/step
-inclusive of evaluations, ~4.3 CPU-h projected, finish near 15:27Z) the
-dev NLL trace on the fixed 256-window subsample is 176.0 (step 150),
-66.6, 46.2, 48.6, 46.4, 52.0, 50.4, 50.2, 41.6, 42.7, 38.0 (step 1,650,
-best so far), 48.3, 49.0, at `lr` 3.000e-04 falling to 1.003e-04. The
-best point so far is below v2's selected 45.3 on the same subsample, but
-adjacent evaluations still differ by ~10 NLL at a third of the initial
-step size, and dev NLL is not the accuracy criterion: the trigger stated
-above is the chr I and chr V scores.
+they were then run unchanged after the fit exited 0.
+
+**Fit v3 finished 2026-09-22T15:27:57Z, `train exit=0`, GNU-time
+`Exit status: 0`.** 3,000 steps in 15,562.6 CPU-s inclusive of
+evaluations = **4.32 CPU-h** on one core (user+system 15,588.05 s =
+4.33 CPU-h, wall 4:19:59), 5.188 CPU-s/step against v2's 5.293, peak RSS
+2.11 GiB. The actual evaluation share is **5.582 %** (868.75 /
+15,562.64), against the 5.693 % projected from v2 under the
+constant-unit-cost assumption. The accepted-draw composition is
+40.0 % CDS / 29.6 % intron / 30.3 % intergenic over 71,218,348 sampled
+bases (24,000 accepted of 24,000 attempted, 955 background draws) —
+v2's balance at twice the volume. The selected checkpoint is
+**step 3,000 of 3,000**, dev NLL **28.640** on the fixed 256-window
+subsample against v2's 45.335 at step 900; `best.pt` sha256 `8a32c93e…`.
+The ~10-NLL oscillation of the first half disappears once `lr` falls
+below ~1e-4 (last seven evaluations in a 28.6–32.4 band), and the best
+point is the last step, so the step budget rather than convergence ended
+this fit.
+
+**Scored on chr I and chr V with the pre-registered launcher**
+(`fit-cpu-v3/score-final/`, gate passed, all four workloads exit 0,
+`summarize.py` reproduces the tables; measurement commit `85d534c`,
+whose only difference from the fit's `6c7aac1` inside `model/` and
+`benchmark/` is the cosine config validation and its tests):
+
+| metric | chr I v2 → v3 | chr V v2 → v3 |
+|---|---|---|
+| nucleotide F1 | 0.825 → **0.891** | 0.538 → **0.598** |
+| nt sens / prec | 0.931/0.742 → 0.912/0.870 | 0.531/0.546 → 0.533/0.680 |
+| locus F1 | 0.558 → **0.786** | 0.413 → **0.603** |
+| predicted chains (median CDS span) | 214 (346 b) → 107 (1,149 b) | 13,410 (294 b) → 6,156 (621 b) |
+| fusion / split | 2/1 → 3/0 | 4/1,827 → **312**/910 |
+| exact transcripts (sens) | 69 (0.734) → 64 (0.681) | 101 (0.015) → 70 (**0.010**) |
+| donor / acceptor F1 | 0 → 0 | 0.014/0.025 → 0.070/0.081 |
+| GT-AG introns TP | 0 → 0 (3 reference) | 68 → **433** (22,620 reference) |
+| median predicted intron | 21 b → 81.5 b | 34 b → **615 b** |
+| CPU-s/Mb (RSS) | 12.54 → 12.38 (0.96 GiB) | 8.88 → 8.88 (2.05 GiB) |
+
+Reading of that table, stated as what it supports:
+
+1. **The gain is precision, not sensitivity.** Nucleotide sensitivity is
+   flat on both chromosomes; precision moves 0.742 → 0.870 and 0.546 →
+   0.680. Chains halve and median spans roughly double: A emits fewer,
+   longer chains, it does not find more coding sequence.
+2. **Intron *length* is fixed, intron *placement* is not.** The v2 defect
+   of piling introns at the 20 b floor is gone (median 34 b → 615 b, the
+   right regime for *C. elegans*) and correct GT-AG introns rise 68 →
+   433, but 22,187 reference GT-AG introns are still missed, 3,986
+   predicted introns are non-canonical, and donor/acceptor F1 reach only
+   0.070/0.081. Splicing remains the open failure.
+3. **The split defect has become a fusion defect.** Splits fall 1,827 →
+   910 while fusions rise 4 → 312 and chr V exact transcripts fall 101 →
+   70 (sens 0.015 → 0.010). Longer chains merge neighbouring genes. The
+   locus-F1 gain is real and is bought partly with fusion, so it is not a
+   clean improvement in gene-level structure.
+4. **Cost is unchanged** (12.38 and 8.88 CPU-s/Mb, decode still the
+   larger stage on chr V at 105.48 of 185.80 CPU-s): same architecture
+   and tiling, different weights. The section 5 CPU verdict stands and
+   **no positive CPU allowance for B follows from this run**.
+5. **A still misses the accuracy target.** Exact-transcript sensitivity
+   on chr V is 0.010. Three fits (v1, v2, v3) have each fixed the
+   previous one's dominant geometric defect and exposed the next:
+   fusion → sub-minimal introns and over-prediction → plausible intron
+   lengths with wrong splice sites and fusion. The next revision is the
+   decoder, with the section 6 CPU ceiling in scope, since the remaining
+   failures (splice-site placement, locus boundaries) are decoding
+   decisions rather than a shortage of fitting steps — though the
+   monotone dev tail means a still longer fit is not ruled out either,
+   and the two are separable only if measured separately.
+
+`docs/cost-baseline/measured.tsv` now carries four **fitted** candidate-A
+rows — v2 and v3 on *S. cerevisiae* chr I and on *C. elegans* chr V — in
+the 3.2 user-only convention, with the nucleotide, locus and transcript
+F1 columns filled from `benchmark/score.py`. The earlier candidate-A rows
+there are smoke-checkpoint cost rows and stay marked unscored.
 
 CPU accounting for this section: fit v1 1.62 CPU-h, fit v2 2.21 CPU-h,
-fit v3 ~4.4 CPU-h projected (in flight, actual recorded when it finishes),
-final scoring 0.05 CPU-h each (chr I 3 s, chr V ~190 s incl. scorer),
+fit v3 4.33 CPU-h (measured, user+system), final scoring 0.05 CPU-h each
+(chr I 3 s, chr V ~190 s incl. scorer), three scoring runs so far,
 probes and dry run ~0.35 CPU-h; all local, cluster CPU-hours 0, GPU-hours
 0 (lenin-0083 still open).
 
