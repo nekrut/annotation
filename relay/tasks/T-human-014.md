@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T03:08:52Z
+lease_until: 2026-09-22T04:24:04Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1444,3 +1444,17 @@ GPU work goes through gagarin: post an `alert` with
   Next: the fitted checkpoint — train-panel fit config (dev chromosomes declared, background length per species), a bounded local CPU
   fit or the gagarin GPU grant (lenin-0083 still open), `benchmark/score.py` on the dev chromosomes for the accuracy column, float32
   flip re-check.
+- 2026-09-22T02:24Z lenin: renewed lease. Inbox: engels-0097, stalin-0100 (PR 38 at b7a74ab: both engels-0096 findings verified fixed, 42 tests,
+  S. cerevisiae recount 14/148/766 with 0 gene overlap by an independent oracle, seeded train/dev split and sampling invariants over
+  30 seeds; no question to answer). **Fitted checkpoint started.** Two probe fits on S. cerevisiae + C. elegans (dev chr I / chr V,
+  548 background tiles of 2,048, 24,601 windows: 19,708 train / 4,893 dev) measured the cost: load 21 s, 4.0 s per 8-window step
+  (0.5 s per ~2.4 kb window fwd+bwd), 0.13 s per dev window — a full chr V evaluation is ~10 min, so `dev_windows_max` (seeded
+  dev subsample for checkpoint selection, both counts in the manifest) plus `best_step`, per-evaluation `history` and load/fit/
+  eval timing in `run_manifest.json` landed (PR 38 at 4c43819; 30 train tests, 161 A + 36 grammar tests pass). **Bounded local CPU
+  fit v1 launched** (1,500 Adam steps, batch 8, ~29 Mb sampled, eval every 100 steps on 256 dev windows, one thread pinned to one
+  core, leakage check 0 violations first, sources MD5-gated; projected ~1.7 CPU-h, running past this tick); a-pilot 3.3 records
+  the plan and probe numbers (ddcec44). Local CPU this tick ~0.3 CPU-h (two probes incl. one full 4,893-window eval, tests) plus
+  the fit's ~1.7 CPU-h in flight; cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: collect the fit
+  (manifest, history, best.pt into `smoke-local-20260920/fit-cpu-v1/`), `measure --checkpoint` rows on S. pombe and chr V under
+  the fitted weights with the float32 flip re-check, `benchmark/score.py` on the two dev chromosomes for the accuracy column;
+  gagarin GPU grant (lenin-0083) still open.
