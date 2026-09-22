@@ -184,7 +184,8 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                      stride: Optional[int] = None,
                      segments: Optional[int] = None,
                      margin: Optional[int] = None,
-                     canonical: bool = False) -> Tuple[List[str], dict]:
+                     canonical: bool = False,
+                     pwm=None) -> Tuple[List[str], dict]:
     """Decode ``seq`` on ``strands`` and return ``(gff3 rows, counts)``.
 
     ``counts``: ``oriented_bases`` (sum of decoded window lengths, overlap
@@ -235,10 +236,19 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
     ablation of the decoder alone over any checkpoint. In both modes the
     mask reads the same extended slice as the bias, so a tile boundary never
     decides whether a site is masked.
+
+    ``pwm`` is a :class:`model.a.splicepwm.SplicePWM` whose donor and acceptor
+    log-odds are added on top of the dinucleotide bias (section 3.5 increment
+    2). It is the same kind of inference-only decoder option as ``canonical``:
+    emission bias only, both kernels and both reference decoders unchanged.
+    The ``segments`` mode widens the slice each tile scores so that a
+    junction's whole context is read inside the segment, and the module's
+    own convention (a column past the slice contributes 0) covers the
+    remaining segment and window edges.
     """
     import torch
 
-    from . import pooled
+    from . import pooled, splicepwm
     from .encoder import POOL_STRIDE
     from .fast_viterbi import viterbi_windows
     from .features import encode_sequence
@@ -277,7 +287,7 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                                  tables=tables, window=window, overlap=overlap,
                                  segments=segments, device=device, dtype=dtype,
                                  clock=clock, strands=strands, stride=stride,
-                                 margin=margin, canonical=canonical,
+                                 margin=margin, canonical=canonical, pwm=pwm,
                                  rows=rows, counts=counts)
 
     with torch.no_grad():
@@ -298,6 +308,8 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                 with clock("decode"):
                     emissions = emissions + pooled.motif_bias(x, model.decoder, canonical=canonical,
                                                              dtype=dtype, device=device)
+                    if pwm is not None:
+                        emissions = emissions + splicepwm.bias(x, pwm, dtype=dtype, device=device)
                 group.append((tile, x, emissions))
                 counts["oriented_bases"] += len(x)
                 counts["windows"] += 1
@@ -319,7 +331,7 @@ def segment_length(n: int, segments: int, overlap: int) -> int:
 
 def _predict_segments(model, seqid, seq, *, code, structure, tables, window, overlap,
                       segments, device, dtype, clock, strands, stride, margin, canonical,
-                      rows, counts):
+                      pwm, rows, counts):
     """The ``segments`` mode of :func:`predict_sequence`: one carried-state
     scan over every segment of every strand, fed one ``window``-base tile at
     a time; each tile is encoded when the scan asks for it, so the emissions
@@ -329,7 +341,7 @@ def _predict_segments(model, seqid, seq, *, code, structure, tables, window, ove
     trace in the emissions."""
     import torch
 
-    from . import pooled
+    from . import pooled, splicepwm
     from .encoder import DEPENDENCY_RADIUS, POOL_STRIDE
     from .fast_viterbi import viterbi_segments
     from .features import encode_sequence
@@ -364,9 +376,19 @@ def _predict_segments(model, seqid, seq, *, code, structure, tables, window, ove
             with clock("encoder"):
                 em = model.encoder(feats)[0][:, a - enc_start:b - enc_start].to(dtype)
             counts["encoded_bases"] += enc_end - enc_start
-            lo, hi = max(0, start - 2), min(len(x), end + 1)
+            # The dinucleotide bias reads two bases before a boundary and one
+            # after; a PWM column reaches as far as its span. Widen the scored
+            # slice to whichever is further, so no tile boundary truncates a
+            # junction's context inside the segment.
+            back, fwd = 2, 1
+            if pwm is not None:
+                back = max(back, -pwm.donor_span[0], -pwm.acceptor_span[0])
+                fwd = max(fwd, pwm.donor_span[1] - 1, pwm.acceptor_span[1] - 1)
+            lo, hi = max(0, start - back), min(len(x), end + fwd)
             bias = pooled.motif_bias(x[lo:hi], model.decoder, canonical=canonical,
                                      dtype=dtype, device=device)
+            if pwm is not None:
+                bias = bias + splicepwm.bias(x[lo:hi], pwm, dtype=dtype, device=device)
             counts["tiles"] += 1
             return em + bias[:, start - lo:end - lo]
         return emit
