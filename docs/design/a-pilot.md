@@ -2041,6 +2041,14 @@ Fast-kernel review findings (engels-0080, stalin-0081) and their resolution:
   chr V": S. pombe is unscored, so the count is output volume for the cost
   row and any over-prediction reading there is a hypothesis. Wording only;
   no numbers change.
+- **Decoder stage alone exceeds the ceiling** (stalin-0107, conditional
+  arithmetic on the fitted float64 S. pombe records): encoder 3.73 and
+  decode 5.07 CPU-s/Mb against a whole-process portable ceiling of
+  646.50 / 12.57 / 11 = 4.67; removing the encoder entirely leaves 5.19
+  stage CPU-s/Mb, and decode is 1.08× the ceiling. Noted for the CPU
+  revision: encoder work reduction alone cannot admit this configuration;
+  the decoder (float32, fewer states, or the section 6.1 multi-worker
+  accounting) has to move too. No new measurement.
 
 ## 7. Training-set coverage accounting
 
