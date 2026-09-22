@@ -1412,7 +1412,7 @@ revision step 4 (`aee0134`), 0.65 CPU-h for the *C. elegans* chr V row
 only held-out species touched is *S. pombe*, for the runtime
 normalization after the leakage check, unscored.
 
-### 3.3 Fitted checkpoint: bounded local CPU fit v1, 2026-09-22 (in progress)
+### 3.3 Fitted checkpoint: bounded local CPU fit v1, 2026-09-22 (finished; A misses the accuracy target in this fit)
 
 The recorded rows above all use the 20-step *S. cerevisiae* smoke
 checkpoint (chain-only, no gene-free windows: 208,796 chains on chr V's
@@ -1447,37 +1447,93 @@ stays open for the fit under the cap and the GPU half):
   initialisation spreads mass over every chain), 431 train / 440 dev
   after 10 steps.
 
-Progress at the 2026-09-22T03Z tick (`smoke-local-20260920/fit-cpu-v1/`
-in the relay artifacts holds `run.sh`, `config.json`, the leakage and MD5
-records and the partial log): step 600 of 1,500 after 2,308 s (3.85 s per
-step including evaluations, on the probe's projection); train NLL per
-window 40 / 40 / 24 / 45 / 71 / 46 at steps 100–600, dev NLL on the 256
-selected windows 129 / 60 / 42 / 45 / 66 / 58, so `best_step` is 300 so
-far (both curves are noisy at batch 8; the run is bounded, not tuned).
+Run of record (`smoke-local-20260920/fit-cpu-v1/` in the relay artifacts:
+`run.sh`, `config.json`, `leakage_check.out`, `source_md5.txt`,
+`train.out`, `run_manifest.json`, `train_time.txt`, `run.log`,
+`best_pt.sha256`): exit 0 after **1,500 steps in 5,833 CPU-s = 1.62 CPU-h**
+on one core (`/usr/bin/time -v`: user 5,631.9 s + sys 201.4 s, wall
+1:37:17, 99 % of one core, peak RSS 2.14 GiB; manifest timing: load 20.7 s,
+fit 5,811 s of which the 15 evaluations 467 s). Train NLL per window
+40 / 40 / 24 / 45 / 71 / 46 / 55 / 41 / 51 / 16 / 48 / 36 / 17 / 56 / 35 at
+steps 100–1,500; dev NLL on the 256 selected windows 129 / 60 / 42 / 45 /
+66 / 58 / 49 / 46 / **38** / 48 / 51 / 52 / 70 / 59 / 44, so `best_step` is
+**900** (`best.pt` sha256 `181adad7…4cf88b`, 1.8 MB, host-local). Both
+curves are noisy at batch 8 and the run covers ~0.6 of one pass; it is a
+bounded fit, not a tuned one.
 
-**Scoring pipeline dry run** (same tick, interim step-300 checkpoint, one
-thread on a different core from the fit): `measure --profile chromosome
---segments 19 --overlap 4096 --gff-out` on *S. cerevisiae* chr I
-(230,218 bases) then `benchmark/score.py --seqids {chr I} --genome
---declaration`; both exit 0, `score-dry/` in the artifact directory. Chr I
-costs **12.79 CPU-s/Mb** end to end (encoder 1.30 s, decode 1.60 s, peak
-RSS 0.96 GiB; the scorer itself 0.17 CPU-s). The interim numbers are a
-pipeline check, not the reported accuracy: nucleotide sensitivity 0.963 /
+**Scoring pipeline dry run** (the 2026-09-22T03Z tick, interim step-300
+checkpoint, one thread on a different core from the fit): `measure
+--profile chromosome --segments 19 --overlap 4096 --gff-out` on
+*S. cerevisiae* chr I (230,218 bases) then `benchmark/score.py --seqids
+{chr I} --genome --declaration`; both exit 0, `score-dry/` in the
+artifact directory. Chr I costs **12.79 CPU-s/Mb** end to end (encoder
+1.30 s, decode 1.60 s, peak RSS 0.96 GiB; the scorer itself 0.17 CPU-s).
+The interim numbers were a pipeline check: nucleotide sensitivity 0.963 /
 precision 0.456 (MCC 0.44), 662 predicted loci against 94 reference (84
 TP, 7 fusions), transcript F1 0.07, and 320 predicted introns against 3
-reference of which 316 are non-GT-AG. At step 300 the decoder
-over-predicts CDS on both strands and opens non-canonical introns; the
-finished fit's chr I and chr V scores decide whether that is a training
-artefact or a decoder gap (the motif bias of `pooled.motif_bias` is
-learned, so an under-fit bias is the first suspect).
+reference of which 316 are non-GT-AG (engels-0098 and stalin-0102
+reproduced these from the records and confirmed the motif tables had
+moved in the canonical direction by step 300).
 
-What it will feed (next tick): `measure --checkpoint` chromosome rows on
-*S. pombe* and *C. elegans* chr V under the fitted weights (the encoder
-cost is checkpoint-independent, the decode's near-tie float32 flip count
-is not), `benchmark/score.py` on the two development chromosomes for the
-accuracy column, and the section 6.1 table's accuracy entries. This fit is
-bounded by the local host, not by the Phase 4 cap: its 1.7 CPU-h is
-recorded in the task log; cluster GPU-hours stay 0.
+**Development-chromosome scores under the finished `best.pt`** (step 900;
+`score-final/` in the artifact directory, same `measure --checkpoint`
+→ `score.py` pipeline, code `aeed615` whose model source digest equals the
+fit's `4c43819`, one thread on core 2, all exits 0):
+
+| | *S. cerevisiae* chr I | *C. elegans* chr V |
+|---|---|---|
+| bases / tiles | 230,218 / 76 | 20,924,180 / 3,420 |
+| end-to-end CPU-s (CPU-s/Mb) | 2.78 (**12.09**) | 185.4 (**8.86**) |
+| encoder / decode / preprocess / io / output CPU-s | 1.26 / 1.48 / 0.033 / 0.008 / 0.0002 | 77.6 / 105.0 / 2.33 / 0.44 / 0.015 |
+| peak host RSS | 0.96 GiB | 2.05 GiB |
+| reference transcripts (loci) / introns | 94 (94) / 3 | 6,766 (4,995) / 22,824 |
+| predicted transcripts | **6** | **287** |
+| nucleotide sens / prec / F1 / MCC | 0.039 / 0.356 / 0.071 / 0.020 | 0.470 / 0.586 / 0.522 / 0.461 |
+| locus TP / FP / FN; fusions; splits | 3 / 3 / 91; 2; 0 | 269 / 18 / 4,726; **238**; 121 |
+| exact transcripts / exact CDS exons | 0 / 0 | 0 / 67 |
+| predicted introns: GT-AG / GC-AG / AT-AC / other | 31: 1 / 0 / 0 / 30 | 10,261: 424 (162 TP) / 43 / 10 / **9,622** |
+| predicted chain span median / max (bases) | 11,212 / 15,989 | **81,233 / 842,820** |
+| predicted intron length median / max (bases) | 845 / 12,028 | 1,336 / 52,199 |
+
+Cost: both development chromosomes decode inside the 15 CPU-s/Mb CPU
+budget under the fitted weights (chr V cheaper than chr I per Mb because
+the decode traces back 287 rather than hundreds of chains; the encoder
+share is unchanged from section 3.2), and peak RSS stays under 8 GB.
+
+Accuracy: **the fitted checkpoint does not produce gene-by-gene
+structure, so candidate A misses the accuracy target in this fit.** On chr
+V it emits 287 chains of median 81 kb that run through many reference
+genes (238 fusions, 121 splits) joined by long non-canonical introns
+(median 1.3 kb, 94 % non-GT-AG), which is why nucleotide sensitivity
+reaches 0.47 while no transcript and only 67 of 28,569 CDS exons are
+exact; on the intronless-dominated yeast chr I it emits almost nothing.
+The interim step-300 checkpoint over-predicted instead (662 chains on chr
+I). Both behaviours are consistent with one cause that the run records
+make explicit: in this fit's training windows every non-CDS base is
+supervised as *intron* except the 10-base flanks (`FLANK` of the
+admission audit) and the 548 gene-free background tiles (2,048 bases each,
+~1.1 Mb against 26.3 Mb sampled), so the encoder gets almost no signal
+separating intergenic from intronic sequence, and the chromosome decode
+stitches neighbouring genes together through intergenic stretches the
+emissions score as intron. The duration factor alone does not prevent this
+(stalin-0102: −305 nats at 1,000 bases for the step-300 tables, yet the
+final decode's median intron is 1.3 kb), so the fix is in the training
+data, not the grammar or scorer.
+
+**Proposed revision before any B allowance** (task goal, last bullet):
+the section 2 adjacent-gene / wide-flank training increment — windows
+that carry their real intergenic neighbourhood with the neighbouring
+genes' CDS supervised (or masked) rather than clean gene-plus-10-base
+windows — plus a background share set from the genome's intergenic
+fraction rather than a fixed 400 tiles per species, and a second bounded
+fit (v2) scored the same way. The GT-AG motif tables already move in the
+canonical direction (stalin-0102), so no decoder change is proposed until
+v2 is scored. Section 6.1's accuracy column carries the v1 numbers above
+as the first measured entry; they are not the reported accuracy of A.
+
+CPU accounting for this section: fit 1.62 CPU-h, final scoring 0.05 CPU-h
+(chr I 3 s, chr V 189 s incl. scorer), probes and dry run ~0.3 CPU-h; all
+local, cluster CPU-hours 0, GPU-hours 0 (lenin-0083 still open).
 
 ## 4. Budget and caps
 
@@ -1532,10 +1588,20 @@ revision step 4, float32 decode, is measured at **8.27 / 7.94 / 8.43**
 of record. The decode is per-step dispatch-bound (42 µs per step at
 B = 38), so the remaining decode lever is a compiled scan step, worth
 at most ~2 CPU-s/Mb; the encoder work reduction, measured together with
-a fitted checkpoint's accuracy, is necessary for 1/11 on CPU. Still
-missing: a checkpoint fit for more than 20 steps (the accuracy column),
-a metazoan chromosome, and the GPU regime with the 6.1 multi-worker
-decoder accounting (gagarin)._
+a fitted checkpoint's accuracy, is necessary for 1/11 on CPU.
+**Accuracy column, first entry (section 3.3, fit-cpu-v1 step 900,
+`fit-cpu-v1/score-final/`)**: *S. cerevisiae* chr I nucleotide
+0.039 / 0.356 sens / prec, 6 predicted transcripts against 94, 0 exact;
+*C. elegans* chr V 0.470 / 0.586, 287 predicted against 6,766 (238
+fusions), 0 exact transcripts, 67 exact CDS exons, 9,622 of 10,261
+predicted introns non-canonical — under the fitted weights the two
+chromosomes cost 12.09 and 8.86 CPU-s/Mb (stage sum), inside 15, at
+≤ 2.05 GiB. A misses the accuracy target in this fit; the diagnosed cause
+is the training-window regime (no intergenic supervision beyond 10-base
+flanks and 548 background tiles), and the proposed revision is the
+adjacent-gene / wide-flank loader increment plus a genome-matched
+background share, then fit v2. Still missing: fit v2, and the GPU regime
+with the 6.1 multi-worker decoder accounting (gagarin)._
 
 ## 6. Review responses (PR #38)
 
