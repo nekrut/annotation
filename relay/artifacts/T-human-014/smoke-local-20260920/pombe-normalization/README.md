@@ -18,7 +18,7 @@ SHA-256s are in `gff3_sha256.txt`, `A-f32/gff3_sha256.txt` and
 (one per nuclear chromosome, both strands inside); the excluded
 mitochondrion is NC_088682.1 (19,433 bases; engels-0093).
 
-| run | genome Mb | stage CPU-s (sum) | process user s | system s | wall s | **stage / Mb** | user / Mb | user + system / Mb | peak RSS (max over chromosomes) | chains / genes |
+| run | genome Mb | stage CPU-s (sum) | process user s | system s | process wall s | **stage / Mb** | user / Mb | user + system / Mb | peak RSS (max over chromosomes) | chains / genes |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | A, 1 segment per strand (exact strand decode), margin 491 | 12.5718 | 507.24 | 500.61 | 8.46 | 509.30 | 40.35 | 39.82 | 40.49 | 1.49 GiB (chr I) | 121,937 |
 | A, 19 segments per strand, seam overlap 4,096, margin 491 | 12.5718 | 115.96 | 103.47 | 14.32 | 117.89 | **9.22** | 8.23 | 9.37 | 1.31 GiB (chr I) | 121,937 |
@@ -57,10 +57,10 @@ float32, with the carried scores rebased at every tile seam in the segment
 mode so the running magnitude is a tile's, not a segment's; same
 checkpoint, protocol and core, 2026-09-21 10:11–10:22 UTC):
 
-| run | stage CPU-s (sum) | process user s | system s | wall s | **stage / Mb** | user / Mb | user + system / Mb | peak RSS (max) | chains |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| A, 1 segment per strand, float32 | 499.30 | 493.04 | 8.09 | 499.52 | 39.72 | 39.22 | 39.86 | 1.49 GiB (chr I) | 121,935 |
-| A, 19 segments per strand, float32 | 103.99 | 99.87 | 6.06 | 104.04 | **8.27** | 7.94 | 8.43 | 0.97 GiB (chr I) | 121,938 |
+| run | stage CPU-s (sum) | process user s | system s | stage wall s | process wall s | **stage / Mb** | user / Mb | user + system / Mb | peak RSS (max) | chains |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| A, 1 segment per strand, float32 | 499.30 | 493.04 | 8.09 | 499.52 | 501.37 | 39.72 | 39.22 | 39.86 | 1.49 GiB (chr I) | 121,935 |
+| A, 19 segments per strand, float32 | 103.99 | 99.87 | 6.06 | 104.04 | 105.98 | **8.27** | 7.94 | 8.43 | 0.97 GiB (chr I) | 121,938 |
 
 Stages at 19 segments per genome Mb: preprocess 0.11, encoder 3.76,
 decode **4.34** (float64: 5.31), output 0.05, I/O 0.01; per chromosome

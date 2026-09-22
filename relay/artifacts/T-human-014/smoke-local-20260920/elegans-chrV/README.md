@@ -25,12 +25,12 @@ AUGUSTUS command is marx-0026's with `--species=caenorhabditis`. GFF3
 outputs (A: 61.8 MB; AUGUSTUS: 5.5 MB) are not committed; SHA-256s are in
 `gff3_sha256.txt`.
 
-| run | genome Mb | stage CPU-s (sum) | process user s | system s | wall s | **stage / Mb** | user / Mb | user + system / Mb | peak RSS | chains / genes |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| A, 1 segment per strand (exact strand decode), float64, margin 491 | 20.9242 | 884.38 | 878.39 | 6.70 | 884.74 | 42.27 | 41.98 | 42.30 | 4.87 GiB | 208,796 |
-| A, 19 segments per strand, seam overlap 16,384, float64, margin 491 | 20.9242 | 201.67 | 177.43 | 24.98 | 201.70 | **9.64** | 8.48 | 9.67 | 2.04 GiB | 208,796 |
-| A, 19 segments per strand, seam overlap 16,384, float32 (seam rebase), margin 491 | 20.9242 | 175.07 | 164.17 | 11.60 | 175.16 | 8.37 | 7.85 | 8.40 | 1.74 GiB | 208,801 |
-| AUGUSTUS 3.5.0, one process, chr V | 20.9242 | – | 1092.12 | 0.34 | 1092.48 | – | **52.19** | 52.21 | 0.70 GiB | 3,357 |
+| run | genome Mb | stage CPU-s (sum) | process user s | system s | stage wall s | process wall s | **stage / Mb** | user / Mb | user + system / Mb | peak RSS | chains / genes |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| A, 1 segment per strand (exact strand decode), float64, margin 491 | 20.9242 | 884.38 | 878.39 | 6.70 | 884.74 | 885.46 | 42.27 | 41.98 | 42.30 | 4.87 GiB | 208,796 |
+| A, 19 segments per strand, seam overlap 16,384, float64, margin 491 | 20.9242 | 201.67 | 177.43 | 24.98 | 201.70 | 202.44 | **9.64** | 8.48 | 9.67 | 2.04 GiB | 208,796 |
+| A, 19 segments per strand, seam overlap 16,384, float32 (seam rebase), margin 491 | 20.9242 | 175.07 | 164.17 | 11.60 | 175.16 | 175.86 | 8.37 | 7.85 | 8.40 | 1.74 GiB | 208,801 |
+| AUGUSTUS 3.5.0, one process, chr V | 20.9242 | – | 1092.12 | 0.34 | – | 1092.48 | – | **52.19** | 52.21 | 0.70 GiB | 3,357 |
 
 Stages per genome Mb at 19 segments, float64: preprocess 0.12, encoder
 3.91, decode 5.50, output 0.09, I/O 0.02; float32: 0.11 / 3.74 / 4.41 /
@@ -38,7 +38,7 @@ Stages per genome Mb at 19 segments, float64: preprocess 0.12, encoder
 19-segment float64 row is the row of record, as on *S. pombe*.
 
 **Against the budget.** AUGUSTUS costs 52.2 user CPU-s/Mb on chr V here,
-within 2% of its 51.4 on the *S. pombe* nuclear genome on the same core,
+within 2% of its 51.4 on the *S. pombe* nuclear genome on this machine,
 so the same-command machine factor of the *S. pombe* row (3.21× faster than
 the cost-baseline runner) is used. A at 19 segments is **1/5.4 of AUGUSTUS
 on user + system** (9.67 / 52.21), 1/6.2 on user only (8.48 / 52.19), 1/5.4

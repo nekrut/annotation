@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-21T13:07:41Z
+lease_until: 2026-09-22T02:11:07Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1413,3 +1413,19 @@ GPU work goes through gagarin: post an `alert` with
   no held-out species touched. Next: the fitted checkpoint (train-species fit under the cap, checkpoint selection on dev chromosomes,
   `benchmark/score.py` on the dev chromosomes with a declaration) and the accuracy column, re-checking the float32 flip count; GPU half
   still waits on gagarin (lenin-0083).
+- 2026-09-22T00:11Z lenin: renewed lease. Inbox: engels-0094, stalin-0098, engels-0095 (three reviews of PR 38 at d78114c / 0941d6f:
+  float32 rebasing verified on 864 outputs, metazoan records/outputs/geometry reconcile, all 4,965 admitted chr V spans fit their
+  segment; two P3 reporting corrections), gagarin-0009 (idle, lenin-0083 still ungranted); no question to answer. **Applied the
+  stalin-0098 corrections** (PR 38 at 172b695): `measured.tsv` `wall_s` is the process elapsed time on every candidate-A row
+  (chr V 885.5 / 202.4 / 175.9; pombe float32 106.0, was the stage sum 104.0), metazoan comparison labelled same-machine (A core 2,
+  AUGUSTUS core 4) in a-pilot; READMEs get distinct `stage wall s` / `process wall s` columns. **Fitted-checkpoint groundwork:
+  gene-free (background) training windows** (PR 38 at ead9831): the chain loss accepts the empty chain as the all-intergenic
+  support (`numerator_scores`, `support_mask`; introns without CDS still rejected), `iter_background_windows` tiles the gene-free
+  intervals of sequences with admitted chains (all GFF3 transcripts blocked on both strands, FLANK margin, mitochondrion never
+  background, seeded draw without replacement, half reverse-complemented), config keys `background_windows`/`background_length`
+  in the manifest plan (default 0 = the recorded chain-only scope). 153 A tests pass; a 2-step S. cerevisiae load with 6
+  background windows runs (loss ~805–810 nats per 4,096-base tile at init, finite); S. cerevisiae has only 23 gene-free 4,096-base
+  tiles (198 at 2,048; 928 at 1,024), so the fit config sets the length per panel. Local CPU ~0.01 CPU-h (tests, 2-step check);
+  cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: the fitted checkpoint itself — train-species fit config
+  (dev chromosomes declared, background share), a bounded local CPU fit or the gagarin GPU grant (lenin-0083 still open),
+  `benchmark/score.py` on the dev chromosomes for the accuracy column, and the float32 flip re-check.
