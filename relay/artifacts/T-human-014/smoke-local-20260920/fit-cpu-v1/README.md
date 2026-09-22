@@ -1,4 +1,4 @@
-# fit-cpu-v1: bounded local CPU fit of candidate A (in progress)
+# fit-cpu-v1: bounded local CPU fit of candidate A (finished 2026-09-22T03:59Z)
 
 Run of record for the first fitted checkpoint (a-pilot section 3.3). Code
 `4c43819` (PR #38), config `config.json`, launcher `run.sh`
@@ -11,12 +11,23 @@ model.a.train train`), one thread on one core of an Intel Core Ultra 9 285K.
 - 24,601 windows: 19,708 train / 4,893 dev (548 gene-free 2,048-base
   background tiles); 1,500 Adam steps, batch 8, lr 3e-4, eval every 100
   steps on 256 seeded dev windows.
-- `train.out.partial`: the log at the time of the 2026-09-22T03Z tick (step
-  600 of 1,500, 2,308 s elapsed = 3.85 s/step including evaluations; best
-  dev NLL so far 42.26 at step 300). Replaced by `train.out`,
-  `run_manifest.json` (with `actual`, `history`, `timing`) and
-  `train_time.txt` when the run finishes. `best.pt` (1.8 MB) is kept on the
-  host, sha256 recorded, not committed.
+- Finished: `train.out` (15 evaluations), `run_manifest.json` (`actual`:
+  `best_step` **900**, `best_dev_nll` **38.04**, full `history`, `timing`),
+  `train_time.txt` (`/usr/bin/time -v`: user 5,631.9 s + sys 201.4 s =
+  **5,833 s = 1.62 CPU-h**, wall 1:37:17, 99 % of one core, peak RSS
+  **2.14 GiB**), `run.log` (start/end, commit, exit 0). Timing inside the
+  manifest: load 20.7 s, fit 5,811 s of which evaluations 467 s.
+- Dev NLL on the 256 selected windows by step: 129 / 60 / 42 / 45 / 66 / 58
+  / 49 / 46 / **38** / 48 / 51 / 52 / 70 / 59 / 44 (steps 100–1,500); train
+  NLL per window bounces 16–71. Both curves are noisy at batch 8 and the
+  run covers ~0.6 of one pass (12,000 draws, 26.26 Mb sampled).
+- `best.pt` (step 900, 1.8 MB) stays on the host; sha256 in
+  `best_pt.sha256`
+  (`181adad7c9da846ee9c6faa4d85a3ab5aea7896cd55c97e2cd0bbfac4c4cf88b`).
+
+## score-final/: development-chromosome scores under the finished `best.pt`
+
+See `score-final/README.md` (filled in the same tick the fit finished).
 
 ## score-dry/: scoring-pipeline dry run (interim checkpoint, no accuracy claim)
 

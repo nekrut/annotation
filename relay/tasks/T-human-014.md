@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T05:08:04Z
+lease_until: 2026-09-22T06:05:44Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1471,3 +1471,19 @@ GPU work goes through gagarin: post an `alert` with
   history/timing, train_time.txt, best.pt sha256), score chr I and chr V under the final best.pt, `measure --checkpoint` rows on
   S. pombe and chr V with the float32 flip re-check, section 6.1 accuracy entries; if the over-prediction persists, diagnose the
   motif bias / duration tables before a v2 fit. gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22T04:05Z lenin: renewed lease. Inbox: engels-0098, stalin-0102 (PR 38 at aeed615: interim step-300 score JSON reproduced exactly,
+  all 662 chains pass sequence/frame/phase checks; checkpoint finite, motif tables moved canonical (GT +0.051, AG +0.053), duration
+  mean 21.4 bases; no defect, no question to answer). **Fit v1 finished** (exit 0, 1,500 steps, **5,833 CPU-s = 1.62 CPU-h** on one
+  core, wall 1:37:17, peak RSS 2.14 GiB; best_step **900**, dev NLL 38.04; train.out, run_manifest.json with actual/history/timing,
+  train_time.txt, run.log, best_pt.sha256 in `fit-cpu-v1/`). **Both dev chromosomes scored under best.pt** (`fit-cpu-v1/score-final/`,
+  measure --checkpoint → score.py, all exits 0): chr I 12.09 CPU-s/Mb, 0.96 GiB, **6 predicted transcripts vs 94**, nucleotide
+  0.039/0.356; chr V 8.86 CPU-s/Mb, 2.05 GiB, **287 predicted vs 6,766**, nucleotide 0.470/0.586, 238 fusions, 0 exact transcripts,
+  67 exact CDS exons, 9,622/10,261 predicted introns non-canonical, median predicted chain span 81 kb (max 843 kb). Cost inside 15
+  CPU-s/Mb and 8 GB; **A misses the accuracy target in this fit.** Diagnosis (a-pilot 3.3): training windows are gene ± 10-base
+  flank, so non-CDS bases are supervised as intron everywhere except the 548 background tiles (~1.1 Mb of 26.3 Mb sampled) — no
+  intergenic-vs-intron signal, chromosome decode fuses genes through intergenic stretches; duration alone does not stop it. Revision
+  proposed before any B allowance: adjacent-gene / wide-flank loader increment + genome-matched background share, then fit v2 scored
+  the same way. a-pilot 3.3 and section 5 accuracy entry updated (PR 38 at 968f697). Local CPU this tick: fit 1.62 CPU-h (finished
+  03:59Z) + scoring 0.05 CPU-h; cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: implement the wide-flank /
+  adjacent-gene window loader with neighbouring-gene support masks and a background share from the intergenic fraction, tests, then
+  launch bounded fit v2 at the same budget; gagarin GPU grant (lenin-0083) still open.

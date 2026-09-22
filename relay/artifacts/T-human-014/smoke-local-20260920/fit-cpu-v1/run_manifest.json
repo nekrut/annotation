@@ -1,0 +1,184 @@
+{
+  "actual": {
+    "accepted_windows": 12000,
+    "attempted_draws": 12000,
+    "best_dev_nll": 38.04079751541061,
+    "best_step": 900,
+    "dev_windows": 4893,
+    "dev_windows_evaluated": 256,
+    "history": [
+      {
+        "dev_nll": 129.43879428119962,
+        "elapsed_s": 376.9739356203936,
+        "step": 100,
+        "train_nll": 40.05456202651904
+      },
+      {
+        "dev_nll": 60.155536383377246,
+        "elapsed_s": 775.0597127042711,
+        "step": 200,
+        "train_nll": 39.77809848984791
+      },
+      {
+        "dev_nll": 42.263552082642676,
+        "elapsed_s": 1167.3666150690988,
+        "step": 300,
+        "train_nll": 23.996483828246717
+      },
+      {
+        "dev_nll": 45.39728605382528,
+        "elapsed_s": 1535.5184959541075,
+        "step": 400,
+        "train_nll": 44.8697089124674
+      },
+      {
+        "dev_nll": 66.03702458045451,
+        "elapsed_s": 1918.2979909610003,
+        "step": 500,
+        "train_nll": 70.75043406965952
+      },
+      {
+        "dev_nll": 58.42456512933305,
+        "elapsed_s": 2307.798985333182,
+        "step": 600,
+        "train_nll": 46.11468186788356
+      },
+      {
+        "dev_nll": 48.562278236209764,
+        "elapsed_s": 2685.128386303317,
+        "step": 700,
+        "train_nll": 55.265175258698
+      },
+      {
+        "dev_nll": 46.10273958208994,
+        "elapsed_s": 3075.684968003072,
+        "step": 800,
+        "train_nll": 40.883226771630206
+      },
+      {
+        "dev_nll": 38.04079751541061,
+        "elapsed_s": 3452.2249626172706,
+        "step": 900,
+        "train_nll": 50.75278618884234
+      },
+      {
+        "dev_nll": 48.30464713990803,
+        "elapsed_s": 3866.9550871872343,
+        "step": 1000,
+        "train_nll": 15.838821750330204
+      },
+      {
+        "dev_nll": 50.56119951579658,
+        "elapsed_s": 4253.3577413703315,
+        "step": 1100,
+        "train_nll": 47.653083694722376
+      },
+      {
+        "dev_nll": 51.833574743145746,
+        "elapsed_s": 4644.295214875136,
+        "step": 1200,
+        "train_nll": 36.19652676380766
+      },
+      {
+        "dev_nll": 69.87398255592856,
+        "elapsed_s": 5029.095721741207,
+        "step": 1300,
+        "train_nll": 17.072860167328194
+      },
+      {
+        "dev_nll": 58.51265632326527,
+        "elapsed_s": 5419.0096168601885,
+        "step": 1400,
+        "train_nll": 55.869148383978356
+      },
+      {
+        "dev_nll": 44.42741279569175,
+        "elapsed_s": 5815.769790475257,
+        "step": 1500,
+        "train_nll": 34.93799274521663
+      }
+    ],
+    "sampled_bases": 26259772,
+    "timing": {
+      "eval_cpu_s": 467.12941484800007,
+      "eval_wall_s": 467.5603024736047,
+      "fit_cpu_s": 5811.289182285,
+      "fit_includes_eval": true,
+      "fit_wall_s": 5815.769815614447,
+      "load_cpu_s": 20.698711534999997,
+      "load_wall_s": 20.700826173182577,
+      "torch_threads": 1
+    },
+    "train_windows": 19708
+  },
+  "commit": "4c43819ef0db89b254df30dbf26dabd39e9ad77b",
+  "cuda": null,
+  "device": "cpu",
+  "hardware": "Linux-7.0.0-30-generic-x86_64-with-glibc2.43",
+  "hyperparams": {
+    "background_length": 2048,
+    "background_windows": 400,
+    "batch_size": 8,
+    "dev_windows_max": 256,
+    "eval_every": 100,
+    "grad_clip": 1.0,
+    "loss_kernel": "fast",
+    "lr": 0.0003,
+    "max_window": 12288,
+    "min_intron": 20,
+    "seed": 0,
+    "steps": 1500,
+    "weight_decay": 0.0
+  },
+  "param_count": 455841,
+  "python": "3.11.14",
+  "sampling_plan": {
+    "background_length": 2048,
+    "background_windows_per_species": 400,
+    "batch_size": 8,
+    "dev_draw": "seeded without replacement, at most dev_windows_max",
+    "dev_windows_max": 256,
+    "draw": "uniform-with-replacement over train windows",
+    "max_window": 12288,
+    "planned_draws": 12000,
+    "seed": 0,
+    "steps": 1500
+  },
+  "scope": "encoder-and-pooled-decoder",
+  "source": {
+    "source_dirs": [
+      "model/a",
+      "model/grammar"
+    ],
+    "source_dirty": false,
+    "source_dirty_files": [],
+    "source_files": 19,
+    "source_sha256": "87126ad33214a1deaf223b13b82ea2083ee6008e9c8b45bbec475fedfe8fbc55"
+  },
+  "sources": [
+    {
+      "dev_seqids": [
+        "NC_001133.9"
+      ],
+      "fasta_md5": "88c38b957b721dfc50e6c4df03b6242e",
+      "gff_md5": "1fddbd976c4ce61e8a36a3908d46c25d",
+      "m": 20,
+      "name": "Saccharomyces_cerevisiae",
+      "summary": "/tmp/wt014/model/labels/manifests/Saccharomyces_cerevisiae.summary.json",
+      "table": 1
+    },
+    {
+      "dev_seqids": [
+        "NC_003283.11"
+      ],
+      "fasta_md5": "177a91ec15063e305188306b7e709cb1",
+      "gff_md5": "1656bccd184bf57434724f35bea89738",
+      "m": 20,
+      "name": "Caenorhabditis_elegans",
+      "summary": "/tmp/wt014/model/labels/manifests/Caenorhabditis_elegans.summary.json",
+      "table": 1
+    }
+  ],
+  "task": "T-human-014",
+  "torch": "2.14.0+cpu"
+}

@@ -6,3 +6,11 @@ step 400: train_nll/window=44.8697 dev_nll=45.39728605382528 elapsed_s=1535.5
 step 500: train_nll/window=70.7504 dev_nll=66.03702458045451 elapsed_s=1918.3
 step 600: train_nll/window=46.1147 dev_nll=58.42456512933305 elapsed_s=2307.8
 step 700: train_nll/window=55.2652 dev_nll=48.562278236209764 elapsed_s=2685.1
+step 800: train_nll/window=40.8832 dev_nll=46.10273958208994 elapsed_s=3075.7
+step 900: train_nll/window=50.7528 dev_nll=38.04079751541061 elapsed_s=3452.2
+step 1000: train_nll/window=15.8388 dev_nll=48.30464713990803 elapsed_s=3867.0
+step 1100: train_nll/window=47.6531 dev_nll=50.56119951579658 elapsed_s=4253.4
+step 1200: train_nll/window=36.1965 dev_nll=51.833574743145746 elapsed_s=4644.3
+step 1300: train_nll/window=17.0729 dev_nll=69.87398255592856 elapsed_s=5029.1
+step 1400: train_nll/window=55.8691 dev_nll=58.51265632326527 elapsed_s=5419.0
+step 1500: train_nll/window=34.9380 dev_nll=44.42741279569175 elapsed_s=5815.8
