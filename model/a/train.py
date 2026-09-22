@@ -517,6 +517,29 @@ def record_actual(manifest: dict, *, attempted_draws: int, accepted_windows: int
 # --------------------------------------------------------------------------
 # Torch-dependent training / measurement (imported lazily)
 # --------------------------------------------------------------------------
+def _load_source_windows(config: TrainConfig, src):
+    """The windows one source contributes to :func:`_load_all_windows`.
+
+    Same loader, same order, same background draw; only this source's
+    windows come back, so a caller that needs per-species tallies (the
+    balanced splice PWM) does not have to reconstruct the mapping from
+    sequence ids.
+    """
+    from .dataset import iter_background_windows, iter_windows, LoaderStats
+
+    config.check_window_bound()
+    stats = LoaderStats()
+    examples = list(iter_windows(src.summary, src.gff, src.fasta,
+                                 max_window=config.max_window, stats=stats,
+                                 context=config.context))
+    if config.background_windows:
+        examples.extend(iter_background_windows(
+            src.summary, src.gff, src.fasta,
+            length=config.background_length, count=config.background_windows,
+            seed=config.seed, stats=stats))
+    return examples, stats
+
+
 def _load_all_windows(config: TrainConfig):
     """Load every admitted clean complete-target window for the configured
     species, tagging each with its species genetic-code table, followed by
@@ -1047,6 +1070,7 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
                              {"donor": list(pwm.donor_span),
                               "acceptor": list(pwm.acceptor_span)}),
         "splice_pwm_sites": (None if pwm is None else list(pwm.sites)),
+        "splice_pwm_weighting": (None if pwm is None else pwm.weighting),
         "commit": _git_commit(), "source": _source_provenance(),
         **{f"{st}_cpu_s": clock.cpu.get(st, 0.0) for st in stages},
         **{f"{st}_wall_s": clock.wall.get(st, 0.0) for st in stages},
@@ -1068,7 +1092,8 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
 
 
 def fit_splice_pwm(config: TrainConfig, out: str, *, log=print,
-                   min_sites: int = 500) -> dict:
+                   min_sites: int = 500, balanced: bool = False,
+                   min_group_sites: int = 1) -> dict:
     """Estimate the section 3.5 splice-site PWM and write it to ``out``.
 
     Counts junctions over the **train split only**: the same
@@ -1078,16 +1103,31 @@ def fit_splice_pwm(config: TrainConfig, out: str, *, log=print,
     background base, so the matrix is estimated exactly where the encoder's
     weights were.
 
-    The written JSON records the spans, the site counts, and per source the
-    excluded development sequence ids and the pinned GFF3/FASTA digests, so a
-    scored run can be checked against the leakage rules without rereading the
-    inputs.
+    ``balanced`` weights each source equally instead of each junction
+    equally (:func:`model.a.splicepwm.fit_grouped`). The pooled matrix is
+    dominated by whichever species has the most introns, which on this panel
+    applied a nematode splice score to a yeast chromosome and cost it
+    accuracy; the balanced matrix is the controlled alternative, with the
+    per-source train junction counts written into the JSON so the imbalance
+    is visible in the artifact rather than inferred.
+
+    The written JSON records the spans, the site counts, the weighting, and
+    per source the excluded development sequence ids and the pinned
+    GFF3/FASTA digests, so a scored run can be checked against the leakage
+    rules without rereading the inputs.
     """
     from .dataset import verify_source
     from .splicepwm import fit as _fit
+    from .splicepwm import fit_grouped as _fit_grouped
 
-    examples, _ = _load_all_windows(config)
-    train, dev = split_windows(examples, [i for s in config.sources for i in s.dev_seqids])
+    dev_ids = [i for s in config.sources for i in s.dev_seqids]
+    groups, train, dev = [], [], []
+    for src in config.sources:
+        examples, _stats = _load_source_windows(config, src)
+        src_train, src_dev = split_windows(examples, dev_ids)
+        groups.append((src.name, src_train))
+        train.extend(src_train)
+        dev.extend(src_dev)
     if not train:
         raise ValueError("no train windows: every source is all development")
     sources = []
@@ -1096,10 +1136,18 @@ def fit_splice_pwm(config: TrainConfig, out: str, *, log=print,
         sources.append({"name": src.name, "dev_seqids": list(src.dev_seqids),
                         "gff_md5": digests.get("gff_md5"),
                         "fasta_md5": digests.get("fasta_md5")})
-    pwm = _fit(train, sources=sources, min_sites=min_sites)
+    if balanced:
+        pwm = _fit_grouped(groups, sources=sources, min_sites=min_sites,
+                           min_group_sites=min_group_sites)
+    else:
+        pwm = _fit(train, sources=sources, min_sites=min_sites)
     pwm.dump(out)
-    log(f"splice PWM: {pwm.sites[0]} donors, {pwm.sites[1]} acceptors over "
-        f"{len(train)} train windows ({len(dev)} development windows excluded)")
+    log(f"splice PWM ({pwm.weighting}): {pwm.sites[0]} donors, {pwm.sites[1]} "
+        f"acceptors over {len(train)} train windows "
+        f"({len(dev)} development windows excluded)")
+    for name, src_train in groups:
+        n = sum(len(ex.intron_ranges) for ex in src_train)
+        log(f"  source {name}: {len(src_train)} train windows, {n} junctions")
     log(f"  donor span {pwm.donor_span}, acceptor span {pwm.acceptor_span}, "
         f"background {tuple(round(b, 4) for b in pwm.background)}")
     log(f"  wrote {out} sha256={_file_sha256(out)}")
@@ -1119,6 +1167,13 @@ def build_parser() -> argparse.ArgumentParser:
     pw = sub.add_parser("pwm", help="estimate the splice-site PWM from the train split")
     pw.add_argument("--config", required=True, help="path to a TrainConfig JSON")
     pw.add_argument("--out", required=True, help="where to write the splicepwm.json")
+    pw.add_argument("--balanced", action="store_true",
+                    help="weight every source equally instead of every junction "
+                         "equally, so the species with the most introns does not "
+                         "decide the matrix")
+    pw.add_argument("--min-group-sites", type=int, default=1,
+                    help="with --balanced, refuse a source with fewer train "
+                         "junctions than this")
     pw.add_argument("--min-sites", type=int, default=500,
                     help="refuse a matrix counted over fewer junctions (default 500)")
 
@@ -1168,7 +1223,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.cmd == "train":
         train(config)
     elif args.cmd == "pwm":
-        fit_splice_pwm(config, args.out, min_sites=args.min_sites)
+        fit_splice_pwm(config, args.out, min_sites=args.min_sites,
+                       balanced=args.balanced,
+                       min_group_sites=args.min_group_sites)
     elif args.cmd == "measure":
         measure(config, args.species, args.seqid, args.checkpoint,
                 json_out=args.json_out, decoder=args.decoder,

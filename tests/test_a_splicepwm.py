@@ -133,6 +133,99 @@ class Estimation(unittest.TestCase):
 
 
 @unittest.skipUnless(HAS, "needs torch and model.a.splicepwm")
+class BalancedEstimation(unittest.TestCase):
+    """:func:`model.a.splicepwm.fit_grouped`: one weight per source, not per
+    junction."""
+
+    def test_single_group_reproduces_the_pooled_matrix(self):
+        ex = [_Ex("AAAAGTAAGCCCCCC", [(4, 9)]), _Ex("CCGCGTGAGTTTTAA", [(4, 10)])]
+        pooled_pwm = splicepwm.fit(ex, donor_span=(-1, 2), acceptor_span=(-2, 1),
+                                   min_sites=1)
+        bal = splicepwm.fit_grouped([("one", ex)], donor_span=(-1, 2),
+                                    acceptor_span=(-2, 1), min_sites=1)
+        self.assertEqual(bal.weighting, "balanced")
+        self.assertEqual(pooled_pwm.weighting, "pooled")
+        self.assertEqual(bal.sites, pooled_pwm.sites)
+        for got, want in zip(bal.background, pooled_pwm.background):
+            self.assertAlmostEqual(got, want)
+        for name in ("donor", "acceptor"):
+            for cb, cp in zip(getattr(bal, name), getattr(pooled_pwm, name)):
+                for a, b in zip(cb, cp):
+                    self.assertAlmostEqual(a, b)
+
+    def test_a_thin_source_counts_as_much_as_a_thick_one(self):
+        # 100 junctions with a C at the donor column against 1 with a G:
+        # pooled is decided by the majority, balanced splits the column.
+        thick = [_Ex("ACGTCACGTACGTAT", [(4, 9)]) for _ in range(100)]
+        thin = [_Ex("ACGTGACGTACGTAT", [(4, 9)])]
+        span = (0, 1)
+        pooled_pwm = splicepwm.fit(thick + thin, donor_span=span,
+                                   acceptor_span=span, min_sites=1)
+        bal = splicepwm.fit_grouped([("thick", thick), ("thin", thin)],
+                                    donor_span=span, acceptor_span=span,
+                                    min_sites=1)
+        c, g = splicepwm.BASE_INDEX["C"], splicepwm.BASE_INDEX["G"]
+        pooled_gap = pooled_pwm.donor[0][c] - pooled_pwm.donor[0][g]
+        bal_gap = bal.donor[0][c] - bal.donor[0][g]
+        self.assertGreater(pooled_gap, 3.0)
+        # Each source contributes (n+1)/(n+4) to its own base, so the two
+        # smoothed frequencies average to a column that still prefers C, but
+        # the thin source has pulled the preference down by most of it.
+        self.assertGreater(bal_gap, 0.0)
+        self.assertLess(bal_gap, pooled_gap / 3.0)
+        thick_f = (100 + 1.0) / (100 + 4.0)
+        thin_f = (0 + 1.0) / (1 + 4.0)
+        want = (thick_f + thin_f) / 2.0
+        self.assertAlmostEqual(bal.donor[0][c],
+                               math.log(want / bal.background[c]))
+
+    def test_background_averages_the_sources_not_their_bases(self):
+        # One long AT-rich source and one short GC-rich one: the balanced
+        # background is the mean of the two compositions, halfway between.
+        at = [_Ex("AAAATTTTAAAATTCG", [(4, 9)]) for _ in range(20)]   # A8 T6 C1 G1
+        gc = [_Ex("CCCCGGGGCCCCGGAT", [(4, 9)])]                       # C8 G6 A1 T1
+        bal = splicepwm.fit_grouped([("at", at), ("gc", gc)], min_sites=1)
+        want = {"A": (8 + 1) / 32, "T": (6 + 1) / 32,
+                "C": (1 + 8) / 32, "G": (1 + 6) / 32}
+        for base, value in want.items():
+            self.assertAlmostEqual(bal.background[splicepwm.BASE_INDEX[base]], value)
+        pooled_pwm = splicepwm.fit(at + gc, min_sites=1)
+        self.assertGreater(pooled_pwm.background[splicepwm.BASE_INDEX["A"]], 0.4)
+
+    def test_site_counts_land_in_the_source_entries(self):
+        thick = [_Ex("ACGTCACGTACGTAT", [(4, 9), (10, 13)]) for _ in range(3)]
+        thin = [_Ex("ACGTGACGTACGTAT", [(4, 9)])]
+        bal = splicepwm.fit_grouped(
+            [("thick", thick), ("thin", thin)], min_sites=1,
+            sources=[{"name": "thick", "dev_seqids": []},
+                     {"name": "thin", "dev_seqids": []},
+                     {"name": "absent", "dev_seqids": []}])
+        by_name = {s["name"]: s for s in bal.sources}
+        self.assertEqual(by_name["thick"]["train_sites"], 6)
+        self.assertEqual(by_name["thin"]["train_sites"], 1)
+        self.assertNotIn("train_sites", by_name["absent"])
+        self.assertEqual(bal.sites, (7, 7))
+
+    def test_a_source_with_no_junction_is_refused(self):
+        ok = [_Ex("ACGTCACGTACGTAT", [(4, 9)])]
+        with self.assertRaises(ValueError):
+            splicepwm.fit_grouped([("ok", ok), ("empty", [])], min_sites=1)
+        with self.assertRaises(ValueError):
+            splicepwm.fit_grouped([], min_sites=1)
+        # min_group_sites is the same guard, made explicit.
+        with self.assertRaises(ValueError):
+            splicepwm.fit_grouped([("ok", ok)], min_sites=1, min_group_sites=2)
+
+    def test_weighting_survives_the_round_trip_and_defaults_to_pooled(self):
+        bal = splicepwm.fit_grouped([("one", [_Ex("ACGTCACGTACGTAT", [(4, 9)])])],
+                                    min_sites=1)
+        d = bal.to_json()
+        self.assertEqual(d["weighting"], "balanced")
+        self.assertEqual(splicepwm.SplicePWM.from_json(d).weighting, "balanced")
+        del d["weighting"]  # a matrix written before the field existed
+        self.assertEqual(splicepwm.SplicePWM.from_json(d).weighting, "pooled")
+
+
 class Bias(unittest.TestCase):
     def test_matches_the_position_by_position_score(self):
         rng = random.Random(3)

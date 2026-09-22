@@ -1,14 +1,18 @@
 """Extended splice-site scoring for the decoder (section 3.5 increment 2).
 
-The learned dinucleotide tables of :mod:`model.a.pooled` read exactly two
-bases. Once the hard mask of section 3.4 restricts decoding to GT/GC..AG,
-those two bases are *constant* across every surviving site, so the table
-contributes the same score to every legal donor on a chromosome and the
-decoder has nothing left with which to prefer one GT over another: chr V's
-masked decode kept 1,070 true GT-AG introns but bought them with 1,970 false
-ones (precision 0.352). This module supplies the missing discrimination in
-the only place the section-3.4 evidence says it is missing -- *which* legal
-site -- as a position-weight matrix over the bases around the junction.
+The decoder already scores a site by its context: :mod:`model.a.encoder`
+emits a position-dependent ``donor`` and ``acceptor`` channel at every base,
+and chromosome decoding adds :func:`model.a.pooled.motif_bias` to those rows,
+so two legal GTs never had the same score. What was missing is *extended*
+context. The learned dinucleotide tables of :mod:`model.a.pooled` read
+exactly two bases, so once the hard mask of section 3.4 restricts decoding
+to GT/GC..AG those two bases are constant across every surviving site and
+that term contributes the same score to every legal donor on a chromosome,
+leaving the encoder's own rows to separate true sites from false ones: chr
+V's masked decode kept 1,070 true GT-AG introns but bought them with 1,970
+false ones (precision 0.352). This module adds a fixed term over the wider
+junction context -- a position-weight matrix over the bases around the
+boundary -- on top of those existing learned scores.
 
 Shape. A donor at boundary ``t`` (``x[t]`` is the first intron base) is
 scored over offsets ``DONOR_SPAN = (-3, +6)``, i.e. the three exon bases
@@ -80,6 +84,7 @@ class SplicePWM:
     pseudocount: float = DEFAULT_PSEUDOCOUNT
     sites: Tuple[int, int] = (0, 0)
     sources: Tuple[Dict[str, object], ...] = ()
+    weighting: str = "pooled"
 
     def __post_init__(self):
         for name, span, mat in (("donor", self.donor_span, self.donor),
@@ -106,6 +111,7 @@ class SplicePWM:
             "pseudocount": self.pseudocount,
             "sites": list(self.sites),
             "sources": list(self.sources),
+            "weighting": self.weighting,
             "bases": BASES,
         }
 
@@ -122,6 +128,7 @@ class SplicePWM:
             pseudocount=float(d.get("pseudocount", DEFAULT_PSEUDOCOUNT)),
             sites=tuple(int(v) for v in d.get("sites", (0, 0))),
             sources=tuple(d.get("sources", ())),
+            weighting=str(d.get("weighting", "pooled")),
         )
 
     @classmethod
@@ -185,6 +192,31 @@ def _log_odds(counts: Sequence[Sequence[float]], background: Sequence[float],
     return tuple(cols)
 
 
+def _tally_examples(examples: Sequence, donor_span: Tuple[int, int],
+                    acceptor_span: Tuple[int, int]):
+    """Column counts, ACGT background counts and junction count over windows.
+
+    One ``intron_ranges`` entry ``(a, b)`` contributes one donor at ``a`` and
+    one acceptor at ``b``, so the two matrices are always counted over the
+    same junctions and the returned count applies to both.
+    """
+    d_counts = _counts(donor_span[1] - donor_span[0])
+    a_counts = _counts(acceptor_span[1] - acceptor_span[0])
+    bg = [0.0] * 4
+    n = 0
+    for ex in examples:
+        w = ex.window
+        for ch in w:
+            i = BASE_INDEX.get(ch.upper())
+            if i is not None:
+                bg[i] += 1.0
+        for a, b in ex.intron_ranges:
+            _tally(d_counts, w, a, donor_span)
+            _tally(a_counts, w, b, acceptor_span)
+            n += 1
+    return d_counts, a_counts, bg, n
+
+
 def fit(examples: Sequence, *, donor_span: Tuple[int, int] = DONOR_SPAN,
         acceptor_span: Tuple[int, int] = ACCEPTOR_SPAN,
         pseudocount: float = DEFAULT_PSEUDOCOUNT,
@@ -201,21 +233,8 @@ def fit(examples: Sequence, *, donor_span: Tuple[int, int] = DONOR_SPAN,
     ``min_sites`` refuses a matrix counted over fewer junctions than that,
     because a handful of sites gives a PWM that is mostly pseudocount.
     """
-    d_counts = _counts(donor_span[1] - donor_span[0])
-    a_counts = _counts(acceptor_span[1] - acceptor_span[0])
-    bg = [0.0] * 4
-    n_donor = n_acceptor = 0
-    for ex in examples:
-        w = ex.window
-        for ch in w:
-            i = BASE_INDEX.get(ch.upper())
-            if i is not None:
-                bg[i] += 1.0
-        for a, b in ex.intron_ranges:
-            _tally(d_counts, w, a, donor_span)
-            _tally(a_counts, w, b, acceptor_span)
-            n_donor += 1
-            n_acceptor += 1
+    d_counts, a_counts, bg, n_sites = _tally_examples(examples, donor_span, acceptor_span)
+    n_donor = n_acceptor = n_sites
     if n_donor < min_sites or n_acceptor < min_sites:
         raise ValueError(f"only {n_donor} donor and {n_acceptor} acceptor sites, "
                          f"min_sites={min_sites}")
@@ -232,6 +251,115 @@ def fit(examples: Sequence, *, donor_span: Tuple[int, int] = DONOR_SPAN,
         donor_span=tuple(donor_span), acceptor_span=tuple(acceptor_span),
         pseudocount=pseudocount, sites=(n_donor, n_acceptor),
         sources=tuple(sources),
+    )
+
+
+def _mean_frequencies(per_group: Sequence[Sequence[Sequence[float]]],
+                      pseudocount: float) -> List[List[float]]:
+    """Column frequencies averaged over groups, each group weighted 1/G.
+
+    A group's column is smoothed with ``pseudocount`` and normalised *within
+    the group* before the average, which is what makes 2 yeast junctions
+    count as much as 60,000 nematode ones. A group that counted nothing in a
+    column and was given no pseudocount contributes zero there rather than a
+    uniform guess, so an empty group cannot flatten a column the others
+    resolved.
+    """
+    width = len(per_group[0])
+    g = float(len(per_group))
+    out = []
+    for j in range(width):
+        acc = [0.0] * 4
+        for counts in per_group:
+            col = counts[j]
+            total = sum(col) + 4.0 * pseudocount
+            if total <= 0:
+                continue
+            for i, c in enumerate(col):
+                acc[i] += ((c + pseudocount) / total) / g
+        out.append(acc)
+    return out
+
+
+def _log_odds_freq(freqs: Sequence[Sequence[float]],
+                   background: Sequence[float]) -> Tuple[Tuple[float, ...], ...]:
+    """Natural-log odds of already-normalised column frequencies."""
+    import math
+
+    cols = []
+    for col in freqs:
+        if sum(col) <= 0:
+            cols.append((0.0,) * 4)
+            continue
+        cols.append(tuple((math.log(f / background[i]) if f > 0 else float("-inf"))
+                          for i, f in enumerate(col)))
+    return tuple(cols)
+
+
+def fit_grouped(groups: Sequence[Tuple[str, Sequence]], *,
+                donor_span: Tuple[int, int] = DONOR_SPAN,
+                acceptor_span: Tuple[int, int] = ACCEPTOR_SPAN,
+                pseudocount: float = DEFAULT_PSEUDOCOUNT,
+                sources: Sequence[Dict[str, object]] = (),
+                min_sites: int = 1,
+                min_group_sites: int = 1) -> SplicePWM:
+    """Estimate a source-balanced :class:`SplicePWM` from grouped windows.
+
+    ``groups`` is a sequence of ``(name, examples)``, one per source, each
+    holding that source's *train* windows only. Every source contributes the
+    same total weight: a column's probability is the unweighted mean of the
+    per-source smoothed frequencies, and the background is the unweighted
+    mean of the per-source ACGT compositions, so neither the matrix nor its
+    null model is decided by whichever species has the most introns.
+
+    This is the section 3.5 answer to the pooled matrix's species-independence
+    failure, and it buys that at a cost worth stating: a source with a handful
+    of train junctions now carries a full share of the score, so its
+    pseudocount-dominated columns are pulled into every other species' decode.
+    ``min_group_sites`` is the guard; it is not a substitute for judgement
+    about which sources belong in the pool.
+
+    ``min_sites`` applies to the total junction count, as in :func:`fit`.
+    Site counts land in ``sites`` and, per source, in the ``train_sites``
+    key of the matching ``sources`` entry.
+    """
+    if not groups:
+        raise ValueError("fit_grouped needs at least one group")
+    per_donor, per_acceptor, per_bg, counts_by_name = [], [], [], {}
+    total = 0
+    for name, examples in groups:
+        d_counts, a_counts, bg, n = _tally_examples(examples, donor_span, acceptor_span)
+        if n < min_group_sites:
+            raise ValueError(f"source {name!r} has {n} train junctions, "
+                             f"min_group_sites={min_group_sites}")
+        bg_total = sum(bg)
+        if bg_total <= 0:
+            raise ValueError(f"source {name!r} has no concrete ACGT base")
+        per_donor.append(d_counts)
+        per_acceptor.append(a_counts)
+        per_bg.append([c / bg_total for c in bg])
+        counts_by_name[name] = n
+        total += n
+    if total < min_sites:
+        raise ValueError(f"only {total} donor and {total} acceptor sites, "
+                         f"min_sites={min_sites}")
+    g = float(len(groups))
+    background = tuple(sum(b[i] for b in per_bg) / g for i in range(4))
+    if min(background) <= 0:
+        raise ValueError(f"a base is absent from the background: {background}")
+    annotated = []
+    for src in sources:
+        entry = dict(src)
+        if entry.get("name") in counts_by_name:
+            entry["train_sites"] = counts_by_name[entry["name"]]
+        annotated.append(entry)
+    return SplicePWM(
+        donor=_log_odds_freq(_mean_frequencies(per_donor, pseudocount), background),
+        acceptor=_log_odds_freq(_mean_frequencies(per_acceptor, pseudocount), background),
+        background=background,
+        donor_span=tuple(donor_span), acceptor_span=tuple(acceptor_span),
+        pseudocount=pseudocount, sites=(total, total),
+        sources=tuple(annotated), weighting="balanced",
     )
 
 

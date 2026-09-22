@@ -84,12 +84,24 @@ chromosome — exact transcripts 65 → 55 of 94, exon exact F1 0.588 →
 0.396, locus F1 0.778 → 0.722, 67 false GT-AG introns against 2 true —
 because it is in effect a *C. elegans* matrix applied to *S. cerevisiae*.
 That is a **species-independence** failure of the kind the charter is
-about, and the next revision must condition or weight the matrix rather
-than pool junctions across clades. **A still misses the accuracy target**:
-835 of 6,766 reference transcripts exact is a transcript F1 of 0.133.
+about. **A still misses the accuracy target**: 835 of 6,766 reference
+transcripts exact is a transcript F1 of 0.133.
 
-Still pending: a clade-conditioned splice score and locus boundaries
-(section 3.5), the longer fit the unconverged dev tail leaves open
+Section 3.6 tests the obvious fix for that failure and it does not
+work. The imbalance is real and now measured — **67,060 *C. elegans*
+against 265 *S. cerevisiae*** train junctions, 253:1 — but a matrix
+that gives each source the same weight makes **both** chromosomes worse
+on exactness: chr I 55 → **47** exact transcripts and 67 → **83** false
+GT-AG introns, chr V 835 → **706** exact transcripts and 18,195 →
+**16,963** correct introns. So species imbalance is not a sufficient
+explanation of the chr I regression; the surviving hypothesis is the
+strength and calibration of a fixed context term added to frozen
+learned emissions, which is what the next experiment must sweep. Cost
+is unaffected (chr V 8.99 CPU-s/Mb, chr I 12.46), so the CPU verdict
+still stands.
+
+Still pending: the calibration sweep that section 3.6 points at, locus
+boundaries, the longer fit the unconverged dev tail leaves open
 (separately measured), and the GPU regime (gagarin, lenin-0083).
 
 ## 1. What is implemented
@@ -2079,14 +2091,29 @@ test suite. All local; cluster CPU-hours 0, GPU-hours 0.
 ### 3.5 Decoder increment 2: splice-site context scoring, 2026-09-22 (ablation, no refit; the largest single gain so far, and a species-independence failure)
 
 Section 3.4 ended on the question it could not answer: *which* supported
-site scores highest. It could not answer it because the decoder has no
-term that distinguishes one legal site from another. Proposal 3.5 gives
-the pooled decoder a 16-entry donor and a 16-entry acceptor dinucleotide
-table; once the mask restricts decoding to `GT`/`GC`..`AG`, those
-sixteen entries collapse to one or two values that every surviving site
-shares. The masked decode's numbers say exactly this: it doubled true
-GT-AG introns (433 → 1,070) and quadrupled the false ones (470 → 1,970,
-precision 0.480 → 0.352). It was finding *more* sites, not *better* ones.
+site scores highest.
+
+*Corrected after stalin-0117 (P2); the earlier wording here said the
+decoder had no term distinguishing one legal site from another, which is
+wrong.* The decoder already scored sites by context. The encoder emits
+eleven position-dependent channels per base, `donor` and `acceptor`
+among them (`model/a/encoder.py`), and chromosome decoding adds
+`motif_bias` to those learned rows before the recurrence sees them, so
+two legal `GT`s on a chromosome already received different scores. What
+the decoder had no term for is *extended* context: the only
+hand-specified site term, the pooled decoder's 16-entry donor and
+acceptor dinucleotide tables, reads exactly two bases, so once the mask
+restricts decoding to `GT`/`GC`..`AG` those sixteen entries collapse to
+one or two values every surviving site shares, leaving the learned rows
+alone to separate true sites from false ones. The masked decode's
+numbers say how that went: it doubled true GT-AG introns (433 → 1,070)
+and quadrupled the false ones (470 → 1,970, precision 0.480 → 0.352). It
+was finding *more* sites, not *better* ones. The ablation below
+establishes that adding a fixed extended-context term on top of those
+learned scores helps chr V; it does not establish that context
+discrimination was architecturally absent, and which of the encoder, the
+fitting, or the calibration of these site scores to revise next is still
+open.
 
 **The change.** `model/a/splicepwm.py` scores the bases around a junction
 as a position-weight matrix: donor offsets `[-3, +6)` (three exon bases,
@@ -2172,21 +2199,33 @@ most.
 | GT-AG introns (TP/FP) | 0/0 | 0/12 | **2/67** |
 
 Yeast chr I is nearly intronless, and the matrix pools both species'
-junctions, of which the overwhelming majority are nematode. A
-*C. elegans* splice-site score is therefore being applied to a
-*S. cerevisiae* chromosome: it finds sites that are not there (67 false
-GT-AG introns against 2 true) and splits single-exon genes, which is why
-exact transcripts fall 65 → 55 and locus F1 0.778 → 0.722. The chr V
-gain and the chr I loss are one mechanism seen from two intron-density
-regimes.
+junctions, of which the overwhelming majority are nematode: the
+increment-3 fit below counts them, 67,060 *C. elegans* against 265
+*S. cerevisiae* train junctions, a 253:1 imbalance. So a matrix that is
+effectively a *C. elegans* splice-site score is being applied to a
+*S. cerevisiae* chromosome, and on that chromosome it finds sites that
+are not there (67 false GT-AG introns against 2 true) and splits
+single-exon genes, which is why exact transcripts fall 65 → 55 and locus
+F1 0.778 → 0.722.
+
+*Scope of that claim, after stalin-0117.* What these runs establish is
+the regression itself, from this pooled, unit-weight matrix. They do not
+separate species imbalance from the strength and calibration of the
+added term against the frozen learned emissions and dinucleotide scores:
+a term of the same shape, scaled down, might cost chr I less. Imbalance
+is a supported hypothesis about the cause and the one increment 3 tests
+directly; it is not yet a demonstrated unique cause, and nothing here
+proves that no pooled term can generalize.
 
 The charter asks for a model that generalizes across clades *without
 per-clade retraining*. A decoder term fitted by pooling junctions across
 clades is not clade-neutral, and this run shows the cost of pretending
 otherwise on the easiest possible case — two species, one matrix. The
 next revision must condition or weight the splice score (on local intron
-density, on GC, or on an explicit per-species term the encoder can
-infer) rather than pool it, and re-measure both chromosomes. Nothing
+density, on GC, on an explicit per-species term the encoder can infer,
+or — the cheapest test, taken up in section 3.6 — on nothing more than
+giving each source the same weight) rather than pool it, and re-measure
+both chromosomes. Nothing
 here argues for shipping the pooled matrix as a default.
 
 **Verdicts unchanged.** Cost: every configuration is far under the
@@ -2223,6 +2262,114 @@ CPU accounting for this section: about 0.12 CPU-h local — the PWM fit
 (1.4 min), four measurement workloads (chr I 3.5 s and chr V 188.7 s
 masked, 3.5 s and 191.5 s unmasked), four scorer runs, and the test
 suite. Cluster CPU-hours 0, GPU-hours 0, no held-out species touched.
+
+### 3.6 Decoder increment 3: the source-balanced matrix, 2026-09-22 (ablation, no refit; the imbalance fix does not work, and that is the finding)
+
+Section 3.5 ended with a hypothesis and a prescription: the pooled
+matrix hurts yeast because it is dominated by nematode junctions, so
+weight the sources instead of pooling them. stalin-0117 objected that
+the runs establish the regression, not its cause. This section runs the
+cheapest test that can separate the two, and the hypothesis loses.
+
+**The imbalance, measured.** `model.a.train pwm --balanced` counts the
+train junctions per source before it fits: **67,060 for *C. elegans*
+against 265 for *S. cerevisiae*, 253:1.** The imbalance section 3.5
+asserted is real and now has a number attached, from the same
+development-excluded split (67,325 junctions over 19,975 train windows,
+identical to `pwm-v1/`).
+
+**The change.** `model.a.splicepwm.fit_grouped` estimates the same two
+matrices with one weight per *source* instead of one per junction: a
+column's probability is the unweighted mean of the per-source smoothed
+frequencies, and the background is the unweighted mean of the
+per-source ACGT compositions, so neither the matrix nor its null model
+is decided by whichever species has the most introns. Nothing else
+moves: same `best.pt`, same tiling, same scorer, same pinned core, no
+refit, inference only. The matrix records its own `weighting` and the
+per-source `train_sites`, and `measure` records the weighting in the
+run row, so a scored run says which of the two it used.
+
+**Result: balancing makes both chromosomes worse.**
+
+| metric | pooled (3.5) | **balanced (3.6)** |
+|---|---|---|
+| chr I exact transcripts (of 94) | 55 | **47** |
+| chr I exon exact F1 | 0.3959 | **0.3300** |
+| chr I nucleotide F1 | 0.8569 | **0.8610** |
+| chr I locus F1 | 0.7215 | **0.7308** |
+| chr I GT-AG introns TP/FP (3 reference) | 2/67 | **3/83** |
+| chr V exact transcripts (of 6,766) | 835 | **706** |
+| chr V exon exact F1 | 0.5216 | **0.5008** |
+| chr V donor / acceptor F1 | 0.642 / 0.666 | **0.628 / 0.646** |
+| chr V correct GT-AG introns (of 22,620) | 18,195 | **16,963** |
+| chr V nucleotide F1 | 0.7675 | **0.7579** |
+| chr V locus F1 | 0.6386 | **0.6480** |
+
+Yeast chr I, the chromosome the balancing was for, loses eight more
+exact transcripts (55 → 47) and gains sixteen more false GT-AG introns
+(67 → 83). It does recover the third reference intron (TP 2 → 3) and
+its nucleotide and locus F1 tick up, but the exactness metrics — the
+ones the section 3.5 regression was reported in — get worse, not
+better. chr V pays for the change as expected: 129 fewer exact
+transcripts and 1,232 fewer correct introns.
+
+**What this falsifies and what it leaves open.** Species imbalance is
+not a sufficient explanation of the chr I regression: remove the
+imbalance and chr I is worse. The remaining candidate is the one
+stalin-0117 named — the *strength and calibration* of a fixed
+extended-context term added to frozen learned emissions. On a
+chromosome with three introns in 230 kb, any confident splice score
+that is not opposed by an equally calibrated intron-entry cost will buy
+recall with false junctions, whatever species it was counted on; that
+is consistent with both matrices producing 67 and 83 false GT-AG
+introns while the no-PWM decodes produce 0 and 12. The next experiment
+is therefore a scalar weight on the PWM term (and, separately, the
+entry hazard it is competing with), swept and reported as a curve, not
+a further re-estimation of the matrix. Note that such a sweep selects
+on the two development chromosomes it is scored on; it must be declared
+as selection, and the held-out panel stays untouched either way.
+
+Two smaller things the runs establish. The unmasked control behaves as
+in 3.5 — the mask is worth ~0.008 exon-exact F1 on chr V here
+(0.5008 masked vs 0.4923 unmasked) and nothing on chr I's exactness —
+so 3.4's conclusion that the PWM, not the mask, carries the increment
+survives the reweighting. And cost is unchanged: chr V 8.99 CPU-s/Mb
+masked and 9.08 unmasked, chr I 12.46 / 12.50, all far under the
+accepted 15 CPU-s/Mb, so **still no positive CPU allowance for B**, and
+**A still misses the accuracy target** — the best configuration on this
+checkpoint remains section 3.5's 835 exact transcripts of 6,766.
+
+**What it does not establish.** One checkpoint, two development
+chromosomes, two species, one run per configuration, no held-out
+species touched, no refit. Equal per-source weighting is one point on a
+weighting axis, not the axis: a 253:1 imbalance corrected to 1:1 may
+overshoot, and an intermediate weight was not tried. The columns remain
+independent, so the score stays a ranking device rather than a
+likelihood. Nothing here measures the alternative explanation
+(calibration) directly; it is the surviving hypothesis, not a result.
+
+Artifacts: `relay/artifacts/T-human-014/smoke-local-20260920/fit-cpu-v3/`
+`pwm-balanced-v1/` (the matrix and its fitting log, with the per-source
+junction counts), `score-pwm-bal/` and `score-pwm-bal-only/` (README,
+`declaration.yaml`, run outputs, verified `sha256.txt`), and the shared
+`run_pwm_balanced.sh`. Four new rows in
+`docs/cost-baseline/measured.tsv`. Tests: 6 new cases in
+`tests/test_a_splicepwm.py` (a single group reproduces the pooled
+matrix exactly; a 1-junction source moves a column as much as a
+100-junction one; the background averages sources rather than bases;
+per-source site counts reach the JSON; an empty source is refused; the
+`weighting` field round-trips and defaults to `pooled` for a matrix
+written before it existed). 245 tests pass.
+
+CPU accounting for this section: about 0.24 CPU-h local — the balanced
+PWM fit (1.4 min), six measurement workloads (chr I and chr V masked,
+then both re-run after a docstring edit changed the recorded source
+digest mid-run, plus chr I and chr V unmasked), six scorer runs and the
+test suite. The masked rows reported above are the second, digest-clean
+pair; the discarded first pair produced the same accuracy to four
+decimals (chr I 12.55 and chr V 8.93 CPU-s/Mb), which is also the
+run-to-run cost spread on this machine. Cluster CPU-hours 0, GPU-hours
+0, no held-out species touched.
 
 ## 4. Budget and caps
 
