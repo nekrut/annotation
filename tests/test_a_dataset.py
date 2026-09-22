@@ -17,9 +17,11 @@ from model.a.dataset import (
     LoaderStats,
     SourceMismatch,
     WindowExample,
+    annotated_gene_spans,
     coverage_report,
     format_coverage,
     gene_free_intervals,
+    is_gene_feature,
     iter_background_windows,
     iter_windows,
     verify_source,
@@ -173,6 +175,92 @@ class DatasetTest(unittest.TestCase):
         self.assertEqual(len({e.key[2] for e in every}), 9)
         # chain-window accounting untouched (dev reservations key off it)
         self.assertEqual(dict(stats.windows_by_seqid), {})
+
+    def test_is_gene_feature_types(self):
+        for t in ("gene", "pseudogene", "ncRNA_gene", "V_gene_segment", "mRNA",
+                  "lnc_RNA", "tRNA", "transcript", "exon", "CDS",
+                  "five_prime_UTR", "three_prime_UTR", "pseudogenic_transcript"):
+            self.assertTrue(is_gene_feature(t), t)
+        for t in ("region", "chromosome", "centromere", "telomere",
+                  "origin_of_replication", "long_terminal_repeat",
+                  "mobile_genetic_element", "sequence_feature",
+                  "regulatory_region", "biological_region"):
+            self.assertFalse(is_gene_feature(t), t)
+
+    def test_background_excludes_utrs_and_noncoding_genes(self):
+        # engels-0096: the admission parser keeps only transcripts with CDS
+        # rows and its span covers the CDS endpoints, so a UTR (mRNA 11..2000
+        # around a 9-base CDS) and a separate lncRNA (3000..5000) must be
+        # blocked from the raw GFF3 rows, not from the parsed transcripts.
+        cds = "C" * 10 + "ATGAAATAA"
+        seq = cds + ("aCgT" * 2500)[:CONTIG_LEN - len(cds)]
+        fasta = ">chr1 utr fixture\n" + "\n".join(
+            seq[i:i + 70] for i in range(0, len(seq), 70)) + "\n"
+        gff = "\n".join([
+            "##gff-version 3",
+            "##sequence-region chr1 1 %d" % CONTIG_LEN,
+            "chr1\tt\tgene\t11\t2000\t.\t+\t.\tID=g1;gene_biotype=protein_coding",
+            "chr1\tt\tmRNA\t11\t2000\t.\t+\t.\tID=t1;Parent=g1",
+            "chr1\tt\texon\t11\t2000\t.\t+\t.\tParent=t1",
+            "chr1\tt\tCDS\t11\t19\t.\t+\t0\tParent=t1",
+            "chr1\tt\tgene\t3000\t5000\t.\t-\t.\tID=g2;gene_biotype=lncRNA",
+            "chr1\tt\tlnc_RNA\t3000\t5000\t.\t-\t.\tID=t2;Parent=g2",
+            "chr1\tt\texon\t3000\t5000\t.\t-\t.\tParent=t2",
+            "chr1\tt\tcentromere\t6000\t6100\t.\t+\t.\tID=cen1",
+            "",
+        ])
+        with open(self.gff, "w") as fh:
+            fh.write(gff)
+        with open(self.fasta, "w") as fh:
+            fh.write(fasta)
+        with open(self.summary, "w") as fh:
+            json.dump({"gff_md5": _md5(gff), "fasta_md5": _md5(fasta),
+                       "m": 20, "table": 1}, fh)
+        spans = annotated_gene_spans(self.gff)
+        self.assertEqual(sorted(set(spans["chr1"])), [(11, 19), (11, 2000), (3000, 5000)])
+        # gene-free: [2010, 2989) and [5010, 10000) with FLANK=10
+        self.assertEqual(gene_free_intervals(CONTIG_LEN, spans["chr1"]),
+                         [(2010, 2989), (5010, 10000)])
+        stats = LoaderStats()
+        bg = list(iter_background_windows(self.summary, self.gff, self.fasta,
+                                          length=1000, count=99, seed=1, stats=stats))
+        # no tile fits [2010, 2989); [5010, 10000) holds four 1,000-base tiles
+        self.assertEqual(stats.background_candidates, 4)
+        self.assertEqual(sorted(e.key[2] for e in bg),
+                         ["background:5010-6010", "background:6010-7010",
+                          "background:7010-8010", "background:8010-9010"])
+        for e in bg:
+            a, b = (int(v) for v in e.key[2].split(":")[1].split("-"))
+            self.assertFalse(a < 2000 or (a < 5000 and b > 2999), e.key)
+            # the centromere is not a gene: tiles may cover it
+        self.assertTrue(any(e.key[2] == "background:6010-7010" for e in bg) or
+                        any(e.key[2] == "background:5010-6010" for e in bg))
+        # source case is preserved on the forward strand, complemented on minus
+        for e in bg:
+            a = int(e.key[2].split(":")[1].split("-")[0])
+            raw = seq[a:a + 1000]
+            self.assertEqual(e.window, raw if e.key[1] == "+" else revcomp(raw))
+
+    def test_load_all_windows_bounds_background_by_max_window(self):
+        # engels-0096 P2, through the training loader itself: max_window=100
+        # with a 1,000-base background window is refused; with max_window=1000
+        # every loaded window (the 72-base chain and the background tile) fits.
+        from model.a.train import TrainConfig, _load_all_windows
+        src = {"name": "sp", "summary": self.summary, "gff": self.gff,
+               "fasta": self.fasta, "dev_seqids": []}
+        base = {"sources": [src], "out_dir": self.dir, "background_windows": 1,
+                "background_length": 1000}
+        with self.assertRaises(ValueError):
+            TrainConfig.from_dict(dict(base, max_window=100))
+        config = TrainConfig.from_dict(dict(base, max_window=1000))
+        examples, stats = _load_all_windows(config)
+        self.assertEqual(sorted(ex.n for ex in examples), [72, 1000])
+        self.assertTrue(all(ex.n <= config.max_window for ex in examples))
+        self.assertEqual(stats["sp"].background_yielded, 1)
+        # the bound is re-checked on a config edited after parsing
+        config.background_length = 4096
+        with self.assertRaises(ValueError):
+            _load_all_windows(config)
 
     def test_background_windows_enforce_source_pin(self):
         with open(self.fasta, "a") as fh:

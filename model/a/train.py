@@ -157,7 +157,19 @@ class TrainConfig:
             raise ValueError("background_windows must not be negative")
         if int(kwargs.get("background_length", 4096)) < 1:
             raise ValueError("background_length must be at least 1")
-        return cls(sources=sources, **kwargs)
+        config = cls(sources=sources, **kwargs)
+        config.check_window_bound()
+        return config
+
+    def check_window_bound(self) -> None:
+        """``max_window`` bounds every training window, chain or background:
+        an enabled background length above a non-null maximum is rejected
+        rather than silently loading longer examples (engels-0096)."""
+        if (self.max_window is not None and self.background_windows
+                and self.background_length > self.max_window):
+            raise ValueError(
+                f"background_length {self.background_length} exceeds max_window "
+                f"{self.max_window}; max_window bounds background windows too")
 
     @classmethod
     def from_json(cls, path: str) -> "TrainConfig":
@@ -387,9 +399,12 @@ def _load_all_windows(config: TrainConfig):
     """Load every admitted clean complete-target window for the configured
     species, tagging each with its species genetic-code table, followed by
     ``config.background_windows`` gene-free windows per species (seeded by
-    ``config.seed``; none when 0)."""
+    ``config.seed``; none when 0). ``config.max_window`` bounds both kinds:
+    chains above it are skipped by the loader and a background length above
+    it is refused up front."""
     from .dataset import iter_background_windows, iter_windows, LoaderStats
 
+    config.check_window_bound()
     examples = []
     stats_by_species: Dict[str, LoaderStats] = {}
     for src in config.sources:

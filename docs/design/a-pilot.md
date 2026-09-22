@@ -185,9 +185,15 @@ acceptor. Dependency radius is 491 bases, below the proposed 516-base halo.
    for the torch training step also belongs here. **Gene-free (background)
    windows are in** (proposal section 3, "gene-free/background windows"):
    `iter_background_windows` tiles every gene-free interval of a sequence
-   that carries an admitted chain (all GFF3 transcripts on both strands
-   blocked, widened by `FLANK`; a mitochondrion or any sequence the audit
-   admitted nothing from is never background) with non-overlapping
+   that carries an admitted chain (every raw GFF3 gene, pseudogene,
+   transcript, exon, CDS and UTR row on both strands blocked —
+   `annotated_gene_spans`, read from the file rather than from the
+   admission parser, whose transcripts are CDS-bearing only and whose
+   spans stop at the CDS ends, so UTRs, ncRNAs and pseudogenes are blocked
+   too (engels-0096); non-gene features such as centromeres, LTRs and
+   replication origins stay eligible — widened by `FLANK`; a mitochondrion
+   or any sequence the audit admitted nothing from is never background)
+   with non-overlapping
    `background_length` tiles and draws `background_windows` of them per
    species without replacement under the run seed, half of them
    reverse-complemented with case preserved. Their support is the empty
@@ -197,10 +203,14 @@ acceptor. Dependency radius is 491 bases, below the proposed 516-base halo.
    chain-only smoke fits never did (the smoke checkpoint's 208,796 chains
    on chr V's 3,357 genes). Both keys are in the config, manifest
    hyperparameters and sampling plan; the default is 0 (chain-only, the
-   scope of every recorded fit). The tiling is coarse on a gene-dense
-   genome: *S. cerevisiae* has 23 gene-free 4,096-base tiles, 198 at 2,048,
-   928 at 1,024, so the fitted-checkpoint config sets the length per
-   species panel. Background windows are counted apart from the admitted
+   scope of every recorded fit), and a non-null `max_window` bounds
+   background windows as well as chains (an enabled `background_length`
+   above it is refused at config parse and again in the loader). The
+   tiling is coarse on a gene-dense genome: *S. cerevisiae* has 14
+   gene-free 4,096-base tiles, 148 at 2,048, 766 at 1,024 (zero overlap
+   any raw gene or pseudogene row; the earlier CDS-span-free counts of
+   23 / 198 / 928 included tiles inside UTRs and non-coding genes), so
+   the fitted-checkpoint config sets the length per species panel. Background windows are counted apart from the admitted
    inventory (`LoaderStats.background_candidates`/`background_yielded`),
    so dev-seqid reservations still key off admitted chains only.
 2. **Differentiable (PyTorch) chain loss** — the reference forward

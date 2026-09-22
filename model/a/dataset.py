@@ -70,6 +70,7 @@ from model.labels.admission import (
     metadata_flags,
     revcomp,
     _iter_fasta,
+    _open,
 )
 from model.labels.numerator_check import FLANK, oriented_chain
 from model.a.loss import numerator_scores
@@ -372,15 +373,65 @@ def iter_windows(
             )
 
 
+# GFF3 feature types whose rows block background. Everything the source
+# annotates as a gene, a transcript, or a piece of one counts (protein-coding
+# or not, admitted or not): ``gene``/``pseudogene`` and their Ensembl variants
+# (``ncRNA_gene``, ``*_gene_segment``), every ``*RNA`` transcript type, and
+# the exon/CDS/UTR rows themselves so an orphan transcript without a parent
+# gene row is still blocked. Landmarks (``region``, ``chromosome``) and
+# non-gene features (``centromere``, ``origin_of_replication``,
+# ``long_terminal_repeat``, ``mobile_genetic_element``, ...) are not genes
+# and stay eligible.
+_GENE_TYPES = frozenset({
+    "gene", "pseudogene", "exon", "CDS", "transcript", "primary_transcript",
+    "pseudogenic_transcript", "pseudogenic_exon",
+    "five_prime_UTR", "three_prime_UTR", "UTR", "start_codon", "stop_codon",
+})
+
+
+def is_gene_feature(ftype: str) -> bool:
+    """True when a GFF3 ``type`` column value marks a gene, transcript, or a
+    part of one (see ``_GENE_TYPES``)."""
+    return (ftype in _GENE_TYPES or ftype.endswith("gene")
+            or ftype.endswith("gene_segment") or ftype.endswith("RNA"))
+
+
+def annotated_gene_spans(gff: str) -> Dict[str, List[Tuple[int, int]]]:
+    """1-based inclusive ``[start, end]`` spans per seqid of every raw GFF3
+    row whose type :func:`is_gene_feature`, regardless of strand, parent,
+    or whether the admission parser kept it.
+
+    This is deliberately broader than ``load_gff_rows``: that parser keeps
+    only transcripts with CDS rows and ``Transcript.span`` covers the CDS
+    endpoints, so a UTR, an ncRNA, or a pseudogene would be invisible to it
+    and could be tiled as background (engels-0096).
+    """
+    spans: Dict[str, List[Tuple[int, int]]] = defaultdict(list)
+    with _open(gff) as fh:
+        for line in fh:
+            if not line or line[0] == "#":
+                continue
+            f = line.rstrip("\n").split("\t")
+            if len(f) < 5 or not is_gene_feature(f[2]):
+                continue
+            try:
+                s, e = int(f[3]), int(f[4])
+            except ValueError:
+                continue
+            spans[f[0]].append((min(s, e), max(s, e)))
+    return spans
+
+
 def gene_free_intervals(seq_len: int, spans: Sequence[Tuple[int, int]],
                         margin: int = FLANK) -> List[Range]:
     """Zero-based half-open intervals of a sequence that no gene touches.
 
-    ``spans`` are 1-based inclusive gene spans (``Transcript.span``); each is
-    widened by ``margin`` on both sides so a background window never abuts a
-    gene closer than a chain window's own flank. Every transcript counts,
-    admitted or not, masked or not: a base is background only if the source
-    annotation has nothing there on either strand.
+    ``spans`` are 1-based inclusive gene spans (:func:`annotated_gene_spans`);
+    each is widened by ``margin`` on both sides so a background window never
+    abuts a gene closer than a chain window's own flank. Every annotated gene
+    and transcript counts, coding or not, admitted or not, masked or not: a
+    base is background only if the source annotation has no gene feature
+    there on either strand.
     """
     if seq_len <= 0:
         return []
@@ -414,8 +465,10 @@ def iter_background_windows(
     audit's own inventory, so a mitochondrion or other sequence the admission
     excluded -- a different genetic code, no admitted representative -- is
     never background for the nuclear model). Every gene-free interval of such
-    a sequence (:func:`gene_free_intervals`, all transcripts of the GFF3 on
-    both strands, widened by ``FLANK``) is tiled with non-overlapping
+    a sequence (:func:`gene_free_intervals` over :func:`annotated_gene_spans`:
+    every raw gene, pseudogene, transcript, exon, CDS or UTR row of the GFF3
+    on both strands, including UTRs and non-coding genes the admission parser
+    never sees, widened by ``FLANK``) is tiled with non-overlapping
     ``length``-base candidates from its left edge; a deterministic
     ``random.Random(seed)`` draw without replacement picks ``count`` of them
     (all, when fewer exist) and gives each a strand, so the minus-strand half
@@ -441,10 +494,7 @@ def iter_background_windows(
     res = audit_species("_loader_", gff, fasta, m=m, table=table, log=lambda *a, **k: None)
     admitted_seqids = {r["seqid"] for r in res.manifest_rows if r["status"] == "admitted"}
 
-    transcripts, _gene_biotype, _shim = load_gff_rows(gff)
-    spans_by_seqid: Dict[str, List[Tuple[int, int]]] = defaultdict(list)
-    for t in transcripts:
-        spans_by_seqid[t.seqid].append(t.span)
+    spans_by_seqid = annotated_gene_spans(gff)
 
     candidates: List[Tuple[str, int]] = []
     sequences: Dict[str, str] = {}

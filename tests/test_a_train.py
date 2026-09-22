@@ -69,6 +69,25 @@ class TestConfig(unittest.TestCase):
             T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o",
                                      "background_length": 0})
 
+    def test_config_background_length_bounded_by_max_window(self):
+        # engels-0096: max_window bounds background windows too
+        with self.assertRaises(ValueError):
+            T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o",
+                                     "max_window": 100, "background_windows": 1,
+                                     "background_length": 1000})
+        # equal length, a null maximum, or disabled background all pass
+        T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o",
+                                 "max_window": 1000, "background_windows": 1,
+                                 "background_length": 1000})
+        T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o",
+                                 "background_windows": 1, "background_length": 1000})
+        c = T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o",
+                                     "max_window": 100, "background_length": 1000})
+        # a directly constructed config is caught by the loader's own check
+        c.background_windows = 1
+        with self.assertRaises(ValueError):
+            c.check_window_bound()
+
     def test_config_overrides(self):
         c = T.TrainConfig.from_dict({
             "sources": [self._src(dev_seqids=["chrDev"])],
