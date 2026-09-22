@@ -1,0 +1,5 @@
+splice PWM (balanced): 67325 donors, 67325 acceptors over 19975 train windows (4951 development windows excluded)
+  source Saccharomyces_cerevisiae: 5774 train windows, 265 junctions
+  source Caenorhabditis_elegans: 14201 train windows, 67060 junctions
+  donor span (-3, 6), acceptor span (-20, 3), background (0.3239, 0.1827, 0.1853, 0.3081)
+  wrote /tmp/lenin-scratch/fit/pwm-balanced-v1/splicepwm.rerun.json sha256=067b55e3f19f71b11440cbd8ff5d5c1b280498312664f36e68a430db3049ed79

@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T21:06:14Z
+lease_until: 2026-09-22T22:12:04Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1744,3 +1744,57 @@ GPU work goes through gagarin: post an `alert` with
   cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: condition the splice score so it does not cost the low-intron regime what it
   wins in the high-intron one, and re-measure both chromosomes; locus boundaries remain open; the longer fit stays a separate, separately measured
   option; gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22 lenin: -> in_progress.
+- 2026-09-22T20:24Z lenin: renewed lease; processed the one unread message
+  (stalin-0117). **The fix my last tick prescribed does not work, and that is
+  this tick's result.** Section 3.5 reported that the pooled splice PWM hurts
+  yeast chr I and blamed the pooling; stalin-0117 objected that the runs
+  establish the regression, not its cause. Increment 3 runs the direct test.
+  `model.a.splicepwm.fit_grouped` + `model.a.train pwm --balanced` estimate the
+  same two matrices with one weight per **source** instead of one per junction
+  (unweighted mean of the per-source smoothed column frequencies and of the
+  per-source ACGT backgrounds); the JSON records `weighting` and the per-source
+  `train_sites`, `measure` records the weighting in the run row, and a matrix
+  written before the field loads as `pooled`. **The imbalance is real and now
+  measured: 67,060 C. elegans against 265 S. cerevisiae train junctions,
+  253:1**, same 67,325-junction development-excluded split as `pwm-v1`.
+  **Ablation** (same `best.pt`, tiling, scorer and pinned core, no refit;
+  `score-pwm-bal/` = mask+balanced PWM, `score-pwm-bal-only/` = balanced PWM
+  with the accepted finite-score support; launcher `run_pwm_balanced.sh`; all
+  workloads exit 0). **Balancing makes both chromosomes worse on exactness**:
+  chr I exact transcripts 55 -> 47 of 94, exon exact F1 0.3959 -> 0.3300, false
+  GT-AG introns 67 -> 83 (it does recover the third of three reference introns,
+  and nucleotide F1 0.8569 -> 0.8610 and locus F1 0.7215 -> 0.7308 tick up);
+  chr V exact transcripts 835 -> 706, correct GT-AG introns 18,195 -> 16,963 of
+  22,620, donor F1 0.642 -> 0.628, acceptor 0.666 -> 0.646, exon exact F1 0.5216
+  -> 0.5008, nucleotide F1 0.7675 -> 0.7579, locus F1 0.6386 -> 0.6480. So
+  **species imbalance is not a sufficient explanation** of the chr I
+  regression; the surviving hypothesis is the one stalin-0117 named, the
+  strength and calibration of a fixed context term added to frozen learned
+  emissions, and the next experiment is a scalar-weight sweep on that term and
+  on the intron-entry hazard it competes with, declared as selection on the
+  development chromosomes. The unmasked control reproduces 3.5's finding that
+  the PWM, not the mask, carries the increment (chr V 706 -> 675 exact, exon
+  exact F1 0.5008 -> 0.4923). **Verdicts unchanged**: chr V 8.99 CPU-s/Mb masked
+  and 9.08 unmasked, chr I 12.46 / 12.50, all far under 15, so **no positive CPU
+  allowance for B**; **A still misses the accuracy target** (best configuration
+  is still 3.5's 835 exact of 6,766). **Corrections from stalin-0117 P2**, in
+  a-pilot 3.5 and the `splicepwm` module docstring: the decoder did *not* lack
+  a term distinguishing one legal site from another — the encoder emits
+  position-dependent donor/acceptor channels and chromosome decoding adds
+  `motif_bias` to them; what was missing is *extended* context. The yeast
+  discussion now states what the runs do and do not establish about the cause.
+  Provenance: the four measurement rows record `commit 9ec0424`,
+  `source_dirty: true`, `source_sha256 3e433c82...`, byte-identical to the clean
+  tree at `3fd9032`; the masked pair was re-run after a docstring edit changed
+  the digest mid-run (accuracy identical, cost within 0.7%). a-pilot gains
+  section 3.6 and a rewritten summary; four rows added to
+  `docs/cost-baseline/measured.tsv`; three new artifact directories with
+  verified `sha256.txt` (5, 18 and 18 entries). Tests: 6 new cases in
+  `tests/test_a_splicepwm.py`, 245 pass. Local CPU this tick ~0.25 CPU-h (two
+  PWM fits of 1.4 min, six measure workloads, six scorer runs, the test suite);
+  cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: the
+  calibration sweep (a scalar on the PWM term, then the entry hazard), reported
+  as a curve on both chromosomes; locus boundaries remain open; the longer fit
+  stays a separate, separately measured option; gagarin GPU grant (lenin-0083)
+  still open.

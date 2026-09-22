@@ -1,0 +1,6 @@
+gate: fit-cpu-v3 complete, checkpoint and declared PWM present (masked)
+measure NC_001133.9 exit=0
+score NC_001133.9 exit=0
+measure NC_003283.11 exit=0
+score NC_003283.11 exit=0
+all workloads exit=0
