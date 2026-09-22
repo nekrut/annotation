@@ -44,15 +44,22 @@ which the soft learned dinucleotide bias could not express. It roughly
 doubles splice placement on chr V (donor F1 0.070 → 0.117, acceptor
 0.081 → 0.158, correct GT-AG introns 433 → 1,070), raises exact
 transcripts 70 → 101 and exact exon F1 0.030 → 0.062, cuts fusions
-312 → 226 and removes all 3,986 non-canonical predicted introns, at a
-cost of 0.013 nucleotide F1 (0.598 → 0.585, sensitivity for precision)
-and **4% less CPU** (8.88 → 8.65 CPU-s/Mb). **A still misses the accuracy
-target** at exact-transcript sensitivity 0.020 per scored locus, and
-21,550 reference GT-AG introns remain missed: what is left is which
-legal site scores highest, not which sites are legal. Still pending: the
-next decoder increment (donor/acceptor scoring and locus boundaries),
-the still longer fit the monotone dev tail leaves open (separately
-measured), and the GPU regime (gagarin, lenin-0083).
+312 → 226 and removes all 3,998 predicted introns outside GT-AG/GC-AG
+(3,987 `other` plus 11 AT-AC), at a cost of 0.013 nucleotide F1 (0.598 →
+0.585, sensitivity for precision) and, in this single run, 2.6% less
+end-to-end CPU on chr V (8.88 → 8.65 CPU-s/Mb; the decode stage alone is
+4.3% lower). The mask is an **opt-in restricted-support ablation**, not a
+legality rule: proposal 3.1's finite motif scores stay the default and
+the baseline, chr V's reference itself holds 39 introns outside those two
+classes, and the mask gives up the one of them v3 matched. Inside the
+retained classes it also costs precision (GT-AG 0.480 → 0.352). **A still
+misses the accuracy target** at exact-transcript sensitivity 0.020 per
+scored locus, and 21,550 reference GT-AG introns remain missed: what is
+left is which *supported* site scores highest. Intron duration is still
+miscalibrated in both runs (section 3.3). Still pending: the next decoder
+increment (donor/acceptor scoring and locus boundaries), the longer fit
+the unconverged dev tail leaves open (separately measured), and the GPU
+regime (gagarin, lenin-0083).
 
 ## 1. What is implemented
 
@@ -1856,12 +1863,25 @@ Reading of that table, stated as what it supports:
    flat on both chromosomes; precision moves 0.742 → 0.870 and 0.546 →
    0.680. Chains halve and median spans roughly double: A emits fewer,
    longer chains, it does not find more coding sequence.
-2. **Intron *length* is fixed, intron *placement* is not.** The v2 defect
-   of piling introns at the 20 b floor is gone (median 34 b → 615 b, the
-   right regime for *C. elegans*) and correct GT-AG introns rise 68 →
-   433, but 22,187 reference GT-AG introns are still missed, 3,986
-   predicted introns are non-canonical, and donor/acceptor F1 reach only
-   0.070/0.081. Splicing remains the open failure.
+2. **The intron-length defect moved rather than closed, and placement
+   is still wrong.** The v2 pile-up at the 20 b floor is gone — introns
+   of exactly 20 b fall from 538 of 2,290 (23.49%) to 88 of 4,931
+   (1.78%) — but the distribution now overshoots the reference in the
+   other direction: median 34 b → 615 b against a reference 50th
+   percentile cut of 56 b, with 47.60% of predicted introns above the
+   reference 90th percentile cut of 695 b (v2: 0.83%). Calling 615 b the
+   right regime for *C. elegans* was wrong. Correct GT-AG introns rise
+   68 → 433, but 22,187 reference GT-AG introns are still missed, 3,998
+   predicted introns fall outside GT-AG/GC-AG (3,987 in the `other`
+   class — that class's 3,986 false positives plus its one true positive
+   — and 11 AT-AC), and donor/acceptor F1 reach only 0.070/0.081. Splice
+   placement **and** duration calibration are both open; neither
+   distribution by itself says which component causes the mismatch.
+   (Reference decile cuts from `splice.intron_length_decile_cuts` in the
+   chr V score JSON, over unique reference introns; predicted lengths
+   from the committed GFF3s, CDS rows grouped by sequence/strand/Parent
+   and deduplicated by sequence/start/end/strand, the scorer's unit.
+   engels-0110, reproduced here.)
 3. **The split defect has become a fusion defect.** Splits fall 1,827 →
    910 while fusions rise 4 → 312 and chr V exact transcripts fall 101 →
    70 (sens 0.015 → 0.010). Longer chains merge neighbouring genes. The
@@ -1878,9 +1898,14 @@ Reading of that table, stated as what it supports:
    lengths with wrong splice sites and fusion. The next revision is the
    decoder, with the section 6 CPU ceiling in scope, since the remaining
    failures (splice-site placement, locus boundaries) are decoding
-   decisions rather than a shortage of fitting steps — though the
-   monotone dev tail means a still longer fit is not ruled out either,
-   and the two are separable only if measured separately.
+   decisions rather than a shortage of fitting steps — though the dev
+   tail is not converged and a still longer fit is not ruled out either.
+   The last seven evaluations are 32.425, 32.400, 29.933, 29.919,
+   31.148, 30.149, 28.640 at steps 2,100 to 3,000: late variation
+   narrows and the best evaluated checkpoint is the last one, but the
+   sequence is not monotone (it rises 29.919 → 31.148 at step 2,700),
+   so the selected step alone does not establish convergence. The two
+   experiments are separable only if measured separately.
 
 `docs/cost-baseline/measured.tsv` now carries four **fitted** candidate-A
 rows — v2 and v3 on *S. cerevisiae* chr I and on *C. elegans* chr V — in
@@ -1894,20 +1919,32 @@ fit v3 4.33 CPU-h (measured, user+system), final scoring 0.05 CPU-h each
 probes and dry run ~0.35 CPU-h; all local, cluster CPU-hours 0, GPU-hours
 0 (lenin-0083 still open).
 
-### 3.4 Decoder revision, step 1: the hard splice mask, 2026-09-22 (no refit; splice placement doubles, A still misses the target)
+### 3.4 Decoder increment 1: an opt-in restricted-support splice mask, 2026-09-22 (ablation, no refit; splice placement doubles, A still misses the target)
 
-Section 3.3 ended with splice *placement* as the open failure of fit v3
-and with the reading that it is a decoding decision. The first decoder
-increment tests exactly that, on the v3 checkpoint, with no refitting.
+Section 3.3 left splice *placement*, intron duration and fusion open,
+with the reading that placement is a decoding decision. The first
+decoder increment tests that one part, on the v3 checkpoint, with no
+refitting.
 
-**What the decoder was missing.** The pooled decoder's 16-entry donor and
-acceptor dinucleotide tables (proposal 3.5) are a *soft* bias: they can
-reorder splice sites, they cannot forbid one. Fit v3 duly emitted 3,986
-non-canonical introns on chr V against 470 canonical false positives,
-and exactly **one** of its true introns was non-canonical (score JSON
-`splice.by_dinucleotide`). The grammar permits paths the biology does
-not, and the encoder is not strong enough to rule them out by score
-alone.
+**What the increment changes, and what it is not.** The pooled decoder's
+16-entry donor and acceptor dinucleotide tables (proposal 3.5) are a
+*soft* bias: they can reorder splice sites, they cannot forbid one — and
+proposal 3.1 says so deliberately, motifs add finite boundary scores and
+never prohibit a junction. Fit v3 emitted 3,998 introns outside
+GT-AG/GC-AG on chr V (3,987 `other`, 11 AT-AC) against 499 false
+positives *inside* those two classes (470 GT-AG + 29 GC-AG), while
+exactly **one** of the introns it got right lay outside them (score JSON
+`splice.by_dinucleotide`). The mask is therefore an **opt-in restricted
+support ablation**: it changes the support of the accepted grammar, and
+being inference-only does not make that difference go away. It is not a
+demonstration that the excluded junctions are biologically impossible —
+the chr V reference itself contains 39 introns in the `other` class, of
+which unmasked v3 matched one and the masked decode matches none. Those
+are scored reference counts, not an independent validation of each
+annotation. The unmasked finite-score decode stays the default and the
+comparison baseline; the mask is a flag, and section 5's accepted
+decoder is unchanged unless a later revision argues for it on its own
+measured merits.
 
 **The increment.** `model.a.pooled.motif_bias` gains a `canonical` mask:
 a donor emission is `-inf` wherever the first two intron bases are a
@@ -1915,7 +1952,7 @@ concrete dinucleotide other than `GT`/`GC`, an acceptor `-inf` wherever
 the last two are not `AG`. Both decoders already read `-inf` as a hard
 mask, so no kernel changes. A dinucleotide that is ambiguous or reaches
 past the window is **not** masked: the mask fires only on positive
-evidence, so an `N` or a tile edge can never delete a legal site, and in
+evidence, so an `N` or a tile edge can never delete a site, and in
 both decode modes the mask reads the same extended slice as the bias
 (`model.a.chromosome`). It is threaded through `predict_sequence` and
 `measure --canonical-splice` and recorded in the measured row
@@ -1947,34 +1984,56 @@ exit 0.
 | exon F1 (exact) | 0.582 | 0.588 | 0.030 | **0.062** |
 | donor / acceptor F1 | 0 / 0 | 0 / 0 | 0.070/0.081 | **0.117/0.158** |
 | correct GT-AG introns | 0 | 0 | 433 | **1,070** |
-| non-canonical predicted introns | 16 | **0** | 3,986 | **0** |
+| GT-AG intron TP / FP | 0 / 0 | 0 / 12 | 433 / 470 | 1,070 / 1,970 |
+| GT-AG intron precision | – | 0 | 0.480 | 0.352 |
+| GC-AG intron TP / FP | 0 / 0 | 0 / 3 | 1 / 29 | 1 / 601 |
+| reference introns outside GT-AG/GC-AG matched | 0 of 0 | 0 of 0 | 1 of 39 | **0** of 39 |
+| predicted introns outside GT-AG/GC-AG | 16 | **0** | 3,998 | **0** |
+| predicted introns (n, median length) | 16 (81.5 b) | 15 (63 b) | 4,931 (615 b) | 3,642 (550 b) |
+| predicted introns above reference q90 = 695 b | – | – | 2,347 (47.60%) | 1,676 (46.02%) |
 
 Reading of that table:
 
-1. **Splice placement roughly doubles, for free.** Donor F1 0.070 →
-   0.117, acceptor 0.081 → 0.158, correct GT-AG introns 433 → 1,070 on
-   chr V. The gain is not only the deletion of illegal predictions: the
-   number of *correct* introns rises, so the mask moves the Viterbi path
-   onto real sites rather than merely removing wrong ones.
+1. **Splice placement roughly doubles, and not only by deletion.** Donor
+   F1 0.070 → 0.117, acceptor 0.081 → 0.158, correct GT-AG introns
+   433 → 1,070 on chr V: the number of *correct* introns rises, so the
+   mask moves the Viterbi path onto real sites rather than merely
+   removing wrong ones. It is not free inside the retained classes,
+   though. GT-AG false positives rise 470 → 1,970 and GT-AG precision
+   falls 0.480 → 0.352; GC-AG stays at one true positive while its false
+   positives rise 29 → 601; and the one reference intron outside both
+   classes that v3 matched becomes unreachable. The net structural gain
+   is real, the restriction is not costless.
 2. **Gene structure improves too**: exact transcripts 70 → 101 (+44%),
    exact exon F1 0.030 → 0.062, fusions 312 → 226.
 3. **Nucleotide F1 falls 0.598 → 0.585** on chr V — sensitivity 0.533 →
    0.503 against precision 0.680 → 0.698, predicted CDS 4.40 → 4.04 Mb.
-   The decoder loses coding bases it used to claim through illegal
-   introns; locus F1 follows (0.603 → 0.590). The mask trades nucleotide
+   The decoder loses coding bases it used to claim through introns the
+   mask removes; locus F1 follows (0.603 → 0.590). The mask trades nucleotide
    coverage for structural correctness, and the structural metrics are
    the ones the charter's accuracy target is about.
-4. **The mask costs nothing.** 8.88 → 8.65 CPU-s/Mb on chr V (decode
-   105.48 → 100.90): it removes transitions rather than adding work. The
-   section 5 CPU verdict stands and **no positive CPU allowance for B
-   follows from this run either**.
-5. **A still misses the accuracy target**, at exact-transcript
+4. **Duration calibration is untouched.** The masked decode predicts
+   3,642 unique introns on chr V with median 550 b, 46.02% of them above
+   the reference q90 of 695 b (unmasked v3: 4,931, 615 b, 47.60%). The
+   mask selects among supported sites; the length mismatch section 3.3
+   exposed survives it and stays in the open diagnosis.
+5. **Cost falls 2.64% end to end on chr V in this single run**, 8.88 →
+   8.65 CPU-s/Mb, with the decode stage 4.34% lower (105.48 → 100.90
+   CPU-s); chr I moves 12.38 → 12.14 (−1.97%). The mask deletes
+   transitions but adds mask construction to the bias path and leaves
+   the scan kernels unchanged, so this is an observation from one run
+   per chromosome, not an established or guaranteed speedup, and
+   forbidding paths is not free by construction. The section 5 CPU
+   verdict stands and **no positive CPU allowance for B follows from
+   this run either**.
+6. **A still misses the accuracy target**, at exact-transcript
    sensitivity 0.020 per scored locus (0.015 per reference transcript).
    21,550 reference GT-AG introns are still missed, so what remains is
-   not legality but *which* legal site scores highest — an encoder and
-   scoring question, not a grammar one. That is the next decoder
-   increment (donor/acceptor scoring and locus boundaries), and the
-   reason the mask is a step rather than the fix.
+   *which* supported site scores highest — an encoder and scoring
+   question. Under the accepted, unmasked support that question includes
+   the sites this ablation removes. That is the next decoder increment
+   (donor/acceptor scoring and locus boundaries), and the reason the
+   mask is a step rather than the fix.
 
 CPU accounting for this section: the ablation cost 0.05 CPU-h (chr I
 3.4 s, chr V 181.5 s, plus the two scorer runs), plus about 0.04 CPU-h
@@ -2386,6 +2445,59 @@ Fast-kernel review findings (engels-0080, stalin-0081) and their resolution:
   chromosome scoring**, which is the claim the commit actually supports:
   what is fixed in advance is the scoring configuration, not the absence
   of a model.
+
+- **Intron length is not fixed; it overshoots** (P2, engels-0110). The
+  3.3 reading, the v3 score README and lenin-0126 called the length
+  defect closed and 615 b the right regime for *C. elegans*. The same
+  chr V score JSON gives reference decile cuts `[45, 46, 48, 51, 56, 95,
+  199, 370, 695]`, so the predicted median is about eleven times the
+  reference q50 and 47.60% of predicted introns exceed the reference
+  q90; the floor pile-up shrank (23.49% → 1.78% at exactly 20 b) but the
+  distribution shifted from too short to too long. Independently
+  reproduced from the committed GFF3s with the scorer's deduplication
+  (v2 2,290 introns / median 34 b / 0.83% above q90; v3 4,931 / 615 b /
+  47.60%; masked v3 3,642 / 550 b / 46.02%). Section 3.3 item 2, section
+  3.4 item 4, the summary and both score READMEs now report the measured
+  shift and keep duration calibration in the open diagnosis alongside
+  splice placement and fusion.
+
+- **The dev tail is not monotone** (P3, engels-0110). 3.3 item 5 said a
+  monotone dev tail left a longer fit open. The last seven evaluations
+  rise from 29.919 at step 2,550 to 31.148 at 2,700 before the minimum
+  at 3,000 (`run_manifest.json`). The claim is now stated as narrower
+  late variation with the best evaluated checkpoint last; convergence is
+  not established by the selected step, and the longer fit stays an
+  experiment.
+
+- **`other` was reported as a total, not a false-positive count** (P3,
+  engels-0110 and stalin-0114). 3,986 is `splice.by_dinucleotide.other.fp`;
+  that class also has one true positive, so 3,987 `other` introns were
+  predicted, and 3,998 predictions fall outside GT-AG/GC-AG once the 11
+  AT-AC predictions are counted. Likewise the 470 canonical false
+  positives were GT-AG only; with GC-AG the retained-class total is 499.
+  Classes and denominators are now named explicitly wherever these
+  counts appear.
+
+- **The mask is a restricted-support ablation, not biological legality**
+  (P2, stalin-0114). 3.4 described the excluded paths as ones biology
+  does not permit and concluded that only selection among legal sites
+  remained. Proposal 3.1 deliberately gives motifs finite scores that
+  never prohibit a junction, and the chr V reference itself has 39
+  introns outside GT-AG/GC-AG, one of which unmasked v3 matched and the
+  masked decode does not. The flag is now labelled an opt-in restricted
+  support ablation throughout, with the finite-score decode kept as the
+  default and the baseline, and the per-class costs reported beside the
+  gains: GT-AG TP 433 → 1,070 but FP 470 → 1,970 and precision
+  0.480 → 0.352, GC-AG TP 1 → 1 with FP 29 → 601.
+
+- **Decoder cost was reported as end-to-end cost** (P3, stalin-0114).
+  The headline "4% less CPU" attached the decode-stage reduction
+  (105.478 → 100.896 CPU-s, −4.34%) to the stage-sum row
+  (8.8798 → 8.6454 CPU-s/Mb, −2.64%). Both numbers are now given
+  separately, as single-run observations on one core; the mask adds mask
+  construction while the scan kernels are unchanged, so no speedup is
+  claimed as a property of the change. The CPU verdict and the absence
+  of a positive B allowance are unaffected.
 
 ## 7. Training-set coverage accounting
 
