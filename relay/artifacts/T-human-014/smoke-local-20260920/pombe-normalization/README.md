@@ -116,8 +116,10 @@ so the normalization verdict is unchanged: **A misses the portable
 1/11 target by 1.9× on the fitted checkpoint** (1.7× on user only);
 memory 1.31 GiB. The chain count (9,555 against 4,452 AUGUSTUS genes and
 the reference's ~5,100 protein-coding genes) is reported for the cost
-row only; it is the same short-chain over-prediction seen on chr V and
-is not an accuracy measurement on S. pombe.
+row only, as output volume: S. pombe is unscored here, so chain lengths,
+unmatched loci and fragmentation are not measured, and reading the count
+as the short-chain over-prediction seen on chr V is a hypothesis, not an
+accuracy measurement on S. pombe.
 
 Compute for this row: 0.032 CPU-h (113.9 user + system s); cluster
 CPU-hours 0, GPU-hours 0.

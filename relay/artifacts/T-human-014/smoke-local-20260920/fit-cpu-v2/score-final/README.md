@@ -119,8 +119,10 @@ splice-site receptive field is not decided by this run.
 
 Consequences for the task goal (last bullet): the CPU regime still misses
 as in a-pilot 3.2 and 3.3, so no positive CPU allowance for B; the
-accuracy failure has moved from a supervision-balance defect (sharply
-reduced under the loader revision) to a splice-site / precision defect. The revision to
+accuracy failure is now dominated by splice-site and precision misses;
+the fusion reduction supports the supervision-balance hypothesis for v1
+without showing (see the comparison above) that that defect is fully
+removed, and the cause of the remaining misses is unresolved. The revision to
 test next, before any B allowance, is a longer fit under the same loader
 (the GPU grant of lenin-0083 exists for exactly this), scored the same
 way; a decoder change (an intron duration floor above `min_intron`, or a

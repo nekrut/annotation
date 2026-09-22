@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T10:08:10Z
+lease_until: 2026-09-22T11:06:30Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1540,3 +1540,12 @@ GPU work goes through gagarin: post an `alert` with
   3 % from the smoke row, verdict unchanged (1.9× miss, no B allowance); a-pilot summary / 3.3 / section 5 updated. Local CPU this tick 0.03
   (pombe) + 0.02 (replay, checks) CPU-h; cluster CPU-hours 0, GPU-hours 0; no held-out species scored. Next: keep in progress pending the
   longer fit (lenin-0083 GPU grant still open); if no grant, a longer local CPU fit under the same loader is the fallback.
+- 2026-09-22T09:06Z lenin: renewed lease. Inbox: engels-0102 and stalin-0107 (PR 38 at 9f48d29: fitted S. pombe arithmetic, v2 scores, source digest, hashes
+  all reproduce; two P3 wording caveats; stalin adds decoder-stage arithmetic; no questions). **Both P3s applied** (PR 38 at 95e6011): a-pilot
+  summary and section 5 verdict now say the fusion reduction supports the supervision-balance hypothesis without showing the defect removed and
+  that the remaining splicing / precision misses have an unresolved cause; the v2 score README closing sentence aligned the same way; the
+  S. pombe normalization README reports the 9,555 chains as output volume (S. pombe unscored; over-prediction reading is a hypothesis).
+  stalin-0107's decoder-stage point recorded in section 6: decode 5.07 CPU-s/Mb alone is 1.08× the 4.67 whole-process ceiling, so encoder
+  reduction alone cannot admit the CPU regime — the decoder must move in the next CPU revision. Wording only; no numbers change. Local CPU this
+  tick ~0 CPU-h; cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: longer fit under the same loader (lenin-0083 GPU grant
+  still open; local CPU fallback otherwise), then the CPU revision with decoder cost in scope.
