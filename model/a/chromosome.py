@@ -185,7 +185,8 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                      segments: Optional[int] = None,
                      margin: Optional[int] = None,
                      canonical: bool = False,
-                     pwm=None) -> Tuple[List[str], dict]:
+                     pwm=None,
+                     pwm_scale: float = 1.0) -> Tuple[List[str], dict]:
     """Decode ``seq`` on ``strands`` and return ``(gff3 rows, counts)``.
 
     ``counts``: ``oriented_bases`` (sum of decoded window lengths, overlap
@@ -245,6 +246,12 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
     junction's whole context is read inside the segment, and the module's
     own convention (a column past the slice contributes 0) covers the
     remaining segment and window edges.
+
+    ``pwm_scale`` multiplies that matrix (section 3.7). The matrix fixes the
+    shape of the junction preference; the scalar sets its loudness against
+    the learned emissions, and against the intron-entry cost it competes
+    with. ``pwm_scale=0`` reproduces ``pwm=None`` exactly; the slice a tile
+    scores is still widened, which changes nothing it reads.
     """
     import torch
 
@@ -288,7 +295,7 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                                  segments=segments, device=device, dtype=dtype,
                                  clock=clock, strands=strands, stride=stride,
                                  margin=margin, canonical=canonical, pwm=pwm,
-                                 rows=rows, counts=counts)
+                                 pwm_scale=pwm_scale, rows=rows, counts=counts)
 
     with torch.no_grad():
         for strand in strands:
@@ -309,7 +316,8 @@ def predict_sequence(model, seqid: str, seq: str, *, code, structure, tables,
                     emissions = emissions + pooled.motif_bias(x, model.decoder, canonical=canonical,
                                                              dtype=dtype, device=device)
                     if pwm is not None:
-                        emissions = emissions + splicepwm.bias(x, pwm, dtype=dtype, device=device)
+                        emissions = emissions + splicepwm.bias(x, pwm, dtype=dtype,
+                                                              device=device, scale=pwm_scale)
                 group.append((tile, x, emissions))
                 counts["oriented_bases"] += len(x)
                 counts["windows"] += 1
@@ -331,7 +339,7 @@ def segment_length(n: int, segments: int, overlap: int) -> int:
 
 def _predict_segments(model, seqid, seq, *, code, structure, tables, window, overlap,
                       segments, device, dtype, clock, strands, stride, margin, canonical,
-                      pwm, rows, counts):
+                      pwm, pwm_scale, rows, counts):
     """The ``segments`` mode of :func:`predict_sequence`: one carried-state
     scan over every segment of every strand, fed one ``window``-base tile at
     a time; each tile is encoded when the scan asks for it, so the emissions
@@ -388,7 +396,8 @@ def _predict_segments(model, seqid, seq, *, code, structure, tables, window, ove
             bias = pooled.motif_bias(x[lo:hi], model.decoder, canonical=canonical,
                                      dtype=dtype, device=device)
             if pwm is not None:
-                bias = bias + splicepwm.bias(x[lo:hi], pwm, dtype=dtype, device=device)
+                bias = bias + splicepwm.bias(x[lo:hi], pwm, dtype=dtype,
+                                             device=device, scale=pwm_scale)
             counts["tiles"] += 1
             return em + bias[:, start - lo:end - lo]
         return emit

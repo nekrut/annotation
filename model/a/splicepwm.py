@@ -141,13 +141,24 @@ class SplicePWM:
             json.dump(self.to_json(), fh, indent=2, sort_keys=True)
 
     # -- tables -----------------------------------------------------------
-    def tables(self, *, dtype=torch.float64, device=None
+    def tables(self, *, dtype=torch.float64, device=None, scale: float = 1.0
                ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """``(K_d, 5)`` and ``(K_a, 5)`` gather tables; row 4 scores 0."""
+        """``(K_d, 5)`` and ``(K_a, 5)`` gather tables; row 4 scores 0.
+
+        ``scale`` multiplies every log-odds entry (section 3.7): the matrix
+        fixes the *shape* of the junction preference and the scalar sets how
+        loud it is against the learned emissions it is added to. It must be
+        non-negative, so a base the matrix forbids can never become a base it
+        requires; ``scale=0`` is exactly no PWM, including where an entry is
+        ``-inf`` and the product would otherwise be ``nan``.
+        """
+        if not scale >= 0.0:  # also catches nan
+            raise ValueError(f"scale must be non-negative, got {scale!r}")
         out = []
         for mat in (self.donor, self.acceptor):
             t = torch.zeros((len(mat), 5), dtype=dtype, device=device)
-            t[:, :4] = torch.tensor(mat, dtype=dtype, device=device)
+            if scale:
+                t[:, :4] = torch.tensor(mat, dtype=dtype, device=device) * scale
             out.append(t)
         return out[0], out[1]
 
@@ -256,27 +267,37 @@ def fit(examples: Sequence, *, donor_span: Tuple[int, int] = DONOR_SPAN,
 
 def _mean_frequencies(per_group: Sequence[Sequence[Sequence[float]]],
                       pseudocount: float) -> List[List[float]]:
-    """Column frequencies averaged over groups, each group weighted 1/G.
+    """Column frequencies averaged over the groups that observed the column.
 
     A group's column is smoothed with ``pseudocount`` and normalised *within
     the group* before the average, which is what makes 2 yeast junctions
     count as much as 60,000 nematode ones. A group that counted nothing in a
-    column and was given no pseudocount contributes zero there rather than a
-    uniform guess, so an empty group cannot flatten a column the others
-    resolved.
+    column and was given no pseudocount supplies no evidence about it and is
+    dropped from that column's average -- including from its denominator
+    (stalin-0118 P2). Dividing by the group count instead would leave the
+    column summing to less than one, and :func:`_log_odds_freq` would then
+    read the missing mass as a uniform penalty on every base of the column:
+    with one of two sources missing, ``-log(2)`` on a site that the column
+    says nothing about. That penalty is not a within-column constant, because
+    decoded paths differ in how many splice sites they use, so it changes the
+    reward for adding an intron. A column no group observed keeps the flat
+    fallback of :func:`_log_odds_freq`.
     """
     width = len(per_group[0])
-    g = float(len(per_group))
     out = []
     for j in range(width):
         acc = [0.0] * 4
+        contributing = 0
         for counts in per_group:
             col = counts[j]
             total = sum(col) + 4.0 * pseudocount
             if total <= 0:
                 continue
+            contributing += 1
             for i, c in enumerate(col):
-                acc[i] += ((c + pseudocount) / total) / g
+                acc[i] += (c + pseudocount) / total
+        if contributing:
+            acc = [v / contributing for v in acc]
         out.append(acc)
     return out
 
@@ -389,17 +410,18 @@ def _score_row(idx: torch.Tensor, table: torch.Tensor, span: Tuple[int, int],
 
 
 def bias_batch(windows: Sequence[str], pwm: SplicePWM, *, L: Optional[int] = None,
-               dtype=torch.float64, device=None) -> torch.Tensor:
+               dtype=torch.float64, device=None, scale: float = 1.0) -> torch.Tensor:
     """``(B, EMISSION_CHANNELS, L)`` additive bias: the donor and acceptor PWM
     scores on their emission rows, zero elsewhere and past each window's end.
 
     Same contract as :func:`model.a.pooled.motif_bias_batch`, and meant to be
     added to it: the dinucleotide table stays the learned part of the score
-    and this is the fixed context term on top of it.
+    and this is the fixed context term on top of it. ``scale`` multiplies the
+    matrix (see :meth:`SplicePWM.tables`).
     """
     B = len(windows)
     L = max((len(w) for w in windows), default=0) if L is None else L
-    d_tab, a_tab = pwm.tables(dtype=dtype, device=device)
+    d_tab, a_tab = pwm.tables(dtype=dtype, device=device, scale=scale)
     bias = torch.zeros((B, EMISSION_CHANNELS, L), dtype=dtype, device=device)
     for b, w in enumerate(windows):
         n = len(w)
@@ -415,6 +437,7 @@ def bias_batch(windows: Sequence[str], pwm: SplicePWM, *, L: Optional[int] = Non
     return bias
 
 
-def bias(x: str, pwm: SplicePWM, *, dtype=torch.float64, device=None) -> torch.Tensor:
+def bias(x: str, pwm: SplicePWM, *, dtype=torch.float64, device=None,
+         scale: float = 1.0) -> torch.Tensor:
     """``(EMISSION_CHANNELS, n)`` :func:`bias_batch` for one window."""
-    return bias_batch([x], pwm, dtype=dtype, device=device)[0, :, :len(x)]
+    return bias_batch([x], pwm, dtype=dtype, device=device, scale=scale)[0, :, :len(x)]

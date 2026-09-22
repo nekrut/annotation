@@ -2330,10 +2330,16 @@ on the two development chromosomes it is scored on; it must be declared
 as selection, and the held-out panel stays untouched either way.
 
 Two smaller things the runs establish. The unmasked control behaves as
-in 3.5 — the mask is worth ~0.008 exon-exact F1 on chr V here
-(0.5008 masked vs 0.4923 unmasked) and nothing on chr I's exactness —
-so 3.4's conclusion that the PWM, not the mask, carries the increment
-survives the reweighting. And cost is unchanged: chr V 8.99 CPU-s/Mb
+in 3.5 — the mask is worth 0.0085 exon-exact F1 on chr V here
+(0.50082 masked vs 0.49232 unmasked) and 0.0129 on chr I
+(0.33003 vs 0.31715, 47 vs 46 exact transcripts) — so 3.4's conclusion
+that the PWM, not the mask, carries the increment survives the
+reweighting. Both figures are larger than the pooled matrix's chr V
+mask gain of 0.0018 (0.52164 vs 0.51987), and both are an order of
+magnitude below the PWM's own effect, so the ranking of the two
+decoder options is unchanged; an earlier draft of this paragraph said
+the mask was worth nothing on chr I, which the balanced scores
+contradict (stalin-0118). And cost is unchanged: chr V 8.99 CPU-s/Mb
 masked and 9.08 unmasked, chr I 12.46 / 12.50, all far under the
 accepted 15 CPU-s/Mb, so **still no positive CPU allowance for B**, and
 **A still misses the accuracy target** — the best configuration on this

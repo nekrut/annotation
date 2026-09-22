@@ -806,7 +806,8 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
             overlap: Optional[int] = None, gff_out: Optional[str] = None,
             segments: Optional[int] = None, margin: Optional[int] = None,
             dtype: str = "float64", canonical: bool = False,
-            splice_pwm: Optional[str] = None) -> dict:
+            splice_pwm: Optional[str] = None,
+            splice_pwm_scale: float = 1.0) -> dict:
     """Time preprocessing, encoder and decode/traceback over one sequence.
 
     ``profile="chromosome"`` is the end-to-end row (:mod:`model.a.chromosome`):
@@ -844,6 +845,10 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
     encoder timing is unchanged; the decode stage is timed as a whole), which
     is how a chromosome's windows would be decoded in either regime.
     """
+    if splice_pwm_scale != 1.0 and not splice_pwm:
+        # A scale without a matrix would be silently ignored and the row would
+        # record it, so refuse rather than report a scale nothing was scaled by.
+        raise ValueError("--splice-pwm-scale needs --splice-pwm")
     if splice_pwm and profile != "chromosome":
         # Same reason as ``canonical`` below: only the chromosome profile
         # decodes through :func:`model.a.chromosome.predict_sequence`.
@@ -888,6 +893,7 @@ def measure(config: TrainConfig, species: str, seqid: Optional[str],
                                    window=window, overlap=overlap, gff_out=gff_out,
                                    segments=segments, margin=margin,
                                    canonical=canonical, splice_pwm=splice_pwm,
+                                   splice_pwm_scale=splice_pwm_scale,
                                    log=log, dtype_name=dtype_name)
     if profile != "windows":
         raise ValueError("profile must be 'windows' or 'chromosome'")
@@ -992,6 +998,7 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
                         segments: Optional[int] = None,
                         margin: Optional[int] = None, canonical: bool = False,
                         splice_pwm: Optional[str] = None,
+                        splice_pwm_scale: float = 1.0,
                         dtype_name: str = "float64") -> dict:
     """The ``profile="chromosome"`` half of :func:`measure`."""
     import torch
@@ -1036,7 +1043,8 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
                                       window=window, overlap=overlap,
                                       decode_batch=decode_batch, device=device,
                                       dtype=dtype, clock=clock, segments=segments,
-                                      margin=margin, canonical=canonical, pwm=pwm)
+                                      margin=margin, canonical=canonical, pwm=pwm,
+                                      pwm_scale=splice_pwm_scale)
     gff_bytes = None
     with clock("output"):
         if gff_out:
@@ -1071,6 +1079,7 @@ def _measure_chromosome(config: TrainConfig, src: SpeciesSource, seqid: Optional
                               "acceptor": list(pwm.acceptor_span)}),
         "splice_pwm_sites": (None if pwm is None else list(pwm.sites)),
         "splice_pwm_weighting": (None if pwm is None else pwm.weighting),
+        "splice_pwm_scale": (None if pwm is None else float(splice_pwm_scale)),
         "commit": _git_commit(), "source": _source_provenance(),
         **{f"{st}_cpu_s": clock.cpu.get(st, 0.0) for st in stages},
         **{f"{st}_wall_s": clock.wall.get(st, 0.0) for st in stages},
@@ -1210,6 +1219,9 @@ def build_parser() -> argparse.ArgumentParser:
     pm.add_argument("--splice-pwm", default=None,
                     help="a splicepwm.json (model.a.train pwm) whose donor/acceptor "
                          "log-odds are added to the dinucleotide bias (inference only)")
+    pm.add_argument("--splice-pwm-scale", type=float, default=1.0,
+                    help="multiply the --splice-pwm log-odds by this non-negative scalar "
+                         "(default 1.0; 0 is exactly no PWM)")
     pm.add_argument("--dtype", default="float64", choices=("float64", "float32"),
                     help="decode dtype for emissions, motif bias, duration tables and the "
                          "scan (default float64, the parity-tested path; float32 rebases "
@@ -1232,7 +1244,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 decode_batch=args.decode_batch, profile=args.profile,
                 window=args.window, overlap=args.overlap, gff_out=args.gff_out,
                 segments=args.segments, margin=args.margin, dtype=args.dtype,
-                canonical=args.canonical_splice, splice_pwm=args.splice_pwm)
+                canonical=args.canonical_splice, splice_pwm=args.splice_pwm,
+                splice_pwm_scale=args.splice_pwm_scale)
     return 0
 
 

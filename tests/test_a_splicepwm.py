@@ -285,6 +285,108 @@ class Bias(unittest.TestCase):
 
 
 @unittest.skipUnless(HAS, "needs torch and model.a.splicepwm")
+class BalancedMissingColumns(unittest.TestCase):
+    """stalin-0118 P2: a source that observed nothing in a column must leave
+    the column's frequencies normalised, not shrink them."""
+
+    def test_zero_pseudocount_column_stays_normalised(self):
+        observed = _Ex("ACGTACGT", [(4, 6)])
+        missing = _Ex("ACGTNACGT", [(4, 6)])   # the donor column is an N
+        kw = dict(donor_span=(0, 1), acceptor_span=(0, 1), pseudocount=0.0,
+                  min_sites=1)
+        one = splicepwm.fit_grouped([("observed", [observed])], **kw)
+        two = splicepwm.fit_grouped([("observed", [observed]),
+                                     ("missing", [missing])], **kw)
+        self.assertEqual(one.background, two.background)
+
+        def mass(pwm):
+            return sum(math.exp(v) * q for v, q in zip(pwm.donor[0], pwm.background))
+
+        self.assertAlmostEqual(mass(one), 1.0)
+        self.assertAlmostEqual(mass(two), 1.0)
+        # and the surviving source decides the column on its own
+        for a, b in zip(one.donor[0], two.donor[0]):
+            self.assertAlmostEqual(a, b)
+
+    def test_partially_missing_column_averages_over_contributors(self):
+        # Two sources observe the column, a third does not: the average is
+        # over the two, so adding an uninformative source cannot penalise
+        # every base of the column.
+        a = _Ex("ACGTACGT", [(4, 6)])
+        b = _Ex("ACGTCCGT", [(4, 6)])
+        blind = _Ex("ACGTNACGT", [(4, 6)])
+        kw = dict(donor_span=(0, 1), acceptor_span=(0, 1), pseudocount=0.0,
+                  min_sites=1)
+        two = splicepwm.fit_grouped([("a", [a]), ("b", [b])], **kw)
+        three = splicepwm.fit_grouped([("a", [a]), ("b", [b]),
+                                       ("blind", [blind])], **kw)
+        # backgrounds differ (the third source has its own composition), so
+        # compare frequencies, which the log-odds are taken of
+        for col_two, col_three in ((two.donor[0], three.donor[0]),):
+            f2 = [math.exp(v) * q for v, q in zip(col_two, two.background)]
+            f3 = [math.exp(v) * q for v, q in zip(col_three, three.background)]
+            self.assertAlmostEqual(sum(f2), 1.0)
+            self.assertAlmostEqual(sum(f3), 1.0)
+            for x, y in zip(f2, f3):
+                self.assertAlmostEqual(x, y)
+
+    def test_a_column_no_source_observed_is_flat(self):
+        blind = _Ex("ACGTNNGT", [(4, 6)])
+        pwm = splicepwm.fit_grouped([("blind", [blind])], donor_span=(0, 1),
+                                    acceptor_span=(0, 1), pseudocount=0.0,
+                                    min_sites=1)
+        self.assertEqual(pwm.donor[0], (0.0,) * 4)
+
+    def test_default_pseudocount_is_unaffected(self):
+        # Every source contributes to every column when smoothed, so the
+        # committed matrices' estimator is the same before and after the fix.
+        a = _Ex("ACGTACGT", [(4, 6)])
+        blind = _Ex("ACGTNACGT", [(4, 6)])
+        pwm = splicepwm.fit_grouped([("a", [a]), ("blind", [blind])],
+                                    donor_span=(0, 1), acceptor_span=(0, 1),
+                                    min_sites=1)
+        f = [math.exp(v) * q for v, q in zip(pwm.donor[0], pwm.background)]
+        self.assertAlmostEqual(sum(f), 1.0)
+
+
+@unittest.skipUnless(HAS, "needs torch and model.a.splicepwm")
+class Scale(unittest.TestCase):
+    """The section 3.7 scalar on the matrix."""
+
+    def test_scale_multiplies_every_score(self):
+        x = "ACGTGTAAGTCCCCCCCCCCCCCCCCAGGTACGT"
+        pwm = _uniform_pwm(donor_span=(-3, 6), acceptor_span=(-20, 3))
+        one = splicepwm.bias(x, pwm)
+        half = splicepwm.bias(x, pwm, scale=0.5)
+        self.assertTrue(bool(torch.allclose(half, one * 0.5)))
+        loud = splicepwm.bias(x, pwm, scale=2.5)
+        self.assertTrue(bool(torch.allclose(loud, one * 2.5)))
+
+    def test_scale_zero_is_exactly_no_pwm(self):
+        x = "ACGTGTAAGTCCCCCCCCCCCCCCCCAGGTACGT"
+        pwm = _uniform_pwm(donor_span=(-3, 6), acceptor_span=(-20, 3))
+        z = splicepwm.bias(x, pwm, scale=0.0)
+        self.assertTrue(bool(torch.all(z == 0)))
+
+    def test_scale_zero_survives_an_infinite_entry(self):
+        # pseudocount 0 puts -inf on an unseen base; 0 * -inf is nan, which
+        # would poison the whole decode, so scale=0 must short-circuit.
+        ex = [_Ex("AAAAGTAAGCCCCCCAG", [(4, 15)])]
+        pwm = splicepwm.fit(ex, donor_span=(0, 2), acceptor_span=(-2, 0),
+                            pseudocount=0.0, min_sites=1)
+        self.assertTrue(any(math.isinf(v) for col in pwm.donor for v in col))
+        z = splicepwm.bias("AAAAGTAAGCCCCCCAG", pwm, scale=0.0)
+        self.assertTrue(bool(torch.all(z == 0)))
+
+    def test_negative_scale_is_refused(self):
+        pwm = _uniform_pwm()
+        with self.assertRaises(ValueError):
+            splicepwm.bias("ACGTACGT", pwm, scale=-1.0)
+        with self.assertRaises(ValueError):
+            pwm.tables(scale=float("nan"))
+
+
+@unittest.skipUnless(HAS, "needs torch and model.a.splicepwm")
 class Serialisation(unittest.TestCase):
     def test_round_trip(self):
         rng = random.Random(1)
