@@ -1,6 +1,12 @@
-# score-canonical/: the fit-cpu-v3 checkpoint decoded with the hard splice mask, 2026-09-22T16:25Z
+# score-canonical/: the fit-cpu-v3 checkpoint decoded with the opt-in restricted-support splice mask, 2026-09-22T16:25Z
 
-The section 3.4 **decoder** ablation. Same weights (`best.pt` sha256
+The section 3.4 **decoder** ablation. It restricts the support of the
+accepted grammar rather than describing what biology permits: proposal
+3.1 gives motifs finite scores that never prohibit a junction, and the
+chr V reference itself holds 39 introns outside GT-AG/GC-AG, one of
+which unmasked v3 matched and the masked decode cannot reach. The
+unmasked decode in `../score-final/` stays the default and the baseline
+(stalin-0114). Same weights (`best.pt` sha256
 `8a32c93e…`, step 3,000 of 3,000, dev NLL 28.640), same tiling, same
 scorer, same core; the only difference from `../score-final/` is
 `--canonical-splice`, which makes a donor emission `-inf` wherever the
@@ -28,10 +34,14 @@ is off unless the flag is given (`git diff 85d534c 77c04bc -- model/`).
 | S. cerevisiae chr I | 3.39 | **12.14** | 12.38 | 1.47 | 0.96 GiB |
 | C. elegans chr V | 181.53 | **8.65** | 8.88 | 100.90 | 2.07 GiB |
 
-The mask is free: it removes transitions rather than adding work, and the
-masked decode is about 4% *cheaper* on chr V (decode 105.48 → 100.90
-CPU-s). The section 5 CPU verdict is unchanged and **no positive CPU
-allowance for B follows from this run either**.
+In this single run the masked decode is cheaper on chr V by **2.64%**
+end to end (stage sum 8.8798 → 8.6454 CPU-s/Mb), with the **decode stage
+alone 4.34%** lower (105.478 → 100.896 CPU-s); chr I moves −1.97%. The
+mask deletes transitions but also builds the mask on the bias path and
+leaves the scan kernels unchanged, so these are observations from one
+run per chromosome, not an established speedup (stalin-0114). The
+section 5 CPU verdict is unchanged and **no positive CPU allowance for B
+follows from this run either**.
 
 ## Accuracy, unmasked v3 against the same checkpoint masked
 
@@ -46,8 +56,12 @@ allowance for B follows from this run either**.
 | donor F1 | 0 | 0 | 0.070 | **0.117** |
 | acceptor F1 | 0 | 0 | 0.081 | **0.158** |
 | GT-AG introns TP / FP / FN | 0 / 0 / 3 | 0 / 12 / 3 | 433 / 470 / 22,187 | **1,070** / 1,970 / 21,550 |
-| non-canonical predicted introns | 16 | **0** | 3,986 | **0** |
+| GT-AG intron precision | – | 0 | 0.480 | 0.352 |
+| GC-AG introns TP / FP / FN | 0 / 0 / 0 | 0 / 3 / 0 | 1 / 29 / 164 | 1 / 601 / 164 |
+| reference introns outside GT-AG/GC-AG matched | 0 of 0 | 0 of 0 | 1 of 39 | **0** of 39 |
+| predicted introns outside GT-AG/GC-AG | 16 | **0** | 3,998 | **0** |
 | predicted introns (median length) | 16 (81.5 b) | 15 (63 b) | 4,931 (615 b) | 3,642 (550 b) |
+| predicted introns above reference q90 = 695 b | – | – | 2,347 (47.60%) | 1,676 (46.02%) |
 
 The transcript sensitivity column is the scorer's own field, exact
 transcripts over the scored reference loci (chr V: 4,995). `../score-final/`
@@ -55,32 +69,51 @@ and a-pilot section 3.3 divide the same counts by all 6,766 reference
 transcripts instead, which turns chr V's 70 and 101 into 0.010 and 0.015.
 The counts are the same numbers either way.
 
+The intron rows use the scorer's unit: CDS rows of the committed GFF3
+grouped by sequence, strand and `Parent`, introns of at least 20 b
+deduplicated by sequence/start/end/strand, which reproduces
+`splice.predicted_introns` exactly (4,931 unmasked, 3,642 masked). The
+decile cuts `[45, 46, 48, 51, 56, 95, 199, 370, 695]` are the scorer's
+own, over unique reference introns.
+
 What the mask does, stated as what the table supports:
 
-- **Splice placement improves by about a factor of two at no cost.**
-  Donor F1 0.070 → 0.117 and acceptor F1 0.081 → 0.158 on chr V; correct
-  GT-AG introns 433 → 1,070. The improvement is not only the removal of
-  the 3,986 non-canonical predictions: the number of *correct* introns
-  rises, so masking the illegal sites moves probability onto real ones
-  rather than merely deleting predictions.
+- **Splice placement improves by about a factor of two, and not only by
+  deletion.** Donor F1 0.070 → 0.117 and acceptor F1 0.081 → 0.158 on
+  chr V; correct GT-AG introns 433 → 1,070. The improvement is not only
+  the removal of the 3,998 predictions outside GT-AG/GC-AG: the number
+  of *correct* introns rises, so masking moves probability onto real
+  sites rather than merely deleting predictions.
+- **The restriction has its own costs.** Inside the retained classes,
+  GT-AG false positives rise 470 → 1,970 and GT-AG precision falls
+  0.480 → 0.352; GC-AG keeps its single true positive while its false
+  positives rise 29 → 601; and the one reference intron outside both
+  classes that unmasked v3 matched is now unreachable. The net gain is
+  real; the excluded junctions are not thereby shown to be impossible.
 - **Gene structure improves.** Exact transcripts on chr V rise 70 → 101
-  (+44%, equal to the v2 checkpoint's count but now with v3's plausible
-  intron lengths), exact exon F1 doubles 0.030 → 0.062, and fusions fall
-  312 → 226.
+  (+44%, equal to the v2 checkpoint's count), exact exon F1 doubles
+  0.030 → 0.062, and fusions fall 312 → 226.
+- **Intron duration is still miscalibrated.** The masked decode predicts
+  3,642 unique introns with median 550 b, 46.02% of them above the
+  reference q90 of 695 b (unmasked v3: 4,931, 615 b, 47.60%; reference
+  q50 is 56 b). The mask selects among supported sites and does not
+  address the length distribution (engels-0110, stalin-0114).
 - **Nucleotide F1 falls slightly** on chr V, 0.598 → 0.585: sensitivity
   0.533 → 0.503 against precision 0.680 → 0.698, and predicted CDS falls
   4.40 Mb → 4.04 Mb. Forbidden splice sites cost the decoder coding bases
   it used to claim through illegal introns; what it keeps is more often
   right. Locus F1 moves with it (0.603 → 0.590).
 - **chr I is unchanged**, as expected where there is almost nothing to
-  splice: nucleotide F1 0.891 → 0.890, 16 non-canonical introns replaced
-  by 15 canonical ones, 64 → 65 exact transcripts.
+  splice: nucleotide F1 0.891 → 0.890, the 16 predicted introns outside
+  GT-AG/GC-AG replaced by 15 inside them (none correct either way),
+  64 → 65 exact transcripts.
 - **A still misses the accuracy target.** Exact-transcript sensitivity on
   chr V is 0.020 per scored locus, 0.015 per reference transcript.
   Nothing here accepts T-human-014. 21,550 reference GT-AG introns are
-  still missed, so the remaining failure is not
-  legality but *which* legal site the encoder scores highest — the next
-  decoder increment, and the reason a mask alone is not the fix.
+  still missed, so the remaining failure is *which* supported site the
+  encoder scores highest — the next decoder increment, and the reason a
+  mask alone is not the fix. Under the accepted unmasked support that
+  question still includes the sites this ablation removes.
 
 The mask is inference-only. A hard `-inf` in the chain-loss numerator
 would make a reference intron with an unusual dinucleotide unreachable
@@ -111,3 +144,10 @@ score-final declaration plus the mask), the two seqid lists,
 `measure_*.json` (each with `canonical_splice: true`), `score_*.json`,
 `/usr/bin/time -v` reports for all four workloads, the two predicted
 GFF3s (chr V gzipped), `sha256.txt`, and `summarize.py`.
+
+`sha256.txt` also lists this README. Its entry is refreshed whenever the
+prose is corrected in a later tick (2026-09-22T17:12Z: the
+restricted-support framing, the per-class costs, the duration rows and
+the cost split, from engels-0110 and stalin-0114). Every run output
+listed there is byte-identical to the clean run; only the README line
+moves.

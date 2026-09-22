@@ -42,7 +42,8 @@ still the larger stage on chr V (105.48 of 185.80 CPU-s).
 | donor F1 | 0 | 0 | 0.014 | 0.070 |
 | acceptor F1 | 0 | 0 | 0.025 | 0.081 |
 | GT-AG introns TP / FP / FN | 0 / 1 / 3 | 0 / 0 / 3 | 68 / 97 / 22,552 | 433 / 470 / 22,187 |
-| non-canonical predicted introns | 27 | 16 | 2,114 | 3,986 |
+| predicted introns outside GT-AG/GC-AG | 27 | 16 | 2,118 | 3,998 |
+| of which `other` class (tp + fp) | 27 | 16 | 2,114 | 3,987 |
 | predicted introns (median length) | 28 (21 b) | 16 (81.5 b) | 2,290 (34 b) | 4,931 (615 b) |
 
 What the longer fit with the decayed rate changed, and what it did not:
@@ -53,14 +54,20 @@ What the longer fit with the decayed rate changed, and what it did not:
   and the median predicted CDS span roughly doubles, so the gain comes
   from emitting fewer, longer chains rather than from finding more coding
   sequence.
-- **Intron geometry is far more plausible, the splice sites are still
-  wrong.** The median predicted intron on chr V goes from 34 b (at the
-  20 b floor, the v2 defect) to 615 b, in the right regime for C. elegans,
-  and correct GT-AG introns rise 68 → 433. But donor F1 is 0.070 and
+- **Intron length moved from too short to too long, and the splice
+  sites are still wrong.** The v2 pile-up at the 20 b floor is gone
+  (introns of exactly 20 b: 538 of 2,290 = 23.49% → 88 of 4,931 = 1.78%)
+  but the median predicted intron on chr V goes from 34 b to 615 b
+  against a reference q50 of 56 b, and 47.60% of predictions now exceed
+  the reference q90 of 695 b (v2: 0.83%); reference decile cuts
+  `[45, 46, 48, 51, 56, 95, 199, 370, 695]` from `splice` in the same
+  score JSON. Length is **not** fixed — it overshoots (engels-0110).
+  Correct GT-AG introns rise 68 → 433, but donor F1 is 0.070 and
   acceptor F1 0.081: 22,187 reference GT-AG introns are still missed and
-  3,986 predicted introns are non-canonical, more in absolute number than
-  v2's 2,114 because v3 predicts more introns overall. Splicing remains
-  the unsolved failure, not a fixed one.
+  3,998 predicted introns fall outside GT-AG/GC-AG (3,987 in the `other`
+  class — 3,986 fp plus 1 tp — and 11 AT-AC), more in absolute number
+  than v2's 2,118 because v3 predicts more introns overall. Splice
+  placement and duration calibration both remain unsolved.
 - **A new fusion regime on chr V.** Splits fall 1,827 → 910, but fusions
   rise 4 → 312 and exact transcripts fall 101 → 70 (sens 0.015 → 0.010).
   Longer chains merge neighbouring genes. On chr I, fusions go 2 → 3 and

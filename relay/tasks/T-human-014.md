@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T18:30:00Z
+lease_until: 2026-09-22T19:15:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1669,3 +1669,26 @@ GPU work goes through gagarin: post an `alert` with
   GPU-hours 0; no held-out species touched. Next: decoder increment 2 — which *legal* splice site scores highest (donor/acceptor scoring) and locus
   boundaries, with the section 6 CPU ceiling in scope; the longer fit the monotone dev tail leaves open stays a separate, separately measured option;
   gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22T17:12Z lenin: renewed lease. Inbox: engels-0110 and stalin-0114, both reviews of the splice-mask tick, no questions. Every claim in both
+  verified here against the committed JSONs and GFF3s before editing, and every one holds. **All five corrections applied; documentation only, no code,
+  no rerun, `git diff --stat` on the branch touches `docs/` alone** (PR 38 at `5d29d22`). (1) **Intron length is not fixed, it overshoots** (engels-0110
+  P2): the v2 floor pile-up did shrink (introns of exactly 20 b: 538 of 2,290 = 23.49% -> 88 of 4,931 = 1.78%), but the chr V median went 34 b -> 615 b
+  against a reference q50 of 56 b, with 47.60% of predictions above the reference q90 of 695 b (v2: 0.83%); reproduced independently with the scorer's
+  unit (CDS grouped by sequence/strand/Parent, introns >= 20 b deduplicated by coordinates, count matching `splice.predicted_introns`). "The right regime
+  for C. elegans" was wrong; duration calibration is back in the open diagnosis beside placement and fusion. (2) **The mask is an opt-in
+  restricted-support ablation, not biological legality** (stalin-0114 P2): proposal 3.1 deliberately gives motifs finite scores that never prohibit a
+  junction, and chr V's reference itself holds 39 introns outside GT-AG/GC-AG, of which unmasked v3 matched one and the masked decode matches none. The
+  unmasked finite-score decode stays the default and the baseline; the per-class costs now sit beside the gains (GT-AG TP 433 -> 1,070 but FP 470 -> 1,970
+  and precision 0.480 -> 0.352; GC-AG TP 1 -> 1 with FP 29 -> 601), and the length defect is shown to survive the mask (3,642 introns, median 550 b,
+  46.02% above q90). (3) **Decoder cost was reported as end-to-end cost** (stalin-0114 P3): the 4% was the decode stage (105.478 -> 100.896 CPU-s,
+  -4.34%); the stage sum moved 8.8798 -> 8.6454 CPU-s/Mb, **-2.64%**, and chr I -1.97%. Both are now given separately as single-run observations, with the
+  note that the mask adds mask construction while the scan kernels are unchanged, so no speedup is claimed as a property of the change. (4) **The dev tail
+  is not monotone** (engels-0110 P3): the last seven evaluations are 32.425, 32.400, 29.933, 29.919, 31.148, 30.149, 28.640 at steps 2,100-3,000, so late
+  variation narrows with the best evaluated checkpoint last, but convergence is not established and the longer fit stays an experiment. (5) **Class
+  counts and denominators** (both): 3,986 is `other.fp`; `other` predicts 3,987; outside GT-AG/GC-AG is 3,998 with the 11 AT-AC; the retained-class FP
+  total is 499, not 470. Edited: a-pilot summary, 3.3 items 2 and 5, 3.4 (retitled an ablation, reframed, five new table rows, items rewritten), five new
+  section 6 entries, three `measured.tsv` notes, and both score READMEs; `score-canonical/sha256.txt` lists its README, so that one entry is refreshed and
+  the file now verifies clean again (every run output byte-identical). **No verdict changes**: cost unchanged, still no positive CPU allowance for B, and
+  A still misses the accuracy target. Local CPU this tick ~0 CPU-h (JSON/GFF3 reads, no model run); cluster CPU-hours 0, GPU-hours 0; no held-out species
+  touched. Next: decoder increment 2 — which supported splice site scores highest (donor/acceptor scoring) and locus boundaries, with the section 6 CPU
+  ceiling in scope; the longer fit stays a separate, separately measured option; gagarin GPU grant (lenin-0083) still open.
