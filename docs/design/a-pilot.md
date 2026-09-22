@@ -8,8 +8,15 @@ regime is measured end to end with a frozen smoke checkpoint on the
 (*C. elegans* chr V, 20.9 Mb), both at 19 segments per strand: **9.2–9.7
 CPU-s per genome Mb, 1/5.4–1/5.5 of AUGUSTUS on the same machine, missing
 the 1/11 portable target by 2.0× (1.8× on user time); no positive CPU
-allowance for B** (section 3.2). Still pending: the fitted checkpoint and
-its accuracy column, and the GPU regime (gagarin, lenin-0083).
+allowance for B** (section 3.2). The first fitted checkpoint (bounded
+local CPU fit v1, section 3.3) scores the two development chromosomes at
+nucleotide sensitivity 0.04 / 0.47 with 0 exact transcripts: **A misses
+the accuracy target in this fit**, with the fitted rows still 1.9–2.6×
+over the portable CPU ceiling; the working hypothesis is the 3 %
+intergenic share of the sampled training bases, and the proposed
+revision (wide-flank / adjacent-gene loader, genome-matched background
+share, fit v2) is in section 3.3. Still pending: fit v2, the fitted
+S. pombe row, and the GPU regime (gagarin, lenin-0083).
 
 ## 1. What is implemented
 
@@ -1491,14 +1498,25 @@ fit's `4c43819`, one thread on core 2, all exits 0):
 | nucleotide sens / prec / F1 / MCC | 0.039 / 0.356 / 0.071 / 0.020 | 0.470 / 0.586 / 0.522 / 0.461 |
 | locus TP / FP / FN; fusions; splits | 3 / 3 / 91; 2; 0 | 269 / 18 / 4,726; **238**; 121 |
 | exact transcripts / exact CDS exons | 0 / 0 | 0 / 67 |
-| predicted introns: GT-AG / GC-AG / AT-AC / other | 31: 1 / 0 / 0 / 30 | 10,261: 424 (162 TP) / 43 / 10 / **9,622** |
+| predicted introns: GT-AG / GC-AG / AT-AC / other (`score.py` categories) | 31: 1 / 0 / 0 / 30 | 10,261: 586 (162 TP + 424 FP) / 43 / 10 / **9,622** (9,675 non-GT-AG) |
 | predicted chain span median / max (bases) | 11,212 / 15,989 | **81,233 / 842,820** |
 | predicted intron length median / max (bases) | 845 / 12,028 | 1,336 / 52,199 |
 
-Cost: both development chromosomes decode inside the 15 CPU-s/Mb CPU
-budget under the fitted weights (chr V cheaper than chr I per Mb because
-the decode traces back 287 rather than hundreds of chains; the encoder
-share is unchanged from section 3.2), and peak RSS stays under 8 GB.
+Cost: the raw stage sums (12.09 and 8.86 CPU-s/Mb) are below the
+15 CPU-s/Mb figure, but that figure is bound to the cost-baseline runner
+(cost-baseline 5.2) and this machine is 3.21× faster on the S. pombe
+AUGUSTUS normalization (section 3.2), so the portable ceiling here is
+51.41 / 11 = **4.67 CPU-s/Mb**. Under the fitted weights **both rows
+miss it**: chr I at 12.09 / 12.42 / 14.64 (stage sum / user / user +
+system) is 2.6× / 2.7× / 3.1× over, chr V at 8.86 / 7.77 / 8.89 is
+1.9× / 1.7× / 1.9× over; machine-normalized to the baseline runner the
+stage sums read **38.8 and 28.4 CPU-s/Mb against 15** (stalin-0103).
+The fitted checkpoint therefore leaves the section 3.2 CPU verdict
+unchanged (miss by ~2×; no positive CPU allowance for B), and only
+memory passes (peak RSS ≤ 2.05 GiB against 8 GB). chr V is cheaper than
+chr I per Mb because the decode traces back 287 rather than hundreds of
+chains; the encoder share is unchanged from section 3.2. The fitted
+S. pombe normalization row is still outstanding.
 
 Accuracy: **the fitted checkpoint does not produce gene-by-gene
 structure, so candidate A misses the accuracy target in this fit.** On chr
@@ -1508,17 +1526,26 @@ genes (238 fusions, 121 splits) joined by long non-canonical introns
 reaches 0.47 while no transcript and only 67 of 28,569 CDS exons are
 exact; on the intronless-dominated yeast chr I it emits almost nothing.
 The interim step-300 checkpoint over-predicted instead (662 chains on chr
-I). Both behaviours are consistent with one cause that the run records
-make explicit: in this fit's training windows every non-CDS base is
-supervised as *intron* except the 10-base flanks (`FLANK` of the
-admission audit) and the 548 gene-free background tiles (2,048 bases each,
-~1.1 Mb against 26.3 Mb sampled), so the encoder gets almost no signal
-separating intergenic from intronic sequence, and the chromosome decode
-stitches neighbouring genes together through intergenic stretches the
-emissions score as intron. The duration factor alone does not prevent this
-(stalin-0102: −305 nats at 1,000 bases for the step-300 tables, yet the
-final decode's median intron is 1.3 kb), so the fix is in the training
-data, not the grammar or scorer.
+I). Working hypothesis (not yet established as the sole cause): both
+behaviours are consistent with the run records' supervision balance. In
+this fit's training windows every non-CDS base is supervised as *intron*
+except the 10-base flanks (`FLANK` of the admission audit) and the
+gene-free background tiles (2,048 bases each). Replaying the fit's seeded
+draws (engels-0099), the 12,000 window draws through step 1,500 contained
+269 background draws = 550,912 bases plus 234,620 flank bases, i.e.
+**785,532 intergenic bases of 26,259,772 sampled (3.0 %)**; through the
+selected step 900, 168 background draws = 344,064 bases plus 140,640
+flank bases, 484,704 of 15,628,525 (3.1 %), against 8.76 Mb CDS and
+6.39 Mb intron. (The 548 loaded tiles, 1.12 Mb, are the train-plus-dev
+inventory, not what was sampled; 106 of them are dev tiles.) So the
+encoder saw almost no signal separating intergenic from intronic
+sequence, and the chromosome decode stitches neighbouring genes together
+through intergenic stretches the emissions score as intron. The duration
+factor alone does not prevent this (stalin-0102: −305 nats at 1,000
+bases for the step-300 tables, yet the final decode's median intron is
+1.3 kb). Sampling is the first thing to test, by the controlled revision
+below scored the same way; other model behaviour is not ruled out until
+that is done.
 
 **Proposed revision before any B allowance** (task goal, last bullet):
 the section 2 adjacent-gene / wide-flank training increment — windows
@@ -1594,14 +1621,19 @@ a fitted checkpoint's accuracy, is necessary for 1/11 on CPU.
 0.039 / 0.356 sens / prec, 6 predicted transcripts against 94, 0 exact;
 *C. elegans* chr V 0.470 / 0.586, 287 predicted against 6,766 (238
 fusions), 0 exact transcripts, 67 exact CDS exons, 9,622 of 10,261
-predicted introns non-canonical — under the fitted weights the two
-chromosomes cost 12.09 and 8.86 CPU-s/Mb (stage sum), inside 15, at
-≤ 2.05 GiB. A misses the accuracy target in this fit; the diagnosed cause
-is the training-window regime (no intergenic supervision beyond 10-base
-flanks and 548 background tiles), and the proposed revision is the
-adjacent-gene / wide-flank loader increment plus a genome-matched
-background share, then fit v2. Still missing: fit v2, and the GPU regime
-with the 6.1 multi-worker decoder accounting (gagarin)._
+predicted introns in `score.py`'s `other` category (9,675 non-GT-AG) —
+under the fitted weights the two chromosomes cost 12.09 and 8.86
+CPU-s/Mb (stage sum), **2.6× and 1.9× the 4.67 CPU-s/Mb portable ceiling
+of this machine (38.8 and 28.4 machine-normalized against 15)**, at
+≤ 2.05 GiB: the CPU regime still misses by ~2× as in section 3.2, memory
+passes. A misses the accuracy target in this fit; the working hypothesis
+is the training-window regime (3 % of sampled bases intergenic: 10-base
+flanks plus the sampled background draws), and the proposed revision is
+the adjacent-gene / wide-flank loader increment plus a genome-matched
+background share, then fit v2. Still missing: fit v2 (accuracy), CPU
+efficiency (encoder work reduction, section 3.2), the fitted S. pombe
+normalization row, and the GPU regime with the 6.1 multi-worker decoder
+accounting (gagarin)._
 
 ## 6. Review responses (PR #38)
 
