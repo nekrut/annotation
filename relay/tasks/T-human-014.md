@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T22:12:04Z
+lease_until: 2026-09-23T01:35:00Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1798,3 +1798,67 @@ GPU work goes through gagarin: post an `alert` with
   as a curve on both chromosomes; locus boundaries remain open; the longer fit
   stays a separate, separately measured option; gagarin GPU grant (lenin-0083)
   still open.
+- 2026-09-22T23:35Z lenin: **section 3.7, the calibration sweep — the yeast
+  species-independence failure of 3.5 was the *loudness* of the context term,
+  not the species mixture in it, and A's best configuration improves 31% on
+  exact transcripts.** PR 38 at `adc2fa4` (two pushes this tick: `2886763`
+  carried the scalar, the stalin-0118 P2 normalization fix and the two
+  stalin-0118 report corrections, all of which a previous tick had committed
+  locally but not pushed; `adc2fa4` carries this section). **The change**: one
+  non-negative scalar multiplying every log-odds entry of the pooled matrix
+  (`SplicePWM.tables(scale=)`, `splicepwm.bias(scale=)`,
+  `predict_sequence(pwm_scale=)`, `measure --splice-pwm-scale`, recorded as
+  `splice_pwm_scale` in the row); `scale=0` short-circuits rather than
+  computing `0 * -inf`. **The runs**: nine points (0, 0.25, 0.5, 0.6, 0.75,
+  0.9, 1.0, 1.5, 2.0) on the same `best.pt`, tiling, scorer and pinned matrix
+  (`a964e3e6…`), no mask, no refit, inference only; scale 1.0 is the existing
+  `score-pwm-only/`. Selection criterion declared before the points above 1.0
+  were run: unweighted mean of exon-exact F1 over the two development
+  chromosomes, unweighted so the 20.9 Mb nematode cannot outvote the 0.23 Mb
+  yeast on a species-independence question. It picks **0.75**. **Findings.**
+  (1) Scale 0 is byte-identical to `score-final/` on both chromosomes and the
+  score JSONs differ in one key, the declaration — the scalar reproduces "no
+  PWM" rather than approximating it. (2) **Every PWM measurement in this
+  document so far was past the peak**: at 0.75, chr V goes 830 -> **1,094**
+  exact of 6,766, exon-exact F1 0.51987 -> **0.59758**, nucleotide F1 0.76614
+  -> 0.80815, locus F1 0.63826 -> 0.71351, donor F1 0.640 -> 0.728, acceptor
+  0.664 -> 0.763, transcript F1 0.133 -> **0.193**, fusions 740 -> 576 — bought
+  entirely out of intron over-prediction (predicted introns 38,908 -> 25,637
+  against 22,620 reference GT-AG, false GT-AG 20,082 -> **8,863**, precision
+  0.643 -> 0.723 against sensitivity 0.948 -> 0.916). (3) Chr I is **flat at
+  63-65 exact transcripts from scale 0 through 0.75** and only then falls (57,
+  55, 12, 0 at 0.9, 1.0, 1.5, 2.0); its false GT-AG introns, on a chromosome
+  with three real ones, go 0, 12, 12, 16, 23, 39, 67, 551, 1,133. Nothing about
+  the matrix changed across the nine runs. So **3.6's negative result is
+  explained**: imbalance was never the mechanism. (4) **Cost is flat** — chr V
+  9.08-9.16 CPU-s/Mb and chr I 12.39-12.82 across the sweep, including the
+  scale-2.0 point that predicts 126,304 false GT-AG introns — so **no positive
+  CPU allowance for B**, and **A still misses the accuracy target** (transcript
+  F1 0.193). **Carried caveats**, in 3.7 and the artifact README: the two
+  chromosomes disagree on the argmax (0.5 is the only swept scale at which
+  yeast is not worse than no PWM at all, 0.59193 vs 0.58182, and 0.75 costs
+  yeast 0.033 exon-exact F1 to gain chr V 0.078); only the term's strength was
+  swept, not the intron-entry hazard it competes with, so the peak is
+  conditional on an unfitted hazard; nine points do not locate an optimum finer
+  than their spacing; and a hand-set scalar shared by two species is itself a
+  per-clade constant the charter wants removed. **Review status**: every
+  finding outstanding at the last tick is cleared at `2886763` — stalin-0118's
+  P2 `_mean_frequencies` normalization (now averaged over contributing groups
+  only; both committed matrices use pseudocount 1 and are unchanged) and its
+  two report corrections; engels-0113 and engels-0114 raised no implementation
+  finding. Artifacts: `score-scale-sweep/` (README, `curve.tsv`,
+  `sweep_table.py`, `run_scale.sh`, eight per-scale subdirectories, verified
+  `sha256.txt` of 124 entries); the chr V prediction is 2.6 MB per point, so
+  each point commits its chr I GFF3 and the digests of both, and `run_scale.sh`
+  regenerates either. All sixteen measured rows carry `source_sha256
+  66e3e86a…`; scales 0-0.5 ran from a dirty tree at `3fd9032` and 0.6-2.0 clean
+  at `2886763`, and the equal source digest is what makes the curve one
+  experiment. Two rows added to `docs/cost-baseline/measured.tsv`. Tests: 253
+  pass (8 new cases at `2886763`, four on the scalar and four on the
+  normalization edge case). Local CPU this tick ~0.32 CPU-h (sixteen
+  measurement workloads, sixteen scorer runs, two chr V workloads discarded
+  from an interrupted tick, the test suite); cluster CPU-hours 0, GPU-hours 0;
+  no held-out species touched. Next: calibrate the context term without a
+  hand-set scalar, and sweep the intron-entry hazard against it; locus
+  boundaries remain open; the longer fit stays a separate, separately measured
+  option; gagarin GPU grant (lenin-0083) still open.

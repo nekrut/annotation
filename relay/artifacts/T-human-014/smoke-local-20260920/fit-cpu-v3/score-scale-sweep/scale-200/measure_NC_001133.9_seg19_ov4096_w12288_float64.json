@@ -1,0 +1,79 @@
+{
+  "canonical_acceptors": null,
+  "canonical_donors": null,
+  "canonical_splice": false,
+  "chains": 171,
+  "chains_decoded": 250,
+  "commit": "2886763d0cda108bc66992db871a381ef215de08",
+  "cpu_s": 2.947518747,
+  "cpu_s_per_mb": 12.803163727423573,
+  "cpu_s_per_oriented_mb": 4.8487539678100715,
+  "decode_batch": 16,
+  "decode_cpu_s": 1.6359131310000046,
+  "decode_wall_s": 1.6588340168818831,
+  "decoder": "tensor",
+  "device": "cpu",
+  "dtype": "float64",
+  "encoded_bases": 680994,
+  "encoder_cpu_s": 1.2655366809999955,
+  "encoder_wall_s": 1.2661138661205769,
+  "genome_mb": 0.230218,
+  "gff_bytes": 113412,
+  "gff_out": "/tmp/lenin-scratch/fit/score-scale-200-v3/NC_001133.9_seg19_ov4096_w12288_float64.gff3",
+  "gff_rows": 1670,
+  "gpu_s_per_mb": null,
+  "io_cpu_s": 0.008691695,
+  "io_wall_s": 0.008692286442965269,
+  "margin": 491,
+  "min_intron": 20,
+  "oriented_bases": 607892,
+  "output_cpu_s": 0.0024767830000000934,
+  "output_wall_s": 0.0024773133918642998,
+  "outputs_discarded": false,
+  "overlap": 4096,
+  "peak_device_mem_gib": null,
+  "peak_host_rss_gib": 0.957977294921875,
+  "pooled_decoder": "learned",
+  "preprocess_cpu_s": 0.034900456999999996,
+  "preprocess_wall_s": 0.034917998127639294,
+  "profile": "chromosome",
+  "seam_rebase": false,
+  "segments": 19,
+  "seqid": "NC_001133.9",
+  "sequence_bases": 230218,
+  "source": {
+    "source_dirs": [
+      "model/a",
+      "model/grammar"
+    ],
+    "source_dirty": false,
+    "source_dirty_files": [],
+    "source_files": 20,
+    "source_sha256": "66e3e86a43db80b11600ea308dfedc90b789b61b8b4ec6f86893f005f83e5190"
+  },
+  "species": "Saccharomyces_cerevisiae",
+  "splice_pwm": "/tmp/lenin-scratch/fit/pwm-v1/splicepwm.json",
+  "splice_pwm_scale": 2.0,
+  "splice_pwm_sha256": "a964e3e64c1ee3386fa421d7a9fd9630b29dbc3bb94fb08f41288e6bcb5a4f3a",
+  "splice_pwm_sites": [
+    67325,
+    67325
+  ],
+  "splice_pwm_spans": {
+    "acceptor": [
+      -20,
+      3
+    ],
+    "donor": [
+      -3,
+      6
+    ]
+  },
+  "splice_pwm_weighting": "pooled",
+  "strands": "+-",
+  "tiles": 76,
+  "wall_s": 2.971035480964929,
+  "wall_s_per_mb": 12.90531357654453,
+  "window": 12288,
+  "windows": 38
+}

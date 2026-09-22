@@ -1,0 +1,23 @@
+	Command being timed: "/tmp/lenin-venv/bin/python -m model.a.train measure --config /tmp/lenin-scratch/fit/fit-cpu-v3/config.json --species Caenorhabditis_elegans --seqid NC_003283.11 --checkpoint /tmp/lenin-scratch/fit/fit-cpu-v3/best.pt --profile chromosome --window 12288 --overlap 4096 --segments 19 --dtype float64 --splice-pwm /tmp/lenin-scratch/fit/pwm-v1/splicepwm.json --splice-pwm-scale 0.5 --gff-out /tmp/lenin-scratch/fit/score-scale-050-v3/NC_003283.11_seg19_ov4096_w12288_float64.gff3 --json-out /tmp/lenin-scratch/fit/score-scale-050-v3/measure_NC_003283.11_seg19_ov4096_w12288_float64.json"
+	User time (seconds): 168.39
+	System time (seconds): 22.17
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:10.71
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2144036
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 17481814
+	Voluntary context switches: 18
+	Involuntary context switches: 4706
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

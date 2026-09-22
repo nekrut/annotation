@@ -1,0 +1,83 @@
+{
+  "canonical_acceptors": null,
+  "canonical_donors": null,
+  "canonical_splice": false,
+  "chains": 5863,
+  "chains_decoded": 5895,
+  "commit": "3fd9032b273fd3848f510a149da368e04d8cea1f",
+  "cpu_s": 190.315921999,
+  "cpu_s_per_mb": 9.095502045910521,
+  "cpu_s_per_oriented_mb": 4.531782928065978,
+  "decode_batch": 16,
+  "decode_cpu_s": 109.37927508400017,
+  "decode_wall_s": 109.43839897867292,
+  "decoder": "tensor",
+  "device": "cpu",
+  "dtype": "float64",
+  "encoded_bases": 45371910,
+  "encoder_cpu_s": 78.09429922399949,
+  "encoder_wall_s": 78.13923937547952,
+  "genome_mb": 20.92418,
+  "gff_bytes": 1968945,
+  "gff_out": "/tmp/lenin-scratch/fit/score-scale-025-v3/NC_003283.11_seg19_ov4096_w12288_float64.gff3",
+  "gff_rows": 25506,
+  "gpu_s_per_mb": null,
+  "io_cpu_s": 0.44527337600000017,
+  "io_wall_s": 0.4454556480050087,
+  "margin": 491,
+  "min_intron": 20,
+  "oriented_bases": 41995816,
+  "output_cpu_s": 0.03373913299998321,
+  "output_wall_s": 0.0337488311342895,
+  "outputs_discarded": false,
+  "overlap": 4096,
+  "peak_device_mem_gib": null,
+  "peak_host_rss_gib": 2.0291366577148438,
+  "pooled_decoder": "learned",
+  "preprocess_cpu_s": 2.3633351820003554,
+  "preprocess_wall_s": 2.365202165674418,
+  "profile": "chromosome",
+  "seam_rebase": false,
+  "segments": 19,
+  "seqid": "NC_003283.11",
+  "sequence_bases": 20924180,
+  "source": {
+    "source_dirs": [
+      "model/a",
+      "model/grammar"
+    ],
+    "source_dirty": true,
+    "source_dirty_files": [
+      "model/a/chromosome.py",
+      "model/a/splicepwm.py",
+      "model/a/train.py"
+    ],
+    "source_files": 20,
+    "source_sha256": "66e3e86a43db80b11600ea308dfedc90b789b61b8b4ec6f86893f005f83e5190"
+  },
+  "species": "Caenorhabditis_elegans",
+  "splice_pwm": "/tmp/lenin-scratch/fit/pwm-v1/splicepwm.json",
+  "splice_pwm_scale": 0.25,
+  "splice_pwm_sha256": "a964e3e64c1ee3386fa421d7a9fd9630b29dbc3bb94fb08f41288e6bcb5a4f3a",
+  "splice_pwm_sites": [
+    67325,
+    67325
+  ],
+  "splice_pwm_spans": {
+    "acceptor": [
+      -20,
+      3
+    ],
+    "donor": [
+      -3,
+      6
+    ]
+  },
+  "splice_pwm_weighting": "pooled",
+  "strands": "+-",
+  "tiles": 3420,
+  "wall_s": 190.42204499896616,
+  "wall_s_per_mb": 9.100573833668328,
+  "window": 12288,
+  "windows": 38
+}

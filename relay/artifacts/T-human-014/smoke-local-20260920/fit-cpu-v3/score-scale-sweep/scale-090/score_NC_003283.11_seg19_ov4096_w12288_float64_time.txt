@@ -1,0 +1,23 @@
+	Command being timed: "/tmp/lenin-venv/bin/python benchmark/score.py --reference /tmp/lenin-scratch/sources/Caenorhabditis_elegans/GCF_000002985.6_WBcel235_genomic.gff.gz --genome /tmp/lenin-scratch/sources/Caenorhabditis_elegans/GCF_000002985.6_WBcel235_genomic.fna.gz --prediction /tmp/lenin-scratch/fit/score-scale-090-v3/NC_003283.11_seg19_ov4096_w12288_float64.gff3 --species Caenorhabditis_elegans --declaration /tmp/lenin-scratch/fit/score-scale-090-v3/declaration.yaml --seqids /tmp/lenin-scratch/fit/score-scale-090-v3/seqids_chrV.txt --out /tmp/lenin-scratch/fit/score-scale-090-v3/score_NC_003283.11_seg19_ov4096_w12288_float64.json"
+	User time (seconds): 4.98
+	System time (seconds): 0.07
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:05.06
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 208836
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 59881
+	Voluntary context switches: 1
+	Involuntary context switches: 62
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

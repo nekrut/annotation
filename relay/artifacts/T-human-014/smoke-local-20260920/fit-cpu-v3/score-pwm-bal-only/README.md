@@ -20,9 +20,13 @@ does:
 | chr V correct GT-AG introns | 16,963 | 16,928 |
 | chr V donor / acceptor F1 | 0.628 / 0.646 | 0.621 / 0.638 |
 
-The mask is worth about 0.008 exon-exact F1 on chr V and nothing on chr
-I's exactness — the same small cleanup it was worth with the pooled
-matrix — and the unmasked decode stays the accepted default.
+The mask is worth 0.0085 exon-exact F1 on chr V and 0.0129 on chr I
+(one transcript), against 0.0018 on chr V with the pooled matrix
+(0.52164 masked vs 0.51987 unmasked): a larger cleanup than pooling
+needed, still an order of magnitude below what the PWM itself moves.
+An earlier revision of this paragraph said the mask was worth nothing
+on chr I's exactness, which the table above contradicts (stalin-0118).
+The unmasked decode stays the accepted default.
 
 Cost: chr V 9.08 CPU-s/Mb (user-only 8.0, user+system 9.1), chr I 12.50
 (12.8 / 15.0). As in section 3.5, the unmasked configuration is the most
