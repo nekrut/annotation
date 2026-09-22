@@ -100,9 +100,33 @@ learned emissions, which is what the next experiment must sweep. Cost
 is unaffected (chr V 8.99 CPU-s/Mb, chr I 12.46), so the CPU verdict
 still stands.
 
-Still pending: the calibration sweep that section 3.6 points at, locus
-boundaries, the longer fit the unconverged dev tail leaves open
-(separately measured), and the GPU regime (gagarin, lenin-0083).
+Section 3.7 runs the calibration sweep 3.6 points at, and it resolves
+the question. One scalar multiplying the pooled matrix, nine points from
+0 to 2 on the same checkpoint with no refit: scale 0 reproduces the
+no-PWM baseline byte for byte, and **every PWM measurement above was
+taken past the peak**. At **0.75** chr V gains 264 exact transcripts
+over scale 1.0 (830 → **1,094** of 6,766, transcript F1 0.133 →
+**0.193**), exon-exact F1 0.520 → **0.598**, nucleotide F1 0.766 →
+0.808, locus F1 0.638 → 0.714, donor F1 0.640 → 0.728, bought out of
+intron over-prediction (false GT-AG 20,082 → 8,863, precision 0.643 →
+0.723). And chr I, which 3.5 reported collapsing, is **flat at 63–65
+exact transcripts from scale 0 to 0.75** and only then falls (57, 55,
+12, 0 at 0.9, 1.0, 1.5, 2.0). So the species-independence failure of
+3.5 was the *loudness* of the term, not the species mixture in it —
+which is what 3.6's negative result implied and this measures. Cost is
+flat across the sweep (9.08–9.16 CPU-s/Mb on chr V), so the CPU verdict
+stands and **still no positive CPU allowance for B**. **A still misses
+the accuracy target**: transcript F1 0.193 is the largest increment
+since 3.5 and not acceptance. Two caveats carried in 3.7: the two
+chromosomes disagree on the argmax (0.5 is the only scale at which
+yeast is not worse than no PWM at all), and a hand-set scalar shared by
+two species is itself a per-clade constant the charter wants removed.
+
+Still pending: calibrating the context term without a hand-set scalar
+(and the intron-entry hazard it competes with, which was never swept
+against it), locus boundaries, the longer fit the unconverged dev tail
+leaves open (separately measured), and the GPU regime (gagarin,
+lenin-0083).
 
 ## 1. What is implemented
 
@@ -2376,6 +2400,142 @@ pair; the discarded first pair produced the same accuracy to four
 decimals (chr I 12.55 and chr V 8.93 CPU-s/Mb), which is also the
 run-to-run cost spread on this machine. Cluster CPU-hours 0, GPU-hours
 0, no held-out species touched.
+
+### 3.7 Decoder increment 4: the calibration sweep, 2026-09-22 (ablation, no refit; the yeast failure was loudness, and A's best configuration improves 31%)
+
+Sections 3.5 and 3.6 left one hypothesis standing. The pooled
+splice-site matrix produces by far the largest accuracy increment in
+this pilot and simultaneously breaks the nearly intronless yeast
+chromosome; re-estimating it with equal per-source weight (3.6) made
+both chromosomes worse, so the imbalance is not what does the damage.
+What 3.6 named instead was the *strength and calibration* of a fixed
+context term added to frozen learned emissions. This section measures
+that directly.
+
+**The change.** One non-negative scalar multiplying every log-odds entry
+of the matrix: `SplicePWM.tables(scale=)`, `splicepwm.bias(scale=)`,
+`chromosome.predict_sequence(pwm_scale=)` and
+`model.a.train measure --splice-pwm-scale`, recorded as
+`splice_pwm_scale` in the measured row. The matrix fixes the *shape* of
+the junction preference; the scalar sets how loudly it speaks against
+the learned donor/acceptor channels and against the intron-entry hazard
+it competes with. `scale=0` short-circuits the multiply rather than
+computing it, so it is exactly "no PWM" even where an entry is `-inf`
+and `0 × -inf` would be `nan`; a scale without a matrix is refused
+rather than silently recorded.
+
+**The runs.** Nine points — 0, 0.25, 0.5, 0.6, 0.75, 0.9, 1.0, 1.5,
+2.0 — on the same `best.pt`, the same 19-segment tiling, the same
+scorer, the same pinned pooled matrix (`pwm-v1/splicepwm.json`, sha256
+`a964e3e6…`) and the accepted finite-score support, no mask, no refit,
+inference only. Scale 1.0 is the already-measured `score-pwm-only/`.
+The selection criterion was fixed before the points above 1.0 were run:
+the **unweighted mean of exon-exact F1 over the two development
+chromosomes**, unweighted so that the 20.9 Mb nematode cannot outvote
+the 0.23 Mb yeast on what is a species-independence question.
+
+| scale | chr I exon-exact F1 | chr V exon-exact F1 | mean | chr I exact tx (of 94) | chr V exact tx (of 6,766) | chr V false GT-AG |
+|---|---|---|---|---|---|---|
+| 0.00 | 0.58182 | 0.02996 | 0.30589 | 64 | 70 | 470 |
+| 0.25 | 0.57658 | 0.22773 | 0.40215 | 63 | 272 | 2,603 |
+| 0.50 | **0.59193** | 0.47821 | 0.53507 | **65** | 737 | 4,743 |
+| 0.60 | 0.57143 | 0.55345 | 0.56244 | 64 | 919 | 5,941 |
+| **0.75** | 0.54918 | **0.59758** | **0.57338** | 64 | **1,094** | 8,863 |
+| 0.90 | 0.46332 | 0.56900 | 0.51616 | 57 | 993 | 14,217 |
+| 1.00 | 0.39590 | 0.51987 | 0.45788 | 55 | 830 | 20,082 |
+| 1.50 | 0.03423 | 0.27077 | 0.15250 | 12 | 199 | 73,658 |
+| 2.00 | 0.00141 | 0.16507 | 0.08324 | 0 | 59 | 126,304 |
+
+**Four findings.**
+
+*First, the control is exact.* Both predictions at scale 0 are
+byte-identical to `score-final/`'s (chr I `6cd5faab…`, chr V
+`5f649777…`), and their score JSONs differ in exactly one top-level
+key, `declaration`, which states the scale. The scalar reproduces "no
+PWM" rather than approximating it, and widening the slice a tile scores
+changes nothing it reads.
+
+*Second, every PWM measurement in this document so far was taken past
+the peak.* Scale 1.0 is not where the term belongs. At 0.75 chr V gains
+**264 exact transcripts** over scale 1.0 (830 → **1,094** of 6,766,
+transcript F1 0.133 → **0.193**), exon-exact F1 0.520 → **0.598**,
+nucleotide F1 0.766 → **0.808**, locus F1 0.638 → **0.714**, donor F1
+0.640 → **0.728**, acceptor 0.664 → **0.763**, fusions 740 → 576,
+splits 228 → 213. The gain is bought entirely out of intron
+over-prediction: predicted introns 38,908 → 25,637 against 22,620
+reference GT-AG, false GT-AG 20,082 → **8,863**, nucleotide precision
+0.643 → 0.723 against sensitivity 0.948 → 0.916, median predicted intron
+160 → 116 bases against a reference q50 of 56. At full strength the
+matrix was not placing introns better, it was making intron entry too
+cheap.
+
+*Third, and this is the point of the section, the species-independence
+failure of 3.5 is a calibration failure.* Chr I holds 63–65 exact
+transcripts flat from scale 0 through 0.75, then falls 57 → 55 → 12 →
+0. Its false GT-AG introns, on a chromosome with three real ones, go 0,
+12, 12, 16, 23, 39, 67, 551, 1,133. Nothing about the matrix changed
+across these nine runs. A *C. elegans*-dominated matrix is not, by
+itself, what breaks *S. cerevisiae*; a *C. elegans*-dominated matrix
+turned up to a volume calibrated on nothing is. That both resolves the
+question 3.6 could not and narrows what the term needs: the estimator
+produces a ranking, the decoder needs a likelihood, and the missing
+piece is the conversion between them.
+
+*Fourth, cost is flat and the CPU verdict is unchanged.* 9.08–9.16
+CPU-s/Mb on chr V and 12.39–12.82 on chr I across the whole sweep,
+varying with scale only within the run-to-run spread this machine shows,
+and every point far under the accepted 15 CPU-s/Mb — including scale
+2.0, which predicts 126,304 false GT-AG introns and still costs 9.15.
+**Still no positive CPU allowance for B.**
+
+**A still misses the accuracy target.** 1,094 exact of 6,766 reference
+transcripts is a transcript F1 of 0.193 as `benchmark/score.py` computes
+it (against matched loci: tp 1,094, fp 5,270, fn 3,901), against 0.133
+for the previous best configuration. It is the largest increment since 3.5 and a 31%
+improvement in exact transcripts, and it is not acceptance.
+
+**What it does not establish.** One checkpoint, two development
+chromosomes, two species, one run per point, no refit, no held-out
+species touched. The scalar is one parameter of a calibration with at
+least two — the term's strength and the intron-entry hazard it competes
+with — and only the first was swept, so the peak's location is
+conditional on a hazard that was never fitted against it. Nine points do
+not locate an optimum finer than their spacing, and 0.6 and 0.75 are
+close on the criterion (0.562 vs 0.573). The two chromosomes do not
+agree on the argmax: **0.5 is the only point at which yeast is not worse
+than no PWM at all** (0.59193 vs 0.58182), and 0.75 costs yeast 0.033
+exon-exact F1 to gain chr V 0.078. Reporting 0.75 is a choice under a
+declared criterion, not a free lunch, and a scalar shared by two species
+is itself the kind of per-clade constant the charter wants removed — the
+honest reading is that this buys accuracy now and hands the real problem,
+calibrating the term without a knob, to the fitting.
+
+Artifacts: `relay/artifacts/T-human-014/smoke-local-20260920/fit-cpu-v3/`
+`score-scale-sweep/` (README, `curve.tsv`, `sweep_table.py`,
+`run_scale.sh`, one subdirectory per scale with its `declaration.yaml`,
+measure and score JSONs, `/usr/bin/time -v` files and
+`predictions.sha256`, and a verified `sha256.txt` of 124 entries). The
+chr V prediction is 2.6 MB per point, so each point commits only its
+chr I GFF3 and the digests of both; `run_scale.sh <scale>` regenerates
+either, gating on the fit's recorded exit status and on the matrix
+digest first. All sixteen measured rows carry
+`source_sha256 66e3e86a…`; scales 0–0.5 ran before the scalar was
+committed and record `commit 3fd9032` with `source_dirty: true`, scales
+0.6–2.0 record `commit 2886763` clean, and the equal source digest is
+what makes the curve one experiment. Two rows added to
+`docs/cost-baseline/measured.tsv` for the selected point; the rest of
+the curve lives in the artifact rather than in the cost table. Tests: 8
+new cases in `tests/test_a_splicepwm.py` (four on the scalar — `scale=1`
+is the unscaled matrix, `scale=0` is exactly no PWM including at `-inf`
+entries, an intermediate scale multiplies every entry, a negative scale
+is refused — and four on the stalin-0118 normalization edge case).
+253 tests pass.
+
+CPU accounting for this section: about 0.32 CPU-h local — sixteen
+measurement workloads and sixteen scorer runs across eight new points
+(chr V is 191 CPU-s and chr I 2.9 per point), plus two chr V workloads
+discarded when an earlier tick was interrupted mid-run, plus the test
+suite. Cluster CPU-hours 0, GPU-hours 0, no held-out species touched.
 
 ## 4. Budget and caps
 
