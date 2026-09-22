@@ -1447,6 +1447,30 @@ stays open for the fit under the cap and the GPU half):
   initialisation spreads mass over every chain), 431 train / 440 dev
   after 10 steps.
 
+Progress at the 2026-09-22T03Z tick (`smoke-local-20260920/fit-cpu-v1/`
+in the relay artifacts holds `run.sh`, `config.json`, the leakage and MD5
+records and the partial log): step 600 of 1,500 after 2,308 s (3.85 s per
+step including evaluations, on the probe's projection); train NLL per
+window 40 / 40 / 24 / 45 / 71 / 46 at steps 100–600, dev NLL on the 256
+selected windows 129 / 60 / 42 / 45 / 66 / 58, so `best_step` is 300 so
+far (both curves are noisy at batch 8; the run is bounded, not tuned).
+
+**Scoring pipeline dry run** (same tick, interim step-300 checkpoint, one
+thread on a different core from the fit): `measure --profile chromosome
+--segments 19 --overlap 4096 --gff-out` on *S. cerevisiae* chr I
+(230,218 bases) then `benchmark/score.py --seqids {chr I} --genome
+--declaration`; both exit 0, `score-dry/` in the artifact directory. Chr I
+costs **12.79 CPU-s/Mb** end to end (encoder 1.30 s, decode 1.60 s, peak
+RSS 0.96 GiB; the scorer itself 0.17 CPU-s). The interim numbers are a
+pipeline check, not the reported accuracy: nucleotide sensitivity 0.963 /
+precision 0.456 (MCC 0.44), 662 predicted loci against 94 reference (84
+TP, 7 fusions), transcript F1 0.07, and 320 predicted introns against 3
+reference of which 316 are non-GT-AG. At step 300 the decoder
+over-predicts CDS on both strands and opens non-canonical introns; the
+finished fit's chr I and chr V scores decide whether that is a training
+artefact or a decoder gap (the motif bias of `pooled.motif_bias` is
+learned, so an under-fit bias is the first suspect).
+
 What it will feed (next tick): `measure --checkpoint` chromosome rows on
 *S. pombe* and *C. elegans* chr V under the fitted weights (the encoder
 cost is checkpoint-independent, the decode's near-tie float32 flip count
