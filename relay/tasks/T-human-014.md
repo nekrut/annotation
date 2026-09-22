@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T13:09:21Z
+lease_until: 2026-09-22T14:08:24Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1571,3 +1571,24 @@ GPU work goes through gagarin: post an `alert` with
   ~0.02 CPU-h (test suite, launch) plus the fit in flight; cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: collect v3
   (manifest with history/lr/timing, best.pt sha256), score chr I and chr V into `fit-cpu-v3/score-final/` against the v2 rows, and if the
   splicing and precision misses persist, the decoder revision with the section 6 CPU ceiling in scope.
+- 2026-09-22T12:10Z lenin: renewed lease. Inbox: engels-0105 and stalin-0110 (PR 38 at ce05954: the declared v3 schedule passes, all 40
+  `test_a_train` tests green, all 3,000 v3 rates independently verified; three P3s, none requiring a restart; no questions). **All three
+  reproduced here and applied** (PR 38 at 504678c, 221 tests pass). (1) *Singleton cosine tail*: with `warmup_steps == steps - 1` (or
+  `steps=1`) the decay has one step, `lr_at` saw progress 0 and returned the full 3e-4 instead of the documented 1.5e-5 floor.
+  `TrainConfig.from_dict` now rejects cosine schedules with fewer than two post-warmup steps, so every loadable config meets the endpoint
+  contract; `lr_at`'s docstring states the precondition and that a directly built `TrainConfig` is not covered. Two regression tests,
+  including stalin-0110's sweep bounded to `steps` 1..64: exactly 64 of 2,080 configs rejected, all and only `warmup_steps == steps - 1`,
+  every accepted one ending at the floor within 1e-15. V3's 3,000/150 is unaffected; the running fit was not restarted. (2) *Three changed
+  variables, not two*: `eval_every` 100 → 150 also changes, and only evaluated steps can become `best.pt` (20 candidates vs 15 overall,
+  10 vs 15 on the shared first 1,500 steps, different grids), so a-pilot 3.3 and the v3 README now describe the combined step-budget /
+  LR-schedule / checkpoint-cadence revision. The "same ~8 % evaluation share" claim was wrong and is replaced by the reproduced arithmetic:
+  v2 `E/F` = 659.18535381 / 7,938.915226944 = 8.303 %, projection `(20/15·E)/(2·(F−E)+20/15·E)` = 5.693 %, flagged as a projection with
+  v3's actual share to come from its own manifest. (3) *Draw-equivalent epochs*: sampling is uniform with replacement, so 24,000/19,975 =
+  1.2015 is not pool coverage — my seeded replay reproduces both reviewers to the index (9,035 distinct in v2's 12,000 draws, 45.23 %;
+  14,027 in v3's planned 24,000, 70.22 %; 5,948 never attempted). 3.3, the README and section 6 relabel the ratio and key the deferred
+  decoder revision to the longer fit's measured dev results instead of "more than one pass". **Fit v3 in flight**: step 600/3,000 at
+  3,119 s elapsed (dev NLL 176.0 → 66.6 → 46.2 → 48.6 at steps 150–600, lr 3.000e-04 → 2.829e-04), 5.2 CPU-s/step, projected ~4.3 CPU-h,
+  finish ~15:30Z. Local CPU this tick ~0.02 CPU-h (test suite, replay arithmetic) plus the fit in flight; cluster CPU-hours 0, GPU-hours 0;
+  no held-out species touched. Next: collect v3 (manifest with history/lr/timing/actual evaluation share, best.pt sha256), score chr I and
+  chr V into `fit-cpu-v3/score-final/` against the v2 rows, and if the splicing and precision misses persist, the decoder revision with the
+  section 6 CPU ceiling in scope; gagarin GPU grant (lenin-0083) still open.
