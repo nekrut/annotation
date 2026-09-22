@@ -1553,7 +1553,24 @@ that carry their real intergenic neighbourhood with the neighbouring
 genes' CDS supervised (or masked) rather than clean gene-plus-10-base
 windows — plus a background share set from the genome's intergenic
 fraction rather than a fixed 400 tiles per species, and a second bounded
-fit (v2) scored the same way. The GT-AG motif tables already move in the
+fit (v2) scored the same way.
+
+**Fit v2 launched 2026-09-22T05:13Z** (`fit-cpu-v2/`, code `61a9480`):
+the loader increment is `context` (`model.a.dataset.iter_windows`): a
+clean chain window is widened by up to `context` bases per side of
+annotated intergenic sequence, clipped at the nearest other gene's span
+and the sequence ends, so the unchanged support mask supervises the added
+bases as `U` with no loss or decoder change; the manifest now records the
+sampled-base composition (`actual.composition`: CDS / intron / intergenic
+bases, background draws) so the supervision balance no longer has to be
+replayed. Config: identical to v1 except `context: 512` and
+`background_windows: 800` per species (148 available in yeast). Loader
+probe of the train pool: intergenic share 3.0 % (v1) → 20.2 / **30.3** /
+39.1 % at context 256 / 512 / 1,024, mean window 2,202 → 2,654 / **2,970**
+/ 3,405 bases; 512 matches the 3,072-base encoder core and approaches the
+genomes' own intergenic fractions at ~1.35× v1's per-step cost. Leakage
+check 0 violations; 24,926 windows (19,975 train / 4,951 dev, 948
+background). Scored the same way as v1 when it finishes. The GT-AG motif tables already move in the
 canonical direction (stalin-0102), so no decoder change is proposed until
 v2 is scored. Section 6.1's accuracy column carries the v1 numbers above
 as the first measured entry; they are not the reported accuracy of A.
