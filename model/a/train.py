@@ -188,6 +188,14 @@ class TrainConfig:
             raise ValueError("warmup_steps must not be negative")
         if int(kwargs.get("warmup_steps", 0)) >= int(kwargs.get("steps", cls.steps)):
             raise ValueError("warmup_steps must be below steps")
+        if (kwargs.get("lr_schedule", "constant") == "cosine"
+                and int(kwargs.get("steps", cls.steps))
+                - int(kwargs.get("warmup_steps", 0)) < 2):
+            raise ValueError(
+                "a cosine schedule needs at least two post-warmup steps, so "
+                "the decay has a first and a last step; with one the final "
+                "step is also the first and would run at the full rate "
+                "instead of the lr_min_factor floor (engels-0105)")
         if not 0.0 <= float(kwargs.get("lr_min_factor", 0.0)) <= 1.0:
             raise ValueError("lr_min_factor must be in [0, 1]")
         config = cls(sources=sources, **kwargs)
@@ -365,6 +373,13 @@ def lr_at(step: int, config: TrainConfig) -> float:
     ``warmup_steps`` steps (step 0 gets ``lr / warmup_steps``, never 0, so no
     step is wasted) and then decays as a half cosine, reaching exactly
     ``config.lr * config.lr_min_factor`` at the final step.
+
+    The terminal-floor half of that contract needs at least two post-warmup
+    steps: with a single one, the last decay step is also the first and the
+    rate is ``config.lr``, not the floor. ``TrainConfig.from_dict`` rejects
+    those configurations, so the contract holds for every config that can be
+    loaded from a manifest; a ``TrainConfig`` built directly in Python can
+    still reach the degenerate case and is not covered here (engels-0105).
     """
     if config.lr_schedule == "constant":
         return config.lr

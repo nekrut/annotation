@@ -396,6 +396,58 @@ class TestLearningRateSchedule(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     T.TrainConfig.from_dict(dict(base, **bad))
 
+    def test_cosine_needs_two_post_warmup_steps(self):
+        """engels-0105/stalin-0110 P3: a one-step decay cannot both start at
+        ``lr`` and end at the floor, so ``from_dict`` rejects it rather than
+        silently returning the full rate at the final step. The rejected set
+        is exactly ``warmup_steps == steps - 1`` (and ``steps=1``); constant
+        schedules, which have no endpoint contract, are unaffected."""
+        with tempfile.TemporaryDirectory() as d:
+            summary = os.path.join(d, "sp.summary.json")
+            with open(summary, "w", encoding="utf-8") as fh:
+                json.dump({"table": 6, "m": 30, "gff_md5": "aa", "fasta_md5": "bb"}, fh)
+            base = {"sources": [{"name": "sp", "summary": summary, "gff": "g", "fasta": "f"}],
+                    "out_dir": d, "lr_schedule": "cosine"}
+            for steps, warmup in ((1, 0), (10, 9), (3000, 2999)):
+                with self.assertRaises(ValueError):
+                    T.TrainConfig.from_dict(
+                        dict(base, steps=steps, warmup_steps=warmup))
+            for steps, warmup in ((2, 0), (10, 8), (3000, 150)):
+                cfg = T.TrainConfig.from_dict(
+                    dict(base, steps=steps, warmup_steps=warmup,
+                         lr_min_factor=0.05, lr=3e-4))
+                self.assertAlmostEqual(T.lr_at(steps - 1, cfg), 3e-4 * 0.05)
+            # A constant schedule keeps every accepted (steps, warmup) pair.
+            T.TrainConfig.from_dict(
+                dict(base, lr_schedule="constant", steps=10, warmup_steps=9))
+
+    def test_every_accepted_cosine_endpoint_reaches_the_floor(self):
+        """stalin-0110's sweep, bounded: over ``steps`` 1..64 and every legal
+        ``warmup_steps``, each config that ``from_dict`` accepts ends its
+        final step at the floor."""
+        with tempfile.TemporaryDirectory() as d:
+            summary = os.path.join(d, "sp.summary.json")
+            with open(summary, "w", encoding="utf-8") as fh:
+                json.dump({"table": 6, "m": 30, "gff_md5": "aa", "fasta_md5": "bb"}, fh)
+            base = {"sources": [{"name": "sp", "summary": summary, "gff": "g", "fasta": "f"}],
+                    "out_dir": d, "lr_schedule": "cosine", "lr": 3e-4,
+                    "lr_min_factor": 0.05}
+            accepted = rejected = 0
+            for steps in range(1, 65):
+                for warmup in range(0, steps):
+                    try:
+                        cfg = T.TrainConfig.from_dict(
+                            dict(base, steps=steps, warmup_steps=warmup))
+                    except ValueError:
+                        rejected += 1
+                        self.assertEqual(warmup, steps - 1)
+                        continue
+                    accepted += 1
+                    self.assertAlmostEqual(T.lr_at(steps - 1, cfg), 3e-4 * 0.05,
+                                           delta=1e-15)
+            self.assertEqual(rejected, 64)
+            self.assertEqual(accepted, 2080 - 64)
+
 
 class TestReservations(unittest.TestCase):
     @dataclass

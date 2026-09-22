@@ -1717,29 +1717,56 @@ is not decided by this run.
 superseding the one above now that it is tested): a longer fit under the
 same loader and config, scored the same way — the GPU grant requested in
 lenin-0083 is the instrument for it — and no decoder change (intron
-duration floor above `min_intron`, short-ORF penalty) until a fit that
-covers more than one pass shows whether the splice-site emissions sharpen
-on their own. Section 6.1's accuracy column carries the v2 numbers as the
-current measured entry; they are not the reported accuracy of A.
+duration floor above `min_intron`, short-ORF penalty) until that longer
+fit's measured development results show whether the splice-site emissions
+sharpen on their own. The trigger is the measured dev NLL and chr I / chr
+V scores, not a nominal number of passes: sampling is uniform *with
+replacement*, so a longer draw stream does not mean the model has seen
+every train window (below). Section 6.1's accuracy column carries the v2
+numbers as the current measured entry; they are not the reported accuracy
+of A.
 
 **Fit v3, the longer fit, started 2026-09-22T11:07Z and is running**
 (`relay/artifacts/T-human-014/smoke-local-20260920/fit-cpu-v3/`,
 `README.md` there records the full delta). The GPU grant of lenin-0083 is
 still open, so this is the local CPU fallback: same loader, dev
 reservations, optimizer, batch, base `lr`, seed, dev subsample and
-launcher as v2, on one core, with two declared changes — `steps` 1,500 →
-3,000 (about 1.2 passes over the 19,975 train windows instead of 0.6) and
-a cosine learning-rate schedule with a 150-step warmup decaying 3e-4 →
-1.5e-5 (`model.a.train.lr_at`, 8 unit tests; `eval_every` 150 keeps the
-evaluation share of fit CPU at v2's ~8 %). The schedule is part of
-"longer" rather than a separate accuracy intervention: at a constant step
-size both fits selected step 900 of 1,500 and then oscillated (v2 dev NLL
-45.3 → 74.1 → 48.6 → 58.7 → 50.7 over steps 900 to 1,500), so further
-steps at 3e-4 would most likely keep bouncing. It is still a second
-changed variable, so any v2 → v3 difference is attributable to the pair,
-not to step count alone. Projected ~4.4 CPU-h at v2's measured 5.3
-CPU-s/step. No decoder change, no loader change, and nothing is claimed
-from it until it exits 0 and is scored on chr I and chr V the same way.
+launcher as v2, on one core, with **three** declared changes
+(engels-0105 / stalin-0110 P3: the third was previously described as a
+neutral bookkeeping setting, and it is not):
+
+1. `steps` 1,500 → 3,000, i.e. 24,000 planned draws for 19,975 train
+   windows. That ratio, 1.2015, is *draw-equivalent epochs*, not pool
+   coverage: the sampler draws uniformly **with replacement**, so
+   replaying the declared seed and batch shape gives 14,027 distinct
+   windows among the 24,000 planned draws (70.22 %), leaving 5,948 train
+   windows never attempted; v2's 12,000 draws reached 9,035 (45.23 %).
+2. A cosine learning-rate schedule with a 150-step warmup decaying
+   3e-4 → 1.5e-5 (`model.a.train.lr_at`, unit tests). The schedule is
+   part of "longer" rather than a separate accuracy intervention: at a
+   constant step size both fits selected step 900 of 1,500 and then
+   oscillated (v2 dev NLL 45.3 → 74.1 → 48.6 → 58.7 → 50.7 over steps 900
+   to 1,500), so further steps at 3e-4 would most likely keep bouncing.
+3. `eval_every` 100 → 150. This is not only reporting cadence: only
+   evaluated steps can become `best.pt`, so v3 selects from 20 candidate
+   checkpoints on a 150-step grid where v2 selected from 15 on a 100-step
+   grid, and over the shared first 1,500 steps the two grids offer 10
+   and 15 candidates at different steps. The fixed dev subsample keeps
+   individual NLL values comparable; it does not remove this
+   checkpoint-selection difference.
+
+Any v2 → v3 difference is therefore attributable to the combined
+step-budget, learning-rate-schedule and checkpoint-cadence revision, not
+to step count alone. The earlier claim here that `eval_every` 150 keeps
+the evaluation share of fit CPU at v2's ~8 % was wrong: from the v2
+manifest, evaluation cost `E` = 659.18535381 CPU-s against inclusive fit
+`F` = 7,938.915226944 CPU-s, i.e. 8.303 %, and holding unit costs fixed
+while doubling fitting updates and taking 20/15 as many evaluations
+projects `(20/15·E)/(2·(F−E)+20/15·E)` = **5.693 %**, not ~8 %. That is a
+projection; v3's actual share is reported from its own manifest after it
+exits. Projected ~4.4 CPU-h at v2's measured 5.3 CPU-s/step. No decoder
+change, no loader change, and nothing is claimed from it until it exits 0
+and is scored on chr I and chr V the same way.
 
 CPU accounting for this section: fit v1 1.62 CPU-h, fit v2 2.21 CPU-h,
 fit v3 ~4.4 CPU-h projected (in flight, actual recorded when it finishes),
@@ -2073,6 +2100,46 @@ Fast-kernel review findings (engels-0080, stalin-0081) and their resolution:
   regime's wall time only: dividing wall time by worker count does not
   reduce aggregate CPU-seconds and cannot lower the CPU row
   (engels-0103 / stalin-0108). No new measurement.
+
+- **A singleton cosine tail returned the full rate** (P3, engels-0105,
+  corroborated by stalin-0110 over a 2,080-config sweep). With
+  `warmup_steps == steps - 1` (and with `steps=1`) the decay phase has a
+  single step, `lr_at` saw progress 0 and returned `config.lr` instead of
+  the documented `lr * lr_min_factor` floor — 3e-4 rather than 1.5e-5 at
+  v3's settings. `TrainConfig.from_dict` now rejects a cosine schedule
+  with fewer than two post-warmup steps, so every loadable config meets
+  the endpoint contract; `lr_at`'s docstring states the precondition and
+  that a directly constructed `TrainConfig` is not covered. Two
+  regression tests pin it, including a sweep asserting that the rejected
+  set is exactly `warmup_steps == steps - 1` (64 of 2,080 over
+  `steps` 1..64) and that every accepted config ends at the floor.
+  V3's 3,000/150 configuration is unaffected and the running fit is not
+  restarted.
+
+- **The v2 → v3 comparison had three changed variables, not two, and the
+  evaluation-share claim was wrong** (P3, engels-0105 / stalin-0110).
+  `eval_every` also changes, 100 → 150, and only evaluated steps can
+  become `best.pt`, so the checkpoint grid and candidate count differ
+  (20 vs 15 overall; 10 vs 15 over the shared first 1,500 steps).
+  Section 3.3 and the v3 README now describe the combined step-budget,
+  LR-schedule and checkpoint-cadence revision. The claim that 20
+  evaluations over twice the steps keep v2's ~8 % evaluation share is
+  replaced by the reproduced arithmetic: v2 measured `E/F` =
+  659.18535381 / 7,938.915226944 = 8.303 %, and at fixed unit costs
+  `(20/15·E)/(2·(F−E)+20/15·E)` projects 5.693 %. Flagged as a
+  projection; v3's actual share comes from its own manifest.
+
+- **Draw-equivalent epochs are not pool coverage** (P3, engels-0105 /
+  stalin-0110). Sampling is uniform **with replacement**, so v3's
+  24,000 / 19,975 = 1.2015 is a draw-equivalent epoch count, not a
+  guarantee that every train window is seen. Replaying the declared seed
+  and batch shape reproduces both reviewers' counts exactly: 9,035
+  distinct windows in v2's 12,000 draws (45.23 %) and 14,027 in v3's
+  planned 24,000 (70.22 %), leaving 5,948 never attempted. Section 3.3
+  and the v3 README now label the ratio accordingly, and the deferral of
+  the decoder revision is keyed to the longer fit's measured development
+  results rather than to "more than one pass". These are planned
+  index-exposure counts, not observed accepted-window counts.
 
 ## 7. Training-set coverage accounting
 
