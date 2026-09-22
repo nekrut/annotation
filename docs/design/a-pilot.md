@@ -19,9 +19,11 @@ chr V 4 fusions (from 238) and 3,804 of 4,995 loci hit — but predicts almost n
 median predicted intron 34 bases, 1,827 splits) and over-predicts short
 single-exon chains (9,606 unmatched loci on chr V, a third of them
 fragments of genes it already hits): **A still misses the
-accuracy target in this fit**, now on splicing and precision rather than
-on supervision balance, with the fitted rows 1.9–2.7× over the portable
-CPU ceiling. The revision proposed next is a longer fit under the same
+accuracy target in this fit**. The fusion reduction supports the
+supervision-balance hypothesis for v1 without establishing that the
+defect is fully removed (3.3); the misses that remain are splicing and
+precision, with their cause unresolved. The fitted rows are 1.9–2.7×
+over the portable CPU ceiling. The revision proposed next is a longer fit under the same
 loader (the lenin-0083 GPU grant), scored the same way, before any
 decoder change. The S. pombe normalization row under the v2 checkpoint
 is 9.06 CPU-s/Mb user + system, 1/5.7 of AUGUSTUS against the 1/11
@@ -1791,10 +1793,12 @@ the two chromosomes cost 12.54 and 8.88 CPU-s/Mb (stage sum; v1 12.09 and
 8.86), **2.7× and 1.9× the 4.67 CPU-s/Mb portable ceiling of this machine
 (40.3 and 28.5 machine-normalized against 15)**, at ≤ 2.05 GiB: the CPU
 regime still misses by ~2× as in section 3.2, memory passes. A misses the
-accuracy target in both fits: v1 on supervision balance (3 % `U`, sharply
-reduced under the context loader), v2 on splicing (almost no real intron predicted) and
-precision (short single-exon over-prediction); the proposed revision is a
-longer fit under the same loader before any decoder change. The fitted
+accuracy target in both fits: v1 with fusions consistent with the
+supervision-balance hypothesis (3 % `U`; sharply reduced, not shown
+removed, under the context loader), v2 on splicing (almost no real
+intron predicted) and precision (short single-exon over-prediction),
+cause unresolved; the proposed revision is a longer fit under the same
+loader before any decoder change. The fitted
 S. pombe row (v2 `best.pt`) is 9.06 user + system CPU-s/Mb, 1/5.7 of
 AUGUSTUS against 1/11 (29.1 machine-normalized against 15), a 3 % move
 from the smoke row. Still missing: that fit (accuracy), CPU efficiency
@@ -2027,6 +2031,16 @@ Fast-kernel review findings (engels-0080, stalin-0081) and their resolution:
   `other` + 7 GC-AG + 4 AT-AC), not 2,114. stalin-0106's step-900 prefix
   replay (v1 3.10 % / v2 30.63 % `U`, 484,704 / 6,486,097 `U` bases) is
   recorded in the v2 README as what `best.pt` saw.
+- **Opening and README closings said the failure had "moved" off
+  supervision balance** (P3, engels-0102 / stalin-0107): the summary, the
+  section 5 verdict and the v2 score README's closing paragraph now say
+  what 3.3 says — the fusion reduction supports the hypothesis without
+  showing the defect removed; the remaining splicing / precision misses
+  have an unresolved cause. The S. pombe normalization README no longer
+  calls the 9,555 chains "the same short-chain over-prediction seen on
+  chr V": S. pombe is unscored, so the count is output volume for the cost
+  row and any over-prediction reading there is a hypothesis. Wording only;
+  no numbers change.
 
 ## 7. Training-set coverage accounting
 
