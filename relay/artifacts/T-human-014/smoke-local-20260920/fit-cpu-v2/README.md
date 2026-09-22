@@ -1,6 +1,6 @@
 # fit-cpu-v2: bounded local CPU fit with `U` context (2026-09-22T05:13Z–07:26Z, finished; exit 0)
 
-The controlled revision proposed in a-pilot section 3.3 after fit v1 missed
+The loader revision proposed in a-pilot section 3.3 after fit v1 missed
 the accuracy target. Same species, dev reservations, optimizer, step count,
 batch, seed, dev-sampling settings (256-window limit, seed 0) and launcher
 as `../fit-cpu-v1/`; the only config changes are the two data settings
@@ -74,10 +74,19 @@ context + 490 background draws × 2,048 = 1,003,520 + 11,510 chain draws ×
 20 flank = 230,200. This is the accepted-draw composition over the full
 run and matches stalin-0104's seeded replay (30.58 % `U` at 12,000
 attempted draws) to the base. The manifest does not record the prefix
-through `best_step`; by the same replay it is the first 7,200 draws. v1
-by comparison sampled 26,259,772 bases of which 785,532 `U` (3.0 %). The
-v2 checkpoint therefore saw ten times v1's `U` share and 13.7× its `U`
-base count with the same optimizer, steps and batch.
+through `best_step`; by the same replay it is the first 7,200 draws, and
+stalin-0106's replay of that prefix (matching every `actual.composition`
+field at step 1,500) gives what `best.pt` actually saw: v2 21,177,237
+sampled bases = 8,365,575 CDS + 6,325,565 intron + 6,486,097 `U`
+(30.63 %, of which 5,737,753 context; 298 background draws) against v1
+15,628,525 = 8,757,573 + 6,386,248 + 484,704 `U` (3.10 %; 168 background
+draws). v1 over its full run sampled 26,259,772 bases of which 785,532
+`U` (3.0 %). The v2 checkpoint therefore saw ten times v1's `U` share and
+13.4× its `U` base count through step 900 with the same optimizer, steps
+and batch — but not with the same windows: context, background pool,
+drawn chains, length exclusions and dev subset all differ (above), so
+`score-final/` compares two loader configurations, not the `U` fraction
+in isolation.
 
 `score-final/` scores chr I and chr V under `best.pt` exactly as for v1
 (same `run_final.sh` with the v2 paths, `summarize.py` for the table).

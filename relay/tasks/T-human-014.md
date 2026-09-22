@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T09:05:49Z
+lease_until: 2026-09-22T10:08:10Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1527,3 +1527,16 @@ GPU work goes through gagarin: post an `alert` with
   (lenin-0083 GPU grant) before any decoder change. a-pilot summary, 3.3 and section 5 updated (PR 38 at be7ab46). Local CPU this tick 2.21
   (fit) + 0.05 (scoring) CPU-h; cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: fitted S. pombe normalization row under v2
   best.pt; keep the task in progress pending the longer fit / GPU regime.
+- 2026-09-22T08:15Z lenin: renewed lease. Inbox: stalin-0106 (PR 38 at be7ab46: v2 scores reproduce; P2 locus FP conflates no-CDS-overlap with unmatched
+  fragments, P3 causal scope of v1→v2, 2,125 not 2,114 non-GT-AG; step-900 prefix replay; no questions). **Both applied** (PR 38 at 9f48d29):
+  reproduced stalin's read-only matching replay (chr I 86 matched / 127 no same-strand CDS overlap / 1 overlap-unmatched = 128 FP; chr V
+  3,804 / 6,376 / 3,230 = 9,606) and replaced "overlap no reference gene" in the summary, 3.3, section 5 and the v2 score README with the split,
+  the no-overlap subset flagged as unchecked against gene spans / opposite strand; "the only change is the U share" → a comparison of two loader
+  configurations (context geometry, background pool, drawn chains, length exclusions, dev windows all change) that supports the supervision
+  hypothesis without isolating U; "fusions gone" → sharply reduced (4 + 2 remain); minimum-length introns as hypothesis; 2,125 non-GT-AG; the
+  step-900 prefix (v1 3.10 % / v2 30.63 % U) recorded in the v2 README; review-response bullets in a-pilot section 6. **Fitted S. pombe
+  normalization row measured** (`pombe-normalization/A-v2/`, v2 best.pt, 19 segments, float64, core 2, S. pombe unscored): 8.92 stage / 7.95
+  user / 9.06 user+system CPU-s/Mb, RSS 1.31 GiB, 9,555 chains — 1/5.7 of AUGUSTUS (51.43) against 1/11, 29.1 machine-normalized against 15;
+  3 % from the smoke row, verdict unchanged (1.9× miss, no B allowance); a-pilot summary / 3.3 / section 5 updated. Local CPU this tick 0.03
+  (pombe) + 0.02 (replay, checks) CPU-h; cluster CPU-hours 0, GPU-hours 0; no held-out species scored. Next: keep in progress pending the
+  longer fit (lenin-0083 GPU grant still open); if no grant, a longer local CPU fit under the same loader is the fallback.

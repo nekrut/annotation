@@ -55,35 +55,63 @@ passes.
 
 Reading, in two parts.
 
-**The fusions are gone.** The v1 fit's whole-chromosome fault — 287 chains
-of median 81 kb on chr V running through many genes (238 fusions), and
-almost nothing on chr I — is not present under the v2 checkpoint. Chr V
-chains have median span 294 bases and 4 fusions; chr I now has 86 of 94
+**The fusions are sharply reduced.** The v1 fit's whole-chromosome fault —
+287 chains of median 81 kb on chr V running through many genes (238
+fusions), and almost nothing on chr I — is nearly absent under the v2
+checkpoint. Chr V chains have median span 294 bases and 4 fusions (chr I
+2); chr I now has 86 of 94
 reference loci hit (nucleotide sensitivity 0.93, MCC 0.75), 69 reference
 transcripts of the 91 single-exon ones reproduced exactly with their
 start and stop codons, and 77 / 79 exact start / stop codons against
-1 / 0. The only change between the fits is the training-window
-composition (`U` share 3.0 % → 30.6 % of sampled bases; `../README.md`),
-so the v1 working hypothesis — that the fusions came from a model whose
-intron-versus-`U` emission was barely supervised — is now supported by a
-controlled comparison, not only by a replay of the draws.
+1 / 0. This is a comparison of two loader configurations, not a
+single-variable experiment: the v2 intervention (`context` 512 plus 800
+background draws per species; `../README.md`) raises the sampled `U`
+share from 3.1 % to 30.6 % of the bases seen through the selected step
+900 (stalin-0106 replay: 484,704 of 15,628,525 against 6,486,097 of
+21,177,237 bases), but it also changes the context geometry of every
+window, the background pool, which chains are drawn, the length
+exclusions, and the development windows on which the checkpoint was
+selected (stalin-0104). The common-chromosome result supports the v1
+working hypothesis — that the fusions came from a model whose
+intron-versus-`U` emission was barely supervised — more strongly than
+the draw replay alone did; it does not isolate the `U` fraction as the
+sole cause, and it does not show that the supervision defect is fully
+removed (4 + 2 fusions remain).
 
 **Candidate A still misses the accuracy target in this fit, on splicing
 and on precision.** The v2 checkpoint predicts almost no real intron:
 on chr V it emits 2,290 introns of median 34 bases (1,078 at 20–30 bases,
-`min_intron` is 20) of which 2,114 are non-GT-AG and 68 match a reference
-intron, giving donor / acceptor F1 0.014 / 0.025 against 22,824 reference
+`min_intron` is 20) of which 2,125 are non-GT-AG (2,114 `other` + 7 GC-AG
++ 4 AT-AC) and 68 match a reference intron, giving donor / acceptor F1 0.014 / 0.025 against 22,824 reference
 introns; 11,535 of 13,410 chains are single-exon. Multi-exon genes are
 therefore emitted as several single-exon chains (1,827 splits, 239 exact
 CDS exons of 28,569), so transcript-level sensitivity on chr V is 0.020
-even though locus sensitivity is 0.76. Precision is the second miss: on
-chr V 9,606 of 13,410 predicted loci and on chr I 128 of 214 overlap no
-reference gene, and about half of the predicted chains carry under 300
-CDS bases — short open reading frames the emissions accept as coding once
-the `U` state is available. The tiny predicted introns have a plain
-reading: the decoder uses an intron of minimal length as the cheapest way
-to bridge a frame break inside what it scores as coding, not as a learned
-splice event; the motif tables that moved in the canonical direction
+even though locus sensitivity is 0.76. Precision is the second miss: `score.py`
+reports 9,606 of 13,410 chr V predicted loci and 128 of 214 chr I loci
+as false positives, and about half of the predicted chains carry under
+300 CDS bases. A locus FP in `score.py:loci` is a prediction left
+unmatched after one-to-one greedy matching on shared same-strand CDS
+bases, so it counts two different things; splitting the FP by whether
+the predicted locus shares any same-strand reference CDS base (read-only
+replay of the scorer's matching on the checksummed inputs, stalin-0106,
+reproduced here):
+
+| v2 chromosome | matched loci | FP with no same-strand reference CDS overlap | FP overlapping reference CDS but unmatched (extra fragments of a matched gene) | reported locus FP |
+|---|---:|---:|---:|---:|
+| *S. cerevisiae* chr I | 86 | 127 | 1 | 128 |
+| *C. elegans* chr V | 3,804 | 6,376 | 3,230 | 9,606 |
+
+On chr V a third of the FP loci are fragments of genes the model already
+hits (the same fragmentation the 1,827 splits measure), and two thirds
+share no same-strand CDS base with any reference gene; that subset is
+the candidate set for short open reading frames the emissions accept as
+coding once the `U` state is available, but it has not been checked
+against full gene spans (UTRs) or opposite-strand genes, so "no reference
+gene" is not established for it. The tiny predicted introns are
+consistent with one reading — the decoder using an intron of minimal
+length as the cheapest way to bridge a frame break inside what it scores
+as coding, rather than a learned splice event — which is a hypothesis
+from the length distribution, not a measurement of the mechanism; the motif tables that moved in the canonical direction
 during v1 (stalin-0102) have not become decisive splice-site emissions in
 either bounded fit (1,500 steps of batch 8, ~0.6 of one pass, both fits
 best at step 900). Whether that is the training budget or the encoder's
@@ -91,8 +119,8 @@ splice-site receptive field is not decided by this run.
 
 Consequences for the task goal (last bullet): the CPU regime still misses
 as in a-pilot 3.2 and 3.3, so no positive CPU allowance for B; the
-accuracy failure has moved from a supervision-balance defect (fixed by the
-loader increment) to a splice-site / precision defect. The revision to
+accuracy failure has moved from a supervision-balance defect (sharply
+reduced under the loader revision) to a splice-site / precision defect. The revision to
 test next, before any B allowance, is a longer fit under the same loader
 (the GPU grant of lenin-0083 exists for exactly this), scored the same
 way; a decoder change (an intron duration floor above `min_intron`, or a

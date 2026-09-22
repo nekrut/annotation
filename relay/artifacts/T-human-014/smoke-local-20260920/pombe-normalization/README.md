@@ -87,3 +87,37 @@ float64 rows above remain the rows of record.
 Compute: ~0.37 CPU-h local for the float64 rows (nine process records on
 user + system, 0.3661 h: A 0.17 h, AUGUSTUS 0.18 h, probe 0.01 h), plus
 0.17 CPU-h for the six float32 runs; cluster CPU-hours 0, GPU-hours 0.
+
+## Fitted checkpoint row (`A-v2/`, 2026-09-22T08:08Z–08:10Z)
+
+Same machine, core, command and float64 dtype as the row of record above
+(`run_A_v2.sh`; code `98c832c`, clean tree, source digest `56e472d1…`),
+with `fit-cpu-v2/best.pt` (step 900, sha256 `99f773ed…2a8cf6`) in place
+of the smoke checkpoint; 19 segments per strand only (the exact strand
+decode was the smoke row's control and cost is checkpoint-independent, as
+chr I / chr V showed). S. pombe stays unscored and unselected-on; the
+leakage check on file (`../leakage_check.out`, 0 violations) covers the
+same inputs. GFF3s are not committed (SHA-256 in `A-v2/gff3_sha256.txt`).
+
+| run | genome Mb | stage CPU-s (sum) | process user s | system s | process wall s | **stage / Mb** | user / Mb | user + system / Mb | peak RSS (max over chromosomes) | chains |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| A, fit-cpu-v2 step 900, 19 segments per strand, float64 | 12.5718 | 112.14 | 99.93 | 14.00 | 114.01 | **8.92** | 7.95 | 9.06 | 1.31 GiB (chr I) | 9,555 |
+| A, smoke checkpoint, same settings (row of record above) | 12.5718 | 115.96 | 103.47 | 14.32 | 117.89 | 9.22 | 8.23 | 9.37 | 1.31 GiB (chr I) | 121,937 |
+| AUGUSTUS 3.5.0 (above) | 12.5718 | – | 646.33 | 0.17 | 646.75 | – | 51.41 | 51.43 | 0.40 GiB | 4,452 genes |
+
+Per chromosome (stage / user / user+system per Mb): chr I 8.91 / 7.92 /
+9.02, chr II 8.88 / 7.90 / 9.01, chr III 9.02 / 8.11 / 9.26. Stages per
+genome Mb: preprocess 0.11, encoder 3.73, decode 5.07, output 0.00, I/O
+0.01. The fitted checkpoint is **1/5.7 of AUGUSTUS** on user+system
+(9.06 / 51.43), 1/6.5 on user only, 1/5.8 on the stage sum; machine-
+normalized 9.06 × 3.21 = 29.1 CPU-s/Mb against 15. The row moves by 3 %
+against the smoke row (traceback of 9,555 rather than 121,937 chains),
+so the normalization verdict is unchanged: **A misses the portable
+1/11 target by 1.9× on the fitted checkpoint** (1.7× on user only);
+memory 1.31 GiB. The chain count (9,555 against 4,452 AUGUSTUS genes and
+the reference's ~5,100 protein-coding genes) is reported for the cost
+row only; it is the same short-chain over-prediction seen on chr V and
+is not an accuracy measurement on S. pombe.
+
+Compute for this row: 0.032 CPU-h (113.9 user + system s); cluster
+CPU-hours 0, GPU-hours 0.

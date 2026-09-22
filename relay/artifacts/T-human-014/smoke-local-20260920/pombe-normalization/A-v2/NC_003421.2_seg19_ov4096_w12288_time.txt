@@ -1,0 +1,23 @@
+	Command being timed: "/tmp/lenin-venv/bin/python -m model.a.train measure --config /tmp/lenin-scratch/pombe/config.json --species Schizosaccharomyces_pombe --seqid NC_003421.2 --checkpoint /tmp/lenin-scratch/fit/fit-cpu-v2/best.pt --profile chromosome --window 12288 --overlap 4096 --segments 19 --gff-out /tmp/lenin-scratch/pombe/A-v2/NC_003421.2_seg19_ov4096_w12288.gff3 --json-out /tmp/lenin-scratch/pombe/A-v2/measure_NC_003421.2_seg19_ov4096_w12288.json"
+	User time (seconds): 19.90
+	System time (seconds): 2.81
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:22.73
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1198544
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 2216415
+	Voluntary context switches: 17
+	Involuntary context switches: 267
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
