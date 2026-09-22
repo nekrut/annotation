@@ -41,6 +41,8 @@ FIXTURES = [
     (DurationMixture(), SINGLE_X, SINGLE_CDS, SINGLE_INTRON),
     (SHORT, SINGLE_X, SINGLE_CDS, SINGLE_INTRON),
     (SHORT, TWO_X, TWO_CDS, TWO_INTRON),
+    # The gene-free (background) window: the empty chain, every base U.
+    (SHORT, "TTATGAAGTAAGTAATT", [], []),
 ]
 
 
@@ -64,9 +66,14 @@ class SupportMask(unittest.TestCase):
 
     def test_incomplete_and_overlapping_ranges_rejected(self):
         with self.assertRaises(ValueError):
-            torch_loss.support_mask(10, [], [])
+            torch_loss.support_mask(10, [], [(2, 5)])
         with self.assertRaises(ValueError):
             torch_loss.support_mask(10, [(0, 5)], [(3, 6)])
+
+    def test_empty_chain_is_the_all_intergenic_window(self):
+        m = torch_loss.support_mask(10, [], [])
+        self.assertTrue(bool(torch.isfinite(m[0]).all()))
+        self.assertTrue(bool(torch.isinf(m[1:]).all()))
 
 
 @unittest.skipUnless(HAS_TORCH_LOSS, "torch chain loss not available")

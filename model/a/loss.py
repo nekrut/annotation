@@ -52,7 +52,8 @@ def _mask_all(sc: Scores, t: int) -> None:
 
 def numerator_scores(base: Optional[Scores], n: int, cds_ranges: Sequence[Range],
                      intron_ranges: Sequence[Range]) -> Scores:
-    """Hard support mask for one *complete* admitted chain.
+    """Hard support mask for one *complete* admitted chain, or for a gene-free
+    window when both range lists are empty (every base intergenic ``U``).
 
     ``cds_ranges`` and ``intron_ranges`` are the merged, oriented, half-open CDS
     and intron intervals of the chain in a window of length ``n`` (the same
@@ -67,8 +68,9 @@ def numerator_scores(base: Optional[Scores], n: int, cds_ranges: Sequence[Range]
     ``donor`` on each intron's first base, ``acceptor`` on the first CDS base
     after each intron.
     """
-    if not cds_ranges:
-        raise ValueError("a complete chain needs at least one CDS interval")
+    if not cds_ranges and intron_ranges:
+        raise ValueError("introns without a CDS interval are not a chain")
+    # Empty ranges: the gene-free (background) window, every base intergenic U.
     sc = deepcopy(base) if base is not None else Scores.zeros(n)
     if sc.n != n:
         raise ValueError("base scores length differs from window length")
@@ -83,8 +85,8 @@ def numerator_scores(base: Optional[Scores], n: int, cds_ranges: Sequence[Range]
 
     donors = {a for a, _ in introns}          # first intronic base
     acceptors = {b for _, b in introns}       # first CDS base after the intron
-    start_t = cds[0][0]                        # first CDS base
-    stop_t = cds[-1][1] - 1                    # last CDS base
+    start_t = cds[0][0] if cds else -1         # first CDS base
+    stop_t = cds[-1][1] - 1 if cds else -1     # last CDS base
 
     for t in range(n):
         _mask_all(sc, t)

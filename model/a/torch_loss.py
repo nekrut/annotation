@@ -84,7 +84,8 @@ class TorchScores:
 
 def support_mask(n: int, cds_ranges: Sequence[Range], intron_ranges: Sequence[Range],
                  *, device=None, dtype=torch.float64) -> torch.Tensor:
-    """Additive ``(11, n)`` support mask for one *complete* admitted chain.
+    """Additive ``(11, n)`` support mask for one *complete* admitted chain,
+    or for a gene-free window when both range lists are empty.
 
     Every emission a gold path cannot use is ``-inf`` and every emission it can
     use is ``0``; adding this to an emission tensor keeps the allowed scores and
@@ -97,8 +98,10 @@ def support_mask(n: int, cds_ranges: Sequence[Range], intron_ranges: Sequence[Ra
     last, ``donor`` on each intron's first base, ``acceptor`` on the first CDS
     base after each intron.
     """
-    if not cds_ranges:
-        raise ValueError("a complete chain needs at least one CDS interval")
+    if not cds_ranges and intron_ranges:
+        raise ValueError("introns without a CDS interval are not a chain")
+    # An empty chain is the gene-free (background) window: every base is
+    # intergenic ``U`` (proposal 3, "gene-free/background windows").
     cds = sorted(cds_ranges)
     introns = sorted(intron_ranges)
     cds_bases = {t for a, b in cds for t in range(a, b)}
@@ -107,8 +110,8 @@ def support_mask(n: int, cds_ranges: Sequence[Range], intron_ranges: Sequence[Ra
         raise ValueError("CDS and intron intervals overlap")
     donors = {a for a, _ in introns}
     acceptors = {b for _, b in introns}
-    start_t = cds[0][0]
-    stop_t = cds[-1][1] - 1
+    start_t = cds[0][0] if cds else -1
+    stop_t = cds[-1][1] - 1 if cds else -1
 
     neg = float("-inf")
     mask = torch.full((EMISSION_CHANNELS, n), neg, device=device, dtype=dtype)

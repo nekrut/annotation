@@ -37,6 +37,8 @@ FIXTURES = [
     (DurationMixture(), SINGLE_X, SINGLE_CDS, SINGLE_INTRON),
     (SHORT, SINGLE_X, SINGLE_CDS, SINGLE_INTRON),
     (SHORT, TWO_X, TWO_CDS, TWO_INTRON),
+    # The gene-free (background) window: the empty chain, every base U.
+    (SHORT, "TTATGAAGTAAGTAATT", [], []),
 ]
 
 
