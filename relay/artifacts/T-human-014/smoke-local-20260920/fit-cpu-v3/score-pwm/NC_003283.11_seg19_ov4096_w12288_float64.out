@@ -1,0 +1,86 @@
+{
+  "canonical_acceptors": [
+    "AG"
+  ],
+  "canonical_donors": [
+    "GT",
+    "GC"
+  ],
+  "canonical_splice": true,
+  "chains": 7527,
+  "chains_decoded": 7571,
+  "commit": "72eecf534a77094b4562df6c4d2e5684b2c40c64",
+  "cpu_s": 187.920649517,
+  "cpu_s_per_mb": 8.981028146240378,
+  "cpu_s_per_oriented_mb": 4.474746949005587,
+  "decode_batch": 16,
+  "decode_cpu_s": 106.85403925299983,
+  "decode_wall_s": 106.93684870703146,
+  "decoder": "tensor",
+  "device": "cpu",
+  "dtype": "float64",
+  "encoded_bases": 45371910,
+  "encoder_cpu_s": 78.1846065980001,
+  "encoder_wall_s": 78.24951178207994,
+  "genome_mb": 20.92418,
+  "gff_bytes": 4642003,
+  "gff_out": "/tmp/lenin-scratch/fit/score-pwm-v3/NC_003283.11_seg19_ov4096_w12288_float64.gff3",
+  "gff_rows": 61380,
+  "gpu_s_per_mb": null,
+  "io_cpu_s": 0.4673758989999999,
+  "io_wall_s": 0.4674242786131799,
+  "margin": 491,
+  "min_intron": 20,
+  "oriented_bases": 41995816,
+  "output_cpu_s": 0.11958736099998646,
+  "output_wall_s": 0.11980518326163292,
+  "outputs_discarded": false,
+  "overlap": 4096,
+  "peak_device_mem_gib": null,
+  "peak_host_rss_gib": 2.051166534423828,
+  "pooled_decoder": "learned",
+  "preprocess_cpu_s": 2.2950404060000835,
+  "preprocess_wall_s": 2.297317764721811,
+  "profile": "chromosome",
+  "seam_rebase": false,
+  "segments": 19,
+  "seqid": "NC_003283.11",
+  "sequence_bases": 20924180,
+  "source": {
+    "source_dirs": [
+      "model/a",
+      "model/grammar"
+    ],
+    "source_dirty": true,
+    "source_dirty_files": [
+      "model/a/chromosome.py",
+      "model/a/splicepwm.py",
+      "model/a/train.py"
+    ],
+    "source_files": 20,
+    "source_sha256": "e65ea9b181a87fde436faa75a60d9064d94d77139e1afbabbd3d05e777345423"
+  },
+  "species": "Caenorhabditis_elegans",
+  "splice_pwm": "/tmp/lenin-scratch/fit/pwm-v1/splicepwm.json",
+  "splice_pwm_sha256": "a964e3e64c1ee3386fa421d7a9fd9630b29dbc3bb94fb08f41288e6bcb5a4f3a",
+  "splice_pwm_sites": [
+    67325,
+    67325
+  ],
+  "splice_pwm_spans": {
+    "acceptor": [
+      -20,
+      3
+    ],
+    "donor": [
+      -3,
+      6
+    ]
+  },
+  "strands": "+-",
+  "tiles": 3420,
+  "wall_s": 188.07090771570802,
+  "wall_s_per_mb": 8.988209225676133,
+  "window": 12288,
+  "windows": 38
+}

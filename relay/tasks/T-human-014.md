@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T20:06:02Z
+lease_until: 2026-09-22T21:06:14Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1708,3 +1708,39 @@ GPU work goes through gagarin: post an `alert` with
   at `72eecf5`, PR 38. Local CPU this tick ~0 CPU-h (text edits and one checksum pass, no model run); cluster CPU-hours 0, GPU-hours 0; no held-out
   species touched. Next: decoder increment 2 — donor/acceptor scoring among supported sites, and locus boundaries, with the section 6 CPU ceiling in
   scope; the longer fit stays a separate, separately measured option; gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22T19:06Z lenin: renewed lease. Inbox: engels-0112 and stalin-0116, both confirming the two remaining wording findings are resolved and
+  raising nothing new; neither asks a question. With the documentation thread closed I did the work the previous three ticks deferred: **decoder
+  increment 2, splice-site context scoring** (section 3.5; PR 38 at `9ec0424`, code at `c823d97`). Section 3.4 ended on "which *supported* site
+  scores highest" and could not answer it, because once the mask restricts decoding to GT/GC..AG the 16-entry dinucleotide table scores every
+  surviving site alike — which is why masking doubled true GT-AG introns (433 -> 1,070) and quadrupled the false ones (470 -> 1,970). New
+  `model/a/splicepwm.py` scores the junction *context* as a position-weight matrix: donor offsets [-3,+6), acceptor offsets [-20,+3) (long enough for
+  a polypyrimidine tract), natural-log odds against the windows' own base composition, pseudocount 1, added to the same two emission rows as
+  `motif_bias`, so both kernels and both reference decoders are unchanged; threaded through `predict_sequence`, `measure --splice-pwm`, recorded with
+  its digest in the measured row, refused by the window profile, and **inference only** (a context bias in the numerator would both penalise an
+  atypical reference junction and fit the encoder against a term derived from its own labels). In the segment mode the scored slice is widened to the
+  PWM's reach so no tile boundary truncates a junction's context. **Leakage**: `model.a.train pwm` loads the fit's own config and calls
+  `split_windows` with every source's `dev_seqids`, so the two scored development chromosomes contribute no junction and no background base; it
+  counted 67,325 donors and 67,325 acceptors over 19,975 train windows with 4,951 dev windows excluded — the same two counts as `run_manifest.json`.
+  The consensus that came out is textbook and was not put there by hand (donor `MAG|GTAAGT`, acceptor T-tract + `CAG|`). **Ablation** (same `best.pt`,
+  tiling, scorer and pinned core, no refit; `score-pwm/` = mask+PWM, `score-pwm-only/` = PWM with the accepted finite-score support; launcher
+  `run_pwm.sh` is `run_final.sh` with the flags, the output dir on `$1` and a gate on the matrix's sha256; all eight workloads exit 0). **chr V, the
+  largest change any increment has produced**: donor F1 0.117 -> 0.642, acceptor 0.158 -> 0.666, correct GT-AG introns 1,070 -> 18,195 of 22,620
+  reference, exon exact F1 0.062 -> 0.522 (internal 0.049 -> 0.606), exact transcripts 101 -> 835, nucleotide F1 0.585 -> 0.768 (sens 0.503 -> 0.948,
+  prec 0.698 -> 0.645), locus F1 0.590 -> 0.639; splits 964 -> 229 but fusions 226 -> 735, so over-splitting became over-joining. Intron length
+  improves without being fixed: median 550 -> 160 b against a reference q50 of 56 b, 46.02% -> 17.17% above the reference q90, with the duration law
+  untouched. **Two qualifications, both reported against my own change.** (1) The no-mask control reproduces essentially the whole gain (donor F1
+  0.6403 vs 0.6420, 830 vs 835 exact transcripts; chr I identical to four decimals), so **section 3.4's mask is not what produced the section 3.4
+  gain** — the mask is now a ~0.002 F1 cleanup that still removes 246 non-canonical false introns, and the unmasked finite-score decode stays the
+  default. (2) **The pooled matrix hurts yeast chr I**: exact transcripts 65 -> 55 of 94, exon exact F1 0.588 -> 0.396, locus F1 0.778 -> 0.722, 67
+  false GT-AG introns against 2 true. The matrix is dominated by nematode junctions, so a C. elegans splice score is being applied to a
+  S. cerevisiae chromosome — a **species-independence failure**, which is the charter's central concern and not an incidental one. The next revision
+  must condition or weight the splice score rather than pool junctions across clades. **Verdicts unchanged**: chr V 8.98 CPU-s/Mb with the mask and
+  9.12 without, chr I 12.47 / 12.53, all far under the 15 CPU-s/Mb budget, so **no positive CPU allowance for B**; and **A still misses the accuracy
+  target** (835 of 6,766 reference transcripts exact, transcript F1 0.133, 4,425 reference GT-AG introns still missed). Provenance: the measurement
+  rows record `commit 72eecf5` with `source_dirty: true` and `source_sha256 e65ea9b1…`, which is byte-identical to the clean-tree digest at
+  `c823d97`, so the executed source is exactly what that commit contains. a-pilot gains section 3.5 and a rewritten summary; four rows added to
+  `docs/cost-baseline/measured.tsv`; three new artifact directories with verified `sha256.txt` (18, 18 and 2 entries). Tests: 13 new cases in
+  `tests/test_a_splicepwm.py`, 239 pass. Local CPU this tick ~0.12 CPU-h (PWM fit 1.4 min, four measure workloads, four scorer runs, test suite);
+  cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: condition the splice score so it does not cost the low-intron regime what it
+  wins in the high-intron one, and re-measure both chromosomes; locus boundaries remain open; the longer fit stays a separate, separately measured
+  option; gagarin GPU grant (lenin-0083) still open.

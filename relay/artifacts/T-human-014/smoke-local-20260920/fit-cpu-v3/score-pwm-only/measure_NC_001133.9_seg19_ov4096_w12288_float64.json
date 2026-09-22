@@ -1,0 +1,81 @@
+{
+  "canonical_acceptors": null,
+  "canonical_donors": null,
+  "canonical_splice": false,
+  "chains": 125,
+  "chains_decoded": 174,
+  "commit": "72eecf534a77094b4562df6c4d2e5684b2c40c64",
+  "cpu_s": 2.885037836,
+  "cpu_s_per_mb": 12.531764831594401,
+  "cpu_s_per_oriented_mb": 4.745971054068815,
+  "decode_batch": 16,
+  "decode_cpu_s": 1.5908130739999984,
+  "decode_wall_s": 1.5911421463824809,
+  "decoder": "tensor",
+  "device": "cpu",
+  "dtype": "float64",
+  "encoded_bases": 680994,
+  "encoder_cpu_s": 1.250484895000001,
+  "encoder_wall_s": 1.2507885633967817,
+  "genome_mb": 0.230218,
+  "gff_bytes": 31418,
+  "gff_out": "/tmp/lenin-scratch/fit/score-pwm-only-v3/NC_001133.9_seg19_ov4096_w12288_float64.gff3",
+  "gff_rows": 446,
+  "gpu_s_per_mb": null,
+  "io_cpu_s": 0.008003193999999991,
+  "io_wall_s": 0.008003922179341316,
+  "margin": 491,
+  "min_intron": 20,
+  "oriented_bases": 607892,
+  "output_cpu_s": 0.0007645750000002671,
+  "output_wall_s": 0.0007649590261280537,
+  "outputs_discarded": false,
+  "overlap": 4096,
+  "peak_device_mem_gib": null,
+  "peak_host_rss_gib": 0.9573745727539062,
+  "pooled_decoder": "learned",
+  "preprocess_cpu_s": 0.03497209800000034,
+  "preprocess_wall_s": 0.034987852443009615,
+  "profile": "chromosome",
+  "seam_rebase": false,
+  "segments": 19,
+  "seqid": "NC_001133.9",
+  "sequence_bases": 230218,
+  "source": {
+    "source_dirs": [
+      "model/a",
+      "model/grammar"
+    ],
+    "source_dirty": true,
+    "source_dirty_files": [
+      "model/a/chromosome.py",
+      "model/a/splicepwm.py",
+      "model/a/train.py"
+    ],
+    "source_files": 20,
+    "source_sha256": "e65ea9b181a87fde436faa75a60d9064d94d77139e1afbabbd3d05e777345423"
+  },
+  "species": "Saccharomyces_cerevisiae",
+  "splice_pwm": "/tmp/lenin-scratch/fit/pwm-v1/splicepwm.json",
+  "splice_pwm_sha256": "a964e3e64c1ee3386fa421d7a9fd9630b29dbc3bb94fb08f41288e6bcb5a4f3a",
+  "splice_pwm_sites": [
+    67325,
+    67325
+  ],
+  "splice_pwm_spans": {
+    "acceptor": [
+      -20,
+      3
+    ],
+    "donor": [
+      -3,
+      6
+    ]
+  },
+  "strands": "+-",
+  "tiles": 76,
+  "wall_s": 2.8856874434277415,
+  "wall_s_per_mb": 12.534586537228806,
+  "window": 12288,
+  "windows": 38
+}

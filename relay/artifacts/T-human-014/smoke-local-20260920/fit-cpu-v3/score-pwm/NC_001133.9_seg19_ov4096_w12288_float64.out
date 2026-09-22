@@ -1,0 +1,86 @@
+{
+  "canonical_acceptors": [
+    "AG"
+  ],
+  "canonical_donors": [
+    "GT",
+    "GC"
+  ],
+  "canonical_splice": true,
+  "chains": 125,
+  "chains_decoded": 174,
+  "commit": "72eecf534a77094b4562df6c4d2e5684b2c40c64",
+  "cpu_s": 2.871389748,
+  "cpu_s_per_mb": 12.472481508830759,
+  "cpu_s_per_oriented_mb": 4.7235195528153024,
+  "decode_batch": 16,
+  "decode_cpu_s": 1.553623207999998,
+  "decode_wall_s": 1.5536275277845562,
+  "decoder": "tensor",
+  "device": "cpu",
+  "dtype": "float64",
+  "encoded_bases": 680994,
+  "encoder_cpu_s": 1.2738906400000016,
+  "encoder_wall_s": 1.2740516164340079,
+  "genome_mb": 0.230218,
+  "gff_bytes": 31418,
+  "gff_out": "/tmp/lenin-scratch/fit/score-pwm-v3/NC_001133.9_seg19_ov4096_w12288_float64.gff3",
+  "gff_rows": 446,
+  "gpu_s_per_mb": null,
+  "io_cpu_s": 0.008279982000000019,
+  "io_wall_s": 0.008280639071017504,
+  "margin": 491,
+  "min_intron": 20,
+  "oriented_bases": 607892,
+  "output_cpu_s": 0.0008185420000001997,
+  "output_wall_s": 0.000819049309939146,
+  "outputs_discarded": false,
+  "overlap": 4096,
+  "peak_device_mem_gib": null,
+  "peak_host_rss_gib": 0.9579238891601562,
+  "pooled_decoder": "learned",
+  "preprocess_cpu_s": 0.03477737600000008,
+  "preprocess_wall_s": 0.03480430180206895,
+  "profile": "chromosome",
+  "seam_rebase": false,
+  "segments": 19,
+  "seqid": "NC_001133.9",
+  "sequence_bases": 230218,
+  "source": {
+    "source_dirs": [
+      "model/a",
+      "model/grammar"
+    ],
+    "source_dirty": true,
+    "source_dirty_files": [
+      "model/a/chromosome.py",
+      "model/a/splicepwm.py",
+      "model/a/train.py"
+    ],
+    "source_files": 20,
+    "source_sha256": "e65ea9b181a87fde436faa75a60d9064d94d77139e1afbabbd3d05e777345423"
+  },
+  "species": "Saccharomyces_cerevisiae",
+  "splice_pwm": "/tmp/lenin-scratch/fit/pwm-v1/splicepwm.json",
+  "splice_pwm_sha256": "a964e3e64c1ee3386fa421d7a9fd9630b29dbc3bb94fb08f41288e6bcb5a4f3a",
+  "splice_pwm_sites": [
+    67325,
+    67325
+  ],
+  "splice_pwm_spans": {
+    "acceptor": [
+      -20,
+      3
+    ],
+    "donor": [
+      -3,
+      6
+    ]
+  },
+  "strands": "+-",
+  "tiles": 76,
+  "wall_s": 2.8715831344015896,
+  "wall_s_per_mb": 12.47332152308503,
+  "window": 12288,
+  "windows": 38
+}

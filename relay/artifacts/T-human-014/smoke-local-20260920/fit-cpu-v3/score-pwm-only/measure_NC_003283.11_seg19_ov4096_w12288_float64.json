@@ -1,0 +1,81 @@
+{
+  "canonical_acceptors": null,
+  "canonical_donors": null,
+  "canonical_splice": false,
+  "chains": 7492,
+  "chains_decoded": 7536,
+  "commit": "72eecf534a77094b4562df6c4d2e5684b2c40c64",
+  "cpu_s": 190.77403597800003,
+  "cpu_s_per_mb": 9.117396045054097,
+  "cpu_s_per_oriented_mb": 4.542691490457051,
+  "decode_batch": 16,
+  "decode_cpu_s": 109.70979866299899,
+  "decode_wall_s": 109.75917495600879,
+  "decoder": "tensor",
+  "device": "cpu",
+  "dtype": "float64",
+  "encoded_bases": 45371910,
+  "encoder_cpu_s": 78.21688181100035,
+  "encoder_wall_s": 78.24463951773942,
+  "genome_mb": 20.92418,
+  "gff_bytes": 4646859,
+  "gff_out": "/tmp/lenin-scratch/fit/score-pwm-only-v3/NC_003283.11_seg19_ov4096_w12288_float64.gff3",
+  "gff_rows": 61453,
+  "gpu_s_per_mb": null,
+  "io_cpu_s": 0.43805338599999966,
+  "io_wall_s": 0.4382719290442765,
+  "margin": 491,
+  "min_intron": 20,
+  "oriented_bases": 41995816,
+  "output_cpu_s": 0.08338288300001295,
+  "output_wall_s": 0.08339828392490745,
+  "outputs_discarded": false,
+  "overlap": 4096,
+  "peak_device_mem_gib": null,
+  "peak_host_rss_gib": 2.046398162841797,
+  "pooled_decoder": "learned",
+  "preprocess_cpu_s": 2.3259192350006686,
+  "preprocess_wall_s": 2.3269890346564353,
+  "profile": "chromosome",
+  "seam_rebase": false,
+  "segments": 19,
+  "seqid": "NC_003283.11",
+  "sequence_bases": 20924180,
+  "source": {
+    "source_dirs": [
+      "model/a",
+      "model/grammar"
+    ],
+    "source_dirty": true,
+    "source_dirty_files": [
+      "model/a/chromosome.py",
+      "model/a/splicepwm.py",
+      "model/a/train.py"
+    ],
+    "source_files": 20,
+    "source_sha256": "e65ea9b181a87fde436faa75a60d9064d94d77139e1afbabbd3d05e777345423"
+  },
+  "species": "Caenorhabditis_elegans",
+  "splice_pwm": "/tmp/lenin-scratch/fit/pwm-v1/splicepwm.json",
+  "splice_pwm_sha256": "a964e3e64c1ee3386fa421d7a9fd9630b29dbc3bb94fb08f41288e6bcb5a4f3a",
+  "splice_pwm_sites": [
+    67325,
+    67325
+  ],
+  "splice_pwm_spans": {
+    "acceptor": [
+      -20,
+      3
+    ],
+    "donor": [
+      -3,
+      6
+    ]
+  },
+  "strands": "+-",
+  "tiles": 3420,
+  "wall_s": 190.85247372137383,
+  "wall_s_per_mb": 9.121144710157045,
+  "window": 12288,
+  "windows": 38
+}
