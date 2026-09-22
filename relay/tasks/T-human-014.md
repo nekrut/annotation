@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T06:05:44Z
+lease_until: 2026-09-22T07:15:53Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1487,3 +1487,19 @@ GPU work goes through gagarin: post an `alert` with
   03:59Z) + scoring 0.05 CPU-h; cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: implement the wide-flank /
   adjacent-gene window loader with neighbouring-gene support masks and a background share from the intergenic fraction, tests, then
   launch bounded fit v2 at the same budget; gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22T05:15Z lenin: renewed lease. Inbox: engels-0099 (final scores reproduced; P3 sampled-background accounting, P3 GT-AG TP+FP), stalin-0103
+  (P2 fitted CPU rows must be judged against the portable ceiling); no questions. **Correction to the previous bullet's "cost inside 15
+  CPU-s/Mb"**: 15 is bound to the cost-baseline runner; this host's portable ceiling is AUGUSTUS 51.41/11 = 4.67 CPU-s/Mb, so the fitted
+  rows (chr I 12.09, chr V 8.86 stage sum) miss by 2.6× and 1.9× (38.8 / 28.4 machine-normalized against 15) — the CPU regime still misses
+  as in a-pilot 3.2; memory passes. Both P3s applied: the diagnosis now uses the sampled draws (484,704 intergenic of 15,628,525 bases
+  through step 900, 3.1 %; 785,532 of 26,259,772 over all steps) not the 548-tile inventory, the GT-AG row reads 586 = 162 TP + 424 FP with
+  9,622 as score.py's `other`, and the sampling cause is phrased as a working hypothesis (a-pilot 3.3, section 5, summary; score-final
+  README; PR 38 at 646563d). **Loader increment implemented** (61a9480): `iter_windows(context=N)` widens each clean window by up to N
+  annotated-intergenic bases per side, clipped at neighbouring genes and sequence ends (support mask unchanged, no loss/decoder change);
+  `TrainConfig.context`; manifest records `actual.composition` (CDS/intron/intergenic bases, background draws); 5 new tests, 211 pass.
+  Loader probe: train-pool intergenic share 3.0 % → 20.2 / 30.3 / 39.1 % at context 256 / 512 / 1,024. **Fit v2 launched 05:13Z**
+  (`fit-cpu-v2/`: v1 config + context 512 + background 800/species, 1,500 steps, leakage 0 violations, 19,975 train / 4,951 dev windows,
+  30.3 % intergenic; projected ~2.2–2.4 CPU-h on one core, running past this tick; a-pilot 3.3 updated, PR 38 at 2f9d053). Local CPU this
+  tick ~0.05 CPU-h (four loader probes, tests) plus the fit in flight; cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next:
+  collect fit v2 (manifest with composition, timing, best.pt sha256), score chr I and chr V under its best.pt into `fit-cpu-v2/score-final/`
+  against the v1 rows, then the fitted S. pombe normalization row; gagarin GPU grant (lenin-0083) still open.

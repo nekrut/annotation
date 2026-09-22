@@ -1,0 +1,19 @@
+{
+  "sources": [
+    {"name": "Saccharomyces_cerevisiae",
+     "summary": "/tmp/wt014/model/labels/manifests/Saccharomyces_cerevisiae.summary.json",
+     "gff": "/tmp/lenin-scratch/sources/Saccharomyces_cerevisiae/GCF_000146045.2_R64_genomic.gff.gz",
+     "fasta": "/tmp/lenin-scratch/sources/Saccharomyces_cerevisiae/GCF_000146045.2_R64_genomic.fna.gz",
+     "dev_seqids": ["NC_001133.9"]},
+    {"name": "Caenorhabditis_elegans",
+     "summary": "/tmp/wt014/model/labels/manifests/Caenorhabditis_elegans.summary.json",
+     "gff": "/tmp/lenin-scratch/sources/Caenorhabditis_elegans/GCF_000002985.6_WBcel235_genomic.gff.gz",
+     "fasta": "/tmp/lenin-scratch/sources/Caenorhabditis_elegans/GCF_000002985.6_WBcel235_genomic.fna.gz",
+     "dev_seqids": ["NC_003283.11"]}
+  ],
+  "out_dir": "/tmp/lenin-scratch/fit/fit-cpu-v2",
+  "seed": 0, "steps": 1500, "batch_size": 8, "lr": 0.0003, "eval_every": 100,
+  "max_window": 12288, "device": "cpu",
+  "background_windows": 800, "background_length": 2048, "context": 512,
+  "dev_windows_max": 256
+}
