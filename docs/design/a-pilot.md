@@ -2047,8 +2047,12 @@ Fast-kernel review findings (engels-0080, stalin-0081) and their resolution:
   646.50 / 12.57 / 11 = 4.67; removing the encoder entirely leaves 5.19
   stage CPU-s/Mb, and decode is 1.08× the ceiling. Noted for the CPU
   revision: encoder work reduction alone cannot admit this configuration;
-  the decoder (float32, fewer states, or the section 6.1 multi-worker
-  accounting) has to move too. No new measurement.
+  the decoder itself (float32, fewer states, or another implementation
+  change whose aggregate CPU-seconds are measured on one core) has to
+  move too. The section 6.1 multi-worker accounting belongs to the GPU
+  regime's wall time only: dividing wall time by worker count does not
+  reduce aggregate CPU-seconds and cannot lower the CPU row
+  (engels-0103 / stalin-0108). No new measurement.
 
 ## 7. Training-set coverage accounting
 
