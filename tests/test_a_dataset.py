@@ -19,6 +19,8 @@ from model.a.dataset import (
     WindowExample,
     coverage_report,
     format_coverage,
+    gene_free_intervals,
+    iter_background_windows,
     iter_windows,
     verify_source,
 )
@@ -127,6 +129,57 @@ class DatasetTest(unittest.TestCase):
         self.assertFalse(c.partial_5 or c.partial_3)
         self.assertEqual([(s.start, s.end) for s in c.cds()], ex.cds_ranges)
         self.assertEqual([(s.start, s.end) for s in c.introns()], ex.intron_ranges)
+
+    def test_gene_free_intervals_widen_spans_by_margin(self):
+        # gene 11..62 (1-based inclusive) widened by 10: blocks [0, 72)
+        self.assertEqual(gene_free_intervals(100, [(11, 62)], margin=10), [(72, 100)])
+        # overlapping/adjacent spans merge; a leading gap is kept
+        self.assertEqual(gene_free_intervals(100, [(30, 40), (35, 50), (60, 61)], margin=0),
+                         [(0, 29), (50, 59), (61, 100)])
+        self.assertEqual(gene_free_intervals(100, [], margin=5), [(0, 100)])
+        self.assertEqual(gene_free_intervals(0, [], margin=5), [])
+
+    def test_background_windows_are_gene_free_and_seeded(self):
+        stats = LoaderStats()
+        bg = list(iter_background_windows(self.summary, self.gff, self.fasta,
+                                          length=1000, count=3, seed=1, stats=stats))
+        # gene-free tail is [72, 10000): nine 1,000-base tiles from 72
+        self.assertEqual(stats.background_candidates, 9)
+        self.assertEqual(stats.background_yielded, 3)
+        self.assertEqual(len(bg), 3)
+        for ex in bg:
+            self.assertEqual(ex.n, 1000)
+            self.assertEqual((ex.cds_ranges, ex.intron_ranges), ([], []))
+            seqid, strand, tag = ex.key
+            self.assertEqual(seqid, "chr1")
+            self.assertIn(strand, "+-")
+            a, b = (int(v) for v in tag.split(":")[1].split("-"))
+            self.assertGreaterEqual(a, 72)
+            self.assertEqual(b - a, 1000)
+            self.assertEqual(ex.window, "A" * 1000 if strand == "+" else "T" * 1000)
+            # the empty chain is the all-intergenic support: finite nll
+            loss, log_z, log_z_num = chain_nll(
+                ReferenceDecoder(), ex.window, None, ex.cds_ranges, ex.intron_ranges)
+            self.assertTrue(math.isfinite(log_z) and math.isfinite(log_z_num))
+            self.assertGreaterEqual(loss, -1e-9)
+        # deterministic under the seed; a different seed draws differently
+        again = list(iter_background_windows(self.summary, self.gff, self.fasta,
+                                             length=1000, count=3, seed=1))
+        self.assertEqual([e.key for e in again], [e.key for e in bg])
+        # count above the candidate pool yields every tile once
+        every = list(iter_background_windows(self.summary, self.gff, self.fasta,
+                                             length=1000, count=50))
+        self.assertEqual(len(every), 9)
+        self.assertEqual(len({e.key[2] for e in every}), 9)
+        # chain-window accounting untouched (dev reservations key off it)
+        self.assertEqual(dict(stats.windows_by_seqid), {})
+
+    def test_background_windows_enforce_source_pin(self):
+        with open(self.fasta, "a") as fh:
+            fh.write("\n")
+        with self.assertRaises(SourceMismatch):
+            list(iter_background_windows(self.summary, self.gff, self.fasta,
+                                         length=100, count=1))
 
     def test_max_window_skips_and_counts(self):
         stats = LoaderStats()

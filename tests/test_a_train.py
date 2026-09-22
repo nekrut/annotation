@@ -54,6 +54,20 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(c.seed, 0)
         self.assertEqual(c.steps, 1000)
         self.assertIsNone(c.max_window)
+        # chain-only scope by default: no gene-free windows
+        self.assertEqual(c.background_windows, 0)
+        self.assertEqual(c.background_length, 4096)
+
+    def test_config_background_windows(self):
+        c = T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o",
+                                     "background_windows": 200, "background_length": 8192})
+        self.assertEqual((c.background_windows, c.background_length), (200, 8192))
+        with self.assertRaises(ValueError):
+            T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o",
+                                     "background_windows": -1})
+        with self.assertRaises(ValueError):
+            T.TrainConfig.from_dict({"sources": [self._src()], "out_dir": "/tmp/o",
+                                     "background_length": 0})
 
     def test_config_overrides(self):
         c = T.TrainConfig.from_dict({

@@ -128,6 +128,11 @@ class TrainConfig:
     # Minimum intron length ``m`` of the duration law (proposal 3.2); the
     # mixture weights and hazards themselves are learned (model.decoder).
     min_intron: int = 20
+    # Gene-free (background) windows per species, drawn without replacement
+    # from the gene-free tiling (model.a.dataset.iter_background_windows);
+    # 0 keeps the chain-only scope of the earlier smoke fits.
+    background_windows: int = 0
+    background_length: int = 4096
 
     @classmethod
     def from_dict(cls, d: dict) -> "TrainConfig":
@@ -148,6 +153,10 @@ class TrainConfig:
             raise ValueError("loss_kernel must be 'fast' or 'reference'")
         if int(kwargs.get("min_intron", 20)) < 1:
             raise ValueError("min_intron must be at least 1")
+        if int(kwargs.get("background_windows", 0)) < 0:
+            raise ValueError("background_windows must not be negative")
+        if int(kwargs.get("background_length", 4096)) < 1:
+            raise ValueError("background_length must be at least 1")
         return cls(sources=sources, **kwargs)
 
     @classmethod
@@ -328,6 +337,8 @@ def build_manifest(config: TrainConfig, *, torch_version: str,
             "max_window": config.max_window,
             "loss_kernel": config.loss_kernel,
             "min_intron": config.min_intron,
+            "background_windows": config.background_windows,
+            "background_length": config.background_length,
         },
         "sampling_plan": {
             "draw": "uniform-with-replacement over train windows",
@@ -336,6 +347,8 @@ def build_manifest(config: TrainConfig, *, torch_version: str,
             "batch_size": config.batch_size,
             "planned_draws": config.steps * config.batch_size,
             "max_window": config.max_window,
+            "background_windows_per_species": config.background_windows,
+            "background_length": config.background_length,
         },
         "sources": [
             {"name": s.name, "dev_seqids": list(s.dev_seqids),
@@ -372,8 +385,10 @@ def record_actual(manifest: dict, *, attempted_draws: int, accepted_windows: int
 # --------------------------------------------------------------------------
 def _load_all_windows(config: TrainConfig):
     """Load every admitted clean complete-target window for the configured
-    species, tagging each with its species genetic-code table."""
-    from .dataset import iter_windows, LoaderStats
+    species, tagging each with its species genetic-code table, followed by
+    ``config.background_windows`` gene-free windows per species (seeded by
+    ``config.seed``; none when 0)."""
+    from .dataset import iter_background_windows, iter_windows, LoaderStats
 
     examples = []
     stats_by_species: Dict[str, LoaderStats] = {}
@@ -382,6 +397,13 @@ def _load_all_windows(config: TrainConfig):
         for ex in iter_windows(src.summary, src.gff, src.fasta,
                                max_window=config.max_window, stats=stats):
             examples.append(ex)
+        if config.background_windows:
+            for ex in iter_background_windows(
+                    src.summary, src.gff, src.fasta,
+                    length=config.background_length,
+                    count=config.background_windows,
+                    seed=config.seed, stats=stats):
+                examples.append(ex)
         stats_by_species[src.name] = stats
     return examples, stats_by_species
 
@@ -476,7 +498,9 @@ def train(config: TrainConfig, log=print) -> dict:
     declared_dev = any(s.dev_seqids for s in config.sources)
     if declared_dev and not dev_ex:  # defensive: validate_dev_reservations covers this
         raise ValueError("declared development reservations retained no windows")
-    log(f"loaded {len(examples)} windows: {len(train_ex)} train, {len(dev_ex)} dev")
+    n_bg = sum(ex.key[2].startswith("background:") for ex in examples)
+    log(f"loaded {len(examples)} windows: {len(train_ex)} train, {len(dev_ex)} dev "
+        f"({n_bg} gene-free background)")
 
     model = CandidateA().to(device)
     assert model.num_parameters() == SECTION_35_PARAM_COUNT, model.num_parameters()

@@ -58,6 +58,7 @@ checkout (where the source data and that filter live), not an installed wheel.
 from __future__ import annotations
 
 import json
+import random
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple
@@ -163,6 +164,9 @@ class LoaderStats:
     skipped_too_long: int = 0
     skipped_neighbor: int = 0
     windows_by_seqid: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    # Gene-free (background) windows, counted apart from the chain windows.
+    background_candidates: int = 0
+    background_yielded: int = 0
 
 
 @dataclass
@@ -366,3 +370,106 @@ def iter_windows(
                 partial_5=bool(mt.five),
                 partial_3=bool(mt.three),
             )
+
+
+def gene_free_intervals(seq_len: int, spans: Sequence[Tuple[int, int]],
+                        margin: int = FLANK) -> List[Range]:
+    """Zero-based half-open intervals of a sequence that no gene touches.
+
+    ``spans`` are 1-based inclusive gene spans (``Transcript.span``); each is
+    widened by ``margin`` on both sides so a background window never abuts a
+    gene closer than a chain window's own flank. Every transcript counts,
+    admitted or not, masked or not: a base is background only if the source
+    annotation has nothing there on either strand.
+    """
+    if seq_len <= 0:
+        return []
+    blocked = sorted((max(0, s - 1 - margin), min(seq_len, e + margin)) for s, e in spans)
+    out: List[Range] = []
+    cursor = 0
+    for a, b in blocked:
+        if a > cursor:
+            out.append((cursor, a))
+        cursor = max(cursor, b)
+    if cursor < seq_len:
+        out.append((cursor, seq_len))
+    return out
+
+
+def iter_background_windows(
+    summary: str,
+    gff: str,
+    fasta: str,
+    *,
+    length: int,
+    count: int,
+    seed: int = 0,
+    stats: Optional[LoaderStats] = None,
+) -> Iterator[WindowExample]:
+    """Yield up to ``count`` gene-free windows of ``length`` bases (proposal
+    section 3, "gene-free/background windows").
+
+    The source pair is checksum-gated exactly as :func:`iter_windows`, and
+    only sequences carrying at least one *admitted* chain are sampled (the
+    audit's own inventory, so a mitochondrion or other sequence the admission
+    excluded -- a different genetic code, no admitted representative -- is
+    never background for the nuclear model). Every gene-free interval of such
+    a sequence (:func:`gene_free_intervals`, all transcripts of the GFF3 on
+    both strands, widened by ``FLANK``) is tiled with non-overlapping
+    ``length``-base candidates from its left edge; a deterministic
+    ``random.Random(seed)`` draw without replacement picks ``count`` of them
+    (all, when fewer exist) and gives each a strand, so the minus-strand half
+    is reverse-complemented with case preserved. The yielded example has empty
+    ``cds_ranges``/``intron_ranges``: its support mask is the all-intergenic
+    path (``numerator_scores`` with no chain). ``key`` is
+    ``(seqid, strand, "background:<start>-<end>")`` in zero-based half-open
+    forward coordinates, so the dev split by seqid applies unchanged.
+    """
+    if length <= 0:
+        raise ValueError("background window length must be positive")
+    if count < 0:
+        raise ValueError("background window count must not be negative")
+    if stats is None:
+        stats = LoaderStats()
+
+    verify_source(summary, gff, fasta)
+    with open(summary, "r", encoding="utf-8") as fh:
+        meta = json.load(fh)
+    m = int(meta.get("m", 20))
+    table = int(meta.get("table", 1))
+
+    res = audit_species("_loader_", gff, fasta, m=m, table=table, log=lambda *a, **k: None)
+    admitted_seqids = {r["seqid"] for r in res.manifest_rows if r["status"] == "admitted"}
+
+    transcripts, _gene_biotype, _shim = load_gff_rows(gff)
+    spans_by_seqid: Dict[str, List[Tuple[int, int]]] = defaultdict(list)
+    for t in transcripts:
+        spans_by_seqid[t.seqid].append(t.span)
+
+    candidates: List[Tuple[str, int]] = []
+    sequences: Dict[str, str] = {}
+    for name, seq in _iter_fasta(fasta):
+        if name not in admitted_seqids:
+            continue
+        free = gene_free_intervals(len(seq), spans_by_seqid.get(name, ()))
+        starts = [a for lo, hi in free for a in range(lo, hi - length + 1, length)]
+        if starts:
+            sequences[name] = seq
+            candidates.extend((name, a) for a in starts)
+    stats.background_candidates = len(candidates)
+
+    rng = random.Random(seed)
+    chosen = candidates if count >= len(candidates) else rng.sample(candidates, count)
+    for name, a in chosen:
+        strand = "+" if rng.random() < 0.5 else "-"
+        window = sequences[name][a:a + length]
+        if strand == "-":
+            window = revcomp(window)
+        stats.background_yielded += 1
+        yield WindowExample(
+            key=(name, strand, f"background:{a}-{a + length}"),
+            window=window,
+            cds_ranges=[],
+            intron_ranges=[],
+            table=table,
+        )

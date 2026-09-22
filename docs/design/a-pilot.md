@@ -182,7 +182,27 @@ acceptor. Dependency radius is 491 bases, below the proposed 516-base halo.
    cropping whole genes longer than the encoder core into chunks with retained
    intron/codon/duration state (the crop-integration contracts checked in the
    prior owner's notes engels-0045…engels-0057). Batched multi-window collation
-   for the torch training step also belongs here.
+   for the torch training step also belongs here. **Gene-free (background)
+   windows are in** (proposal section 3, "gene-free/background windows"):
+   `iter_background_windows` tiles every gene-free interval of a sequence
+   that carries an admitted chain (all GFF3 transcripts on both strands
+   blocked, widened by `FLANK`; a mitochondrion or any sequence the audit
+   admitted nothing from is never background) with non-overlapping
+   `background_length` tiles and draws `background_windows` of them per
+   species without replacement under the run seed, half of them
+   reverse-complemented with case preserved. Their support is the empty
+   chain — `numerator_scores`/`support_mask` now accept it as the
+   all-intergenic path (introns without a CDS stay rejected) — so the fit
+   also sees windows where the right answer is no gene, which the
+   chain-only smoke fits never did (the smoke checkpoint's 208,796 chains
+   on chr V's 3,357 genes). Both keys are in the config, manifest
+   hyperparameters and sampling plan; the default is 0 (chain-only, the
+   scope of every recorded fit). The tiling is coarse on a gene-dense
+   genome: *S. cerevisiae* has 23 gene-free 4,096-base tiles, 198 at 2,048,
+   928 at 1,024, so the fitted-checkpoint config sets the length per
+   species panel. Background windows are counted apart from the admitted
+   inventory (`LoaderStats.background_candidates`/`background_yielded`),
+   so dev-seqid reservations still key off admitted chains only.
 2. **Differentiable (PyTorch) chain loss** — the reference forward
    (`model/a/torch_loss.py`) and the **fast vectorized delayed-entry kernel**
    (`model/a/fast_loss.py`, checked against it to 1e-9; section 3.2) are done,
