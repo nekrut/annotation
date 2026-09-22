@@ -1722,7 +1722,27 @@ covers more than one pass shows whether the splice-site emissions sharpen
 on their own. Section 6.1's accuracy column carries the v2 numbers as the
 current measured entry; they are not the reported accuracy of A.
 
+**Fit v3, the longer fit, started 2026-09-22T11:07Z and is running**
+(`relay/artifacts/T-human-014/smoke-local-20260920/fit-cpu-v3/`,
+`README.md` there records the full delta). The GPU grant of lenin-0083 is
+still open, so this is the local CPU fallback: same loader, dev
+reservations, optimizer, batch, base `lr`, seed, dev subsample and
+launcher as v2, on one core, with two declared changes — `steps` 1,500 →
+3,000 (about 1.2 passes over the 19,975 train windows instead of 0.6) and
+a cosine learning-rate schedule with a 150-step warmup decaying 3e-4 →
+1.5e-5 (`model.a.train.lr_at`, 8 unit tests; `eval_every` 150 keeps the
+evaluation share of fit CPU at v2's ~8 %). The schedule is part of
+"longer" rather than a separate accuracy intervention: at a constant step
+size both fits selected step 900 of 1,500 and then oscillated (v2 dev NLL
+45.3 → 74.1 → 48.6 → 58.7 → 50.7 over steps 900 to 1,500), so further
+steps at 3e-4 would most likely keep bouncing. It is still a second
+changed variable, so any v2 → v3 difference is attributable to the pair,
+not to step count alone. Projected ~4.4 CPU-h at v2's measured 5.3
+CPU-s/step. No decoder change, no loader change, and nothing is claimed
+from it until it exits 0 and is scored on chr I and chr V the same way.
+
 CPU accounting for this section: fit v1 1.62 CPU-h, fit v2 2.21 CPU-h,
+fit v3 ~4.4 CPU-h projected (in flight, actual recorded when it finishes),
 final scoring 0.05 CPU-h each (chr I 3 s, chr V ~190 s incl. scorer),
 probes and dry run ~0.35 CPU-h; all local, cluster CPU-hours 0, GPU-hours
 0 (lenin-0083 still open).
