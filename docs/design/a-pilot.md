@@ -1557,20 +1557,42 @@ fit (v2) scored the same way.
 
 **Fit v2 launched 2026-09-22T05:13Z** (`fit-cpu-v2/`, code `61a9480`):
 the loader increment is `context` (`model.a.dataset.iter_windows`): a
-clean chain window is widened by up to `context` bases per side of
-annotated intergenic sequence, clipped at the nearest other gene's span
-and the sequence ends, so the unchanged support mask supervises the added
-bases as `U` with no loss or decoder change; the manifest now records the
+clean chain window is widened by up to `context` bases per side, clipped
+at the nearest other gene's *CDS span* and the sequence ends, so the
+unchanged support mask supervises the added bases as `U` with no loss or
+decoder change. The guarantee is coding-span-free, not annotated
+intergenic: the neighbour inventory is the CDS-bearing transcripts' outer
+CDS endpoints, so UTRs (focal or neighbouring), ncRNA genes and CDS-free
+pseudogenes can fall inside the added context — on the v2 train pool
+48,213 of 3,965,426 added yeast bases and 3,964,153 of 12,049,332 added
+*C. elegans* bases overlap raw `gene`/`pseudogene` spans, summed over
+windows (engels-0100; e.g. the 163-base snoRNA `CELE_Y74C9A.6` lies
+entirely inside `NM_058260.8`'s added context). The `U` share below is
+therefore the support label's share, not a measured strictly-intergenic
+annotation fraction; supervising a UTR or ncRNA as `U` is not evidence of a
+wrong protein-coding target, and the stronger raw-feature exclusion
+already used for background tiles is left as a knob for a later fit rather
+than a change to this one. The manifest now records the
 sampled-base composition (`actual.composition`: CDS / intron / intergenic
 bases, background draws) so the supervision balance no longer has to be
 replayed. Config: identical to v1 except `context: 512` and
 `background_windows: 800` per species (148 available in yeast). Loader
-probe of the train pool: intergenic share 3.0 % (v1) → 20.2 / **30.3** /
+probe of the train pool: `U` share 3.0 % (v1) → 20.2 / **30.3** /
 39.1 % at context 256 / 512 / 1,024, mean window 2,202 → 2,654 / **2,970**
-/ 3,405 bases; 512 matches the 3,072-base encoder core and approaches the
-genomes' own intergenic fractions at ~1.35× v1's per-step cost. Leakage
-check 0 violations; 24,926 windows (19,975 train / 4,951 dev, 948
-background). Scored the same way as v1 when it finishes. The GT-AG motif tables already move in the
+/ 3,405 bases; 512 matches the 3,072-base encoder core and brings the `U`
+share near the genomes' own intergenic fractions at ~1.35× v1's per-step
+cost. Leakage check 0 violations; 24,926 windows (19,975 train incl. 773
+background / 4,951 dev incl. 175 background; 948 background in all); train
+pool 59,330,766 bases = 23,891,418 CDS + 17,457,446 intron + 17,981,902
+`U` (30.3 %). Note that v2 shares v1's dev *settings* (reserved
+chromosomes, seed, 256-window limit), not its dev *subsample*: the loader
+changes the dev pool (4,893 → 4,951 identities, 4,839 common) and hence
+the seeded selection — only 37 of the 256 selected dev windows are common
+to v1 and v2, and the retained chains carry context (stalin-0104). Raw
+dev NLLs of v1 and v2 are therefore evaluated on different windows and are
+not a loss change on one fixed set; the whole-chromosome scoring of chr I
+and chr V under each `best.pt` is the common comparison. Scored the same
+way as v1 when it finishes. The GT-AG motif tables already move in the
 canonical direction (stalin-0102), so no decoder change is proposed until
 v2 is scored. Section 6.1's accuracy column carries the v1 numbers above
 as the first measured entry; they are not the reported accuracy of A.

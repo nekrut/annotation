@@ -36,10 +36,19 @@ re-deriving it:
   chains (with their flags) once the boundary loss lands.
 - **Intergenic context, clipped at the neighbours (fit v2).** With
   ``context > 0`` a clean window is widened by up to ``context`` bases on each
-  side, but never past the nearest span of a *different* gene (any transcript,
-  admitted or not) or the sequence end, so every added base is annotated
-  intergenic and the ``U`` supervision ``numerator_scores`` applies to it stays
-  correct without a loss change. Fit v1 supervised only 3 % of its sampled
+  side, but never past the nearest *CDS span* of a different gene (any
+  CDS-bearing transcript, admitted or not) or the sequence end, so no added
+  base is another gene's coding or intron sequence and the ``U`` supervision
+  ``numerator_scores`` applies to it stays correct without a loss change. The
+  guarantee is coding-span-free, not annotated-intergenic: the neighbour
+  inventory is ``load_gff_rows``/``Transcript.span`` (outer CDS endpoints), so
+  UTRs of the focal or neighbouring gene, ncRNA genes and CDS-free pseudogenes
+  can fall inside the added context and are supervised as ``U``. On the v2
+  train pool that is 48,213 of 3,965,426 added yeast bases and 3,964,153 of
+  12,049,332 added *C. elegans* bases overlapping raw ``gene``/``pseudogene``
+  spans (engels-0100). The raw-feature exclusion used for background tiles is
+  not applied here; making it so is a config knob for a later fit, not a
+  correction to this one. Fit v1 supervised only 3 % of its sampled
   bases as intergenic (10-base flanks plus background tiles) and its decoder
   fused genes through intergenic sequence (a-pilot 3.3); this is the
   minimal loader increment that adds real gene-adjacent intergenic sequence
@@ -321,8 +330,10 @@ def _oriented_window(t, seq: str, ws: Optional[int] = None,
 def _context_bounds(ws: int, we: int, seq_len: int, context: int, gid: str,
                     others) -> Tuple[int, int]:
     """Widen the clean window ``[ws, we]`` by up to ``context`` bases per side,
-    stopping at the sequence ends and at the nearest span of any *other* gene
-    (so the added bases are annotated intergenic). Returns the 1-based
+    stopping at the sequence ends and at the nearest *CDS span* of any other
+    gene (so the added bases are free of other genes' coding sequence; UTRs
+    and CDS-free features may be included, see the module docstring).
+    Returns the 1-based
     inclusive bounds; equal to the input when ``context`` is 0."""
     if context <= 0:
         return ws, we
@@ -372,9 +383,10 @@ def iter_windows(
     counts) any window longer than it (after context); ``None`` keeps every
     window.
 
-    ``context`` widens each clean window by up to that many bases per side of
-    annotated intergenic sequence, clipped at the nearest other gene's span
-    and the sequence ends (:func:`_context_bounds`); the CDS/intron
+    ``context`` widens each clean window by up to that many bases per side,
+    clipped at the nearest other gene's CDS span and the sequence ends
+    (:func:`_context_bounds`), so the added bases are coding-span-free
+    (not necessarily annotated intergenic) and supervised as ``U``; the CDS/intron
     coordinates are shifted accordingly and the example records the bases
     actually added as ``context_5``/``context_3`` (oriented).
     """
