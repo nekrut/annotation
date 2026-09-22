@@ -1768,6 +1768,23 @@ exits. Projected ~4.4 CPU-h at v2's measured 5.3 CPU-s/step. No decoder
 change, no loader change, and nothing is claimed from it until it exits 0
 and is scored on chr I and chr V the same way.
 
+The scoring inputs for that comparison are **pre-registered**: the
+`score-final/` directory under the v3 artifact now holds v2's
+`run_final.sh` with only the `fit-cpu-v2` → `fit-cpu-v3` paths
+substituted, v2's `declaration.yaml` with only the `model:` line changed,
+and v2's seqid lists, committed while the fit is still running and before
+any v3 checkpoint exists, so the chromosomes, tiling, dtype, core and
+scorer invocation cannot be chosen after seeing the result. Nothing there
+has been run. At step 1,950 of 3,000 (10,089.9 s elapsed, 5.17 CPU-s/step
+inclusive of evaluations, ~4.3 CPU-h projected, finish near 15:27Z) the
+dev NLL trace on the fixed 256-window subsample is 176.0 (step 150),
+66.6, 46.2, 48.6, 46.4, 52.0, 50.4, 50.2, 41.6, 42.7, 38.0 (step 1,650,
+best so far), 48.3, 49.0, at `lr` 3.000e-04 falling to 1.003e-04. The
+best point so far is below v2's selected 45.3 on the same subsample, but
+adjacent evaluations still differ by ~10 NLL at a third of the initial
+step size, and dev NLL is not the accuracy criterion: the trigger stated
+above is the chr I and chr V scores.
+
 CPU accounting for this section: fit v1 1.62 CPU-h, fit v2 2.21 CPU-h,
 fit v3 ~4.4 CPU-h projected (in flight, actual recorded when it finishes),
 final scoring 0.05 CPU-h each (chr I 3 s, chr V ~190 s incl. scorer),
