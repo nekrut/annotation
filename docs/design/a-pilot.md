@@ -23,8 +23,10 @@ accuracy target in this fit**, now on splicing and precision rather than
 on supervision balance, with the fitted rows 1.9–2.7× over the portable
 CPU ceiling. The revision proposed next is a longer fit under the same
 loader (the lenin-0083 GPU grant), scored the same way, before any
-decoder change. Still pending: that fit, the fitted S. pombe row, and the
-GPU regime (gagarin, lenin-0083).
+decoder change. The S. pombe normalization row under the v2 checkpoint
+is 9.06 CPU-s/Mb user + system, 1/5.7 of AUGUSTUS against the 1/11
+target (section 3.3). Still pending: that fit and the GPU regime
+(gagarin, lenin-0083).
 
 ## 1. What is implemented
 
@@ -1524,7 +1526,7 @@ unchanged (miss by ~2×; no positive CPU allowance for B), and only
 memory passes (peak RSS ≤ 2.05 GiB against 8 GB). chr V is cheaper than
 chr I per Mb because the decode traces back 287 rather than hundreds of
 chains; the encoder share is unchanged from section 3.2. The fitted
-S. pombe normalization row is still outstanding.
+S. pombe normalization row is below (v2).
 
 Accuracy: **the fitted checkpoint does not produce gene-by-gene
 structure, so candidate A misses the accuracy target in this fit.** On chr
@@ -1650,7 +1652,18 @@ against 12.09 and 8.86; decode traces back 13,460 chains on chr V at the
 same 106 s as v1's 324, so traceback is not the decode's cost); the
 section 3.2 CPU verdict stands — 2.7× and 1.9× the 4.67 CPU-s/Mb
 portable ceiling (40.3 and 28.5 machine-normalized against 15), no
-positive CPU allowance for B; memory passes.
+positive CPU allowance for B; memory passes. **The fitted S. pombe
+normalization row** (`pombe-normalization/A-v2/`, v2 `best.pt`, same
+command, core and float64 as the smoke row of section 3.2, 19 segments
+per strand, S. pombe unscored): 12.5718 Mb in 112.14 stage / 99.93 user
+/ 14.00 system CPU-s — **8.92 / 7.95 / 9.06 CPU-s per genome Mb** (smoke
+row 9.22 / 8.23 / 9.37; stages preprocess 0.11, encoder 3.73, decode
+5.07), peak RSS 1.31 GiB, 9,555 chains against AUGUSTUS's 4,452 genes.
+Against AUGUSTUS 51.43 user + system CPU-s/Mb on the same core that is
+**1/5.7 of AUGUSTUS against the 1/11 target** (1/6.5 user-only, 1/5.8
+stage sum; 29.1 CPU-s/Mb machine-normalized against 15): the checkpoint
+moves the row by 3 %, and the normalization verdict of section 3.2
+stands at a 1.9× miss (1.7× user-only). Cost 0.032 CPU-h.
 
 Accuracy, two findings. **The fusions are sharply reduced.** v1's fault —
 287 chains of median 81 kb fusing 238 loci on chr V, near-silence on
@@ -1781,10 +1794,12 @@ regime still misses by ~2× as in section 3.2, memory passes. A misses the
 accuracy target in both fits: v1 on supervision balance (3 % `U`, sharply
 reduced under the context loader), v2 on splicing (almost no real intron predicted) and
 precision (short single-exon over-prediction); the proposed revision is a
-longer fit under the same loader before any decoder change. Still
-missing: that fit (accuracy), CPU efficiency (encoder work reduction,
-section 3.2), the fitted S. pombe normalization row, and the GPU regime
-with the 6.1 multi-worker decoder accounting (gagarin)._
+longer fit under the same loader before any decoder change. The fitted
+S. pombe row (v2 `best.pt`) is 9.06 user + system CPU-s/Mb, 1/5.7 of
+AUGUSTUS against 1/11 (29.1 machine-normalized against 15), a 3 % move
+from the smoke row. Still missing: that fit (accuracy), CPU efficiency
+(encoder work reduction, section 3.2), and the GPU regime with the 6.1
+multi-worker decoder accounting (gagarin)._
 
 ## 6. Review responses (PR #38)
 
