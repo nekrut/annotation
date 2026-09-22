@@ -1770,12 +1770,25 @@ and is scored on chr I and chr V the same way.
 
 The scoring inputs for that comparison are **pre-registered**: the
 `score-final/` directory under the v3 artifact now holds v2's
-`run_final.sh` with only the `fit-cpu-v2` → `fit-cpu-v3` paths
-substituted, v2's `declaration.yaml` with only the `model:` line changed,
-and v2's seqid lists, committed while the fit is still running and before
-any v3 checkpoint exists, so the chromosomes, tiling, dtype, core and
-scorer invocation cannot be chosen after seeing the result. Nothing there
-has been run. At step 1,950 of 3,000 (10,089.9 s elapsed, 5.17 CPU-s/step
+`run_final.sh` with the `fit-cpu-v2` → `fit-cpu-v3` paths substituted,
+v2's `declaration.yaml` with only the `model:` line changed, and v2's
+seqid lists, committed while the fit is still running — before fit
+completion and final checkpoint selection, and before any v3 chromosome
+scoring — so the chromosomes, tiling, dtype, core and scorer invocation
+cannot be chosen after seeing the result. This paragraph previously said
+"before any v3 checkpoint exists", which was wrong: the training loop
+saves `best.pt` immediately on every improving development evaluation, so
+interim checkpoints predate the commit (engels-0108, stalin-0113). What
+is fixed in advance is the scoring configuration, not the absence of a
+model. The launcher has since gained an explicit completion gate (the
+fit's recorded `train exit=0`, the GNU-time `Exit status: 0`, no running
+v3 training process, a non-empty `best.pt`) and per-workload failure
+propagation, because `taskset` only sets CPU affinity and neither waits
+for the fit nor makes the core idle, and the v2 launcher reported success
+even when its measurement and scoring commands failed (engels-0108 P3,
+stalin-0113 P2). Every workload argument remains identical to v2's, an
+idle core remains an operator precondition recorded with the run, and
+nothing there has been run. At step 1,950 of 3,000 (10,089.9 s elapsed, 5.17 CPU-s/step
 inclusive of evaluations, ~4.3 CPU-h projected, finish near 15:27Z) the
 dev NLL trace on the fixed 256-window subsample is 176.0 (step 150),
 66.6, 46.2, 48.6, 46.4, 52.0, 50.4, 50.2, 41.6, 42.7, 38.0 (step 1,650,
@@ -2157,6 +2170,45 @@ Fast-kernel review findings (engels-0080, stalin-0081) and their resolution:
   the decoder revision is keyed to the longer fit's measured development
   results rather than to "more than one pass". These are planned
   index-exposure counts, not observed accepted-window counts.
+
+- **The scoring launcher reported success after failed workloads** (P2,
+  stalin-0113). Only `set -u` was enabled, and each workload's exit
+  status was printed and then replaced by the status of the `echo` that
+  printed it, so a failed measurement still entered scoring and the
+  wrapper could return 0 with both workloads broken — and a rerun in an
+  existing output directory could score a stale prediction. v3's
+  `score-final/run_final.sh` now captures each status, returns it, and
+  skips scoring when the measurement fails. Reproduced with stalin's
+  stubbed harness (no model or scorer runs): measurement failure exits 9
+  with no `score` line, scoring failure exits 7, and only a clean pair
+  prints `all workloads exit=0`. Every workload argument is unchanged
+  from v2's launcher — verified by stripping comments, normalising the
+  two version strings and diffing the workload lines: identical. The
+  fitting launcher masks status the same way, so fit v3's completion is
+  read from its recorded `train exit=` line and the GNU-time
+  `Exit status`, not from the launcher's own status. No restart.
+
+- **CPU affinity is not a completion gate or an idle-core guarantee**
+  (P3, engels-0108, restated by stalin-0113). The claim that pinning the
+  scoring launcher to the fit's core meant it could only run after the
+  fit exited was wrong: `taskset` sets affinity, and two processes may
+  share one CPU. `run_final.sh` now starts with an explicit gate — the
+  fit's recorded `train exit=0`, the GNU-time `Exit status: 0`, no
+  running v3 training process, and a non-empty `best.pt` — checked live
+  at 15:07Z against the in-flight fit, where it exits 1 and creates no
+  output directory. An idle core stays an **operator precondition**,
+  recorded with the run rather than enforced by the script.
+
+- **Pre-registration is before final checkpoint selection, not before
+  any checkpoint** (P3, engels-0108 / stalin-0113). Section 3.3, the v3
+  README and `score-final/README.md` said the scoring inputs were
+  committed "before any v3 checkpoint exists". The training loop saves
+  `best.pt` immediately on every improving development evaluation, so
+  interim checkpoints predated the commit. All three now say **before
+  fit completion and final checkpoint selection, and before any v3
+  chromosome scoring**, which is the claim the commit actually supports:
+  what is fixed in advance is the scoring configuration, not the absence
+  of a model.
 
 ## 7. Training-set coverage accounting
 
