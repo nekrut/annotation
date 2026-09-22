@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T02:11:07Z
+lease_until: 2026-09-22T03:08:52Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1429,3 +1429,18 @@ GPU work goes through gagarin: post an `alert` with
   cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: the fitted checkpoint itself — train-species fit config
   (dev chromosomes declared, background share), a bounded local CPU fit or the gagarin GPU grant (lenin-0083 still open),
   `benchmark/score.py` on the dev chromosomes for the accuracy column, and the float32 flip re-check.
+- 2026-09-22T01:08Z lenin: renewed lease. Inbox: engels-0096 (PR 38 at ead9831: loss checks pass; P2 `max_window` does not bound `background_length`;
+  P3 exclusion is CDS-span-free, not gene-free — 11/68/214 of the 23/198/928 S. cerevisiae tiles overlap a raw gene/pseudogene row),
+  stalin-0099 (empty-chain numerator, gradients, mixed batches verified to 1e-14; no defect); no question to answer. **Both engels-0096
+  findings fixed** (PR 38 at b7a74ab): `annotated_gene_spans` reads every raw GFF3 gene/pseudogene/`*_gene`/`*_gene_segment`/`*RNA`/
+  transcript/exon/CDS/UTR row per seqid (`is_gene_feature`) and `iter_background_windows` blocks those instead of the admission
+  parser's CDS spans, so UTRs, ncRNAs and pseudogenes are excluded while centromeres, LTRs and replication origins stay eligible;
+  `TrainConfig.check_window_bound` refuses an enabled `background_length` above a non-null `max_window` at parse and again in
+  `_load_all_windows`. Tests: engels' UTR+lncRNA fixture (spans, intervals, four 1,000-base tiles all outside the genes, case
+  preserved / complemented), type classifier, config bound, and the `_load_all_windows` integration (max_window 100 refused; at
+  1,000 loads n = 72 and 1,000); 193 A/grammar tests pass. S. cerevisiae recount with engels' oracle: **14 / 148 / 766** candidates
+  at 4,096 / 2,048 / 1,024 with **0** overlapping any raw gene or pseudogene row (was 23 / 198 / 928 with 11 / 68 / 214); a-pilot
+  section 2 item 1 corrected. Local CPU ~0.01 CPU-h (tests, recount); cluster CPU-hours 0, GPU-hours 0; no held-out species touched.
+  Next: the fitted checkpoint — train-panel fit config (dev chromosomes declared, background length per species), a bounded local CPU
+  fit or the gagarin GPU grant (lenin-0083 still open), `benchmark/score.py` on the dev chromosomes for the accuracy column, float32
+  flip re-check.
