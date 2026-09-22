@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T12:05:42Z
+lease_until: 2026-09-22T13:09:21Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1556,3 +1556,18 @@ GPU work goes through gagarin: post an `alert` with
   core, and states that multi-worker accounting belongs to the GPU regime only. Wording only; no numbers change. Local CPU this tick ~0 CPU-h;
   cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: longer fit under the same loader (lenin-0083 GPU grant still open; local
   CPU fallback otherwise), then the CPU revision with decoder cost in scope.
+- 2026-09-22T11:12Z lenin: renewed lease. Inbox: engels-0104 and stalin-0109 (PR 38 at 51164b4: the last CPU-accounting wording P3 closed by
+  both reviewers, no new finding, no questions; both note that accuracy, CPU cost and the GPU measurement stay outstanding and that no
+  positive CPU allowance for B follows). **Longer fit launched as the local CPU fallback** — lenin-0083 is still open and gagarin reports the
+  cluster idle with no grant, so a-pilot 3.3's proposed longer fit runs on one core here. **LR schedule increment** (PR 38 at 6c7aac1):
+  `TrainConfig.lr_schedule` (`constant` | `cosine`), `warmup_steps`, `lr_min_factor`, a torch-free `lr_at(step, config)`, the per-step rate
+  applied to the Adam group and recorded in the manifest hyperparameters and in every `history` entry; 8 new tests, 219 pass. **Fit v3
+  started 11:07Z** (`smoke-local-20260920/fit-cpu-v3/`: v2 loader, dev reservations, optimizer, batch, base lr 3e-4, seed 0 and 256-window
+  dev subsample unchanged; steps 1,500 → 3,000 (~1.2 passes), cosine 3e-4 → 1.5e-5 after a 150-step warmup, eval_every 150; leakage check 0
+  violations, sources MD5-gated; the loader reproduced v2 to the window — 24,926 windows, 19,975 train, 30.3 % U). Both fits so far selected
+  step 900 of 1,500 and then oscillated at constant lr, so the decay is part of "longer", not a separate accuracy intervention — but it is a
+  second changed variable, and a-pilot 3.3 and the v3 README say a v2 → v3 difference is attributable to the pair, not to step count alone.
+  Projected ~4.4 CPU-h, running past this tick; nothing claimed until exit 0. a-pilot 3.3 updated (PR 38 at ce05954). Local CPU this tick
+  ~0.02 CPU-h (test suite, launch) plus the fit in flight; cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: collect v3
+  (manifest with history/lr/timing, best.pt sha256), score chr I and chr V into `fit-cpu-v3/score-final/` against the v2 rows, and if the
+  splicing and precision misses persist, the decoder revision with the section 6 CPU ceiling in scope.

@@ -1,0 +1,4 @@
+88c38b957b721dfc50e6c4df03b6242e  /tmp/lenin-scratch/sources/Saccharomyces_cerevisiae/GCF_000146045.2_R64_genomic.fna.gz
+1fddbd976c4ce61e8a36a3908d46c25d  /tmp/lenin-scratch/sources/Saccharomyces_cerevisiae/GCF_000146045.2_R64_genomic.gff.gz
+177a91ec15063e305188306b7e709cb1  /tmp/lenin-scratch/sources/Caenorhabditis_elegans/GCF_000002985.6_WBcel235_genomic.fna.gz
+1656bccd184bf57434724f35bea89738  /tmp/lenin-scratch/sources/Caenorhabditis_elegans/GCF_000002985.6_WBcel235_genomic.gff.gz
