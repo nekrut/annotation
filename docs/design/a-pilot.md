@@ -1892,14 +1892,19 @@ Reading of that table, stated as what it supports:
    and tiling, different weights. The section 5 CPU verdict stands and
    **no positive CPU allowance for B follows from this run**.
 5. **A still misses the accuracy target.** Exact-transcript sensitivity
-   on chr V is 0.010. Three fits (v1, v2, v3) have each fixed the
-   previous one's dominant geometric defect and exposed the next:
-   fusion → sub-minimal introns and over-prediction → plausible intron
-   lengths with wrong splice sites and fusion. The next revision is the
-   decoder, with the section 6 CPU ceiling in scope, since the remaining
-   failures (splice-site placement, locus boundaries) are decoding
-   decisions rather than a shortage of fitting steps — though the dev
-   tail is not converged and a still longer fit is not ruled out either.
+   on chr V is 0.010. Three fits (v1, v2, v3) have each changed the
+   form of the dominant geometric defect rather than closed it: fusion →
+   sub-minimal introns (median 34 b, 23.49% at the 20 b floor) and
+   over-prediction → introns overshooting the reference (median 615 b,
+   47.60% above the reference q90 of 695 b) with wrong splice sites and
+   fusion again. Duration calibration is one of the remaining failures,
+   not a solved one, and item 2's evidence does not isolate which
+   component causes the mismatch. The next revision is the decoder, with
+   the section 6 CPU ceiling in scope, since the remaining failures
+   (splice-site placement, intron duration, locus boundaries) are
+   decoding decisions rather than a shortage of fitting steps — though
+   the dev tail is not converged and a still longer fit is not ruled out
+   either.
    The last seven evaluations are 32.425, 32.400, 29.933, 29.919,
    31.148, 30.149, 28.640 at steps 2,100 to 3,000: late variation
    narrows and the best evaluated checkpoint is the last one, but the
