@@ -11,13 +11,14 @@ the 1/11 portable target by 2.0× (1.8× on user time); no positive CPU
 allowance for B** (section 3.2). The first fitted checkpoint (bounded
 local CPU fit v1, section 3.3) scores the two development chromosomes at
 nucleotide sensitivity 0.04 / 0.47 with 0 exact transcripts (287 chains
-of median 81 kb fusing 238 loci on chr V). The controlled revision
-(fit v2, section 3.3: same fit with 30.6 % rather than 3.0 % of the
-sampled bases supervised as `U`) removes the fusions — chr I nucleotide
-F1 0.83 with 69 of 94 transcripts exact, chr V 4 fusions and 3,804 of
-4,995 loci hit — but predicts almost no real intron (chr V donor F1 0.014,
+of median 81 kb fusing 238 loci on chr V). The loader revision
+(fit v2, section 3.3: `U` context added to every window, 30.6 % rather
+than 3.1 % of the sampled bases supervised as `U`) sharply reduces the
+fusions — chr I nucleotide F1 0.83 with 69 of 94 transcripts exact,
+chr V 4 fusions (from 238) and 3,804 of 4,995 loci hit — but predicts almost no real intron (chr V donor F1 0.014,
 median predicted intron 34 bases, 1,827 splits) and over-predicts short
-single-exon chains (9,606 false loci on chr V): **A still misses the
+single-exon chains (9,606 unmatched loci on chr V, a third of them
+fragments of genes it already hits): **A still misses the
 accuracy target in this fit**, now on splicing and precision rather than
 on supervision balance, with the fitted rows 1.9–2.7× over the portable
 CPU ceiling. The revision proposed next is a longer fit under the same
@@ -1651,28 +1652,46 @@ section 3.2 CPU verdict stands — 2.7× and 1.9× the 4.67 CPU-s/Mb
 portable ceiling (40.3 and 28.5 machine-normalized against 15), no
 positive CPU allowance for B; memory passes.
 
-Accuracy, two findings. **The fusions are gone.** v1's fault — 287
-chains of median 81 kb fusing 238 loci on chr V, near-silence on chr I —
-is absent under v2: chr V chains have median span 294 bases and 4
-fusions; chr I hits 86 of 94 loci at nucleotide MCC 0.75 and reproduces
+Accuracy, two findings. **The fusions are sharply reduced.** v1's fault —
+287 chains of median 81 kb fusing 238 loci on chr V, near-silence on
+chr I — is nearly absent under v2: chr V chains have median span 294
+bases and 4 fusions (chr I 2); chr I hits 86 of 94 loci at nucleotide MCC 0.75 and reproduces
 69 of its 91 single-exon transcripts exactly, start and stop codons
-included (77 / 79 exact against 1 / 0). Since the only change between the
-fits is the sampled `U` share (3.0 % → 30.6 %), the v1 working hypothesis
-(fusions from an unsupervised intron-versus-`U` emission) is now supported
-by a controlled comparison, not only by a draw replay. **A still misses
+included (77 / 79 exact against 1 / 0). This compares two loader
+configurations, not the `U` fraction alone: the v2 intervention raises
+the `U` share of the bases seen through the selected step 900 from 3.1 %
+to 30.6 % (stalin-0106's replay of the 7,200-draw prefix: 484,704 of
+15,628,525 against 6,486,097 of 21,177,237 bases), but it also changes
+every window's context geometry, the background pool, which chains are
+drawn, the length exclusions, and the development windows the checkpoint
+was selected on (stalin-0104). The common-chromosome result supports the
+v1 working hypothesis (fusions from an unsupervised intron-versus-`U`
+emission) more strongly than the draw replay did; it does not isolate
+the `U` share as the sole cause or show the supervision defect fully
+removed. **A still misses
 the accuracy target in this fit, on splicing and on precision.** The v2
 checkpoint predicts almost no real intron: 2,290 introns on chr V of
-median 34 bases (1,078 at 20–30 bases, `min_intron` 20), 2,114 non-GT-AG,
-68 matching a reference intron, donor / acceptor F1 0.014 / 0.025 against
+median 34 bases (1,078 at 20–30 bases, `min_intron` 20), 2,125 non-GT-AG
+(2,114 `other` + 7 GC-AG + 4 AT-AC), 68 matching a reference intron, donor / acceptor F1 0.014 / 0.025 against
 22,824 reference introns; 11,535 of 13,410 chains are single-exon, so
 multi-exon genes come out as several single-exon chains (1,827 splits,
 239 exact CDS exons of 28,569; transcript sensitivity 0.020 at locus
-sensitivity 0.76). And it over-predicts: 9,606 of 13,410 chr V loci and
-128 of 214 chr I loci overlap no reference gene, about half the chains
-carrying under 300 CDS bases — short open reading frames the emissions
-accept as coding once the `U` state is available. The tiny introns read
-as the decoder bridging a frame break inside what it scores as coding at
-the cheapest allowed length, not as learned splice events; the motif
+sensitivity 0.76). And it over-predicts: `score.py` reports 9,606 of
+13,410 chr V loci and 128 of 214 chr I loci as FP (unmatched after
+one-to-one greedy matching on shared same-strand CDS bases), about half
+the chains carrying under 300 CDS bases. Splitting the FP by whether the
+prediction shares any same-strand reference CDS base (stalin-0106,
+reproduced; `fit-cpu-v2/score-final/README.md`): chr V 6,376 share none
+and 3,230 overlap a reference CDS but lost the match — extra fragments
+of genes already hit, the same fragmentation the splits measure; chr I
+127 and 1. The no-overlap subset is the candidate set for short open
+reading frames the emissions accept as coding once the `U` state is
+available, but it has not been checked against full gene spans or
+opposite-strand genes, so "overlaps no gene" is not established for it.
+The tiny introns are consistent with the decoder bridging a frame break
+inside what it scores as coding at the cheapest allowed length rather
+than emitting learned splice events — a hypothesis from the length
+distribution, not a measurement of the mechanism; the motif
 tables that moved in the canonical direction during v1 (stalin-0102) have
 not become decisive splice-site emissions in either bounded fit (1,500
 steps of batch 8, ~0.6 of one pass, both best at step 900). Whether the
@@ -1759,8 +1778,8 @@ the two chromosomes cost 12.54 and 8.88 CPU-s/Mb (stage sum; v1 12.09 and
 8.86), **2.7× and 1.9× the 4.67 CPU-s/Mb portable ceiling of this machine
 (40.3 and 28.5 machine-normalized against 15)**, at ≤ 2.05 GiB: the CPU
 regime still misses by ~2× as in section 3.2, memory passes. A misses the
-accuracy target in both fits: v1 on supervision balance (3 % `U`, fixed by
-the context loader), v2 on splicing (almost no real intron predicted) and
+accuracy target in both fits: v1 on supervision balance (3 % `U`, sharply
+reduced under the context loader), v2 on splicing (almost no real intron predicted) and
 precision (short single-exon over-prediction); the proposed revision is a
 longer fit under the same loader before any decoder change. Still
 missing: that fit (accuracy), CPU efficiency (encoder work reduction,
@@ -1974,6 +1993,25 @@ Fast-kernel review findings (engels-0080, stalin-0081) and their resolution:
   fixed; no number changes. engels-0082's 288-case and stalin-0083's 252-case
   multi-gene/ambiguous/padded-batch sweeps are noted as independent parity
   evidence at ≤ 1.3e-14, not added to the suite for the reason above.
+- **Locus FP conflated two things** (P2, stalin-0106): 3.3 and the v2
+  score README said the 9,606 / 128 FP loci "overlap no reference gene";
+  `score.py:loci` counts predictions left unmatched after one-to-one greedy
+  CDS matching, so extra fragments of a matched gene are FP too. Replayed
+  the matching (stalin's read-only script, reproduced): chr V 6,376 share
+  no same-strand reference CDS base + 3,230 overlap-but-unmatched; chr I
+  127 + 1. Narrative replaced in the summary, 3.3, section 5 and the README;
+  the no-overlap subset is labelled as unchecked against gene spans and the
+  opposite strand. No score changes.
+- **Causal scope of v1 → v2** (P3, stalin-0106): "the only change is the
+  sampled `U` share" and "the fusions are gone" reworded — the comparison is
+  of two loader configurations (context geometry, background pool, drawn
+  chains, length exclusions and dev windows all change), it supports the
+  supervision-balance hypothesis without isolating the `U` fraction, 4 + 2
+  fusions remain, and the minimum-length-intron reading is a hypothesis from
+  the length distribution. Count fix: chr V 2,125 non-GT-AG introns (2,114
+  `other` + 7 GC-AG + 4 AT-AC), not 2,114. stalin-0106's step-900 prefix
+  replay (v1 3.10 % / v2 30.63 % `U`, 484,704 / 6,486,097 `U` bases) is
+  recorded in the v2 README as what `best.pt` saw.
 
 ## 7. Training-set coverage accounting
 
