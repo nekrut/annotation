@@ -1,0 +1,16 @@
+loaded 24926 windows: 19975 train, 4951 dev (948 gene-free background); 256 dev windows evaluated; train pool 59330766 bases, 17981902 intergenic (30.3 %), context 512
+step 100: train_nll/window=180.7458 dev_nll=284.9347901109413 elapsed_s=524.4
+step 200: train_nll/window=90.4349 dev_nll=68.82843461270492 elapsed_s=1070.9
+step 300: train_nll/window=33.2590 dev_nll=55.99824382281929 elapsed_s=1611.3
+step 400: train_nll/window=61.8206 dev_nll=90.85660408985044 elapsed_s=2129.8
+step 500: train_nll/window=151.5793 dev_nll=52.019781266344 elapsed_s=2679.6
+step 600: train_nll/window=61.4321 dev_nll=76.25141780688314 elapsed_s=3209.2
+step 700: train_nll/window=13.8607 dev_nll=54.56028625868001 elapsed_s=3726.3
+step 800: train_nll/window=32.2675 dev_nll=45.59657314364253 elapsed_s=4239.9
+step 900: train_nll/window=17.9692 dev_nll=45.335373548802664 elapsed_s=4771.0
+step 1000: train_nll/window=79.4483 dev_nll=48.94643553942136 elapsed_s=5299.2
+step 1100: train_nll/window=87.7893 dev_nll=74.12170822123987 elapsed_s=5833.2
+step 1200: train_nll/window=36.2078 dev_nll=56.73660198376918 elapsed_s=6358.4
+step 1300: train_nll/window=40.7870 dev_nll=48.55748502783278 elapsed_s=6877.8
+step 1400: train_nll/window=92.5123 dev_nll=58.704964064447424 elapsed_s=7425.1
+step 1500: train_nll/window=15.4593 dev_nll=50.7126380835704 elapsed_s=7945.1

@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T08:07:06Z
+lease_until: 2026-09-22T09:05:49Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1515,3 +1515,15 @@ GPU work goes through gagarin: post an `alert` with
   RSS 1.8 GiB), ~2.6 CPU-h projected, finish ~07:50Z. Local CPU this tick ~0.01 CPU-h (tests) plus the fit in flight; cluster CPU-hours 0,
   GPU-hours 0; no held-out species touched. Next: collect v2 (manifest with accepted-draw composition, timing, best.pt sha256), score
   chr I and chr V into `fit-cpu-v2/score-final/` against the v1 rows, then the fitted S. pombe row; gagarin GPU grant (lenin-0083) still open.
+- 2026-09-22T07:40Z lenin: renewed lease. Inbox: engels-0101 and stalin-0105 (PR 38 at 4d766b0: all P3s resolved, dataset ASTs identical after docstring
+  strip; no questions). **Fit v2 finished** 07:26Z, exit 0: 1,500 steps in 7,964 CPU-s = 2.21 CPU-h on one core (5.3 s/step, 1.37× v1), peak RSS
+  2.09 GiB, best step 900 (dev NLL 45.3 on the v2 dev subset), best.pt sha256 99f773ed…; manifest accepted-draw composition 35,305,664 sampled bases
+  = 39.9 % CDS + 29.6 % intron + 30.6 % U (9,561,661 context + 490 background draws + 230,200 flank), equal to stalin-0104's replay to the base.
+  **Scored chr I / chr V** under best.pt (`fit-cpu-v2/score-final/`, all exits 0, `summarize.py` reproduces the tables): cost unchanged (12.54 /
+  8.88 CPU-s/Mb, RSS 0.96 / 2.05 GiB; CPU verdict stands, no B allowance). Fusions gone: chr I nt F1 0.825, MCC 0.746, 86/94 loci, 69 exact
+  transcripts (v1: 6 chains, 0 exact); chr V 13,410 chains of median 294 b, 4 fusions (238), 3,804/4,995 loci, nt F1 0.538. Still misses: chr V
+  donor/acceptor F1 0.014/0.025 (2,290 predicted introns, median 34 b, 2,114 non-GT-AG, 68 TP), 1,827 splits, 101 exact transcripts (sens 0.020);
+  precision 9,606 FP loci on chr V / 128 on chr I, half the chains < 300 CDS bases. Proposed next revision: a longer fit under the same loader
+  (lenin-0083 GPU grant) before any decoder change. a-pilot summary, 3.3 and section 5 updated (PR 38 at be7ab46). Local CPU this tick 2.21
+  (fit) + 0.05 (scoring) CPU-h; cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: fitted S. pombe normalization row under v2
+  best.pt; keep the task in progress pending the longer fit / GPU regime.

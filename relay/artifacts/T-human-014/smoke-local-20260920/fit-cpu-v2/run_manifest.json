@@ -1,0 +1,193 @@
+{
+  "actual": {
+    "accepted_windows": 12000,
+    "attempted_draws": 12000,
+    "best_dev_nll": 45.335373548802664,
+    "best_step": 900,
+    "composition": {
+      "background_draws": 490,
+      "cds_bases": 14070834,
+      "context_bases": 9561661,
+      "intergenic_bases": 10795381,
+      "intron_bases": 10439449
+    },
+    "dev_windows": 4951,
+    "dev_windows_evaluated": 256,
+    "history": [
+      {
+        "dev_nll": 284.9347901109413,
+        "elapsed_s": 524.3828673721291,
+        "step": 100,
+        "train_nll": 180.74579112176858
+      },
+      {
+        "dev_nll": 68.82843461270492,
+        "elapsed_s": 1070.9321672902443,
+        "step": 200,
+        "train_nll": 90.43486896312405
+      },
+      {
+        "dev_nll": 55.99824382281929,
+        "elapsed_s": 1611.3316201129928,
+        "step": 300,
+        "train_nll": 33.25903264053454
+      },
+      {
+        "dev_nll": 90.85660408985044,
+        "elapsed_s": 2129.7781727579422,
+        "step": 400,
+        "train_nll": 61.82058689664336
+      },
+      {
+        "dev_nll": 52.019781266344,
+        "elapsed_s": 2679.5720225488767,
+        "step": 500,
+        "train_nll": 151.57925269422304
+      },
+      {
+        "dev_nll": 76.25141780688314,
+        "elapsed_s": 3209.2334838719107,
+        "step": 600,
+        "train_nll": 61.43206655580761
+      },
+      {
+        "dev_nll": 54.56028625868001,
+        "elapsed_s": 3726.2677725409158,
+        "step": 700,
+        "train_nll": 13.860670889227947
+      },
+      {
+        "dev_nll": 45.59657314364253,
+        "elapsed_s": 4239.906767621171,
+        "step": 800,
+        "train_nll": 32.26753782961916
+      },
+      {
+        "dev_nll": 45.335373548802664,
+        "elapsed_s": 4770.964345796965,
+        "step": 900,
+        "train_nll": 17.9692146929917
+      },
+      {
+        "dev_nll": 48.94643553942136,
+        "elapsed_s": 5299.232926507015,
+        "step": 1000,
+        "train_nll": 79.44834891599388
+      },
+      {
+        "dev_nll": 74.12170822123987,
+        "elapsed_s": 5833.234973459039,
+        "step": 1100,
+        "train_nll": 87.78927930611411
+      },
+      {
+        "dev_nll": 56.73660198376918,
+        "elapsed_s": 6358.437080019154,
+        "step": 1200,
+        "train_nll": 36.20780357146148
+      },
+      {
+        "dev_nll": 48.55748502783278,
+        "elapsed_s": 6877.787027320825,
+        "step": 1300,
+        "train_nll": 40.78704921552844
+      },
+      {
+        "dev_nll": 58.704964064447424,
+        "elapsed_s": 7425.062335270923,
+        "step": 1400,
+        "train_nll": 92.51229523308152
+      },
+      {
+        "dev_nll": 50.7126380835704,
+        "elapsed_s": 7945.095181088895,
+        "step": 1500,
+        "train_nll": 15.459318304918781
+      }
+    ],
+    "sampled_bases": 35305664,
+    "timing": {
+      "eval_cpu_s": 659.1853538099995,
+      "eval_wall_s": 659.7613361473195,
+      "fit_cpu_s": 7938.915226944,
+      "fit_includes_eval": true,
+      "fit_wall_s": 7945.095207772218,
+      "load_cpu_s": 24.061345615,
+      "load_wall_s": 24.08532243501395,
+      "torch_threads": 1
+    },
+    "train_windows": 19975
+  },
+  "commit": "61a9480b2d56404e342c39371aefc999ed1ba923",
+  "cuda": null,
+  "device": "cpu",
+  "hardware": "Linux-7.0.0-30-generic-x86_64-with-glibc2.43",
+  "hyperparams": {
+    "background_length": 2048,
+    "background_windows": 800,
+    "batch_size": 8,
+    "context": 512,
+    "dev_windows_max": 256,
+    "eval_every": 100,
+    "grad_clip": 1.0,
+    "loss_kernel": "fast",
+    "lr": 0.0003,
+    "max_window": 12288,
+    "min_intron": 20,
+    "seed": 0,
+    "steps": 1500,
+    "weight_decay": 0.0
+  },
+  "param_count": 455841,
+  "python": "3.11.14",
+  "sampling_plan": {
+    "background_length": 2048,
+    "background_windows_per_species": 800,
+    "batch_size": 8,
+    "context_per_side": 512,
+    "dev_draw": "seeded without replacement, at most dev_windows_max",
+    "dev_windows_max": 256,
+    "draw": "uniform-with-replacement over train windows",
+    "max_window": 12288,
+    "planned_draws": 12000,
+    "seed": 0,
+    "steps": 1500
+  },
+  "scope": "encoder-and-pooled-decoder",
+  "source": {
+    "source_dirs": [
+      "model/a",
+      "model/grammar"
+    ],
+    "source_dirty": false,
+    "source_dirty_files": [],
+    "source_files": 19,
+    "source_sha256": "429fea438f315c421462db2cd8081afbacf34540feb5b6b1b45589df03455cb4"
+  },
+  "sources": [
+    {
+      "dev_seqids": [
+        "NC_001133.9"
+      ],
+      "fasta_md5": "88c38b957b721dfc50e6c4df03b6242e",
+      "gff_md5": "1fddbd976c4ce61e8a36a3908d46c25d",
+      "m": 20,
+      "name": "Saccharomyces_cerevisiae",
+      "summary": "/tmp/wt014/model/labels/manifests/Saccharomyces_cerevisiae.summary.json",
+      "table": 1
+    },
+    {
+      "dev_seqids": [
+        "NC_003283.11"
+      ],
+      "fasta_md5": "177a91ec15063e305188306b7e709cb1",
+      "gff_md5": "1656bccd184bf57434724f35bea89738",
+      "m": 20,
+      "name": "Caenorhabditis_elegans",
+      "summary": "/tmp/wt014/model/labels/manifests/Caenorhabditis_elegans.summary.json",
+      "table": 1
+    }
+  ],
+  "task": "T-human-014",
+  "torch": "2.14.0+cpu"
+}
