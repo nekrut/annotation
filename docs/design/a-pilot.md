@@ -38,11 +38,21 @@ introns still missed), and the split defect has become a fusion defect
 verdict stands and **no positive CPU allowance for B follows**. The
 S. pombe normalization row under the v2 checkpoint is 9.06 CPU-s/Mb
 user + system, 1/5.7 of AUGUSTUS against the 1/11 target (section 3.3).
-The revision proposed next is the **decoder**, with the section 6 CPU
-ceiling in scope, since the remaining failures are decoding decisions;
-the monotone dev tail also leaves a still longer fit open, and the two
-would have to be measured separately. Still pending: that revision and
-the GPU regime (gagarin, lenin-0083).
+The first **decoder** increment (section 3.4) tests that reading on the
+same v3 checkpoint without refitting: a hard `GT`/`GC`..`AG` splice mask,
+which the soft learned dinucleotide bias could not express. It roughly
+doubles splice placement on chr V (donor F1 0.070 → 0.117, acceptor
+0.081 → 0.158, correct GT-AG introns 433 → 1,070), raises exact
+transcripts 70 → 101 and exact exon F1 0.030 → 0.062, cuts fusions
+312 → 226 and removes all 3,986 non-canonical predicted introns, at a
+cost of 0.013 nucleotide F1 (0.598 → 0.585, sensitivity for precision)
+and **4% less CPU** (8.88 → 8.65 CPU-s/Mb). **A still misses the accuracy
+target** at exact-transcript sensitivity 0.020 per scored locus, and
+21,550 reference GT-AG introns remain missed: what is left is which
+legal site scores highest, not which sites are legal. Still pending: the
+next decoder increment (donor/acceptor scoring and locus boundaries),
+the still longer fit the monotone dev tail leaves open (separately
+measured), and the GPU regime (gagarin, lenin-0083).
 
 ## 1. What is implemented
 
@@ -1883,6 +1893,93 @@ fit v3 4.33 CPU-h (measured, user+system), final scoring 0.05 CPU-h each
 (chr I 3 s, chr V ~190 s incl. scorer), three scoring runs so far,
 probes and dry run ~0.35 CPU-h; all local, cluster CPU-hours 0, GPU-hours
 0 (lenin-0083 still open).
+
+### 3.4 Decoder revision, step 1: the hard splice mask, 2026-09-22 (no refit; splice placement doubles, A still misses the target)
+
+Section 3.3 ended with splice *placement* as the open failure of fit v3
+and with the reading that it is a decoding decision. The first decoder
+increment tests exactly that, on the v3 checkpoint, with no refitting.
+
+**What the decoder was missing.** The pooled decoder's 16-entry donor and
+acceptor dinucleotide tables (proposal 3.5) are a *soft* bias: they can
+reorder splice sites, they cannot forbid one. Fit v3 duly emitted 3,986
+non-canonical introns on chr V against 470 canonical false positives,
+and exactly **one** of its true introns was non-canonical (score JSON
+`splice.by_dinucleotide`). The grammar permits paths the biology does
+not, and the encoder is not strong enough to rule them out by score
+alone.
+
+**The increment.** `model.a.pooled.motif_bias` gains a `canonical` mask:
+a donor emission is `-inf` wherever the first two intron bases are a
+concrete dinucleotide other than `GT`/`GC`, an acceptor `-inf` wherever
+the last two are not `AG`. Both decoders already read `-inf` as a hard
+mask, so no kernel changes. A dinucleotide that is ambiguous or reaches
+past the window is **not** masked: the mask fires only on positive
+evidence, so an `N` or a tile edge can never delete a legal site, and in
+both decode modes the mask reads the same extended slice as the bias
+(`model.a.chromosome`). It is threaded through `predict_sequence` and
+`measure --canonical-splice` and recorded in the measured row
+(`canonical_splice`, `canonical_donors`, `canonical_acceptors`); the
+window profile refuses the flag rather than report an unmasked row as
+masked. It is **inference only**: a hard `-inf` in the chain-loss
+numerator would make a reference intron with an unusual dinucleotide
+unreachable and the loss infinite. Tests: `tests/test_a_pooled.py`
+`CanonicalSpliceMask` (the mask is exactly the concrete non-canonical
+sites; every intron the tensor Viterbi decodes under it is canonical,
+while the unmasked decode does leave the canonical set) and
+`tests/test_a_chromosome.py` `CanonicalFlag`.
+
+**The ablation** (`smoke-local-20260920/fit-cpu-v3/score-canonical/`).
+Same weights, same tiling, same scorer, same pinned core; the launcher is
+`score-final/run_final.sh` with the flag added and the directory renamed,
+and substituting both back diffs empty against it. All four workloads
+exit 0.
+
+| metric | chr I v3 | chr I masked | chr V v3 | chr V masked |
+|---|---|---|---|---|
+| CPU-s/Mb (stage sum) | 12.38 | 12.14 | 8.88 | **8.65** |
+| decode CPU-s | 1.52 | 1.47 | 105.48 | 100.90 |
+| nucleotide F1 | 0.891 | 0.890 | **0.598** | 0.585 |
+| nt sens / prec | 0.912/0.870 | 0.912/0.869 | 0.533/0.680 | 0.503/0.698 |
+| locus F1 | 0.786 | 0.778 | 0.603 | 0.590 |
+| fusion / split | 3 / 0 | 3 / 0 | 312 / 910 | **226** / 964 |
+| exact transcripts | 64 | **65** | 70 | **101** |
+| exon F1 (exact) | 0.582 | 0.588 | 0.030 | **0.062** |
+| donor / acceptor F1 | 0 / 0 | 0 / 0 | 0.070/0.081 | **0.117/0.158** |
+| correct GT-AG introns | 0 | 0 | 433 | **1,070** |
+| non-canonical predicted introns | 16 | **0** | 3,986 | **0** |
+
+Reading of that table:
+
+1. **Splice placement roughly doubles, for free.** Donor F1 0.070 →
+   0.117, acceptor 0.081 → 0.158, correct GT-AG introns 433 → 1,070 on
+   chr V. The gain is not only the deletion of illegal predictions: the
+   number of *correct* introns rises, so the mask moves the Viterbi path
+   onto real sites rather than merely removing wrong ones.
+2. **Gene structure improves too**: exact transcripts 70 → 101 (+44%),
+   exact exon F1 0.030 → 0.062, fusions 312 → 226.
+3. **Nucleotide F1 falls 0.598 → 0.585** on chr V — sensitivity 0.533 →
+   0.503 against precision 0.680 → 0.698, predicted CDS 4.40 → 4.04 Mb.
+   The decoder loses coding bases it used to claim through illegal
+   introns; locus F1 follows (0.603 → 0.590). The mask trades nucleotide
+   coverage for structural correctness, and the structural metrics are
+   the ones the charter's accuracy target is about.
+4. **The mask costs nothing.** 8.88 → 8.65 CPU-s/Mb on chr V (decode
+   105.48 → 100.90): it removes transitions rather than adding work. The
+   section 5 CPU verdict stands and **no positive CPU allowance for B
+   follows from this run either**.
+5. **A still misses the accuracy target**, at exact-transcript
+   sensitivity 0.020 per scored locus (0.015 per reference transcript).
+   21,550 reference GT-AG introns are still missed, so what remains is
+   not legality but *which* legal site scores highest — an encoder and
+   scoring question, not a grammar one. That is the next decoder
+   increment (donor/acceptor scoring and locus boundaries), and the
+   reason the mask is a step rather than the fix.
+
+CPU accounting for this section: the ablation cost 0.05 CPU-h (chr I
+3.4 s, chr V 181.5 s, plus the two scorer runs), plus about 0.04 CPU-h
+for an interrupted first launch whose outputs were discarded and the
+test suite. All local; cluster CPU-hours 0, GPU-hours 0.
 
 ## 4. Budget and caps
 
