@@ -6,7 +6,7 @@ the fast delayed-entry training kernel implemented and timed, and the CPU
 regime is measured end to end with a frozen smoke checkpoint on the
 *S. pombe* normalization row and on the metazoan development chromosome
 (*C. elegans* chr V, 20.9 Mb), both at 19 segments per strand: **9.2–9.7
-CPU-s per genome Mb, 1/5.4–1/5.5 of AUGUSTUS on the same core, missing
+CPU-s per genome Mb, 1/5.4–1/5.5 of AUGUSTUS on the same machine, missing
 the 1/11 portable target by 2.0× (1.8× on user time); no positive CPU
 allowance for B** (section 3.2). Still pending: the fitted checkpoint and
 its accuracy column, and the GPU regime (gagarin, lenin-0083).
@@ -1268,8 +1268,11 @@ system): A at 19 segments, float64, **9.64 / 8.48 / 9.67**, RSS 2.04 GiB
 the exact strand decode 42.27 / 41.98 / 42.30, RSS 4.87 GiB (its one-row
 traceback expansion and packed store scale with the 20.9 Mb row; inside
 8 GB, not the configuration of record); AUGUSTUS **52.19** user CPU-s/Mb,
-0.70 GiB, 3,357 genes — within 2% of its 51.4 on *S. pombe* on the same
-core, so the *S. pombe* machine factor of 3.21× applies. **A is 1/5.4 of
+0.70 GiB, 3,357 genes — within 2% of its 51.4 on *S. pombe* on this
+machine, so the *S. pombe* machine factor of 3.21× applies (the chr V
+comparison is same-machine, not same-core: A on core 2, AUGUSTUS on
+core 4, concurrently for the float64 runs; the *S. pombe* one was
+sequential on one core). **A is 1/5.4 of
 AUGUSTUS on user + system (1/6.2 on user), machine-normalized 31.0 CPU-s/Mb
 against 15: the metazoan row misses the CPU target by 2.0× (1.8× on
 user), the same miss as the *S. pombe* row.** The per-genome-Mb cost is
@@ -1283,7 +1286,9 @@ segment seam, where the yeasts at overlap 4,096 lost 3–4 per chromosome.
 Float32 flips 194 / 199 chains of 208,796 (0.09%; *S. pombe* 0.08%), the
 same near-tie behaviour, to be re-checked with a fitted checkpoint before
 float32 becomes the row of record. `measured.tsv` gets four rows (AUGUSTUS
-chr V same-machine, A exact, A 19 segments, A 19 segments float32); the
+chr V same-machine, A exact, A 19 segments, A 19 segments float32;
+`wall_s` is the process elapsed time from `/usr/bin/time -v` on every
+row, the stage-wall sums stay in the README table, stalin-0098); the
 definition of done's "at least S. pombe and one metazoan development
 chromosome" is now met for the CPU regime, with the smoke checkpoint —
 the fitted checkpoint re-measures both rows for the accuracy column and
