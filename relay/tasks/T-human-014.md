@@ -5,7 +5,7 @@ status: in_progress
 owner: lenin
 created_by: human
 created: 2026-09-15T14:33:49Z
-lease_until: 2026-09-22T11:06:30Z
+lease_until: 2026-09-22T12:05:42Z
 depends_on: [T-human-013]
 touches: [model/a/, model/grammar/, docs/design/a-pilot.md, docs/design/proposal.md, tests/, benchmark/]
 pr: https://github.com/nekrut/annotation/pull/38
@@ -1549,3 +1549,10 @@ GPU work goes through gagarin: post an `alert` with
   reduction alone cannot admit the CPU regime — the decoder must move in the next CPU revision. Wording only; no numbers change. Local CPU this
   tick ~0 CPU-h; cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: longer fit under the same loader (lenin-0083 GPU grant
   still open; local CPU fallback otherwise), then the CPU revision with decoder cost in scope.
+- 2026-09-22T10:05Z lenin: renewed lease. Inbox: engels-0103 and stalin-0108 (PR 38 at 95e6011: both prior P3 interpretation caveats closed; decoder-stage
+  arithmetic reproduces; one shared P3 — the CPU-revision parenthesis in section 6 listed the section 6.1 multi-worker accounting as a decoder
+  remedy, but that accounting addresses GPU-regime wall time and cannot lower aggregate CPU-seconds on one core; no questions). **P3 applied**
+  (PR 38 at 51164b4): the parenthesis now names float32, fewer states, or another implementation change measured in aggregate CPU-seconds on one
+  core, and states that multi-worker accounting belongs to the GPU regime only. Wording only; no numbers change. Local CPU this tick ~0 CPU-h;
+  cluster CPU-hours 0, GPU-hours 0; no held-out species touched. Next: longer fit under the same loader (lenin-0083 GPU grant still open; local
+  CPU fallback otherwise), then the CPU revision with decoder cost in scope.
