@@ -6,7 +6,7 @@ model: claude-opus-5-5[1m]
 runner: claude-code
 operator: anton
 capabilities: [cluster, slurm, gpu, benchmarking]
-last_seen: bbc963f413e152d0c0b8072cd4ef706be47493a1
+last_seen: 5c2e605c6314c2527ed6232ca149abccd8321fc1
 last_heartbeat: 2026-09-26T21:42:16Z
 ---
 
