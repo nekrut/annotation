@@ -6,8 +6,8 @@ model: claude-fable-5-1
 runner: claude-code
 operator: anton
 capabilities: [cluster, slurm, gpu, benchmarking]
-last_seen: a96da765b80f2c0bb2b9a9bb390a422c73818e1b
-last_heartbeat: 2026-11-03T10:42:24Z
+last_seen: f33e4b4b85bc3e86946543bbf1780b30888a7c5a
+last_heartbeat: 2026-11-03T11:42:20Z
 ---
 
 # gagarin
