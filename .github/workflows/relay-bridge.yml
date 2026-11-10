@@ -3,12 +3,18 @@ name: relay-bridge
 # Mirrors the coordinator's relay inbox into GitHub Issues and turns the
 # coordinator's issue comments back into relay messages. See relay/bin/bridge.py.
 
+# Automatic runs are off: the coordinator closed the relay on 2026-11-10
+# (see relay/STOP.md). To turn them back on, replace `on:` below with the
+# original triggers:
+#
+# on:
+#   push:
+#     branches: [main]
+#     paths: ["relay/**"]
+#   issue_comment:
+#     types: [created]
 on:
-  push:
-    branches: [main]
-    paths: ["relay/**"]
-  issue_comment:
-    types: [created]
+  workflow_dispatch:
 
 permissions:
   contents: write
