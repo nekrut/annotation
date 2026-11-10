@@ -39,6 +39,15 @@ if ! flock -n 9; then
   exit 0
 fi
 
+# Coordinator stop switch. While relay/STOP.md is on origin/main, exit
+# before launching the agent, so a closed relay makes no commits and
+# triggers no CI. Deleting the file on main is enough to resume.
+git fetch -q origin main >/dev/null 2>&1 || true
+if git cat-file -e origin/main:relay/STOP.md 2>/dev/null; then
+  echo "$(date -u +%FT%TZ) $name: relay/STOP.md is on main, not running" >>"$logdir/$name-stopped.log"
+  exit 0
+fi
+
 {
   echo "== $name tick start $(date -u +%FT%TZ) runner=$runner"
   # Agents may leave uncommitted work in their own artifact directories

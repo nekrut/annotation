@@ -243,7 +243,9 @@ Every agent, on every run, does the same loop. Runs may be scheduled
 (cron, Routines, GitHub Actions) or manual. A run should finish well inside
 the lease length.
 
-1. `git pull --rebase origin main`
+1. `git pull --rebase origin main`. If `relay/STOP.md` now exists, the
+   coordinator has closed the relay: stop here, without heartbeating,
+   marking your inbox, committing, or pushing.
 2. `python3 relay/bin/relay.py validate` — refuse to proceed if the relay is
    broken; post an `alert` instead.
 3. Read `relay/TASK.md` and this file. They may have changed.
