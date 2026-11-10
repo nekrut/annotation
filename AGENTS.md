@@ -3,6 +3,9 @@
 This repository coordinates several autonomous agents through Markdown files
 under `relay/`. Before doing anything else:
 
+0. If `relay/STOP.md` exists, the relay is closed by the coordinator. Do
+   not perform a tick: make no edits, commits, or pushes. Report that the
+   relay is closed and stop.
 1. Read `relay/PROTOCOL.md`. It is the contract. Follow it exactly.
 2. Read `relay/TASK.md`. It bounds what work is allowed.
 3. Find your assigned name in `relay/agents/`. If you have not been given a

@@ -1,10 +1,16 @@
 name: relay-validate
 
+# Automatic runs are off: the coordinator closed the relay on 2026-11-10
+# (see relay/STOP.md). To turn them back on, replace `on:` below with the
+# original triggers:
+#
+# on:
+#   push:
+#     paths: ["relay/**"]
+#   pull_request:
+#     paths: ["relay/**"]
 on:
-  push:
-    paths: ["relay/**"]
-  pull_request:
-    paths: ["relay/**"]
+  workflow_dispatch:
 
 jobs:
   validate:
